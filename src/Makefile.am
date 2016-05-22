@@ -116,6 +116,34 @@ BITCOIN_CORE_H = \
   rpc/client.h \
   rpc/protocol.h \
   rpc/server.h \
+  edc/bitmessage.h \
+  edc/edcchainparams.h \
+  edc/edcbloom.h \
+  edc/edccoins.h \
+  edc/edccompressor.h \
+  edc/edccore_io.h \
+  edc/edccore_memusage.h \
+  edc/edcmain.h \
+  edc/edcmerkleblock.h \
+  edc/edcminer.h \
+  edc/edcnet.h \
+  edc/edctxmempool.h \
+  edc/policy/edcfees.h \
+  edc/policy/edcpolicy.h \
+  edc/policy/edcrbf.h \
+  edc/wallet/edcwallet.h \
+  edc/wallet/edcwalletdb.h \
+  edc/primitives/edcblock.h \
+  edc/primitives/edctransaction.h \
+  edc/edcundo.h \
+  edc/edcvalidationinterface.h \
+  edc/zmq/edczmqnotificationinterface.h \
+  edc/zmq/edczmqabstractnotifier.h \
+  edc/zmq/edczmqpublishnotifier.h \
+  edc/script/edcsigcache.h \
+  edc/script/edcsign.h \
+  edc/script/edcinterpreter.h \
+  edc/edcui_interface.h \
   rpc/register.h \
   scheduler.h \
   script/sigcache.h \
@@ -184,6 +212,40 @@ libbitcoin_server_a_SOURCES = \
   rpc/net.cpp \
   rpc/rawtransaction.cpp \
   rpc/server.cpp \
+  edc/bitmessage.cpp \
+  edc/rpcedc.cpp \
+  edc/edcchainparams.cpp \
+  edc/edccompressor.cpp \
+  edc/policy/edcrbf.cpp \
+  edc/policy/edcfees.cpp \
+  edc/policy/edcpolicy.cpp \
+  edc/edcvalidationinterface.cpp \
+  edc/edccore_write.cpp \
+  edc/edcnet.cpp \
+  edc/edccore_read.cpp \
+  edc/wallet/edcrpcwallet.cpp \
+  edc/wallet/edcwallet.cpp \
+  edc/wallet/edcwalletdb.cpp \
+  edc/wallet/edcrpcdump.cpp \
+  edc/edcminer.cpp \
+  edc/rpc/edcrawtransaction.cpp \
+  edc/rpc/edcmining.cpp \
+  edc/rpc/edcblockchain.cpp \
+  edc/primitives/edctransaction.cpp \
+  edc/primitives/edcblock.cpp \
+  edc/edcvalidationinterface.cpp \
+  edc/edcbitcoin-tx.cpp \
+  edc/edcbloom.cpp \
+  edc/edccoins.cpp \
+  edc/edcmain.cpp \
+  edc/edcmerkleblock.cpp \
+  edc/script/edcbitcoinconsensus.cpp \
+  edc/script/edcsigcache.cpp \
+  edc/script/edcsign.cpp \
+  edc/script/edcinterpreter.cpp \
+  edc/edctxmempool.cpp \
+  edc/edcrest.cpp \
+  edc/edcui_interface.cpp \
   script/sigcache.cpp \
   script/ismine.cpp \
   timedata.cpp \
