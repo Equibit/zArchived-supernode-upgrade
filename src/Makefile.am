@@ -123,10 +123,12 @@ BITCOIN_CORE_H = \
   edc/edccompressor.h \
   edc/edccore_io.h \
   edc/edccore_memusage.h \
+  edc/edcinit.h \
   edc/edcmain.h \
   edc/edcmerkleblock.h \
   edc/edcminer.h \
   edc/edcnet.h \
+  edc/edcparams.h \
   edc/edctxmempool.h \
   edc/policy/edcfees.h \
   edc/policy/edcpolicy.h \
@@ -237,6 +239,7 @@ libbitcoin_server_a_SOURCES = \
   edc/edcbitcoin-tx.cpp \
   edc/edcbloom.cpp \
   edc/edccoins.cpp \
+  edc/edcinit.cpp \
   edc/edcmain.cpp \
   edc/edcmerkleblock.cpp \
   edc/script/edcbitcoinconsensus.cpp \
@@ -246,6 +249,7 @@ libbitcoin_server_a_SOURCES = \
   edc/edctxmempool.cpp \
   edc/edcrest.cpp \
   edc/edcui_interface.cpp \
+  edc/edcparams.cpp \
   script/sigcache.cpp \
   script/ismine.cpp \
   timedata.cpp \

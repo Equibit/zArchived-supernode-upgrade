@@ -11,6 +11,7 @@
 #include "clientversion.h"
 #include "rpc/server.h"
 #include "init.h"
+#include "edc/edcinit.h"		// EDC
 #include "noui.h"
 #include "scheduler.h"
 #include "util.h"
@@ -165,6 +166,21 @@ bool AppInit(int argc, char* argv[])
     } catch (...) {
         PrintExceptionContinue(NULL, "AppInit()");
     }
+
+// EDC BEGIN
+	try
+	{
+		fRet = EdcAppInit( threadGroup, scheduler );
+	}
+	catch( const std::exception & ex )
+	{
+        PrintExceptionContinue(&ex, "EdcAppInit()");
+	}
+	catch( ... )
+	{
+        PrintExceptionContinue( NULL, "EdcAppInit()");
+	}
+// EDC END
 
     if (!fRet)
     {
