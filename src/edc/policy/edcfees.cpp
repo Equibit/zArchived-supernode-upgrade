@@ -12,7 +12,8 @@
 #include "random.h"
 #include "streams.h"
 #include "edc/edctxmempool.h"
-#include "util.h"
+#include "edc/edcutil.h"
+#include "edc/edcparams.h"
 
 
 void CEDCBlockPolicyEstimator::removeTx(uint256 hash)
@@ -20,7 +21,7 @@ void CEDCBlockPolicyEstimator::removeTx(uint256 hash)
     std::map<uint256, TxStatsInfo>::iterator pos = mapMemPoolTxs.find(hash);
     if (pos == mapMemPoolTxs.end()) 
 	{
-        LogPrint("estimatefee", "Blockpolicy error mempool tx %s not found for removeTx\n",
+        edcLogPrint("estimatefee", "Blockpolicy error mempool tx %s not found for removeTx\n",
                  hash.ToString().c_str());
         return;
     }
@@ -88,7 +89,7 @@ void CEDCBlockPolicyEstimator::processTransaction(const CEDCTxMemPoolEntry& entr
 
     if (mapMemPoolTxs[hash].stats != NULL) 
 	{
-        LogPrint("estimatefee", "Blockpolicy error mempool tx %s already being tracked\n",
+        edcLogPrint("estimatefee", "Blockpolicy error mempool tx %s already being tracked\n",
                  hash.ToString().c_str());
 	return;
     }
@@ -122,7 +123,7 @@ void CEDCBlockPolicyEstimator::processTransaction(const CEDCTxMemPoolEntry& entr
     double curPri = entry.GetPriority(txHeight);
     mapMemPoolTxs[hash].blockHeight = txHeight;
 
-    LogPrint("estimatefee", "Blockpolicy mempool tx %s ", hash.ToString().substr(0,10));
+    edcLogPrint("estimatefee", "Blockpolicy mempool tx %s ", hash.ToString().substr(0,10));
     // Record this as a priority estimate
     if (entry.GetFee() == 0 || isPriDataPoint(feeRate, curPri)) 
 	{
@@ -137,9 +138,9 @@ void CEDCBlockPolicyEstimator::processTransaction(const CEDCTxMemPoolEntry& entr
     }
     else 
 	{
-        LogPrint("estimatefee", "not adding");
+        edcLogPrint("estimatefee", "not adding");
     }
-    LogPrint("estimatefee", "\n");
+    edcLogPrint("estimatefee", "\n");
 }
 
 void CEDCBlockPolicyEstimator::processBlockTx(unsigned int nBlockHeight, const CEDCTxMemPoolEntry& entry)
@@ -160,7 +161,7 @@ void CEDCBlockPolicyEstimator::processBlockTx(unsigned int nBlockHeight, const C
 	{
         // This can't happen because we don't process transactions from a block with a height
         // lower than our greatest seen height
-        LogPrint("estimatefee", "Blockpolicy error Transaction had negative blocksToConfirm\n");
+        edcLogPrint("estimatefee", "Blockpolicy error Transaction had negative blocksToConfirm\n");
         return;
     }
 
@@ -205,7 +206,7 @@ void CEDCBlockPolicyEstimator::processBlock(unsigned int nBlockHeight,
     // Update the dynamic cutoffs
     // a fee/priority is "likely" the reason your tx was included in a block if >85% of such tx's
     // were confirmed in 2 blocks and is "unlikely" if <50% were confirmed in 10 blocks
-    LogPrint("estimatefee", "Blockpolicy recalculating dynamic cutoffs:\n");
+    edcLogPrint("estimatefee", "Blockpolicy recalculating dynamic cutoffs:\n");
     priLikely = priStats.EstimateMedianVal(2, SUFFICIENT_PRITXS, MIN_SUCCESS_PCT, true, nBlockHeight);
     if (priLikely == -1)
         priLikely = INF_PRIORITY;
@@ -238,7 +239,7 @@ void CEDCBlockPolicyEstimator::processBlock(unsigned int nBlockHeight,
     feeStats.UpdateMovingAverages();
     priStats.UpdateMovingAverages();
 
-    LogPrint("estimatefee", "Blockpolicy after updating estimates for %u confirmed entries, new mempool map size %u\n",
+    edcLogPrint("estimatefee", "Blockpolicy after updating estimates for %u confirmed entries, new mempool map size %u\n",
              entries.size(), mapMemPoolTxs.size());
 }
 
@@ -273,8 +274,9 @@ CFeeRate CEDCBlockPolicyEstimator::estimateSmartFee(int confTarget, int *answerF
     if (answerFoundAtTarget)
         *answerFoundAtTarget = confTarget - 1;
 
+	EDCparams & params = EDCparams::singleton();
     // If mempool is limiting txs , return at least the min fee from the mempool
-    CAmount minPoolFee = pool.GetMinFee(GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000).GetFeePerK();
+    CAmount minPoolFee = pool.GetMinFee(params.maxmempool * 1000000).GetFeePerK();
     if (minPoolFee > 0 && minPoolFee > median)
         return CFeeRate(minPoolFee);
 
@@ -302,7 +304,8 @@ double CEDCBlockPolicyEstimator::estimateSmartPriority(int confTarget, int *answ
         return -1;
 
     // If mempool is limiting txs, no priority txs are allowed
-    CAmount minPoolFee = pool.GetMinFee(GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000).GetFeePerK();
+	EDCparams & params = EDCparams::singleton();
+    CAmount minPoolFee = pool.GetMinFee(params.maxmempool * 1000000).GetFeePerK();
     if (minPoolFee > 0)
         return INF_PRIORITY;
 

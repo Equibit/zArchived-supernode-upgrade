@@ -23,9 +23,11 @@
 #include "edc/script/edcsign.h"
 #include "timedata.h"
 #include "edc/edctxmempool.h"
-#include "util.h"
+#include "edc/edcutil.h"
 #include "edc/edcui_interface.h"
 #include "utilmoneystr.h"
+#include "edc/edcapp.h"
+#include "edc/edcparams.h"
 
 #include <assert.h>
 
@@ -191,7 +193,7 @@ bool CEDCWallet::LoadCScript(const CScript& redeemScript)
     if (redeemScript.size() > MAX_SCRIPT_ELEMENT_SIZE)
     {
         std::string strAddr = CBitcoinAddress(CScriptID(redeemScript)).ToString();
-        LogPrintf("%s: Warning: This wallet contains a redeemScript of size %i which exceeds maximum size %i thus can never be redeemed. Do not use address %s.\n",
+        edcLogPrintf("%s: Warning: This wallet contains a redeemScript of size %i which exceeds maximum size %i thus can never be redeemed. Do not use address %s.\n",
             __func__, redeemScript.size(), MAX_SCRIPT_ELEMENT_SIZE, strAddr);
         return true;
     }
@@ -278,7 +280,7 @@ bool CEDCWallet::ChangeWalletPassphrase(const SecureString& strOldWalletPassphra
                 if (pMasterKey.second.nDeriveIterations < 25000)
                     pMasterKey.second.nDeriveIterations = 25000;
 
-                LogPrintf("Wallet passphrase changed to an nDeriveIterations of %i\n", pMasterKey.second.nDeriveIterations);
+                edcLogPrintf("Wallet passphrase changed to an nDeriveIterations of %i\n", pMasterKey.second.nDeriveIterations);
 
                 if (!crypter.SetKeyFromPassphrase(strNewWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod))
                     return false;
@@ -373,26 +375,26 @@ extern void edcInitWarning(const std::string& str);
 
 bool CEDCWallet::Verify()
 {
-    LogPrintf("Using BerkeleyDB version %s\n", DbEnv::version(0, 0, 0));
+    edcLogPrintf("Using BerkeleyDB version %s\n", DbEnv::version(0, 0, 0));
     std::string walletFile = GetArg("-wallet", edcDEFAULT_WALLET_DAT);
 
-    LogPrintf("Using wallet %s\n", walletFile);
+    edcLogPrintf("Using wallet %s\n", walletFile);
     edcUiInterface.InitMessage(_("Verifying wallet..."));
 
     // Wallet file must be a plain filename without a directory
     if (walletFile != boost::filesystem::basename(walletFile) + boost::filesystem::extension(walletFile))
-        return edcInitError(strprintf(_("Wallet %s resides outside data directory %s"), walletFile, GetDataDir().string()));
+        return edcInitError(strprintf(_("Wallet %s resides outside data directory %s"), walletFile, edcGetDataDir().string()));
 
-    if (!bitdb.Open(GetDataDir()))
+    if (!bitdb.Open(edcGetDataDir()))
     {
         // try moving the database env out of the way
-        boost::filesystem::path pathDatabase = GetDataDir() / "database";
-        boost::filesystem::path pathDatabaseBak = GetDataDir() / strprintf("database.%d.bak", GetTime());
+        boost::filesystem::path pathDatabase = edcGetDataDir() / "database";
+        boost::filesystem::path pathDatabaseBak = edcGetDataDir() / strprintf("database.%d.bak", GetTime());
 
         try 
 		{
             boost::filesystem::rename(pathDatabase, pathDatabaseBak);
-            LogPrintf("Moved old %s to %s. Retrying.\n", pathDatabase.string(), pathDatabaseBak.string());
+            edcLogPrintf("Moved old %s to %s. Retrying.\n", pathDatabase.string(), pathDatabaseBak.string());
         } 
 		catch (const boost::filesystem::filesystem_error&) 
 		{
@@ -400,10 +402,10 @@ bool CEDCWallet::Verify()
         }
         
         // try again
-        if (!bitdb.Open(GetDataDir())) 
+        if (!bitdb.Open(edcGetDataDir())) 
 		{
             // if it still fails, it probably means we can't even create the database env
-            return edcInitError(strprintf(_("Error initializing wallet database environment %s!"), GetDataDir()));
+            return edcInitError(strprintf(_("Error initializing wallet database environment %s!"), edcGetDataDir()));
         }
     }
     
@@ -414,7 +416,7 @@ bool CEDCWallet::Verify()
             return false;
     }
     
-    if (boost::filesystem::exists(GetDataDir() / walletFile))
+    if (boost::filesystem::exists(edcGetDataDir() / walletFile))
     {
         CDBEnv::VerifyResult r = bitdb.Verify(walletFile, CEDCWalletDB::Recover);
         if (r == CDBEnv::RECOVER_OK)
@@ -423,7 +425,7 @@ bool CEDCWallet::Verify()
                                          " Original %s saved as %s in %s; if"
                                          " your balance or transactions are incorrect you should"
                                          " restore from a backup."),
-                walletFile, "wallet.{timestamp}.bak", GetDataDir()));
+                walletFile, "wallet.{timestamp}.bak", edcGetDataDir()));
         }
         if (r == CDBEnv::RECOVER_FAIL)
             return edcInitError(strprintf(_("%s corrupt, salvage failed"), walletFile));
@@ -544,7 +546,7 @@ bool CEDCWallet::EncryptWallet(const SecureString& strWalletPassphrase)
     if (kMasterKey.nDeriveIterations < 25000)
         kMasterKey.nDeriveIterations = 25000;
 
-    LogPrintf("Encrypting Wallet with an nDeriveIterations of %i\n", kMasterKey.nDeriveIterations);
+    edcLogPrintf("Encrypting Wallet with an nDeriveIterations of %i\n", kMasterKey.nDeriveIterations);
 
     if (!crypter.SetKeyFromPassphrase(strWalletPassphrase, kMasterKey.vchSalt, kMasterKey.nDeriveIterations, kMasterKey.nDerivationMethod))
         return false;
@@ -713,7 +715,7 @@ bool CEDCWallet::AddToWallet(const CEDCWalletTx& wtxIn, bool fFromLoadWallet, CE
                     wtx.nTimeSmart = std::max(latestEntry, std::min(blocktime, latestNow));
                 }
                 else
-                    LogPrintf("AddToWallet(): found %s in block %s not in index\n",
+                    edcLogPrintf("AddToWallet(): found %s in block %s not in index\n",
                              wtxIn.GetHash().ToString(),
                              wtxIn.hashBlock.ToString());
             }
@@ -748,7 +750,7 @@ bool CEDCWallet::AddToWallet(const CEDCWalletTx& wtxIn, bool fFromLoadWallet, CE
         }
 
         //// debug print
-        LogPrintf("AddToWallet %s  %s%s\n", wtxIn.GetHash().ToString(), (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
+        edcLogPrintf("AddToWallet %s  %s%s\n", wtxIn.GetHash().ToString(), (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
 
         // Write to disk
         if (fInsertedNew || fUpdated)
@@ -767,7 +769,7 @@ bool CEDCWallet::AddToWallet(const CEDCWalletTx& wtxIn, bool fFromLoadWallet, CE
         if ( !strCmd.empty())
         {
             boost::replace_all(strCmd, "%s", wtxIn.GetHash().GetHex());
-            boost::thread t(runCommand, strCmd); // thread runs free
+            boost::thread t(edcRunCommand, strCmd); // thread runs free
         }
 
     }
@@ -793,7 +795,7 @@ bool CEDCWallet::AddToWalletIfInvolvingMe(const CEDCTransaction& tx, const CEDCB
 				{
                     if (range.first->second != tx.GetHash()) 
 					{
-                        LogPrintf("Transaction %s (in block %s) conflicts with wallet transaction %s (both spend %s:%i)\n", tx.GetHash().ToString(), pblock->GetHash().ToString(), range.first->second.ToString(), range.first->first.hash.ToString(), range.first->first.n);
+                        edcLogPrintf("Transaction %s (in block %s) conflicts with wallet transaction %s (both spend %s:%i)\n", tx.GetHash().ToString(), pblock->GetHash().ToString(), range.first->second.ToString(), range.first->first.hash.ToString(), range.first->first.n);
                         MarkConflicted(pblock->GetHash(), range.first->second);
                     }
                     range.first++;
@@ -831,7 +833,7 @@ bool CEDCWallet::AbandonTransaction(const uint256& hashTx)
     std::set<uint256> todo;
     std::set<uint256> done;
 
-    // Can't mark abandoned if confirmed or in edcmempool
+    // Can't mark abandoned if confirmed or in mempool
     assert(mapWallet.count(hashTx));
     CEDCWalletTx& origtx = mapWallet[hashTx];
 
@@ -855,7 +857,7 @@ bool CEDCWallet::AbandonTransaction(const uint256& hashTx)
         // if (currentconfirm < 0) {Tx and spends are already conflicted, no need to abandon}
         if (currentconfirm == 0 && !wtx.isAbandoned()) 
 		{
-            // If the orig tx was not in block/mempool, none of its spends can be in edcmempool
+            // If the orig tx was not in block/mempool, none of its spends can be in mempool
             assert(!wtx.InMempool());
             wtx.nIndex = -1;
             wtx.setAbandoned();
@@ -1177,7 +1179,7 @@ void CEDCWalletTx::GetAmounts(list<COutputEntry>& listReceived,
 
         if (!ExtractDestination(txout.scriptPubKey, address) && !txout.scriptPubKey.IsUnspendable())
         {
-            LogPrintf("CEDCWalletTx::GetAmounts: Unknown transaction type found, txid %s\n",
+            edcLogPrintf("CEDCWalletTx::GetAmounts: Unknown transaction type found, txid %s\n",
                      this->GetHash().ToString());
             address = CNoDestination();
         }
@@ -1270,7 +1272,7 @@ int CEDCWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate
             if (GetTime() >= nNow + 60) 
 			{
                 nNow = GetTime();
-                LogPrintf("Still rescanning. At block %d. Progress=%f\n", pindex->nHeight, Checkpoints::GuessVerificationProgress(chainParams.Checkpoints(), pindex));
+                edcLogPrintf("Still rescanning. At block %d. Progress=%f\n", pindex->nHeight, Checkpoints::GuessVerificationProgress(chainParams.Checkpoints(), pindex));
             }
         }
         ShowProgress(_("Rescanning..."), 100); // hide progress dialog in GUI
@@ -1280,7 +1282,7 @@ int CEDCWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate
 
 void CEDCWallet::ReacceptWalletTransactions()
 {
-    // If transactions aren't being broadcasted, don't let them into local edcmempool either
+    // If transactions aren't being broadcasted, don't let them into local mempool either
     if (!fBroadcastTransactions)
         return;
     LOCK2(EDC_cs_main, cs_wallet);
@@ -1306,8 +1308,9 @@ void CEDCWallet::ReacceptWalletTransactions()
     {
         CEDCWalletTx& wtx = *(item.second);
 
-        LOCK(edcmempool.cs);
-        wtx.AcceptToMemoryPool(false, edcmaxTxFee);
+		EDCapp & theApp = EDCapp::singleton();
+        LOCK(theApp.mempool().cs);
+        wtx.AcceptToMemoryPool(false, theApp.maxTxFee());
     }
 }
 
@@ -1318,9 +1321,10 @@ bool CEDCWalletTx::RelayWalletTransaction()
     {
         if (GetDepthInMainChain() == 0 && !isAbandoned() && InMempool()) 
 		{
-            LogPrintf("Relaying wtx %s\n", GetHash().ToString());
+            edcLogPrintf("Relaying wtx %s\n", GetHash().ToString());
             CFeeRate feeRate;
-            edcmempool.lookupFeeRate(GetHash(), feeRate);
+			EDCapp & theApp = EDCapp::singleton();
+            theApp.mempool().lookupFeeRate(GetHash(), feeRate);
             RelayTransaction((CEDCTransaction)*this, feeRate);
             return true;
         }
@@ -1502,8 +1506,9 @@ CAmount CEDCWalletTx::GetChange() const
 
 bool CEDCWalletTx::InMempool() const
 {
-    LOCK(edcmempool.cs);
-    if (edcmempool.exists(GetHash())) 
+	EDCapp & theApp = EDCapp::singleton();
+    LOCK(theApp.mempool().cs);
+    if (theApp.mempool().exists(GetHash())) 
 	{
         return true;
     }
@@ -1523,11 +1528,11 @@ bool CEDCWalletTx::IsTrusted() const
     if (!edcbSpendZeroConfChange || !IsFromMe(ISMINE_ALL)) // using wtx's cached debit
         return false;
 
-    // Don't trust unconfirmed transactions from us unless they are in the edcmempool.
+    // Don't trust unconfirmed transactions from us unless they are in the mempool.
     if (!InMempool())
         return false;
 
-    // Trusted if all inputs are from us and are in the edcmempool:
+    // Trusted if all inputs are from us and are in the mempool:
     BOOST_FOREACH(const CEDCTxIn& txin, vin)
     {
         // Transactions not sent by us: not trusted
@@ -1594,7 +1599,7 @@ void CEDCWallet::ResendWalletTransactions(int64_t nBestBlockTime)
     // block was found:
     std::vector<uint256> relayed = ResendWalletTransactionsBefore(nBestBlockTime-5*60);
     if (!relayed.empty())
-        LogPrintf("%s: rebroadcast %u unconfirmed transactions\n", __func__, relayed.size());
+        edcLogPrintf("%s: rebroadcast %u unconfirmed transactions\n", __func__, relayed.size());
 }
 
 /** @} */ // end of mapWallet
@@ -1722,7 +1727,7 @@ void CEDCWallet::AvailableCoins(vector<CEDCOutput>& vCoins, bool fOnlyConfirmed,
             if (nDepth < 0)
                 continue;
 
-            // We should not consider coins which aren't at least in our edcmempool
+            // We should not consider coins which aren't at least in our mempool
             // It's possible for these to be conflicted via ancestors which we may never be able to detect
             if (nDepth == 0 && !pcoin->InMempool())
                 continue;
@@ -1891,11 +1896,11 @@ bool CEDCWallet::SelectCoinsMinConf(const CAmount& nTargetValue, int nConfMine, 
                 nValueRet += vValue[i].first;
             }
 
-        LogPrint("selectcoins", "SelectCoins() best subset: ");
+        edcLogPrint("selectcoins", "SelectCoins() best subset: ");
         for (unsigned int i = 0; i < vValue.size(); i++)
             if (vfBest[i])
-                LogPrint("selectcoins", "%s ", FormatMoney(vValue[i].first));
-        LogPrint("selectcoins", "total %s\n", FormatMoney(nBest));
+                edcLogPrint("selectcoins", "%s ", FormatMoney(vValue[i].first));
+        edcLogPrint("selectcoins", "total %s\n", FormatMoney(nBest));
     }
 
     return true;
@@ -2038,7 +2043,7 @@ bool CEDCWallet::CreateTransaction(const vector<CRecipient>& vecSend, CEDCWallet
     // Discourage fee sniping.
     //
     // For a large miner the value of the transactions in the best block and
-    // the edcmempool can exceed the cost of deliberately attempting to mine two
+    // the mempool can exceed the cost of deliberately attempting to mine two
     // blocks to orphan the current best block. By setting nLockTime such that
     // only the next block can include the transaction, we discourage this
     // practice as the height restricted and limited blocksize gives miners
@@ -2070,6 +2075,7 @@ bool CEDCWallet::CreateTransaction(const vector<CRecipient>& vecSend, CEDCWallet
     {
         LOCK2(EDC_cs_main, cs_wallet);
         {
+			EDCapp & theApp = EDCapp::singleton();
             std::vector<CEDCOutput> vAvailableCoins;
             AvailableCoins(vAvailableCoins, true, coinControl);
 
@@ -2104,7 +2110,7 @@ bool CEDCWallet::CreateTransaction(const vector<CRecipient>& vecSend, CEDCWallet
                         }
                     }
 
-                    if (txout.IsDust(::edcminRelayTxFee))
+                    if (txout.IsDust(theApp.minRelayTxFee()))
                     {
                         if (recipient.fSubtractFeeFromAmount && nFeeRet > 0)
                         {
@@ -2134,7 +2140,7 @@ bool CEDCWallet::CreateTransaction(const vector<CRecipient>& vecSend, CEDCWallet
                     //The coin age after the next block (depth+1) is used instead of the current,
                     //reflecting an assumption the user would accept a bit more delay for
                     //a chance at a free transaction.
-                    //But edcmempool inputs might still be in the edcmempool, so their age stays 0
+                    //But mempool inputs might still be in the mempool, so their age stays 0
                     int age = pcoin.first->GetDepthInMainChain();
                     assert(age >= 0);
                     if (age != 0)
@@ -2178,16 +2184,16 @@ bool CEDCWallet::CreateTransaction(const vector<CRecipient>& vecSend, CEDCWallet
                     // We do not move dust-change to fees, because the sender would end up paying more than requested.
                     // This would be against the purpose of the all-inclusive feature.
                     // So instead we raise the change and deduct from the recipient.
-                    if (nSubtractFeeFromAmount > 0 && newTxOut.IsDust(::edcminRelayTxFee))
+                    if (nSubtractFeeFromAmount > 0 && newTxOut.IsDust(theApp.minRelayTxFee()))
                     {
-                        CAmount nDust = newTxOut.GetDustThreshold(::edcminRelayTxFee) - newTxOut.nValue;
+                        CAmount nDust = newTxOut.GetDustThreshold(theApp.minRelayTxFee()) - newTxOut.nValue;
                         newTxOut.nValue += nDust; // raise change until no more dust
                         for (unsigned int i = 0; i < vecSend.size(); i++) // subtract from first recipient
                         {
                             if (vecSend[i].fSubtractFeeFromAmount)
                             {
                                 txNew.vout[i].nValue -= nDust;
-                                if (txNew.vout[i].IsDust(::edcminRelayTxFee))
+                                if (txNew.vout[i].IsDust(theApp.minRelayTxFee()))
                                 {
                                     strFailReason = _("The transaction amount is too small to send after the fee has been deducted");
                                     return false;
@@ -2199,7 +2205,7 @@ bool CEDCWallet::CreateTransaction(const vector<CRecipient>& vecSend, CEDCWallet
 
                     // Never create dust outputs; if we would, just
                     // add the dust to the fee.
-                    if (newTxOut.IsDust(::edcminRelayTxFee))
+                    if (newTxOut.IsDust(theApp.minRelayTxFee()))
                     {
                         nChangePosInOut = -1;
                         nFeeRet += nChange;
@@ -2275,17 +2281,19 @@ bool CEDCWallet::CreateTransaction(const vector<CRecipient>& vecSend, CEDCWallet
 
                 dPriority = wtxNew.ComputePriority(dPriority, nBytes);
 
+				EDCapp & theApp = EDCapp::singleton();
+
                 // Can we complete this as a free transaction?
                 if (edcfSendFreeTransactions && nBytes <= MAX_FREE_TRANSACTION_CREATE_SIZE)
                 {
                     // Not enough fee: enough priority?
-                    double dPriorityNeeded = edcmempool.estimateSmartPriority(edcnTxConfirmTarget);
+                    double dPriorityNeeded = theApp.mempool().estimateSmartPriority(edcnTxConfirmTarget);
                     // Require at least hard-coded AllowFree.
                     if (dPriority >= dPriorityNeeded && AllowFree(dPriority))
                         break;
                 }
 
-                CAmount nFeeNeeded = GetMinimumFee(nBytes, edcnTxConfirmTarget, edcmempool);
+                CAmount nFeeNeeded = GetMinimumFee(nBytes, edcnTxConfirmTarget, theApp.mempool());
                 if (coinControl && nFeeNeeded > 0 && coinControl->nMinimumTotalFee > nFeeNeeded) 
 				{
                     nFeeNeeded = coinControl->nMinimumTotalFee;
@@ -2293,7 +2301,7 @@ bool CEDCWallet::CreateTransaction(const vector<CRecipient>& vecSend, CEDCWallet
 
                 // If we made it here and we aren't even able to meet the relay fee on the next pass, give up
                 // because we must be at the maximum allowed fee.
-                if (nFeeNeeded < ::edcminRelayTxFee.GetFee(nBytes))
+                if (nFeeNeeded < theApp.minRelayTxFee().GetFee(nBytes))
                 {
                     strFailReason = _("Transaction too large for fee policy");
                     return false;
@@ -2319,7 +2327,7 @@ bool CEDCWallet::CommitTransaction(CEDCWalletTx& wtxNew, CEDCReserveKey& reserve
 {
     {
         LOCK2(EDC_cs_main, cs_wallet);
-        LogPrintf("CommitTransaction:\n%s", wtxNew.ToString());
+        edcLogPrintf("CommitTransaction:\n%s", wtxNew.ToString());
         {
             // This is only to keep the database open to defeat the auto-flush for the
             // duration of this scope.  This is the only place where this optimization
@@ -2352,10 +2360,11 @@ bool CEDCWallet::CommitTransaction(CEDCWalletTx& wtxNew, CEDCReserveKey& reserve
         if (fBroadcastTransactions)
         {
             // Broadcast
-            if (!wtxNew.AcceptToMemoryPool(false, edcmaxTxFee))
+			EDCapp & theApp = EDCapp::singleton();
+            if (!wtxNew.AcceptToMemoryPool(false, theApp.maxTxFee()))
             {
                 // This must not fail. The transaction has already been signed and recorded.
-                LogPrintf("CommitTransaction(): Error: Transaction not valid\n");
+                edcLogPrintf("CommitTransaction(): Error: Transaction not valid\n");
                 return false;
             }
             wtxNew.RelayWalletTransaction();
@@ -2378,7 +2387,8 @@ bool CEDCWallet::AddAccountingEntry(const CAccountingEntry& acentry, CEDCWalletD
 
 CAmount CEDCWallet::GetRequiredFee(unsigned int nTxBytes)
 {
-    return std::max(minTxFee.GetFee(nTxBytes), ::edcminRelayTxFee.GetFee(nTxBytes));
+	EDCapp & theApp = EDCapp::singleton();
+    return std::max(minTxFee.GetFee(nTxBytes), theApp.minRelayTxFee().GetFee(nTxBytes));
 }
 
 CAmount CEDCWallet::GetMinimumFee(unsigned int nTxBytes, unsigned int nConfirmTarget, const CEDCTxMemPool& pool)
@@ -2390,20 +2400,18 @@ CAmount CEDCWallet::GetMinimumFee(unsigned int nTxBytes, unsigned int nConfirmTa
 	{
         int estimateFoundTarget = nConfirmTarget;
         nFeeNeeded = pool.estimateSmartFee(nConfirmTarget, &estimateFoundTarget).GetFee(nTxBytes);
-        // ... unless we don't have enough edcmempool data for estimatefee, then use fallbackFee
+        // ... unless we don't have enough mempool data for estimatefee, then use fallbackFee
         if (nFeeNeeded == 0)
             nFeeNeeded = fallbackFee.GetFee(nTxBytes);
     }
     // prevent user from paying a fee below edcminRelayTxFee or minTxFee
     nFeeNeeded = std::max(nFeeNeeded, GetRequiredFee(nTxBytes));
     // But always obey the maximum
-    if (nFeeNeeded > edcmaxTxFee)
-        nFeeNeeded = edcmaxTxFee;
+	EDCapp & theApp = EDCapp::singleton();
+    if (nFeeNeeded > theApp.maxTxFee() )
+        nFeeNeeded = theApp.maxTxFee();
     return nFeeNeeded;
 }
-
-
-
 
 DBErrors CEDCWallet::LoadWallet(bool& fFirstRunRet)
 {
@@ -2561,7 +2569,7 @@ bool CEDCWallet::NewKeyPool()
             walletdb.WritePool(nIndex, CKeyPool(GenerateNewKey()));
             setKeyPool.insert(nIndex);
         }
-        LogPrintf("CEDCWallet::NewKeyPool wrote %d new keys\n", nKeys);
+        edcLogPrintf("CEDCWallet::NewKeyPool wrote %d new keys\n", nKeys);
     }
     return true;
 }
@@ -2591,7 +2599,7 @@ bool CEDCWallet::TopUpKeyPool(unsigned int kpSize)
             if (!walletdb.WritePool(nEnd, CKeyPool(GenerateNewKey())))
                 throw runtime_error("TopUpKeyPool(): writing generated key failed");
             setKeyPool.insert(nEnd);
-            LogPrintf("keypool added key %d, size=%u\n", nEnd, setKeyPool.size());
+            edcLogPrintf("keypool added key %d, size=%u\n", nEnd, setKeyPool.size());
         }
     }
     return true;
@@ -2620,7 +2628,7 @@ void CEDCWallet::ReserveKeyFromKeyPool(int64_t& nIndex, CKeyPool& keypool)
         if (!HaveKey(keypool.vchPubKey.GetID()))
             throw runtime_error("ReserveKeyFromKeyPool(): unknown key in key pool");
         assert(keypool.vchPubKey.IsValid());
-        LogPrintf("keypool reserve %d\n", nIndex);
+        edcLogPrintf("keypool reserve %d\n", nIndex);
     }
 }
 
@@ -2632,7 +2640,7 @@ void CEDCWallet::KeepKey(int64_t nIndex)
         CEDCWalletDB walletdb(strWalletFile);
         walletdb.ErasePool(nIndex);
     }
-    LogPrintf("keypool keep %d\n", nIndex);
+    edcLogPrintf("keypool keep %d\n", nIndex);
 }
 
 void CEDCWallet::ReturnKey(int64_t nIndex)
@@ -2642,7 +2650,7 @@ void CEDCWallet::ReturnKey(int64_t nIndex)
         LOCK(cs_wallet);
         setKeyPool.insert(nIndex);
     }
-    LogPrintf("keypool return %d\n", nIndex);
+    edcLogPrintf("keypool return %d\n", nIndex);
 }
 
 bool CEDCWallet::GetKeyFromPool(CPubKey& result)
@@ -3174,12 +3182,12 @@ bool CEDCWallet::InitLoadWallet()
         int nMaxVersion = GetArg("-upgradewallet", 0);
         if (nMaxVersion == 0) // the -upgradewallet without argument case
         {
-            LogPrintf("Performing wallet upgrade to %i\n", FEATURE_LATEST);
+            edcLogPrintf("Performing wallet upgrade to %i\n", FEATURE_LATEST);
             nMaxVersion = CLIENT_VERSION;
             walletInstance->SetMinVersion(FEATURE_LATEST); // permanently upgrade the wallet immediately
         }
         else
-            LogPrintf("Allowing wallet upgrade up to %i\n", nMaxVersion);
+            edcLogPrintf("Allowing wallet upgrade up to %i\n", nMaxVersion);
         if (nMaxVersion < walletInstance->GetVersion())
         {
             return edcInitError(_("Cannot downgrade wallet"));
@@ -3203,7 +3211,7 @@ bool CEDCWallet::InitLoadWallet()
         walletInstance->SetBestChain(chainActive.GetLocator());
     }
 
-    LogPrintf(" wallet      %15dms\n", GetTimeMillis() - nStart);
+    edcLogPrintf(" wallet      %15dms\n", GetTimeMillis() - nStart);
 
     RegisterValidationInterface(walletInstance);
 
@@ -3235,10 +3243,10 @@ bool CEDCWallet::InitLoadWallet()
         }
 
         edcUiInterface.InitMessage(_("Rescanning..."));
-        LogPrintf("Rescanning last %i blocks (from block %i)...\n", chainActive.Height() - pindexRescan->nHeight, pindexRescan->nHeight);
+        edcLogPrintf("Rescanning last %i blocks (from block %i)...\n", chainActive.Height() - pindexRescan->nHeight, pindexRescan->nHeight);
         nStart = GetTimeMillis();
         walletInstance->ScanForWalletTransactions(pindexRescan, true);
-        LogPrintf(" rescan      %15dms\n", GetTimeMillis() - nStart);
+        edcLogPrintf(" rescan      %15dms\n", GetTimeMillis() - nStart);
         walletInstance->SetBestChain(chainActive.GetLocator());
         nWalletDBUpdated++;
 
@@ -3275,51 +3283,64 @@ bool CEDCWallet::InitLoadWallet()
 
 bool CEDCWallet::ParameterInteraction()
 {
-    if (mapArgs.count("-mintxfee"))
+	EDCparams & params = EDCparams::singleton();
+
+    if ( params.mintxfee.size() > 0 )
     {
         CAmount n = 0;
-        if (ParseMoney(mapArgs["-mintxfee"], n) && n > 0)
+        if (ParseMoney( params.mintxfee, n) && n > 0)
             CEDCWallet::minTxFee = CFeeRate(n);
         else
-            return edcInitError(AmountErrMsg("mintxfee", mapArgs["-mintxfee"]));
+            return edcInitError(AmountErrMsg("mintxfee", params.mintxfee));
     }
-    if (mapArgs.count("-fallbackfee"))
+    if ( params.fallbackfee.size() > 0 )
     {
         CAmount nFeePerK = 0;
-        if (!ParseMoney(mapArgs["-fallbackfee"], nFeePerK))
-            return edcInitError(strprintf(_("Invalid amount for -fallbackfee=<amount>: '%s'"), mapArgs["-fallbackfee"]));
+        if (!ParseMoney( params.fallbackfee, nFeePerK))
+            return edcInitError(strprintf(
+				_("Invalid amount for -ebfallbackfee=<amount>: '%s'"), 
+				params.fallbackfee ));
         if (nFeePerK > HIGH_TX_FEE_PER_KB)
-            edcInitWarning(_("-fallbackfee is set very high! This is the transaction fee you may pay when fee estimates are not available."));
+            edcInitWarning(_("-ebfallbackfee is set very high! This is the transaction fee you may pay when fee estimates are not available."));
         CEDCWallet::fallbackFee = CFeeRate(nFeePerK);
-    }
-    if (mapArgs.count("-paytxfee"))
+    }		
+
+	EDCapp & theApp = EDCapp::singleton();
+    if (params.paytxfee.size() > 0 )
     {
         CAmount nFeePerK = 0;
-        if (!ParseMoney(mapArgs["-paytxfee"], nFeePerK))
-            return edcInitError(AmountErrMsg("paytxfee", mapArgs["-paytxfee"]));
+        if (!ParseMoney( params.paytxfee, nFeePerK))
+            return edcInitError(AmountErrMsg("paytxfee", params.paytxfee));
+
         if (nFeePerK > HIGH_TX_FEE_PER_KB)
-            edcInitWarning(_("-paytxfee is set very high! This is the transaction fee you will pay if you send a transaction."));
+            edcInitWarning(_("-ebpaytxfee is set very high! This is the transaction fee you will pay if you send a transaction."));
+
         edcpayTxFee = CFeeRate(nFeePerK, 1000);
-        if (edcpayTxFee < ::edcminRelayTxFee)
+
+        if (edcpayTxFee < theApp.minRelayTxFee())
         {
-            return edcInitError(strprintf(_("Invalid amount for -paytxfee=<amount>: '%s' (must be at least %s)"),
-                                       mapArgs["-paytxfee"], ::edcminRelayTxFee.ToString()));
+            return edcInitError(strprintf(_(
+				"Invalid amount for -paytxfee=<amount>: '%s' (must be at "
+				"least %s)"), params.paytxfee, 
+				theApp.minRelayTxFee().ToString()));
         }
     }
-    if (mapArgs.count("-maxtxfee"))
+
+    if ( params.maxtxfee > 0 )
     {
-        CAmount nMaxFee = 0;
-        if (!ParseMoney(mapArgs["-maxtxfee"], nMaxFee))
-            return edcInitError(AmountErrMsg("maxtxfee", mapArgs["-maxtxfee"]));
-        if (nMaxFee > HIGH_MAX_TX_FEE)
-            edcInitWarning(_("-maxtxfee is set very high! Fees this large could be paid on a single transaction."));
-        edcmaxTxFee = nMaxFee;
-        if (CFeeRate(edcmaxTxFee, 1000) < ::edcminRelayTxFee)
+        if (params.maxtxfee > HIGH_MAX_TX_FEE)
+            edcInitWarning(_("-ebmaxtxfee is set very high! Fees this large could be paid on a single transaction."));
+        theApp.maxTxFee( params.maxtxfee);
+
+        if (CFeeRate(theApp.maxTxFee(), 1000) < theApp.minRelayTxFee())
         {
-            return edcInitError(strprintf(_("Invalid amount for -maxtxfee=<amount>: '%s' (must be at least the minrelay fee of %s to prevent stuck transactions)"),
-                                       mapArgs["-maxtxfee"], ::edcminRelayTxFee.ToString()));
+            return edcInitError(strprintf(_("Invalid amount for "
+				"-ebmaxtxfee=<amount>: '%s' (must be at least the minrelay "
+				"fee of %s to prevent stuck transactions)"),
+                params.maxtxfee, theApp.minRelayTxFee().ToString()));
         }
     }
+
     edcnTxConfirmTarget = GetArg("-txconfirmtarget", DEFAULT_TX_CONFIRM_TARGET);
     edcbSpendZeroConfChange = GetBoolArg("-spendzeroconfchange", DEFAULT_SPEND_ZEROCONF_CHANGE);
     edcfSendFreeTransactions = GetBoolArg("-sendfreetransactions", DEFAULT_SEND_FREE_TRANSACTIONS);
@@ -3342,7 +3363,7 @@ int CEDCMerkleTx::SetMerkleBranch(const CEDCBlock& block)
     if (nIndex == (int)block.vtx.size())
     {
         nIndex = -1;
-        LogPrintf("ERROR: SetMerkleBranch(): couldn't find tx in block\n");
+        edcLogPrintf("ERROR: SetMerkleBranch(): couldn't find tx in block\n");
         return 0;
     }
 
@@ -3387,5 +3408,6 @@ int CEDCMerkleTx::GetBlocksToMaturity() const
 bool CEDCMerkleTx::AcceptToMemoryPool(bool fLimitFree, CAmount nAbsurdFee)
 {
     CValidationState state;
-    return ::AcceptToMemoryPool(edcmempool, state, *this, fLimitFree, NULL, NULL, false, nAbsurdFee);
+	EDCapp & theApp = EDCapp::singleton();
+    return ::AcceptToMemoryPool(theApp.mempool(), state, *this, fLimitFree, NULL, NULL, false, nAbsurdFee);
 }

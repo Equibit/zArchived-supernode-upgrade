@@ -27,6 +27,7 @@
 #ifdef ENABLE_WALLET
 #include "edc/wallet/edcwallet.h"
 #endif
+#include "edc/edcapp.h"
 
 #include <stdint.h>
 
@@ -128,7 +129,7 @@ UniValue getrawtransaction(const UniValue& params, bool fHelp)
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
             "getrawtransaction \"txid\" ( verbose )\n"
-            "\nNOTE: By default this function only works sometimes. This is when the tx is in the edcmempool\n"
+            "\nNOTE: By default this function only works sometimes. This is when the tx is in the mempool\n"
             "or there is an unspent output in the utxo for this transaction. To make it always work,\n"
             "you need to maintain a transaction index, using the -txindex command line option.\n"
             "\nReturn the raw transaction data.\n"
@@ -659,10 +660,11 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
     CEDCCoinsView viewDummy;
     CEDCCoinsViewCache view(&viewDummy);
     {
-        LOCK(edcmempool.cs);
+		EDCapp & theApp = EDCapp::singleton();
+        LOCK(theApp.mempool().cs);
         CEDCCoinsViewCache &viewChain = *edcPcoinsTip;
-        CEDCCoinsViewMemPool viewMempool(&viewChain, edcmempool);
-        view.SetBackend(viewMempool); // temporarily switch cache backend to db+edcmempool view
+        CEDCCoinsViewMemPool viewMempool(&viewChain, theApp.mempool());
+        view.SetBackend(viewMempool); // temporarily switch cache backend to db+mempool view
 
         BOOST_FOREACH(const CEDCTxIn& txin, mergedTx.vin) 
 		{
@@ -671,7 +673,7 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
             view.AccessCoins(prevHash); // this is certainly allowed to fail
         }
 
-        view.SetBackend(viewDummy); // switch back to avoid locking edcmempool for too long
+        view.SetBackend(viewDummy); // switch back to avoid locking mempool for too long
     }
 
     bool fGivenKeys = false;
@@ -861,13 +863,14 @@ UniValue sendrawtransaction(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "TX decode failed");
     uint256 hashTx = tx.GetHash();
 
-    CAmount nMaxRawTxFee = edcmaxTxFee;
+	EDCapp & theApp = EDCapp::singleton();
+    CAmount nMaxRawTxFee = theApp.maxTxFee();
     if (params.size() > 1 && params[1].get_bool())
         nMaxRawTxFee = 0;
 
     CEDCCoinsViewCache &view = *edcPcoinsTip;
     const CEDCCoins* existingCoins = view.AccessCoins(hashTx);
-    bool fHaveMempool = edcmempool.exists(hashTx);
+    bool fHaveMempool = theApp.mempool().exists(hashTx);
     bool fHaveChain = existingCoins && existingCoins->nHeight < 1000000000;
     CFeeRate txFeeRate = CFeeRate(0);
 
@@ -877,7 +880,7 @@ UniValue sendrawtransaction(const UniValue& params, bool fHelp)
         CValidationState state;
         bool fMissingInputs;
 
-        if (!AcceptToMemoryPool(edcmempool, state, tx, false, &fMissingInputs, &txFeeRate, false, nMaxRawTxFee)) 
+        if (!AcceptToMemoryPool( theApp.mempool(), state, tx, false, &fMissingInputs, &txFeeRate, false, nMaxRawTxFee)) 
 		{
             if (state.IsInvalid()) 
 			{

@@ -16,6 +16,7 @@
 #include "edc/edctxmempool.h"
 #include "utilstrencodings.h"
 #include "version.h"
+#include "edcapp.h"
 
 #include <boost/algorithm/string.hpp>
 #include <boost/dynamic_bitset.hpp>
@@ -535,16 +536,17 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
     std::string bitmapStringRepresentation;
     boost::dynamic_bitset<unsigned char> hits(vOutPoints.size());
     {
-        LOCK2(EDC_cs_main, edcmempool.cs);
+		EDCapp & theApp = EDCapp::singleton();
+        LOCK2(EDC_cs_main, theApp.mempool().cs);
 
         CEDCCoinsView viewDummy;
         CEDCCoinsViewCache view(&viewDummy);
 
         CEDCCoinsViewCache& viewChain = *edcPcoinsTip;
-        CEDCCoinsViewMemPool viewMempool(&viewChain, edcmempool);
+        CEDCCoinsViewMemPool viewMempool(&viewChain, theApp.mempool() );
 
         if (fCheckMemPool)
-            view.SetBackend(viewMempool); // switch cache backend to db+edcmempool in case user likes to query edcmempool
+            view.SetBackend(viewMempool); // switch cache backend to db+mempool in case user likes to query mempool
 
         for (size_t i = 0; i < vOutPoints.size(); i++) 
 		{
@@ -552,7 +554,7 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
             uint256 hash = vOutPoints[i].hash;
             if (view.GetCoins(hash, coins)) 
 			{
-                edcmempool.pruneSpent(hash, coins);
+                theApp.mempool().pruneSpent(hash, coins);
                 if (coins.IsAvailable(vOutPoints[i].n)) 
 				{
                     hits[i] = true;

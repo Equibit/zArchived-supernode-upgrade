@@ -18,7 +18,7 @@
 #include "script/script.h"
 #include "edc/script/edcsign.h"
 #include <univalue.h>
-#include "util.h"
+#include "edcutil.h"
 #include "utilmoneystr.h"
 #include "utilstrencodings.h"
 
@@ -682,7 +682,7 @@ static int CommandLineRawTx(int argc, char* argv[])
     }
     catch (...) 
 	{
-        PrintExceptionContinue(NULL, "CommandLineRawTx()");
+        edcPrintExceptionContinue(NULL, "CommandLineRawTx()");
         throw;
     }
 
@@ -704,12 +704,12 @@ int main(int argc, char* argv[])
     }
     catch (const std::exception& e) 
 	{
-        PrintExceptionContinue(&e, "AppInitRawTx()");
+        edcPrintExceptionContinue(&e, "AppInitRawTx()");
         return EXIT_FAILURE;
     } 
 	catch (...) 
 	{
-        PrintExceptionContinue(NULL, "AppInitRawTx()");
+        edcPrintExceptionContinue(NULL, "AppInitRawTx()");
         return EXIT_FAILURE;
     }
 
@@ -720,11 +720,11 @@ int main(int argc, char* argv[])
     }
     catch (const std::exception& e) 
 	{
-        PrintExceptionContinue(&e, "CommandLineRawTx()");
+        edcPrintExceptionContinue(&e, "CommandLineRawTx()");
     } 
 	catch (...) 
 	{
-        PrintExceptionContinue(NULL, "CommandLineRawTx()");
+        edcPrintExceptionContinue(NULL, "CommandLineRawTx()");
     }
     return ret;
 }

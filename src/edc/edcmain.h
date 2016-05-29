@@ -34,7 +34,7 @@
 class CBlockIndex;
 class CBlockTreeDB;
 class CEDCBloomFilter;
-class CChainParams;
+class CEDCChainParams;
 class CInv;
 class CEDCScriptCheck;
 class CEDCTxMemPool;
@@ -46,7 +46,6 @@ struct LockPoints;
 
 extern CScript edcCOINBASE_FLAGS;
 extern CCriticalSection EDC_cs_main;
-extern CEDCTxMemPool edcmempool;
 typedef boost::unordered_map<uint256, CBlockIndex*, BlockHasher> BlockMap;
 extern BlockMap edcMapBlockIndex;
 extern uint64_t nLastBlockTx;
@@ -54,16 +53,8 @@ extern uint64_t nLastBlockSize;
 extern const std::string edcstrMessageMagic;
 extern CWaitableCriticalSection edccsBestBlock;
 extern CConditionVariable edccvBlockChange;
-extern int edcnScriptCheckThreads;
 extern bool edcfTxIndex;
-extern bool edcfIsBareMultisigStd;
-extern bool edcfRequireStandard;
-extern unsigned int edcnBytesPerSigOp;
 extern size_t edcnCoinCacheUsage;
-/** A fee rate smaller than this is considered zero fee (for relaying, mining and transaction creation) */
-extern CFeeRate edcminRelayTxFee;
-/** Absolute maximum transaction fee (in satoshis) used by wallet and mempool (rejects high fee in sendrawtransaction) */
-extern CAmount edcmaxTxFee;
 /** If the tip is older than this (in seconds), the node is considered to be in initial block download. */
 extern int64_t nEDCMaxTipAge;
 extern bool edcfEnableReplacement;
@@ -76,8 +67,6 @@ extern CBlockIndex *pEDCindexBestHeader;
 extern bool fEDCHavePruned;
 /** True if we're running in -prune mode. */
 extern bool fPruneMode;
-/** Number of MiB of block files that we're trying to stay below. */
-extern uint64_t edcnPruneTarget;
 
 /** Register with a network node to receive its signals */
 void RegisterNodeSignals(CNodeSignals& nodeSignals);
@@ -96,9 +85,9 @@ void UnregisterNodeSignals(CNodeSignals& nodeSignals);
  * @param[out]  dbp     If pblock is stored to disk (or already there), this will be set to its location.
  * @return True if state.IsValid()
  */
-bool ProcessNewBlock(CValidationState& state, const CChainParams& chainparams, const CEDCNode* pfrom, const CEDCBlock* pblock, bool fForceProcessing, CDiskBlockPos* dbp);
+bool ProcessNewBlock(CValidationState& state, const CEDCChainParams& chainparams, const CEDCNode* pfrom, const CEDCBlock* pblock, bool fForceProcessing, CDiskBlockPos* dbp);
 /** Initialize a new block tree database + block data on disk */
-bool edcInitBlockIndex(const CChainParams& chainparams);
+bool edcInitBlockIndex(const CEDCChainParams& chainparams);
 /** Load the block tree and coins database from disk */
 bool edcLoadBlockIndex();
 /** Unload database information */
@@ -135,7 +124,7 @@ std::string GetWarnings(const std::string& strFor);
 /** Retrieve a transaction (from memory pool, or from disk, if possible) */
 bool GetTransaction(const uint256 &hash, CEDCTransaction &tx, const Consensus::Params& params, uint256 &hashBlock, bool fAllowSlow = false);
 /** Find the best known block, and make it the tip of the block chain */
-bool ActivateBestChain(CValidationState& state, const CChainParams& chainparams, const CEDCBlock* pblock = NULL);
+bool ActivateBestChain(CValidationState& state, const CEDCChainParams& chainparams, const CEDCBlock* pblock = NULL);
 
 /**
  * Prune block and undo files (blk???.dat and undo???.dat) so that the disk space used is less than a user-defined target.
@@ -300,7 +289,7 @@ bool ContextualCheckBlock(const CEDCBlock& block, CValidationState& state, CBloc
  *  Validity checks that depend on the UTXO set are also done; ConnectBlock()
  *  can fail if those validity checks fail (among other reasons). */
 bool ConnectBlock(const CEDCBlock& block, CValidationState& state, CBlockIndex* pindex, CEDCCoinsViewCache& coins,
-                  const CChainParams& chainparams, bool fJustCheck = false);
+                  const CEDCChainParams& chainparams, bool fJustCheck = false);
 
 /** Undo the effects of this block (with given index) on the UTXO set represented by coins.
  *  In case pfClean is provided, operation will try to be tolerant about errors, and *pfClean
@@ -309,21 +298,21 @@ bool ConnectBlock(const CEDCBlock& block, CValidationState& state, CBlockIndex* 
 bool DisconnectBlock(const CEDCBlock& block, CValidationState& state, const CBlockIndex* pindex, CEDCCoinsViewCache& coins, bool* pfClean = NULL);
 
 /** Check a block is completely valid from start to finish (only works on top of our current best block, with EDC_cs_main held) */
-bool TestBlockValidity(CValidationState& state, const CChainParams& chainparams, const CEDCBlock& block, CBlockIndex* pindexPrev, bool fCheckPOW = true, bool fCheckMerkleRoot = true);
+bool TestBlockValidity(CValidationState& state, const CEDCChainParams& chainparams, const CEDCBlock& block, CBlockIndex* pindexPrev, bool fCheckPOW = true, bool fCheckMerkleRoot = true);
 
 /** RAII wrapper for VerifyDB: Verify consistency of the block and coin databases */
 class CEDCVerifyDB {
 public:
     CEDCVerifyDB();
     ~CEDCVerifyDB();
-    bool VerifyDB(const CChainParams& chainparams, CEDCCoinsView *coinsview, int nCheckLevel, int nCheckDepth);
+    bool VerifyDB(const CEDCChainParams& chainparams, CEDCCoinsView *coinsview, int nCheckLevel, int nCheckDepth);
 };
 
 /** Find the last common block between the parameter chain and a locator. */
 CBlockIndex* edcFindForkInGlobalIndex(const CChain& chain, const CBlockLocator& locator);
 
 /** Mark a block as invalid. */
-bool edcInvalidateBlock(CValidationState& state, const CChainParams& chainparams, CBlockIndex *pindex);
+bool edcInvalidateBlock(CValidationState& state, const CEDCChainParams& chainparams, CBlockIndex *pindex);
 
 /** Remove invalidity status from a block and its descendants. */
 bool edcResetBlockFailureFlags(CBlockIndex *pindex);

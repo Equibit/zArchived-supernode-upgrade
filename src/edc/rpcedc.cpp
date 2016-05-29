@@ -167,8 +167,13 @@ static const CRPCCommand commands[] =
 	{ "equibit", "acceptEquibitAgentRequest",&acceptEquibitAgentRequest, true },
 };
 
-void RegisterEDCRPCCommands( CRPCTable & tableRPC)
+void RegisterEquibitRPCCommands( CRPCTable & tableRPC)
 {
 	for( unsigned int vcidx = 0; vcidx < ARRAYLEN(commands); vcidx++ )
 		tableRPC.appendCommand(commands[vcidx].name, &commands[vcidx]);
+}
+
+void RegisterEquibitWalletRPCCommands( CRPCTable & tableRPC)
+{
+	// TODO
 }

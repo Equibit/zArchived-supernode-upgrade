@@ -82,9 +82,6 @@ extern uint64_t edcnLocalServices;
 extern uint64_t edcnLocalHostNonce;
 extern CAddrMan edcaddrman;
 
-/** Maximum number of connections to simultaneously allow (aka connection slots) */
-extern int edcnMaxConnections;
-
 extern std::vector<CEDCNode*> vEDCNodes;
 extern CCriticalSection edccs_vNodes;
 extern std::map<uint256, CEDCTransaction> edcMapRelay;

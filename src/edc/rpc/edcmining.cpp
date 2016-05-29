@@ -18,9 +18,10 @@
 #include "pow.h"
 #include "rpc/server.h"
 #include "edc/edctxmempool.h"
-#include "util.h"
+#include "edc/edcutil.h"
 #include "utilstrencodings.h"
 #include "edc/edcvalidationinterface.h"
+#include "edc/edcapp.h"
 
 #include <stdint.h>
 
@@ -137,7 +138,7 @@ UniValue generateBlocks(boost::shared_ptr<CReserveScript> coinbaseScript, int nG
             continue;
         }
         CValidationState state;
-        if (!ProcessNewBlock(state, Params(), NULL, pblock, true, NULL))
+        if (!ProcessNewBlock(state, edcParams(), NULL, pblock, true, NULL))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
         ++nHeight;
         blockHashes.push_back(pblock->GetHash().GetHex());
@@ -250,6 +251,7 @@ UniValue getmininginfo(const UniValue& params, bool fHelp)
         );
 
 
+	EDCapp & theApp = EDCapp::singleton();
     LOCK(EDC_cs_main);
 
     UniValue obj(UniValue::VOBJ);
@@ -259,7 +261,7 @@ UniValue getmininginfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("difficulty",       (double)GetDifficulty()));
     obj.push_back(Pair("errors",           GetWarnings("statusbar")));
     obj.push_back(Pair("networkhashps",    getnetworkhashps(params, false)));
-    obj.push_back(Pair("pooledtx",         (uint64_t)edcmempool.size()));
+    obj.push_back(Pair("pooledtx",         (uint64_t)theApp.mempool().size()));
     obj.push_back(Pair("testnet",          Params().TestnetToBeDeprecatedFieldRPC()));
     obj.push_back(Pair("chain",            Params().NetworkIDString()));
     return obj;
@@ -293,7 +295,8 @@ UniValue prioritisetransaction(const UniValue& params, bool fHelp)
     uint256 hash = edcParseHashStr(params[0].get_str(), "txid");
     CAmount nAmount = params[2].get_int64();
 
-    edcmempool.PrioritiseTransaction(hash, params[0].get_str(), params[1].get_real(), nAmount);
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.mempool().PrioritiseTransaction(hash, params[0].get_str(), params[1].get_real(), nAmount);
     return true;
 }
 
@@ -440,6 +443,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "Bitcoin is downloading blocks...");
 
     static unsigned int nTransactionsUpdatedLast;
+	EDCapp & theApp = EDCapp::singleton();
 
     if (!lpval.isNull())
     {
@@ -474,7 +478,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
                 if (!edccvBlockChange.timed_wait(lock, checktxtime))
                 {
                     // Timeout: Check transactions for update
-                    if (edcmempool.GetTransactionsUpdated() != nTransactionsUpdatedLastLP)
+                    if (theApp.mempool().GetTransactionsUpdated() != nTransactionsUpdatedLastLP)
                         break;
                     checktxtime += boost::posix_time::seconds(10);
                 }
@@ -492,13 +496,13 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
     static int64_t nStart;
     static CEDCBlockTemplate* pblocktemplate;
     if (pindexPrev != chainActive.Tip() ||
-        (edcmempool.GetTransactionsUpdated() != nTransactionsUpdatedLast && GetTime() - nStart > 5))
+        (theApp.mempool().GetTransactionsUpdated() != nTransactionsUpdatedLast && GetTime() - nStart > 5))
     {
         // Clear pindexPrev so future calls make a new block, despite any failures from here on
         pindexPrev = NULL;
 
         // Store the pindexBest used before CreateNewBlock, to avoid races
-        nTransactionsUpdatedLast = edcmempool.GetTransactionsUpdated();
+        nTransactionsUpdatedLast = theApp.mempool().GetTransactionsUpdated();
         CBlockIndex* pindexPrevNew = chainActive.Tip();
         nStart = GetTime();
 
@@ -655,7 +659,7 @@ UniValue submitblock(const UniValue& params, bool fHelp)
     CValidationState state;
     submitblock_StateCatcher sc(block.GetHash());
     RegisterValidationInterface(&sc);
-    bool fAccepted = ProcessNewBlock(state, Params(), NULL, &block, true, NULL);
+    bool fAccepted = ProcessNewBlock(state, edcParams(), NULL, &block, true, NULL);
     UnregisterValidationInterface(&sc);
 
     if (fBlockPresent)
@@ -697,7 +701,8 @@ UniValue estimatefee(const UniValue& params, bool fHelp)
     if (nBlocks < 1)
         nBlocks = 1;
 
-    CFeeRate feeRate = edcmempool.estimateFee(nBlocks);
+	EDCapp & theApp = EDCapp::singleton();
+    CFeeRate feeRate = theApp.mempool().estimateFee(nBlocks);
     if (feeRate == CFeeRate(0))
         return -1.0;
 
@@ -728,7 +733,8 @@ UniValue estimatepriority(const UniValue& params, bool fHelp)
     if (nBlocks < 1)
         nBlocks = 1;
 
-    return edcmempool.estimatePriority(nBlocks);
+	EDCapp & theApp = EDCapp::singleton();
+    return theApp.mempool().estimatePriority(nBlocks);
 }
 
 UniValue estimatesmartfee(const UniValue& params, bool fHelp)
@@ -750,7 +756,7 @@ UniValue estimatesmartfee(const UniValue& params, bool fHelp)
             "\n"
             "A negative value is returned if not enough transactions and blocks\n"
             "have been observed to make an estimate for any number of blocks.\n"
-            "However it will not return a value below the edcmempool reject fee.\n"
+            "However it will not return a value below the mempool reject fee.\n"
             "\nExample:\n"
             + HelpExampleCli("estimatesmartfee", "6")
             );
@@ -761,7 +767,8 @@ UniValue estimatesmartfee(const UniValue& params, bool fHelp)
 
     UniValue result(UniValue::VOBJ);
     int answerFound;
-    CFeeRate feeRate = edcmempool.estimateSmartFee(nBlocks, &answerFound);
+	EDCapp & theApp = EDCapp::singleton();
+    CFeeRate feeRate = theApp.mempool().estimateSmartFee(nBlocks, &answerFound);
     result.push_back(Pair("feerate", feeRate == CFeeRate(0) ? -1.0 : ValueFromAmount(feeRate.GetFeePerK())));
     result.push_back(Pair("blocks", answerFound));
     return result;
@@ -786,7 +793,7 @@ UniValue estimatesmartpriority(const UniValue& params, bool fHelp)
             "\n"
             "A negative value is returned if not enough transactions and blocks\n"
             "have been observed to make an estimate for any number of blocks.\n"
-            "However if the edcmempool reject fee is set it will return 1e9 * MAX_MONEY.\n"
+            "However if the mempool reject fee is set it will return 1e9 * MAX_MONEY.\n"
             "\nExample:\n"
             + HelpExampleCli("estimatesmartpriority", "6")
             );
@@ -797,7 +804,8 @@ UniValue estimatesmartpriority(const UniValue& params, bool fHelp)
 
     UniValue result(UniValue::VOBJ);
     int answerFound;
-    double priority = edcmempool.estimateSmartPriority(nBlocks, &answerFound);
+	EDCapp & theApp = EDCapp::singleton();
+    double priority = theApp.mempool().estimateSmartPriority(nBlocks, &answerFound);
     result.push_back(Pair("priority", priority));
     result.push_back(Pair("blocks", answerFound));
     return result;

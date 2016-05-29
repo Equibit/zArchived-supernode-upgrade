@@ -22,9 +22,10 @@
 #include "script/standard.h"
 #include "timedata.h"
 #include "edctxmempool.h"
-#include "util.h"
+#include "edcutil.h"
 #include "utilmoneystr.h"
 #include "edcvalidationinterface.h"
+#include "edcapp.h"
 
 #include <boost/thread.hpp>
 #include <boost/tuple/tuple.hpp>
@@ -112,7 +113,8 @@ CEDCBlockTemplate* CreateNewEDCBlock(const CChainParams& chainparams, const CScr
     CAmount nFees = 0;
 
     {
-        LOCK2(EDC_cs_main, edcmempool.cs);
+		EDCapp & theApp = EDCapp::singleton();
+        LOCK2(EDC_cs_main, theApp.mempool().cs);
         CBlockIndex* pindexPrev = chainActive.Tip();
         const int nHeight = pindexPrev->nHeight + 1;
         pblock->nTime = GetAdjustedTime();
@@ -131,22 +133,22 @@ CEDCBlockTemplate* CreateNewEDCBlock(const CChainParams& chainparams, const CScr
         bool fPriorityBlock = nBlockPrioritySize > 0;
         if (fPriorityBlock) 
 		{
-            vecPriority.reserve(edcmempool.mapTx.size());
-            for (CEDCTxMemPool::indexed_transaction_set::iterator mi = edcmempool.mapTx.begin();
-                 mi != edcmempool.mapTx.end(); ++mi)
+            vecPriority.reserve( theApp.mempool().mapTx.size());
+            for (CEDCTxMemPool::indexed_transaction_set::iterator mi = theApp.mempool().mapTx.begin();
+                 mi != theApp.mempool().mapTx.end(); ++mi)
             {
                 double dPriority = mi->GetPriority(nHeight);
                 CAmount dummy;
-                edcmempool.ApplyDeltas(mi->GetTx().GetHash(), dPriority, dummy);
+                theApp.mempool().ApplyDeltas(mi->GetTx().GetHash(), dPriority, dummy);
                 vecPriority.push_back(EDCTxCoinAgePriority(dPriority, mi));
             }
             std::make_heap(vecPriority.begin(), vecPriority.end(), pricomparer);
         }
 
-        CEDCTxMemPool::indexed_transaction_set::index<mining_score>::type::iterator mi = edcmempool.mapTx.get<mining_score>().begin();
+        CEDCTxMemPool::indexed_transaction_set::index<mining_score>::type::iterator mi = theApp.mempool().mapTx.get<mining_score>().begin();
         CEDCTxMemPool::txiter iter;
 
-        while (mi != edcmempool.mapTx.get<mining_score>().end() || !clearedTxs.empty())
+        while (mi != theApp.mempool().mapTx.get<mining_score>().end() || !clearedTxs.empty())
         {
             bool priorityTx = false;
             if (fPriorityBlock && !vecPriority.empty()) 
@@ -159,7 +161,7 @@ CEDCBlockTemplate* CreateNewEDCBlock(const CChainParams& chainparams, const CScr
             }
             else if (clearedTxs.empty()) 
 			{ // add tx with next highest score
-                iter = edcmempool.mapTx.project<0>(mi);
+                iter = theApp.mempool().mapTx.project<0>(mi);
                 mi++;
             }
             else 
@@ -174,7 +176,7 @@ CEDCBlockTemplate* CreateNewEDCBlock(const CChainParams& chainparams, const CScr
             const CEDCTransaction& tx = iter->GetTx();
 
             bool fOrphan = false;
-            BOOST_FOREACH(CEDCTxMemPool::txiter parent, edcmempool.GetMemPoolParents(iter))
+            BOOST_FOREACH(CEDCTxMemPool::txiter parent, theApp.mempool().GetMemPoolParents(iter))
             {
                 if (!inBlock.count(parent)) 
 				{
@@ -199,7 +201,7 @@ CEDCBlockTemplate* CreateNewEDCBlock(const CChainParams& chainparams, const CScr
                 waitPriMap.clear();
             }
             if (!priorityTx &&
-                (iter->GetModifiedFee() < ::edcminRelayTxFee.GetFee(nTxSize) && nBlockSize >= nBlockMinSize)) 
+                (iter->GetModifiedFee() < theApp.minRelayTxFee().GetFee(nTxSize) && nBlockSize >= nBlockMinSize)) 
 			{
                 break;
             }
@@ -245,15 +247,15 @@ CEDCBlockTemplate* CreateNewEDCBlock(const CChainParams& chainparams, const CScr
             {
                 double dPriority = iter->GetPriority(nHeight);
                 CAmount dummy;
-                edcmempool.ApplyDeltas(tx.GetHash(), dPriority, dummy);
-                LogPrintf("priority %.1f fee %s txid %s\n",
+                theApp.mempool().ApplyDeltas(tx.GetHash(), dPriority, dummy);
+                edcLogPrintf("priority %.1f fee %s txid %s\n",
                           dPriority , CFeeRate(iter->GetModifiedFee(), nTxSize).ToString(), tx.GetHash().ToString());
             }
 
             inBlock.insert(iter);
 
             // Add transactions that depend on this one to the priority queue
-            BOOST_FOREACH(CEDCTxMemPool::txiter child, edcmempool.GetMemPoolChildren(iter))
+            BOOST_FOREACH(CEDCTxMemPool::txiter child, theApp.mempool().GetMemPoolChildren(iter))
             {
                 if (fPriorityBlock) 
 				{
@@ -277,7 +279,7 @@ CEDCBlockTemplate* CreateNewEDCBlock(const CChainParams& chainparams, const CScr
         }
         edcnLastBlockTx = nBlockTx;
         edcnLastBlockSize = nBlockSize;
-        LogPrintf("CreateNewBlock(): total size %u txs: %u fees: %ld sigops %d\n", nBlockSize, nBlockTx, nFees, nBlockSigOps);
+        edcLogPrintf("CreateNewBlock(): total size %u txs: %u fees: %ld sigops %d\n", nBlockSize, nBlockTx, nFees, nBlockSigOps);
 
         // Compute final coinbase transaction.
         txNew.vout[0].nValue = nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());

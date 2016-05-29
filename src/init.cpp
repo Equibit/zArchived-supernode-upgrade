@@ -40,6 +40,7 @@
 #include "wallet/wallet.h"
 #endif
 #include "edc/edcinit.h"	// EDC
+#include "edc/edcparams.h"	// EDC
 #include <stdint.h>
 #include <stdio.h>
 
@@ -469,7 +470,8 @@ std::string HelpMessage(HelpMessageMode mode)
     }
 
 // EDC BEGIN
-	strUsage += edcHelpMessage(mode);
+	EDCparams & params = EDCparams::singleton();
+	strUsage += params.helpMessage(mode);
 // EDC END
 
     return strUsage;

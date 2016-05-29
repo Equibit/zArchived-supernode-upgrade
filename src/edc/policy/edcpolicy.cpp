@@ -8,9 +8,11 @@
 
 #include "edc/policy/edcpolicy.h"
 
+#include "edc/edcapp.h"
 #include "edc/edcmain.h"
+#include "edc/edcparams.h"
 #include "tinyformat.h"
-#include "util.h"
+#include "edc/edcutil.h"
 #include "utilstrencodings.h"
 
 #include <boost/foreach.hpp>
@@ -105,14 +107,16 @@ bool IsStandardTx(const CEDCTransaction& tx, std::string& reason)
             return false;
         }
 
+		EDCapp & theApp = EDCapp::singleton();
+		EDCparams & params = EDCparams::singleton();
         if (whichType == TX_NULL_DATA)
             nDataOut++;
-        else if ((whichType == TX_MULTISIG) && (!edcfIsBareMultisigStd)) 
+        else if ((whichType == TX_MULTISIG) && (!params.permitbaremultisig)) 
 		{
             reason = "bare-multisig";
             return false;
         } 
-		else if (txout.IsDust(::edcminRelayTxFee)) 
+		else if (txout.IsDust(theApp.minRelayTxFee())) 
 		{
             reason = "dust";
             return false;

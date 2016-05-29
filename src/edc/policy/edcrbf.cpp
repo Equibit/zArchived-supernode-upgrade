@@ -28,7 +28,7 @@ RBFTransactionState IsRBFOptIn(const CEDCTransaction &tx, CEDCTxMemPool &pool)
         return RBF_TRANSACTIONSTATE_REPLACEABLE_BIP125;
     }
 
-    // If this transaction is not in our edcmempool, then we can't be sure
+    // If this transaction is not in our App.mempool, then we can't be sure
     // we will know about all its inputs.
     if (!pool.exists(tx.GetHash())) 
 	{

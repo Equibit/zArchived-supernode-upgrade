@@ -13,10 +13,11 @@
 #include "edc/policy/edcfees.h"
 #include "streams.h"
 #include "timedata.h"
-#include "util.h"
+#include "edcutil.h"
 #include "utilmoneystr.h"
 #include "utiltime.h"
 #include "version.h"
+#include "edcapp.h"
 
 using namespace std;
 
@@ -700,7 +701,7 @@ void CEDCTxMemPool::check(const CEDCCoinsViewCache *pcoins) const
     if (insecure_rand() >= nCheckFrequency)
         return;
 
-    LogPrint("mempool", "Checking mempool with %u transactions and %u inputs\n", (unsigned int)mapTx.size(), (unsigned int)mapNextTx.size());
+    edcLogPrint("mempool", "Checking mempool with %u transactions and %u inputs\n", (unsigned int)mapTx.size(), (unsigned int)mapNextTx.size());
 
     uint64_t checkTotal = 0;
     uint64_t innerUsage = 0;
@@ -927,7 +928,7 @@ CEDCTxMemPool::WriteFeeEstimates(CAutoFile& fileout) const
     }
     catch (const std::exception&) 
 	{
-        LogPrintf("CEDCTxMemPool::WriteFeeEstimates(): unable to write policy estimator data (non-fatal)\n");
+        edcLogPrintf("CEDCTxMemPool::WriteFeeEstimates(): unable to write policy estimator data (non-fatal)\n");
         return false;
     }
     return true;
@@ -941,14 +942,14 @@ CEDCTxMemPool::ReadFeeEstimates(CAutoFile& filein)
         int nVersionRequired, nVersionThatWrote;
         filein >> nVersionRequired >> nVersionThatWrote;
         if (nVersionRequired > CLIENT_VERSION)
-            return error("CEDCTxMemPool::ReadFeeEstimates(): up-version (%d) fee estimate file", nVersionRequired);
+            return edcError("CEDCTxMemPool::ReadFeeEstimates(): up-version (%d) fee estimate file", nVersionRequired);
 
         LOCK(cs);
         minerPolicyEstimator->Read(filein);
     }
     catch (const std::exception&) 
 	{
-        LogPrintf("CEDCTxMemPool::ReadFeeEstimates(): unable to read policy estimator data (non-fatal)\n");
+        edcLogPrintf("CEDCTxMemPool::ReadFeeEstimates(): unable to read policy estimator data (non-fatal)\n");
         return false;
     }
     return true;
@@ -977,7 +978,7 @@ void CEDCTxMemPool::PrioritiseTransaction(const uint256 hash, const string strHa
             }
         }
     }
-    LogPrintf("PrioritiseTransaction: %s priority += %f, fee += %d\n", strHash, dPriorityDelta, FormatMoney(nFeeDelta));
+    edcLogPrintf("PrioritiseTransaction: %s priority += %f, fee += %d\n", strHash, dPriorityDelta, FormatMoney(nFeeDelta));
 }
 
 void CEDCTxMemPool::ApplyDeltas(const uint256 hash, double &dPriorityDelta, CAmount &nFeeDelta) const
@@ -1014,7 +1015,8 @@ bool CEDCCoinsViewMemPool::GetCoins(const uint256 &txid, CEDCCoins &coins) const
     // conflict with the underlying cache, and it cannot have pruned entries (as it contains full)
     // transactions. First checking the underlying cache risks returning a pruned entry instead.
     CEDCTransaction tx;
-    if (edcmempool.lookup(txid, tx)) 
+	EDCapp & theApp = EDCapp::singleton();
+    if (theApp.mempool().lookup(txid, tx)) 
 	{
         coins = CEDCCoins(tx, MEMPOOL_HEIGHT);
         return true;
@@ -1202,5 +1204,5 @@ void CEDCTxMemPool::TrimToSize(
     }
 
     if (maxFeeRateRemoved > CFeeRate(0))
-        LogPrint("mempool", "Removed %u txn, rolling minimum fee bumped to %s\n", nTxnRemoved, maxFeeRateRemoved.ToString());
+        edcLogPrint("mempool", "Removed %u txn, rolling minimum fee bumped to %s\n", nTxnRemoved, maxFeeRateRemoved.ToString());
 }

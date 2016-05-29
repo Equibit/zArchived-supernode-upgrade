@@ -4,7 +4,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "edcui_interface.h"
-#include "util.h"
+#include "edcutil.h"
 
 CEDCClientUIInterface edcUiInterface;
 

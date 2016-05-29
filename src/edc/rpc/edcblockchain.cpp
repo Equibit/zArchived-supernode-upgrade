@@ -17,9 +17,10 @@
 #include "streams.h"
 #include "sync.h"
 #include "edc/edctxmempool.h"
-#include "util.h"
+#include "edc/edcutil.h"
 #include "utilstrencodings.h"
 #include "hash.h"
+#include "edc/edcapp.h"
 
 #include <stdint.h>
 
@@ -186,11 +187,13 @@ UniValue getdifficulty(const UniValue& params, bool fHelp)
 
 UniValue mempoolToJSON(bool fVerbose = false)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (fVerbose)
     {
-        LOCK(edcmempool.cs);
+        LOCK(theApp.mempool().cs);
         UniValue o(UniValue::VOBJ);
-        BOOST_FOREACH(const CEDCTxMemPoolEntry& e, edcmempool.mapTx)
+        BOOST_FOREACH(const CEDCTxMemPoolEntry& e, theApp.mempool().mapTx)
         {
             const uint256& hash = e.GetTx().GetHash();
             UniValue info(UniValue::VOBJ);
@@ -208,7 +211,7 @@ UniValue mempoolToJSON(bool fVerbose = false)
             set<string> setDepends;
             BOOST_FOREACH(const CEDCTxIn& txin, tx.vin)
             {
-                if (edcmempool.exists(txin.prevout.hash))
+                if (theApp.mempool().exists(txin.prevout.hash))
                     setDepends.insert(txin.prevout.hash.ToString());
             }
 
@@ -226,7 +229,7 @@ UniValue mempoolToJSON(bool fVerbose = false)
     else
     {
         vector<uint256> vtxid;
-        edcmempool.queryHashes(vtxid);
+        theApp.mempool().queryHashes(vtxid);
 
         UniValue a(UniValue::VARR);
         BOOST_FOREACH(const uint256& hash, vtxid)
@@ -487,7 +490,7 @@ static bool GetUTXOStats(CEDCCoinsView *view, CCoinsStats &stats)
         } 
 		else 
 		{
-            return error("%s: unable to read value", __func__);
+            return edcError("%s: unable to read value", __func__);
         }
         pcursor->Next();
     }
@@ -585,13 +588,14 @@ UniValue gettxout(const UniValue& params, bool fHelp)
         fMempool = params[2].get_bool();
 
     CEDCCoins coins;
+	EDCapp & theApp = EDCapp::singleton();
     if (fMempool) 
 	{
-        LOCK(edcmempool.cs);
-        CEDCCoinsViewMemPool view(edcPcoinsTip, edcmempool);
+        LOCK(theApp.mempool().cs);
+        CEDCCoinsViewMemPool view(edcPcoinsTip, theApp.mempool());
         if (!view.GetCoins(hash, coins))
             return NullUniValue;
-        edcmempool.pruneSpent(hash, coins); // TODO: this should be done by the CCoinsViewMemPool
+        theApp.mempool().pruneSpent(hash, coins); // TODO: this should be done by the CCoinsViewMemPool
     } 
 	else 
 	{
@@ -644,7 +648,7 @@ UniValue verifychain(const UniValue& params, bool fHelp)
     if (params.size() > 1)
         nCheckDepth = params[1].get_int();
 
-    return CEDCVerifyDB().VerifyDB(Params(), edcPcoinsTip, nCheckLevel, nCheckDepth);
+    return CEDCVerifyDB().VerifyDB(edcParams(), edcPcoinsTip, nCheckLevel, nCheckDepth);
 }
 
 /** Implementation of IsSuperMajority with better feedback */
@@ -914,12 +918,13 @@ UniValue getchaintips(const UniValue& params, bool fHelp)
 UniValue mempoolInfoToJSON()
 {
     UniValue ret(UniValue::VOBJ);
-    ret.push_back(Pair("size", (int64_t) edcmempool.size()));
-    ret.push_back(Pair("bytes", (int64_t) edcmempool.GetTotalTxSize()));
-    ret.push_back(Pair("usage", (int64_t) edcmempool.DynamicMemoryUsage()));
+	EDCapp & theApp = EDCapp::singleton();
+    ret.push_back(Pair("size", (int64_t) theApp.mempool().size()));
+    ret.push_back(Pair("bytes", (int64_t) theApp.mempool().GetTotalTxSize()));
+    ret.push_back(Pair("usage", (int64_t) theApp.mempool().DynamicMemoryUsage()));
     size_t maxmempool = GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000;
     ret.push_back(Pair("maxmempool", (int64_t) maxmempool));
-    ret.push_back(Pair("mempoolminfee", ValueFromAmount(edcmempool.GetMinFee(maxmempool).GetFeePerK())));
+    ret.push_back(Pair("mempoolminfee", ValueFromAmount(theApp.mempool().GetMinFee(maxmempool).GetFeePerK())));
 
     return ret;
 }
@@ -970,12 +975,12 @@ UniValue invalidateblock(const UniValue& params, bool fHelp)
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
 
         CBlockIndex* pblockindex = edcMapBlockIndex[hash];
-        edcInvalidateBlock(state, Params(), pblockindex);
+        edcInvalidateBlock(state, edcParams(), pblockindex);
     }
 
     if (state.IsValid()) 
 	{
-        ActivateBestChain(state, Params(), static_cast<CEDCBlock *>(NULL) );
+        ActivateBestChain(state, edcParams(), static_cast<CEDCBlock *>(NULL) );
     }
 
     if (!state.IsValid()) 
@@ -1014,7 +1019,7 @@ UniValue reconsiderblock(const UniValue& params, bool fHelp)
     }
 
 	CValidationState state;
-    ActivateBestChain(state, Params(), static_cast<CEDCBlock *>(NULL) );
+    ActivateBestChain(state, edcParams(), static_cast<CEDCBlock *>(NULL) );
 
     if (!state.IsValid()) 
 	{

@@ -116,6 +116,7 @@ BITCOIN_CORE_H = \
   rpc/client.h \
   rpc/protocol.h \
   rpc/server.h \
+  edc/edcapp.h \
   edc/bitmessage.h \
   edc/edcchainparams.h \
   edc/edcbloom.h \
@@ -146,6 +147,7 @@ BITCOIN_CORE_H = \
   edc/script/edcsign.h \
   edc/script/edcinterpreter.h \
   edc/edcui_interface.h \
+  edc/edcutil.h \
   rpc/register.h \
   scheduler.h \
   script/sigcache.h \
@@ -214,6 +216,7 @@ libbitcoin_server_a_SOURCES = \
   rpc/net.cpp \
   rpc/rawtransaction.cpp \
   rpc/server.cpp \
+  edc/edcapp.cpp \
   edc/bitmessage.cpp \
   edc/rpcedc.cpp \
   edc/edcchainparams.cpp \
@@ -250,6 +253,7 @@ libbitcoin_server_a_SOURCES = \
   edc/edcrest.cpp \
   edc/edcui_interface.cpp \
   edc/edcparams.cpp \
+  edc/edcutil.cpp \
   script/sigcache.cpp \
   script/ismine.cpp \
   timedata.cpp \

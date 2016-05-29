@@ -15,10 +15,11 @@
 #include "edc/policy/edcrbf.h"
 #include "rpc/server.h"
 #include "timedata.h"
-#include "util.h"
+#include "edc/edcutil.h"
 #include "utilmoneystr.h"
 #include "edcwallet.h"
 #include "edc/wallet/edcwalletdb.h"
+#include "edc/edcapp.h"
 
 #include <stdint.h>
 
@@ -87,8 +88,9 @@ void WalletTxToJSON(const CEDCWalletTx& wtx, UniValue& entry)
     std::string rbfStatus = "no";
     if (confirms <= 0) 
 	{
-        LOCK(edcmempool.cs);
-        RBFTransactionState rbfState = IsRBFOptIn(wtx, edcmempool);
+		EDCapp & theApp = EDCapp::singleton();
+        LOCK(theApp.mempool().cs);
+        RBFTransactionState rbfState = IsRBFOptIn(wtx, theApp.mempool());
         if (rbfState == RBF_TRANSACTIONSTATE_UNKNOWN)
             rbfStatus = "unknown";
         else if (rbfState == RBF_TRANSACTIONSTATE_REPLACEABLE_BIP125)
@@ -1475,7 +1477,7 @@ UniValue listtransactions(const UniValue& params, bool fHelp)
             "                                          from (for receiving funds, positive amounts), or went to (for sending funds,\n"
             "                                          negative amounts).\n"
             "    \"bip125-replaceable\": \"yes|no|unknown\"  (string) Whether this transaction could be replaced due to BIP125 (replace-by-fee);\n"
-            "                                                     may be unknown for unconfirmed transactions not in the edcmempool\n"
+            "                                                     may be unknown for unconfirmed transactions not in the mempool\n"
             "  }\n"
             "]\n"
 
@@ -1747,7 +1749,7 @@ UniValue gettransaction(const UniValue& params, bool fHelp)
             "  \"time\" : ttt,            (numeric) The transaction time in seconds since epoch (1 Jan 1970 GMT)\n"
             "  \"timereceived\" : ttt,    (numeric) The time received in seconds since epoch (1 Jan 1970 GMT)\n"
             "  \"bip125-replaceable\": \"yes|no|unknown\"  (string) Whether this transaction could be replaced due to BIP125 (replace-by-fee);\n"
-            "                                                   may be unknown for unconfirmed transactions not in the edcmempool\n"
+            "                                                   may be unknown for unconfirmed transactions not in the mempool\n"
             "  \"details\" : [\n"
             "    {\n"
             "      \"account\" : \"accountname\",  (string) DEPRECATED. The account name involved in the transaction, can be \"\" for the default account.\n"
@@ -1815,7 +1817,7 @@ UniValue abandontransaction(const UniValue& params, bool fHelp)
             "\nMark in-wallet transaction <txid> as abandoned\n"
             "This will mark this transaction and all its in-wallet descendants as abandoned which will allow\n"
             "for their inputs to be respent.  It can be used to replace \"stuck\" or evicted transactions.\n"
-            "It only works on transactions which are not included in a block and are not currently in the edcmempool.\n"
+            "It only works on transactions which are not included in a block and are not currently in the mempool.\n"
             "It has no effect on transactions which are already conflicted or abandoned.\n"
             "\nArguments:\n"
             "1. \"txid\"    (string, required) The transaction id\n"

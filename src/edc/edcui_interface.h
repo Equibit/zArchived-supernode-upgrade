@@ -97,4 +97,7 @@ public:
 
 extern CEDCClientUIInterface edcUiInterface;
 
+bool edcInitError(const std::string& str);
+void edcInitWarning(const std::string& str);
+
 #endif // BITCOIN_UI_INTERFACE_H

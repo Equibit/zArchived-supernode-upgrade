@@ -12,7 +12,7 @@
 #include "protocol.h"
 #include "serialize.h"
 #include "sync.h"
-#include "util.h"
+#include "edc/edcutil.h"
 #include "utiltime.h"
 #include "edc/wallet/edcwallet.h"
 
@@ -642,7 +642,7 @@ DBErrors CEDCWalletDB::LoadWallet(CEDCWallet* pwallet)
         Dbc* pcursor = GetCursor();
         if (!pcursor)
         {
-            LogPrintf("Error getting wallet database cursor\n");
+            edcLogPrintf("Error getting wallet database cursor\n");
             return DB_CORRUPT;
         }
 
@@ -656,7 +656,7 @@ DBErrors CEDCWalletDB::LoadWallet(CEDCWallet* pwallet)
                 break;
             else if (ret != 0)
             {
-                LogPrintf("Error reading next record from wallet database\n");
+                edcLogPrintf("Error reading next record from wallet database\n");
                 return DB_CORRUPT;
             }
 
@@ -678,7 +678,7 @@ DBErrors CEDCWalletDB::LoadWallet(CEDCWallet* pwallet)
                 }
             }
             if (!strErr.empty())
-                LogPrintf("%s\n", strErr);
+                edcLogPrintf("%s\n", strErr);
         }
         pcursor->close();
     }
@@ -699,9 +699,9 @@ DBErrors CEDCWalletDB::LoadWallet(CEDCWallet* pwallet)
     if (result != DB_LOAD_OK)
         return result;
 
-    LogPrintf("nFileVersion = %d\n", wss.nFileVersion);
+    edcLogPrintf("nFileVersion = %d\n", wss.nFileVersion);
 
-    LogPrintf("Keys: %u plaintext, %u encrypted, %u w/ metadata, %u total\n",
+    edcLogPrintf("Keys: %u plaintext, %u encrypted, %u w/ metadata, %u total\n",
            wss.nKeys, wss.nCKeys, wss.nKeyMeta, wss.nKeys + wss.nCKeys);
 
     // nTimeFirstKey is only reliable if all keys have metadata
@@ -752,7 +752,7 @@ DBErrors CEDCWalletDB::FindWalletTx(CEDCWallet* pwallet, vector<uint256>& vTxHas
         Dbc* pcursor = GetCursor();
         if (!pcursor)
         {
-            LogPrintf("Error getting wallet database cursor\n");
+            edcLogPrintf("Error getting wallet database cursor\n");
             return DB_CORRUPT;
         }
 
@@ -766,7 +766,7 @@ DBErrors CEDCWalletDB::FindWalletTx(CEDCWallet* pwallet, vector<uint256>& vTxHas
                 break;
             else if (ret != 0)
             {
-                LogPrintf("Error reading next record from wallet database\n");
+                edcLogPrintf("Error reading next record from wallet database\n");
                 return DB_CORRUPT;
             }
 
@@ -834,7 +834,7 @@ DBErrors CEDCWalletDB::ZapSelectTx(CEDCWallet* pwallet, vector<uint256>& vTxHash
             pwallet->mapWallet.erase(hash);
             if(!EraseTx(hash)) 
 			{
-                LogPrint("db", "Transaction was found for deletion but returned database error: %s\n", hash.GetHex());
+                edcLogPrint("db", "Transaction was found for deletion but returned database error: %s\n", hash.GetHex());
                 delerror = true;
             }
             vTxHashOut.push_back(hash);
@@ -911,7 +911,7 @@ void edcThreadFlushWalletDB(const string& strFile)
                     map<string, int>::iterator mi = bitdb.mapFileUseCount.find(strFile);
                     if (mi != bitdb.mapFileUseCount.end())
                     {
-                        LogPrint("db", "Flushing %s\n", strFile);
+                        edcLogPrint("db", "Flushing %s\n", strFile);
                         nLastFlushed = nWalletDBUpdated;
                         int64_t nStart = GetTimeMillis();
 
@@ -920,7 +920,7 @@ void edcThreadFlushWalletDB(const string& strFile)
                         bitdb.CheckpointLSN(strFile);
 
                         bitdb.mapFileUseCount.erase(mi++);
-                        LogPrint("db", "Flushed %s %dms\n", strFile, GetTimeMillis() - nStart);
+                        edcLogPrint("db", "Flushed %s %dms\n", strFile, GetTimeMillis() - nStart);
                     }
                 }
             }
@@ -944,7 +944,7 @@ bool BackupWallet(const CEDCWallet& wallet, const string& strDest)
                 bitdb.mapFileUseCount.erase(wallet.strWalletFile);
 
                 // Copy wallet file
-                boost::filesystem::path pathSrc = GetDataDir() / wallet.strWalletFile;
+                boost::filesystem::path pathSrc = edcGetDataDir() / wallet.strWalletFile;
                 boost::filesystem::path pathDest(strDest);
                 if (boost::filesystem::is_directory(pathDest))
                     pathDest /= wallet.strWalletFile;
@@ -956,12 +956,12 @@ bool BackupWallet(const CEDCWallet& wallet, const string& strDest)
 #else
                     boost::filesystem::copy_file(pathSrc, pathDest);
 #endif
-                    LogPrintf("copied %s to %s\n", wallet.strWalletFile, pathDest.string());
+                    edcLogPrintf("copied %s to %s\n", wallet.strWalletFile, pathDest.string());
                     return true;
                 } 
 				catch (const boost::filesystem::filesystem_error& e) 
 				{
-                    LogPrintf("error copying %s to %s - %s\n", wallet.strWalletFile, pathDest.string(), e.what());
+                    edcLogPrintf("error copying %s to %s - %s\n", wallet.strWalletFile, pathDest.string(), e.what());
                     return false;
                 }
             }
@@ -989,10 +989,10 @@ bool CEDCWalletDB::Recover(CDBEnv& dbenv, const std::string& filename, bool fOnl
     int result = dbenv.dbenv->dbrename(NULL, filename.c_str(), NULL,
                                        newFilename.c_str(), DB_AUTO_COMMIT);
     if (result == 0)
-        LogPrintf("Renamed %s to %s\n", filename, newFilename);
+        edcLogPrintf("Renamed %s to %s\n", filename, newFilename);
     else
     {
-        LogPrintf("Failed to rename %s to %s\n", filename, newFilename);
+        edcLogPrintf("Failed to rename %s to %s\n", filename, newFilename);
         return false;
     }
 
@@ -1000,10 +1000,10 @@ bool CEDCWalletDB::Recover(CDBEnv& dbenv, const std::string& filename, bool fOnl
     bool fSuccess = dbenv.Salvage(newFilename, true, salvagedData);
     if (salvagedData.empty())
     {
-        LogPrintf("Salvage(aggressive) found no records in %s.\n", newFilename);
+        edcLogPrintf("Salvage(aggressive) found no records in %s.\n", newFilename);
         return false;
     }
-    LogPrintf("Salvage(aggressive) found %u records\n", salvagedData.size());
+    edcLogPrintf("Salvage(aggressive) found %u records\n", salvagedData.size());
 
     boost::scoped_ptr<Db> pdbCopy(new Db(dbenv.dbenv, 0));
     int ret = pdbCopy->open(NULL,               // Txn pointer
@@ -1014,7 +1014,7 @@ bool CEDCWalletDB::Recover(CDBEnv& dbenv, const std::string& filename, bool fOnl
                             0);
     if (ret > 0)
     {
-        LogPrintf("Cannot create database file %s\n", filename);
+        edcLogPrintf("Cannot create database file %s\n", filename);
         return false;
     }
     CEDCWallet dummyWallet;
@@ -1039,7 +1039,7 @@ bool CEDCWalletDB::Recover(CDBEnv& dbenv, const std::string& filename, bool fOnl
                 continue;
             if (!fReadOK)
             {
-                LogPrintf("WARNING: CEDCWalletDB::Recover skipping %s: %s\n", strType, strErr);
+                edcLogPrintf("WARNING: CEDCWalletDB::Recover skipping %s: %s\n", strType, strErr);
                 continue;
             }
         }

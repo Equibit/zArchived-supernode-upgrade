@@ -11,7 +11,7 @@
 #include "script/script.h"
 #include "script/standard.h"
 #include "sync.h"
-#include "util.h"
+#include "edc/edcutil.h"
 #include "utiltime.h"
 #include "edc/wallet/edcwallet.h"
 #include "edc/edcmerkleblock.h"
@@ -498,7 +498,7 @@ UniValue importwallet(const UniValue& params, bool fHelp)
 
         if (edcPwalletMain->HaveKey(keyid)) 
 		{
-            LogPrintf("Skipping import of %s (key already present)\n", CBitcoinAddress(keyid).ToString());
+            edcLogPrintf("Skipping import of %s (key already present)\n", CBitcoinAddress(keyid).ToString());
             continue;
         }
 
@@ -521,7 +521,7 @@ UniValue importwallet(const UniValue& params, bool fHelp)
             }
         }
 
-        LogPrintf("Importing %s...\n", CBitcoinAddress(keyid).ToString());
+        edcLogPrintf("Importing %s...\n", CBitcoinAddress(keyid).ToString());
 
         if (!edcPwalletMain->AddKeyPubKey(key, pubkey)) 
 		{
@@ -543,7 +543,7 @@ UniValue importwallet(const UniValue& params, bool fHelp)
     if (!edcPwalletMain->nTimeFirstKey || nTimeBegin < edcPwalletMain->nTimeFirstKey)
         edcPwalletMain->nTimeFirstKey = nTimeBegin;
 
-    LogPrintf("Rescanning last %i blocks\n", chainActive.Height() - pindex->nHeight + 1);
+    edcLogPrintf("Rescanning last %i blocks\n", chainActive.Height() - pindex->nHeight + 1);
     edcPwalletMain->ScanForWalletTransactions(pindex);
     edcPwalletMain->MarkDirty();
 

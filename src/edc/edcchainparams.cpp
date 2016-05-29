@@ -8,7 +8,7 @@
 #include "consensus/merkle.h"
 
 #include "tinyformat.h"
-#include "util.h"
+#include "edcutil.h"
 #include "utilstrencodings.h"
 
 #include <assert.h>
@@ -17,7 +17,14 @@
 
 #include "chainparamsseeds.h"
 
-static CBlock CreateGenesisBlock(const char* pszTimestamp, const CScript& genesisOutputScript, uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const CAmount& genesisReward)
+static CBlock CreateGenesisBlock(
+	   const char * pszTimestamp, 
+	const CScript & genesisOutputScript, 
+	       uint32_t nTime, 
+	       uint32_t nNonce, 
+	       uint32_t nBits, 
+	        int32_t nVersion, 
+	const CAmount & genesisReward )
 {
     CMutableTransaction txNew;
     txNew.nVersion = 1;
@@ -49,7 +56,12 @@ static CBlock CreateGenesisBlock(const char* pszTimestamp, const CScript& genesi
  *     CTxOut(nValue=50.00000000, scriptPubKey=0x5F1DF16B2B704C8A578D0B)
  *   vMerkleTree: 4a5e1e
  */
-static CBlock CreateGenesisBlock(uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const CAmount& genesisReward)
+static CBlock CreateGenesisBlock(
+	       uint32_t nTime, 
+           uint32_t nNonce, 
+       	   uint32_t nBits, 
+       	    int32_t nVersion, 
+	const CAmount & genesisReward )
 {
     const char* pszTimestamp = "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks";
     const CScript genesisOutputScript = CScript() << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f") << OP_CHECKSIG;
@@ -67,7 +79,7 @@ static CBlock CreateGenesisBlock(uint32_t nTime, uint32_t nNonce, uint32_t nBits
  * + Contains no strange transactions
  */
 
-class CMainParams : public CChainParams 
+class CMainParams : public CEDCChainParams 
 {
 public:
     CMainParams() 
@@ -129,7 +141,6 @@ public:
 
         fMiningRequiresPeers = true;
         fDefaultConsistencyChecks = false;
-        fRequireStandard = true;
         fMineBlocksOnDemand = false;
         fTestnetToBeDeprecatedFieldRPC = false;
 
@@ -161,7 +172,7 @@ static CMainParams mainParams;
 /**
  * Testnet (v3)
  */
-class CTestNetParams : public CChainParams 
+class CTestNetParams : public CEDCChainParams 
 {
 public:
     CTestNetParams() 
@@ -217,7 +228,6 @@ public:
 
         fMiningRequiresPeers = true;
         fDefaultConsistencyChecks = false;
-        fRequireStandard = false;
         fMineBlocksOnDemand = false;
         fTestnetToBeDeprecatedFieldRPC = true;
 
@@ -237,7 +247,7 @@ static CTestNetParams testNetParams;
 /**
  * Regression test
  */
-class CRegTestParams : public CChainParams 
+class CRegTestParams : public CEDCChainParams 
 {
 public:
     CRegTestParams() 
@@ -280,7 +290,6 @@ public:
 
         fMiningRequiresPeers = false;
         fDefaultConsistencyChecks = true;
-        fRequireStandard = false;
         fMineBlocksOnDemand = true;
         fTestnetToBeDeprecatedFieldRPC = false;
 
@@ -301,28 +310,28 @@ public:
 };
 static CRegTestParams regTestParams;
 
-static CChainParams *pCurrentParams = 0;
+static CEDCChainParams *pCurrentParams = 0;
 
-const CChainParams &Params() 
+const CEDCChainParams & edcParams() 
 {
     assert(pCurrentParams);
     return *pCurrentParams;
 }
 
-CChainParams& Params(const std::string& chain)
+CEDCChainParams & edcParams(const std::string& chain)
 {
     if (chain == CBaseChainParams::MAIN)
-            return mainParams;
+        return mainParams;
     else if (chain == CBaseChainParams::TESTNET)
-            return testNetParams;
+        return testNetParams;
     else if (chain == CBaseChainParams::REGTEST)
-            return regTestParams;
+        return regTestParams;
     else
         throw std::runtime_error(strprintf("%s: Unknown chain %s.", __func__, chain));
 }
 
-void SelectParams(const std::string& network)
+void edcSelectParams(const std::string& network)
 {
     SelectBaseParams(network);
-    pCurrentParams = &Params(network);
+    pCurrentParams = & edcParams(network);
 }

@@ -9,6 +9,9 @@
 #endif
 
 #include "edcnet.h"
+#include "edcparams.h"
+#include "edcutil.h"
+#include "edcapp.h"
 
 #include "addrman.h"
 #include "edcchainparams.h"
@@ -87,7 +90,6 @@ static CEDCNode* pnodeLocalHost = NULL;
 uint64_t edcnLocalHostNonce = 0;
 static std::vector<ListenSocket> vhListenSocket;
 CAddrMan edcaddrman;
-int edcnMaxConnections = DEFAULT_MAX_PEER_CONNECTIONS;
 bool edcfAddressesInitialized = false;
 std::string edcstrSubVersion;
 
@@ -216,7 +218,7 @@ void AdvertiseLocal(CEDCNode *pnode)
         }
         if (addrLocal.IsRoutable())
         {
-            LogPrintf("AdvertiseLocal: advertising address %s\n", addrLocal.ToString());
+            edcLogPrintf("AdvertiseLocal: advertising address %s\n", addrLocal.ToString());
             pnode->PushAddress(addrLocal);
         }
     }
@@ -225,7 +227,7 @@ void AdvertiseLocal(CEDCNode *pnode)
 bool edcRemoveLocal(const CService& addr)
 {
     LOCK(edccs_mapLocalHost);
-    LogPrintf("RemoveLocal(%s)\n", addr.ToString());
+    edcLogPrintf("RemoveLocal(%s)\n", addr.ToString());
     edcmapLocalHost.erase(addr);
     return true;
 }
@@ -353,19 +355,23 @@ CEDCNode* ConnectEDCNode(CAddress addrConnect, const char *pszDest)
     }
 
     /// debug print
-    LogPrint("net", "trying connection %s lastseen=%.1fhrs\n",
+    edcLogPrint("net", "trying connection %s lastseen=%.1fhrs\n",
         pszDest ? pszDest : addrConnect.ToString(),
         pszDest ? 0.0 : (double)(GetAdjustedTime() - addrConnect.nTime)/3600.0);
 
     // Connect
     SOCKET hSocket;
     bool proxyConnectionFailed = false;
-    if (pszDest ? ConnectSocketByName(addrConnect, hSocket, pszDest, Params().GetDefaultPort(), nConnectTimeout, &proxyConnectionFailed) :
-                  ConnectSocket(addrConnect, hSocket, nConnectTimeout, &proxyConnectionFailed))
+	EDCapp & theApp = EDCapp::singleton();
+
+    if (pszDest ? ConnectSocketByName(addrConnect, hSocket, pszDest, Params().
+		GetDefaultPort(), theApp.connectTimeout(), &proxyConnectionFailed) :
+        ConnectSocket(addrConnect, hSocket, theApp.connectTimeout(), 
+		&proxyConnectionFailed))
     {
         if (!IsSelectableSocket(hSocket)) 
 		{
-            LogPrintf("Cannot create connection: non-selectable socket created (fd >= FD_SETSIZE ?)\n");
+            edcLogPrintf("Cannot create connection: non-selectable socket created (fd >= FD_SETSIZE ?)\n");
             CloseSocket(hSocket);
             return NULL;
         }
@@ -400,7 +406,7 @@ void CEDCNode::CloseSocketDisconnect()
     fDisconnect = true;
     if (hSocket != INVALID_SOCKET)
     {
-        LogPrint("net", "disconnecting peer=%d\n", id);
+        edcLogPrint("net", "disconnecting peer=%d\n", id);
         CloseSocket(hSocket);
     }
 
@@ -418,10 +424,11 @@ void CEDCNode::PushVersion()
     CAddress addrYou = (addr.IsRoutable() && !IsProxy(addr) ? addr : CAddress(CService("0.0.0.0",0)));
     CAddress addrMe = edcGetLocalAddress(&addr);
     GetRandBytes((unsigned char*)&edcnLocalHostNonce, sizeof(edcnLocalHostNonce));
-    if (fLogIPs)
-        LogPrint("net", "send version message: version %d, blocks=%d, us=%s, them=%s, peer=%d\n", PROTOCOL_VERSION, nBestHeight, addrMe.ToString(), addrYou.ToString(), id);
+	EDCparams & params = EDCparams::singleton();
+    if (params.logips)
+        edcLogPrint("net", "send version message: version %d, blocks=%d, us=%s, them=%s, peer=%d\n", PROTOCOL_VERSION, nBestHeight, addrMe.ToString(), addrYou.ToString(), id);
     else
-        LogPrint("net", "send version message: version %d, blocks=%d, us=%s, peer=%d\n", PROTOCOL_VERSION, nBestHeight, addrMe.ToString(), id);
+        edcLogPrint("net", "send version message: version %d, blocks=%d, us=%s, peer=%d\n", PROTOCOL_VERSION, nBestHeight, addrMe.ToString(), id);
     PushMessage(NetMsgType::VERSION, PROTOCOL_VERSION, edcnLocalServices, nTime, addrYou, addrMe,
                 edcnLocalHostNonce, edcstrSubVersion, nBestHeight, !GetBoolArg("-blocksonly", DEFAULT_BLOCKSONLY));
 }
@@ -542,7 +549,7 @@ void CEDCNode::SweepBanned()
         {
             setBanned.erase(it++);
             setBannedIsDirty = true;
-            LogPrint("net", "%s: Removed banned node ip/subnet from banlist.dat: %s\n", __func__, subNet.ToString());
+            edcLogPrint("net", "%s: Removed banned node ip/subnet from banlist.dat: %s\n", __func__, subNet.ToString());
         }
         else
             ++it;
@@ -650,7 +657,7 @@ bool CEDCNode::ReceiveMsgBytes(const char *pch, unsigned int nBytes)
 
         if (msg.in_data && msg.hdr.nMessageSize > MAX_PROTOCOL_MESSAGE_LENGTH) 
 		{
-            LogPrint("net", "Oversized message from peer=%i, disconnecting\n", GetId());
+            edcLogPrint("net", "Oversized message from peer=%i, disconnecting\n", GetId());
             return false;
         }
 
@@ -713,7 +720,7 @@ void SocketSendData(CEDCNode *pnode)
                 int nErr = WSAGetLastError();
                 if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
                 {
-                    LogPrintf("socket send error %s\n", NetworkErrorString(nErr));
+                    edcLogPrintf("socket send error %s\n", NetworkErrorString(nErr));
                     pnode->CloseSocketDisconnect();
                 }
             }
@@ -910,11 +917,12 @@ static void AcceptConnection(const ListenSocket& hListenSocket)
     SOCKET hSocket = accept(hListenSocket.socket, (struct sockaddr*)&sockaddr, &len);
     CAddress addr;
     int nInbound = 0;
-    int nMaxInbound = edcnMaxConnections - MAX_OUTBOUND_CONNECTIONS;
+	EDCapp & theApp = EDCapp::singleton();
+    int nMaxInbound = theApp.maxConnections() - MAX_OUTBOUND_CONNECTIONS;
 
     if (hSocket != INVALID_SOCKET)
         if (!addr.SetSockAddr((const struct sockaddr*)&sockaddr))
-            LogPrintf("Warning: Unknown socket family\n");
+            edcLogPrintf("Warning: Unknown socket family\n");
 
     bool whitelisted = hListenSocket.whitelisted || CEDCNode::IsWhitelistedRange(addr);
     {
@@ -928,13 +936,13 @@ static void AcceptConnection(const ListenSocket& hListenSocket)
     {
         int nErr = WSAGetLastError();
         if (nErr != WSAEWOULDBLOCK)
-            LogPrintf("socket error accept failed: %s\n", NetworkErrorString(nErr));
+            edcLogPrintf("socket error accept failed: %s\n", NetworkErrorString(nErr));
         return;
     }
 
     if (!IsSelectableSocket(hSocket))
     {
-        LogPrintf("connection from %s dropped: non-selectable socket\n", addr.ToString());
+        edcLogPrintf("connection from %s dropped: non-selectable socket\n", addr.ToString());
         CloseSocket(hSocket);
         return;
     }
@@ -950,7 +958,7 @@ static void AcceptConnection(const ListenSocket& hListenSocket)
 
     if (CEDCNode::IsBanned(addr) && !whitelisted)
     {
-        LogPrintf("connection from %s dropped (banned)\n", addr.ToString());
+        edcLogPrintf("connection from %s dropped (banned)\n", addr.ToString());
         CloseSocket(hSocket);
         return;
     }
@@ -960,7 +968,7 @@ static void AcceptConnection(const ListenSocket& hListenSocket)
         if (!AttemptToEvictConnection(whitelisted)) 
 		{
             // No connection to evict, disconnect the new connection
-            LogPrint("net", "failed to find an eviction candidate - connection dropped (full)\n");
+            edcLogPrint("net", "failed to find an eviction candidate - connection dropped (full)\n");
             CloseSocket(hSocket);
             return;
         }
@@ -970,7 +978,7 @@ static void AcceptConnection(const ListenSocket& hListenSocket)
     pnode->AddRef();
     pnode->fWhitelisted = whitelisted;
 
-    LogPrint("net", "connection from %s accepted\n", addr.ToString());
+    edcLogPrint("net", "connection from %s accepted\n", addr.ToString());
 
     {
         LOCK(edccs_vNodes);
@@ -1122,7 +1130,7 @@ void edcThreadSocketHandler()
             if (have_fds)
             {
                 int nErr = WSAGetLastError();
-                LogPrintf("socket select error %s\n", NetworkErrorString(nErr));
+                edcLogPrintf("socket select error %s\n", NetworkErrorString(nErr));
                 for (unsigned int i = 0; i <= hSocketMax; i++)
                     FD_SET(i, &fdsetRecv);
             }
@@ -1182,7 +1190,7 @@ void edcThreadSocketHandler()
                         {
                             // socket closed gracefully
                             if (!pnode->fDisconnect)
-                                LogPrint("net", "socket closed\n");
+                                edcLogPrint("net", "socket closed\n");
                             pnode->CloseSocketDisconnect();
                         }
                         else if (nBytes < 0)
@@ -1192,7 +1200,7 @@ void edcThreadSocketHandler()
                             if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
                             {
                                 if (!pnode->fDisconnect)
-                                    LogPrintf("socket recv error %s\n", NetworkErrorString(nErr));
+                                    edcLogPrintf("socket recv error %s\n", NetworkErrorString(nErr));
                                 pnode->CloseSocketDisconnect();
                             }
                         }
@@ -1220,22 +1228,22 @@ void edcThreadSocketHandler()
             {
                 if (pnode->nLastRecv == 0 || pnode->nLastSend == 0)
                 {
-                    LogPrint("net", "socket no message in first 60 seconds, %d %d from %d\n", pnode->nLastRecv != 0, pnode->nLastSend != 0, pnode->id);
+                    edcLogPrint("net", "socket no message in first 60 seconds, %d %d from %d\n", pnode->nLastRecv != 0, pnode->nLastSend != 0, pnode->id);
                     pnode->fDisconnect = true;
                 }
                 else if (nTime - pnode->nLastSend > TIMEOUT_INTERVAL)
                 {
-                    LogPrintf("socket sending timeout: %is\n", nTime - pnode->nLastSend);
+                    edcLogPrintf("socket sending timeout: %is\n", nTime - pnode->nLastSend);
                     pnode->fDisconnect = true;
                 }
                 else if (nTime - pnode->nLastRecv > (pnode->nVersion > BIP0031_VERSION ? TIMEOUT_INTERVAL : 90*60))
                 {
-                    LogPrintf("socket receive timeout: %is\n", nTime - pnode->nLastRecv);
+                    edcLogPrintf("socket receive timeout: %is\n", nTime - pnode->nLastRecv);
                     pnode->fDisconnect = true;
                 }
                 else if (pnode->nPingNonceSent && pnode->nPingUsecStart + TIMEOUT_INTERVAL * 1000000 < GetTimeMicros())
                 {
-                    LogPrintf("ping timeout: %fs\n", 0.000001 * (GetTimeMicros() - pnode->nPingUsecStart));
+                    edcLogPrintf("ping timeout: %fs\n", 0.000001 * (GetTimeMicros() - pnode->nPingUsecStart));
                     pnode->fDisconnect = true;
                 }
             }
@@ -1282,16 +1290,16 @@ void ThreadMapPort()
             char externalIPAddress[40];
             r = UPNP_GetExternalIPAddress(urls.controlURL, data.first.servicetype, externalIPAddress);
             if(r != UPNPCOMMAND_SUCCESS)
-                LogPrintf("UPnP: GetExternalIPAddress() returned %d\n", r);
+                edcLogPrintf("UPnP: GetExternalIPAddress() returned %d\n", r);
             else
             {
                 if(externalIPAddress[0])
                 {
-                    LogPrintf("UPnP: ExternalIPAddress = %s\n", externalIPAddress);
+                    edcLogPrintf("UPnP: ExternalIPAddress = %s\n", externalIPAddress);
                     AddLocal(CNetAddr(externalIPAddress), LOCAL_UPNP);
                 }
                 else
-                    LogPrintf("UPnP: GetExternalIPAddress failed.\n");
+                    edcLogPrintf("UPnP: GetExternalIPAddress failed.\n");
             }
         }
 
@@ -1312,10 +1320,10 @@ void ThreadMapPort()
 #endif
 
                 if(r!=UPNPCOMMAND_SUCCESS)
-                    LogPrintf("AddPortMapping(%s, %s, %s) failed with code %d (%s)\n",
+                    edcLogPrintf("AddPortMapping(%s, %s, %s) failed with code %d (%s)\n",
                         port, port, lanaddr, r, strupnperror(r));
                 else
-                    LogPrintf("UPnP Port Mapping successful.\n");
+                    edcLogPrintf("UPnP Port Mapping successful.\n");
 
                 MilliSleep(20*60*1000); // Refresh every 20 minutes
             }
@@ -1323,7 +1331,7 @@ void ThreadMapPort()
         catch (const boost::thread_interrupted&)
         {
             r = UPNP_DeletePortMapping(urls.controlURL, data.first.servicetype, port.c_str(), "TCP", 0);
-            LogPrintf("UPNP_DeletePortMapping() returned: %d\n", r);
+            edcLogPrintf("UPNP_DeletePortMapping() returned: %d\n", r);
             freeUPNPDevlist(devlist); devlist = 0;
             FreeUPNPUrls(&urls);
             throw;
@@ -1331,7 +1339,7 @@ void ThreadMapPort()
     } 
 	else 
 	{
-        LogPrintf("No valid UPnP IGDs found\n");
+        edcLogPrintf("No valid UPnP IGDs found\n");
         freeUPNPDevlist(devlist); devlist = 0;
         if (r != 0)
             FreeUPNPUrls(&urls);
@@ -1350,7 +1358,7 @@ void edcMapPort(bool fUseUPnP)
             upnp_thread->join();
             delete upnp_thread;
         }
-        upnp_thread = new boost::thread(boost::bind(&TraceThread<void (*)()>, "upnp", &ThreadMapPort));
+        upnp_thread = new boost::thread(boost::bind(&edcTraceThread<void (*)()>, "upnp", &ThreadMapPort));
     }
     else if (upnp_thread) 
 	{
@@ -1380,7 +1388,7 @@ void edcThreadDNSAddressSeed()
         LOCK(edccs_vNodes);
         if (vEDCNodes.size() >= 2) 
 		{
-            LogPrintf("P2P peers available. Skipped DNS seeding.\n");
+            edcLogPrintf("P2P peers available. Skipped DNS seeding.\n");
             return;
         }
     }
@@ -1388,7 +1396,7 @@ void edcThreadDNSAddressSeed()
     const vector<CDNSSeedData> &vSeeds = Params().DNSSeeds();
     int found = 0;
 
-    LogPrintf("Loading addresses from DNS seeds (could take a while)\n");
+    edcLogPrintf("Loading addresses from DNS seeds (could take a while)\n");
 
     BOOST_FOREACH(const CDNSSeedData &seed, vSeeds) 
 	{
@@ -1425,7 +1433,7 @@ void edcThreadDNSAddressSeed()
         }
     }
 
-    LogPrintf("%d addresses found from DNS seeds\n", found);
+    edcLogPrintf("%d addresses found from DNS seeds\n", found);
 }
 
 void edcDumpAddresses()
@@ -1435,7 +1443,7 @@ void edcDumpAddresses()
     CAddrDB adb;
     adb.Write(edcaddrman);
 
-    LogPrint("net", "Flushed %d addresses to peers.dat  %dms\n",
+    edcLogPrint("net", "Flushed %d addresses to peers.dat  %dms\n",
            edcaddrman.size(), GetTimeMillis() - nStart);
 }
 
@@ -1502,7 +1510,7 @@ void edcThreadOpenConnections()
             static bool done = false;
             if (!done) 
 			{
-                LogPrintf("Adding fixed seed nodes as DNS doesn't seem to be available.\n");
+                edcLogPrintf("Adding fixed seed nodes as DNS doesn't seem to be available.\n");
                 edcaddrman.Add(convertSeed6(Params().FixedSeeds()), CNetAddr("127.0.0.1"));
                 done = true;
             }
@@ -1747,7 +1755,7 @@ bool edcBindListenPort(const CService &addrBind, string& strError, bool fWhiteli
     if (!addrBind.GetSockAddr((struct sockaddr*)&sockaddr, &len))
     {
         strError = strprintf("Error: Bind address family for %s not supported", addrBind.ToString());
-        LogPrintf("%s\n", strError);
+        edcLogPrintf("%s\n", strError);
         return false;
     }
 
@@ -1755,13 +1763,13 @@ bool edcBindListenPort(const CService &addrBind, string& strError, bool fWhiteli
     if (hListenSocket == INVALID_SOCKET)
     {
         strError = strprintf("Error: Couldn't open socket for incoming connections (socket returned error %s)", NetworkErrorString(WSAGetLastError()));
-        LogPrintf("%s\n", strError);
+        edcLogPrintf("%s\n", strError);
         return false;
     }
     if (!IsSelectableSocket(hListenSocket))
     {
         strError = "Error: Couldn't create a listenable socket for incoming connections";
-        LogPrintf("%s\n", strError);
+        edcLogPrintf("%s\n", strError);
         return false;
     }
 
@@ -1785,7 +1793,7 @@ bool edcBindListenPort(const CService &addrBind, string& strError, bool fWhiteli
     if (!SetSocketNonBlocking(hListenSocket, true)) 
 	{
         strError = strprintf("edcBindListenPort: Setting listening socket to non-blocking failed, error %s\n", NetworkErrorString(WSAGetLastError()));
-        LogPrintf("%s\n", strError);
+        edcLogPrintf("%s\n", strError);
         return false;
     }
 
@@ -1813,17 +1821,17 @@ bool edcBindListenPort(const CService &addrBind, string& strError, bool fWhiteli
             strError = strprintf(_("Unable to bind to %s on this computer. %s is probably already running."), addrBind.ToString(), _(PACKAGE_NAME));
         else
             strError = strprintf(_("Unable to bind to %s on this computer (bind returned error %s)"), addrBind.ToString(), NetworkErrorString(nErr));
-        LogPrintf("%s\n", strError);
+        edcLogPrintf("%s\n", strError);
         CloseSocket(hListenSocket);
         return false;
     }
-    LogPrintf("Bound to %s\n", addrBind.ToString());
+    edcLogPrintf("Bound to %s\n", addrBind.ToString());
 
     // Listen for incoming connections
     if (listen(hListenSocket, SOMAXCONN) == SOCKET_ERROR)
     {
         strError = strprintf(_("Error: Listening for incoming connections failed (listen returned error %s)"), NetworkErrorString(WSAGetLastError()));
-        LogPrintf("%s\n", strError);
+        edcLogPrintf("%s\n", strError);
         CloseSocket(hListenSocket);
         return false;
     }
@@ -1852,7 +1860,7 @@ void static Discover(boost::thread_group& threadGroup)
             BOOST_FOREACH (const CNetAddr &addr, vaddr)
             {
                 if (AddLocal(addr, LOCAL_IF))
-                    LogPrintf("%s: %s - %s\n", __func__, pszHostName, addr.ToString());
+                    edcLogPrintf("%s: %s - %s\n", __func__, pszHostName, addr.ToString());
             }
         }
     }
@@ -1872,14 +1880,14 @@ void static Discover(boost::thread_group& threadGroup)
                 struct sockaddr_in* s4 = (struct sockaddr_in*)(ifa->ifa_addr);
                 CNetAddr addr(s4->sin_addr);
                 if (AddLocal(addr, LOCAL_IF))
-                    LogPrintf("%s: IPv4 %s: %s\n", __func__, ifa->ifa_name, addr.ToString());
+                    edcLogPrintf("%s: IPv4 %s: %s\n", __func__, ifa->ifa_name, addr.ToString());
             }
             else if (ifa->ifa_addr->sa_family == AF_INET6)
             {
                 struct sockaddr_in6* s6 = (struct sockaddr_in6*)(ifa->ifa_addr);
                 CNetAddr addr(s6->sin6_addr);
                 if (AddLocal(addr, LOCAL_IF))
-                    LogPrintf("%s: IPv6 %s: %s\n", __func__, ifa->ifa_name, addr.ToString());
+                    edcLogPrintf("%s: IPv6 %s: %s\n", __func__, ifa->ifa_name, addr.ToString());
             }
         }
         freeifaddrs(myaddrs);
@@ -1895,10 +1903,10 @@ void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
     {
         CAddrDB adb;
         if (adb.Read(edcaddrman))
-            LogPrintf("Loaded %i addresses from peers.dat  %dms\n", edcaddrman.size(), GetTimeMillis() - nStart);
+            edcLogPrintf("Loaded %i addresses from peers.dat  %dms\n", edcaddrman.size(), GetTimeMillis() - nStart);
         else 
 		{
-            LogPrintf("Invalid or missing peers.dat; recreating\n");
+            edcLogPrintf("Invalid or missing peers.dat; recreating\n");
             edcDumpAddresses();
         }
     }
@@ -1914,12 +1922,12 @@ void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
         CEDCNode::SetBannedSetDirty(false); // no need to write down, just read data
         CEDCNode::SweepBanned(); // sweep out unused entries
 
-        LogPrint("net", "Loaded %d banned node ips/subnets from banlist.dat  %dms\n",
+        edcLogPrint("net", "Loaded %d banned node ips/subnets from banlist.dat  %dms\n",
             banmap.size(), GetTimeMillis() - nStart);
     } 
 	else 
 	{
-        LogPrintf("Invalid or missing banlist.dat; recreating\n");
+        edcLogPrintf("Invalid or missing banlist.dat; recreating\n");
         CEDCNode::SetBannedSetDirty(true); // force write
         edcDumpBanlist();
     }
@@ -1929,7 +1937,8 @@ void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
     if (semOutbound == NULL) 
 	{
         // initialize semaphore
-        int nMaxOutbound = std::min(MAX_OUTBOUND_CONNECTIONS, edcnMaxConnections);
+		EDCapp & theApp = EDCapp::singleton();
+        int nMaxOutbound = std::min(MAX_OUTBOUND_CONNECTIONS, theApp.maxConnections() );
         semOutbound = new CSemaphore(nMaxOutbound);
     }
 
@@ -1943,24 +1952,24 @@ void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
     //
 
     if (!GetBoolArg("-dnsseed", true))
-        LogPrintf("DNS seeding disabled\n");
+        edcLogPrintf("DNS seeding disabled\n");
     else
-        threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "dnsseed", &edcThreadDNSAddressSeed));
+        threadGroup.create_thread(boost::bind(&edcTraceThread<void (*)()>, "dnsseed", &edcThreadDNSAddressSeed));
 
     // Map ports with UPnP
     edcMapPort(GetBoolArg("-upnp", DEFAULT_UPNP));
 
     // Send and receive from sockets, accept connections
-    threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "net", &edcThreadSocketHandler));
+    threadGroup.create_thread(boost::bind(&edcTraceThread<void (*)()>, "net", &edcThreadSocketHandler));
 
     // Initiate outbound connections from -addnode
-    threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "addcon", &edcThreadOpenAddedConnections));
+    threadGroup.create_thread(boost::bind(&edcTraceThread<void (*)()>, "addcon", &edcThreadOpenAddedConnections));
 
     // Initiate outbound connections
-    threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "opencon", &edcThreadOpenConnections));
+    threadGroup.create_thread(boost::bind(&edcTraceThread<void (*)()>, "opencon", &edcThreadOpenConnections));
 
     // Process messages
-    threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "msghand", &edcThreadMessageHandler));
+    threadGroup.create_thread(boost::bind(&edcTraceThread<void (*)()>, "msghand", &edcThreadMessageHandler));
 
     // Dump network addresses
     scheduler.scheduleEvery(&edcDumpData, DUMP_ADDRESSES_INTERVAL);
@@ -1968,7 +1977,7 @@ void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
 
 bool edcStopNode()
 {
-    LogPrintf("edcStopNode()\n");
+    edcLogPrintf("edcStopNode()\n");
     edcMapPort(false);
     if (semOutbound)
         for (int i=0; i<MAX_OUTBOUND_CONNECTIONS; i++)
@@ -1997,7 +2006,7 @@ public:
         BOOST_FOREACH(ListenSocket& hListenSocket, vhListenSocket)
             if (hListenSocket.socket != INVALID_SOCKET)
                 if (!CloseSocket(hListenSocket.socket))
-                    LogPrintf("CloseSocket(hListenSocket) failed with error %s\n", NetworkErrorString(WSAGetLastError()));
+                    edcLogPrintf("CloseSocket(hListenSocket) failed with error %s\n", NetworkErrorString(WSAGetLastError()));
 
         // clean up some globals (to help leak detection)
         BOOST_FOREACH(CEDCNode *pnode, vEDCNodes)
@@ -2073,7 +2082,7 @@ void CEDCNode::SetMaxOutboundTarget(uint64_t limit)
     nMaxOutboundLimit = limit;
 
     if (limit > 0 && limit < recommendedMinimum)
-        LogPrintf("Max outbound target is very small (%s bytes) and will be overshot. Recommended minimum is %s bytes.\n", nMaxOutboundLimit, recommendedMinimum);
+        edcLogPrintf("Max outbound target is very small (%s bytes) and will be overshot. Recommended minimum is %s bytes.\n", nMaxOutboundLimit, recommendedMinimum);
 }
 
 uint64_t CEDCNode::GetMaxOutboundTarget()
@@ -2258,10 +2267,11 @@ CEDCNode::CEDCNode(SOCKET hSocketIn, const CAddress& addrIn, const std::string& 
         id = edcnLastNodeId++;
     }
 
-    if (fLogIPs)
-        LogPrint("net", "Added connection to %s peer=%d\n", addrName, id);
+	EDCparams & params = EDCparams::singleton();
+    if (params.logips)
+        edcLogPrint("net", "Added connection to %s peer=%d\n", addrName, id);
     else
-        LogPrint("net", "Added connection peer=%d\n", id);
+        edcLogPrint("net", "Added connection peer=%d\n", id);
 
     // Be shy and don't send version until we hear
     if (hSocket != INVALID_SOCKET && !fInbound)

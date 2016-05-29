@@ -19,9 +19,6 @@ void RegisterMiscRPCCommands(CRPCTable &tableRPC);
 void RegisterMiningRPCCommands(CRPCTable &tableRPC);
 /** Register raw transaction RPC commands */
 void RegisterRawTransactionRPCCommands(CRPCTable &tableRPC);
-/** EDC BEGIN **/
-void RegisterEDCRPCCommands( CRPCTable & tableRPC);
-/** EDC END **/
 
 static inline void RegisterAllCoreRPCCommands(CRPCTable &tableRPC)
 {
@@ -30,9 +27,6 @@ static inline void RegisterAllCoreRPCCommands(CRPCTable &tableRPC)
     RegisterMiscRPCCommands(tableRPC);
     RegisterMiningRPCCommands(tableRPC);
     RegisterRawTransactionRPCCommands(tableRPC);
-/** EDC BEGIN **/
-    RegisterEDCRPCCommands(tableRPC);
-/** EDC END **/
 }
 
 #endif

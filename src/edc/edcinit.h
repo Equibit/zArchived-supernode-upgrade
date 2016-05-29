@@ -7,8 +7,6 @@
 
 #include <string>
 #include "scheduler.h"
-#include "init.h"
 
 
 bool EdcAppInit(boost::thread_group& threadGroup, CScheduler& scheduler);
-std::string edcHelpMessage(HelpMessageMode mode);
