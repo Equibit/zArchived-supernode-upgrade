@@ -197,6 +197,11 @@ void UpdateCoins(const CEDCTransaction& tx, CEDCCoinsViewCache &inputs, int nHei
 /** Context-independent validity checks */
 bool CheckTransaction(const CEDCTransaction& tx, CValidationState& state);
 
+/** Register with a network node to receive its signals */
+void RegisterNodeSignals(CEDCNodeSignals& nodeSignals);
+/** Unregister a network node */
+void UnregisterNodeSignals(CEDCNodeSignals& nodeSignals);
+
 /**
  * Check if transaction is final and can be included in a block with the
  * specified height and time. Consensus critical.

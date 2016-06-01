@@ -38,6 +38,7 @@ public:
 	bool logips;
 	bool logtimemicros;
 	bool logtimestamps;
+	bool mempoolreplacement;
 	bool nodebug;
 	bool peerbloomfilters;
 	bool permitbaremultisig;
@@ -64,7 +65,6 @@ public:
 	bool walletbroadcast;
 	bool whitelistforcerelay;
 	bool whitelistrelay;
-	bool zapwallettxes;
 
 	// int parameters
 	int64_t banscore;
@@ -107,6 +107,7 @@ public:
 	int64_t rpcworkqueue;
 	int64_t timeout;
 	int64_t txconfirmtarget;
+	int64_t zapwallettxes;
 
 	// String parameters
 	std::string alertnotify;
@@ -114,7 +115,6 @@ public:
 	std::string conf;
 	std::string datadir;
 	std::string fallbackfee;
-	std::string mempoolreplacement;
 	std::string minrelaytxfee;
 	std::string mintxfee;
 	std::string onion;

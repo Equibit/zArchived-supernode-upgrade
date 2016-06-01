@@ -92,5 +92,8 @@ void edcOpenDebugLog();
 void edcShrinkDebugFile();
 void edcRunCommand(const std::string& strCommand);
 const boost::filesystem::path & edcGetDataDir( bool = true );
+boost::filesystem::path edcGetDefaultDataDir();
+boost::filesystem::path edcGetPidFile();
+boost::filesystem::path edcGetConfigFile();
 
 #endif // EDC_EDCUTIL_H

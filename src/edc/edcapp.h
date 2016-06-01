@@ -33,6 +33,12 @@ public:
 	CAmount maxTxFee() const		{ return maxTxFee_; }
 	void maxTxFee( CAmount & m )	{ maxTxFee_ = m; }
 
+	uint64_t localServices() const	{ return localServices_; }
+	void localServices( uint64_t l ){ localServices_ = l; }
+
+	bool enableReplacement() const	{ return enableReplacement_; }
+	void enableReplacement( bool b) { enableReplacement_ = b; }
+
 	static EDCapp & singleton();
 
 private:
@@ -66,6 +72,8 @@ private:
 	/** Number of MiB of block files that we're trying to stay below. */
 	uint64_t pruneTarget_;
 	
+	uint64_t localServices_;
+
 	/** Absolute maximum transaction fee (in satoshis) used by wallet
 	 *  and mempool (rejects high fee in sendrawtransaction) 
 	 */
@@ -82,7 +90,6 @@ private:
 /*
 	int64_t maxTipAge_;
 
-	uint64_t localServices_;
 	uint64_t localHostNonce_;
 	uint64_t edcnLastBlockTx_;
 	uint64_t edcnLastBlockSize_;

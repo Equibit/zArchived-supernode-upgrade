@@ -376,40 +376,47 @@ extern void edcInitWarning(const std::string& str);
 bool CEDCWallet::Verify()
 {
     edcLogPrintf("Using BerkeleyDB version %s\n", DbEnv::version(0, 0, 0));
-    std::string walletFile = GetArg("-wallet", edcDEFAULT_WALLET_DAT);
+	EDCparams & params = EDCparams::singleton();
+    std::string walletFile = params.wallet;
 
     edcLogPrintf("Using wallet %s\n", walletFile);
     edcUiInterface.InitMessage(_("Verifying wallet..."));
 
     // Wallet file must be a plain filename without a directory
     if (walletFile != boost::filesystem::basename(walletFile) + boost::filesystem::extension(walletFile))
-        return edcInitError(strprintf(_("Wallet %s resides outside data directory %s"), walletFile, edcGetDataDir().string()));
+        return edcInitError(strprintf(_("Wallet %s resides outside data "
+			"directory %s"), walletFile, edcGetDataDir().string()));
 
     if (!bitdb.Open(edcGetDataDir()))
     {
         // try moving the database env out of the way
         boost::filesystem::path pathDatabase = edcGetDataDir() / "database";
-        boost::filesystem::path pathDatabaseBak = edcGetDataDir() / strprintf("database.%d.bak", GetTime());
+        boost::filesystem::path pathDatabaseBak = edcGetDataDir() / 
+			strprintf("database.%d.bak", GetTime());
 
         try 
 		{
             boost::filesystem::rename(pathDatabase, pathDatabaseBak);
-            edcLogPrintf("Moved old %s to %s. Retrying.\n", pathDatabase.string(), pathDatabaseBak.string());
+            edcLogPrintf("Moved old %s to %s. Retrying.\n", 
+				pathDatabase.string(), pathDatabaseBak.string());
         } 
 		catch (const boost::filesystem::filesystem_error&) 
 		{
-            // failure is ok (well, not really, but it's not worse than what we started with)
+            // failure is ok (well, not really, but it's not worse than what 
+			// we started with)
         }
         
         // try again
         if (!bitdb.Open(edcGetDataDir())) 
 		{
-            // if it still fails, it probably means we can't even create the database env
-            return edcInitError(strprintf(_("Error initializing wallet database environment %s!"), edcGetDataDir()));
+            // if it still fails, it probably means we can't even create the 
+			// database env
+            return edcInitError(strprintf(_("Error initializing wallet "
+				"database environment %s!"), edcGetDataDir()));
         }
     }
     
-    if (GetBoolArg("-salvagewallet", false))
+    if (params.salvagewallet )
     {
         // Recover readable keypairs:
         if (!CEDCWalletDB::Recover(bitdb, walletFile, true))
@@ -418,17 +425,19 @@ bool CEDCWallet::Verify()
     
     if (boost::filesystem::exists(edcGetDataDir() / walletFile))
     {
-        CDBEnv::VerifyResult r = bitdb.Verify(walletFile, CEDCWalletDB::Recover);
+        CDBEnv::VerifyResult r = bitdb.Verify(walletFile,CEDCWalletDB::Recover);
         if (r == CDBEnv::RECOVER_OK)
         {
-            edcInitWarning(strprintf(_("Warning: Wallet file corrupt, data salvaged!"
-                                         " Original %s saved as %s in %s; if"
-                                         " your balance or transactions are incorrect you should"
-                                         " restore from a backup."),
+            edcInitWarning(strprintf(
+				_("Warning: Wallet file corrupt, data salvaged!"
+                  " Original %s saved as %s in %s; if"
+                  " your balance or transactions are incorrect you should"
+                  " restore from a backup."),
                 walletFile, "wallet.{timestamp}.bak", edcGetDataDir()));
         }
         if (r == CDBEnv::RECOVER_FAIL)
-            return edcInitError(strprintf(_("%s corrupt, salvage failed"), walletFile));
+            return edcInitError(strprintf(_("%s corrupt, salvage failed"), 
+				walletFile));
     }
     
     return true;
@@ -764,7 +773,8 @@ bool CEDCWallet::AddToWallet(const CEDCWalletTx& wtxIn, bool fFromLoadWallet, CE
         NotifyTransactionChanged(this, hash, fInsertedNew ? CT_NEW : CT_UPDATED);
 
         // notify an external script when a wallet transaction comes in or is updated
-        std::string strCmd = GetArg("-walletnotify", "");
+		EDCparams & params = EDCparams::singleton();
+        std::string strCmd = params.walletnotify;
 
         if ( !strCmd.empty())
         {
@@ -2562,7 +2572,8 @@ bool CEDCWallet::NewKeyPool()
         if (IsLocked())
             return false;
 
-        int64_t nKeys = max(GetArg("-keypool", DEFAULT_KEYPOOL_SIZE), (int64_t)0);
+		EDCparams & params = EDCparams::singleton();
+        int64_t nKeys = max(params.keypool, (int64_t)0);
         for (int i = 0; i < nKeys; i++)
         {
             int64_t nIndex = i+1;
@@ -2576,6 +2587,7 @@ bool CEDCWallet::NewKeyPool()
 
 bool CEDCWallet::TopUpKeyPool(unsigned int kpSize)
 {
+	EDCparams & params = EDCparams::singleton();
     {
         LOCK(cs_wallet);
 
@@ -2589,7 +2601,7 @@ bool CEDCWallet::TopUpKeyPool(unsigned int kpSize)
         if (kpSize > 0)
             nTargetSize = kpSize;
         else
-            nTargetSize = max(GetArg("-keypool", DEFAULT_KEYPOOL_SIZE), (int64_t) 0);
+            nTargetSize = max(params.keypool, (int64_t) 0);
 
         while (setKeyPool.size() < (nTargetSize + 1))
         {
@@ -3129,13 +3141,14 @@ std::string CEDCWallet::GetWalletHelpString(bool showDebug)
 }
 
 bool CEDCWallet::InitLoadWallet()
-{
-    std::string walletFile = GetArg("-wallet", edcDEFAULT_WALLET_DAT);
+{	
+	EDCparams & params = EDCparams::singleton();
+    std::string walletFile = params.wallet;
 
     // needed to restore wallet transaction meta data after -zapwallettxes
     std::vector<CEDCWalletTx> vWtx;
 
-    if (GetBoolArg("-zapwallettxes", false)) 
+    if ( params.zapwallettxes ) 
 	{
         edcUiInterface.InitMessage(_("Zapping all transactions from wallet..."));
 
@@ -3177,9 +3190,9 @@ bool CEDCWallet::InitLoadWallet()
             return edcInitError(strprintf(_("Error loading %s"), walletFile));
     }
 
-    if (GetBoolArg("-upgradewallet", fFirstRun))
+    if ( params.upgradewallet > 0 )
     {
-        int nMaxVersion = GetArg("-upgradewallet", 0);
+        int nMaxVersion = params.upgradewallet;
         if (nMaxVersion == 0) // the -upgradewallet without argument case
         {
             edcLogPrintf("Performing wallet upgrade to %i\n", FEATURE_LATEST);
@@ -3216,7 +3229,7 @@ bool CEDCWallet::InitLoadWallet()
     RegisterValidationInterface(walletInstance);
 
     CBlockIndex *pindexRescan = chainActive.Tip();
-    if (GetBoolArg("-rescan", false))
+    if ( params.rescan )
         pindexRescan = chainActive.Genesis();
     else
     {
@@ -3251,7 +3264,7 @@ bool CEDCWallet::InitLoadWallet()
         nWalletDBUpdated++;
 
         // Restore wallet transaction metadata after -zapwallettxes=1
-        if (GetBoolArg("-zapwallettxes", false) && GetArg("-zapwallettxes", "1") != "2")
+        if ( params.zapwallettxes != 2 )
         {
             CEDCWalletDB walletdb(walletFile);
 
@@ -3275,7 +3288,7 @@ bool CEDCWallet::InitLoadWallet()
             }
         }
     }
-    walletInstance->SetBroadcastTransactions(GetBoolArg("-walletbroadcast", DEFAULT_WALLETBROADCAST));
+    walletInstance->SetBroadcastTransactions(params.walletbroadcast );
 
     edcPwalletMain = walletInstance;
     return true;
@@ -3341,9 +3354,9 @@ bool CEDCWallet::ParameterInteraction()
         }
     }
 
-    edcnTxConfirmTarget = GetArg("-txconfirmtarget", DEFAULT_TX_CONFIRM_TARGET);
-    edcbSpendZeroConfChange = GetBoolArg("-spendzeroconfchange", DEFAULT_SPEND_ZEROCONF_CHANGE);
-    edcfSendFreeTransactions = GetBoolArg("-sendfreetransactions", DEFAULT_SEND_FREE_TRANSACTIONS);
+    edcnTxConfirmTarget = params.txconfirmtarget;
+    edcbSpendZeroConfChange = params.spendzeroconfchange;
+    edcfSendFreeTransactions = params.sendfreetransactions;
 
     return true;
 }

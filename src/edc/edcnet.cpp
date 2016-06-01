@@ -80,9 +80,6 @@ const static std::string NET_MESSAGE_COMMAND_OTHER = "*other*";
 //
 // Global state variables
 //
-bool edcfDiscover = true;
-bool edcfListen = true;
-uint64_t edcnLocalServices = NODE_NETWORK;
 CCriticalSection edccs_mapLocalHost;
 map<CNetAddr, LocalServiceInfo> edcmapLocalHost;
 static bool vfLimited[NET_MAX] = {};
@@ -121,13 +118,16 @@ CEDCNodeSignals& GetEDCNodeSignals() { return g_signals; }
 
 unsigned short edcGetListenPort()
 {
-    return (unsigned short)(GetArg("-port", Params().GetDefaultPort()));
+	EDCparams & params = EDCparams::singleton();
+    return static_cast<unsigned short>(params.port);
 }
 
 // find 'best' local address for a particular peer
 bool edcGetLocal(CService& addr, const CNetAddr *paddrPeer)
 {
-    if (!edcfListen)
+	EDCparams & params = EDCparams::singleton();
+
+    if (!params.listen)
         return false;
 
     int nBestScore = -1;
@@ -182,7 +182,8 @@ CAddress edcGetLocalAddress(const CNetAddr *paddrPeer)
     {
         ret = CAddress(addr);
     }
-    ret.nServices = edcnLocalServices;
+	EDCapp & theApp = EDCapp::singleton();
+    ret.nServices = theApp.localServices();
     ret.nTime = GetAdjustedTime();
     return ret;
 }
@@ -198,14 +199,17 @@ int edcGetnScore(const CService& addr)
 // Is our peer's addrLocal potentially useful as an external IP source?
 bool IsPeerAddrLocalGood(CEDCNode *pnode)
 {
-    return edcfDiscover && pnode->addr.IsRoutable() && pnode->addrLocal.IsRoutable() &&
+	EDCparams & params = EDCparams::singleton();
+    return params.discover && pnode->addr.IsRoutable() && pnode->addrLocal.IsRoutable() &&
            !edcIsLimited(pnode->addrLocal.GetNetwork());
 }
 
 // pushes our own address to a peer
 void AdvertiseLocal(CEDCNode *pnode)
 {
-    if (edcfListen && pnode->fSuccessfullyConnected)
+	EDCparams & params = EDCparams::singleton();
+
+    if (params.listen && pnode->fSuccessfullyConnected)
     {
         CAddress addrLocal = edcGetLocalAddress(&pnode->addr);
         // If discovery is enabled, sometimes give our peer the address it
@@ -424,13 +428,16 @@ void CEDCNode::PushVersion()
     CAddress addrYou = (addr.IsRoutable() && !IsProxy(addr) ? addr : CAddress(CService("0.0.0.0",0)));
     CAddress addrMe = edcGetLocalAddress(&addr);
     GetRandBytes((unsigned char*)&edcnLocalHostNonce, sizeof(edcnLocalHostNonce));
+
 	EDCparams & params = EDCparams::singleton();
+	EDCapp & theApp = EDCapp::singleton();
+
     if (params.logips)
         edcLogPrint("net", "send version message: version %d, blocks=%d, us=%s, them=%s, peer=%d\n", PROTOCOL_VERSION, nBestHeight, addrMe.ToString(), addrYou.ToString(), id);
     else
         edcLogPrint("net", "send version message: version %d, blocks=%d, us=%s, peer=%d\n", PROTOCOL_VERSION, nBestHeight, addrMe.ToString(), id);
-    PushMessage(NetMsgType::VERSION, PROTOCOL_VERSION, edcnLocalServices, nTime, addrYou, addrMe,
-                edcnLocalHostNonce, edcstrSubVersion, nBestHeight, !GetBoolArg("-blocksonly", DEFAULT_BLOCKSONLY));
+    PushMessage(NetMsgType::VERSION, PROTOCOL_VERSION, theApp.localServices(), nTime, addrYou, addrMe,
+                edcnLocalHostNonce, edcstrSubVersion, nBestHeight, !params.blocksonly);
 }
 
 
@@ -493,7 +500,8 @@ void CEDCNode::Ban(const CSubNet& subNet, const BanReason &banReason, int64_t ba
     banEntry.banReason = banReason;
     if (bantimeoffset <= 0)
     {
-        bantimeoffset = GetArg("-bantime", DEFAULT_MISBEHAVING_BANTIME);
+		EDCparams & params = EDCparams::singleton();
+        bantimeoffset = params.bantime;
         sinceUnixEpoch = false;
     }
     banEntry.nBanUntil = (sinceUnixEpoch ? 0 : GetTime() )+bantimeoffset;
@@ -1285,7 +1293,8 @@ void ThreadMapPort()
     r = UPNP_GetValidIGD(devlist, &urls, &data, lanaddr, sizeof(lanaddr));
     if (r == 1)
     {
-        if (edcfDiscover) 
+		EDCparams & params = EDCparams::singleton();
+        if (params.discover) 
 		{
             char externalIPAddress[40];
             r = UPNP_GetExternalIPAddress(urls.controlURL, data.first.servicetype, externalIPAddress);
@@ -1379,9 +1388,9 @@ void edcMapPort(bool)
 
 void edcThreadDNSAddressSeed()
 {
+	EDCparams & params = EDCparams::singleton();
     // goal: only query DNS seeds if address need is acute
-    if ((edcaddrman.size() > 0) &&
-        (!GetBoolArg("-forcednsseed", DEFAULT_FORCEDNSSEED))) 
+    if ((edcaddrman.size() > 0) && !params.forcednsseed ) 
 	{
         MilliSleep(11 * 1000);
 
@@ -1474,13 +1483,14 @@ void static ProcessOneShot()
 
 void edcThreadOpenConnections()
 {
+	EDCparams & params = EDCparams::singleton();
     // Connect to specific addresses
-    if (mapArgs.count("-connect") && mapMultiArgs["-connect"].size() > 0)
+    if ( params.connect.size() > 0)
     {
         for (int64_t nLoop = 0;; nLoop++)
         {
             ProcessOneShot();
-            BOOST_FOREACH(const std::string& strAddr, mapMultiArgs["-connect"])
+            BOOST_FOREACH(const std::string& strAddr, params.connect)
             {
                 CAddress addr;
                 edcOpenNetworkConnection(addr, NULL, strAddr.c_str());
@@ -1577,9 +1587,10 @@ void edcThreadOpenConnections()
 
 void edcThreadOpenAddedConnections()
 {
+	EDCparams & params = EDCparams::singleton();
     {
         LOCK(edccs_vAddedNodes);
-        edcvAddedNodes = mapMultiArgs["-addnode"];
+        edcvAddedNodes = params.addnode;
     }
 
     if (HaveNameProxy()) 
@@ -1616,7 +1627,8 @@ void edcThreadOpenAddedConnections()
         BOOST_FOREACH(const std::string& strAddNode, lAddresses) 
 		{
             vector<CService> vservNode(0);
-            if(Lookup(strAddNode.c_str(), vservNode, Params().GetDefaultPort(), fNameLookup, 0))
+			EDCparams & params = EDCparams::singleton();
+            if(Lookup(strAddNode.c_str(), vservNode, Params().GetDefaultPort(),				params.dns, 0))
             {
                 lservAddressesToAdd.push_back(vservNode);
                 {
@@ -1627,7 +1639,7 @@ void edcThreadOpenAddedConnections()
             }
         }
         // Attempt to connect to each IP for each addnode entry until at least one is successful per addnode entry
-        // (keeping in mind that addnode entries can have many IPs if fNameLookup)
+        // (keeping in mind that addnode entries can have many IPs if params.dns)
         {
             LOCK(edccs_vNodes);
             BOOST_FOREACH(CEDCNode* pnode, vEDCNodes)
@@ -1838,7 +1850,8 @@ bool edcBindListenPort(const CService &addrBind, string& strError, bool fWhiteli
 
     vhListenSocket.push_back(ListenSocket(hListenSocket, fWhitelisted));
 
-    if (addrBind.IsRoutable() && edcfDiscover && !fWhitelisted)
+	EDCparams & params = EDCparams::singleton();
+    if (addrBind.IsRoutable() && params.discover && !fWhitelisted)
         AddLocal(addrBind, LOCAL_BIND);
 
     return true;
@@ -1846,7 +1859,8 @@ bool edcBindListenPort(const CService &addrBind, string& strError, bool fWhiteli
 
 void static Discover(boost::thread_group& threadGroup)
 {
-    if (!edcfDiscover)
+	EDCparams & params = EDCparams::singleton();
+    if (!params.discover)
         return;
 
 #ifdef WIN32
@@ -1934,16 +1948,16 @@ void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
 
     edcfAddressesInitialized = true;
 
+	EDCapp & theApp = EDCapp::singleton();
     if (semOutbound == NULL) 
 	{
         // initialize semaphore
-		EDCapp & theApp = EDCapp::singleton();
         int nMaxOutbound = std::min(MAX_OUTBOUND_CONNECTIONS, theApp.maxConnections() );
         semOutbound = new CSemaphore(nMaxOutbound);
     }
 
     if (pnodeLocalHost == NULL)
-        pnodeLocalHost = new CEDCNode(INVALID_SOCKET, CAddress(CService("127.0.0.1", 0), edcnLocalServices));
+        pnodeLocalHost = new CEDCNode(INVALID_SOCKET, CAddress(CService("127.0.0.1", 0), theApp.localServices() ));
 
     Discover(threadGroup);
 
@@ -1951,13 +1965,14 @@ void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
     // Start threads
     //
 
-    if (!GetBoolArg("-dnsseed", true))
+	EDCparams & params = EDCparams::singleton();
+    if (!params.dnsseed)
         edcLogPrintf("DNS seeding disabled\n");
     else
         threadGroup.create_thread(boost::bind(&edcTraceThread<void (*)()>, "dnsseed", &edcThreadDNSAddressSeed));
 
     // Map ports with UPnP
-    edcMapPort(GetBoolArg("-upnp", DEFAULT_UPNP));
+    edcMapPort(params.upnp);
 
     // Send and receive from sockets, accept connections
     threadGroup.create_thread(boost::bind(&edcTraceThread<void (*)()>, "net", &edcThreadSocketHandler));
@@ -2203,11 +2218,13 @@ void CEDCNode::Fuzz(int nChance)
 
 unsigned int edcReceiveFloodSize() 
 { 
-	return 1000*GetArg("-maxreceivebuffer", DEFAULT_MAXRECEIVEBUFFER); 
+	EDCparams & params = EDCparams::singleton();
+	return 1000*params.maxreceivebuffer; 
 }
 unsigned int edcSendBufferSize() 
 { 
-	return 1000*GetArg("-maxsendbuffer", DEFAULT_MAXSENDBUFFER); 
+	EDCparams & params = EDCparams::singleton();
+	return 1000*params.maxsendbuffer; 
 }
 
 CEDCNode::CEDCNode(SOCKET hSocketIn, const CAddress& addrIn, const std::string& addrNameIn, bool fInboundIn) :
@@ -2346,14 +2363,15 @@ void CEDCNode::EndMessage(const char* pszCommand) UNLOCK_FUNCTION(cs_vSend)
     // The -*messagestest options are intentionally not documented in the help message,
     // since they are only used during development to debug the networking code and are
     // not intended for end-users.
-    if (mapArgs.count("-dropmessagestest") && GetRand(GetArg("-dropmessagestest", 2)) == 0)
+	EDCparams & params = EDCparams::singleton();
+    if (GetRand(params.dropmessagestest) == 0)
     {
         LogPrint("net", "dropmessages DROPPING SEND MESSAGE\n");
         AbortMessage();
         return;
     }
-    if (mapArgs.count("-fuzzmessagestest"))
-        Fuzz(GetArg("-fuzzmessagestest", 10));
+    if (params.fuzzmessagetest > 0 )
+        Fuzz(params.fuzzmessagetest);
 
     if (ssSend.size() == 0)
     {

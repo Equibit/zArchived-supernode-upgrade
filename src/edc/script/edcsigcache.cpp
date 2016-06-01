@@ -11,6 +11,7 @@
 #include "random.h"
 #include "uint256.h"
 #include "edc/edcutil.h"
+#include "edc/edcparams.h"
 
 #include <boost/thread.hpp>
 #include <boost/unordered_set.hpp>
@@ -71,7 +72,8 @@ public:
 
     void Set(const uint256& entry)
     {
-        size_t nMaxCacheSize = GetArg("-maxsigcachesize", DEFAULT_MAX_SIG_CACHE_SIZE) * ((size_t) 1 << 20);
+		EDCparams & params = EDCparams::singleton();
+        size_t nMaxCacheSize = params.maxsigcachesize * ((size_t) 1 << 20);
         if (nMaxCacheSize <= 0) return;
 
         boost::unique_lock<boost::shared_mutex> lock(cs_sigcache);

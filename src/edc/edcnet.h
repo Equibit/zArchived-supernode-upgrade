@@ -76,9 +76,6 @@ bool edcIsReachable(enum Network net);
 bool edcIsReachable(const CNetAddr &addr);
 
 
-extern bool edcfDiscover;
-extern bool edcfListen;
-extern uint64_t edcnLocalServices;
 extern uint64_t edcnLocalHostNonce;
 extern CAddrMan edcaddrman;
 

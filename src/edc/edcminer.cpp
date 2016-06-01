@@ -26,6 +26,7 @@
 #include "utilmoneystr.h"
 #include "edcvalidationinterface.h"
 #include "edcapp.h"
+#include "edcparams.h"
 
 #include <boost/thread.hpp>
 #include <boost/tuple/tuple.hpp>
@@ -79,18 +80,19 @@ CEDCBlockTemplate* CreateNewEDCBlock(const CChainParams& chainparams, const CScr
     pblocktemplate->vTxSigOps.push_back(-1); // updated at end
 
     // Largest block you're willing to create:
-    unsigned int nBlockMaxSize = GetArg("-blockmaxsize", DEFAULT_BLOCK_MAX_SIZE);
+    EDCparams & params = EDCparams::singleton();
+    unsigned int nBlockMaxSize = params.blockmaxsize;
     // Limit to between 1K and MAX_BLOCK_SIZE-1K for sanity:
     nBlockMaxSize = std::max((unsigned int)1000, std::min((unsigned int)(MAX_BLOCK_SIZE-1000), nBlockMaxSize));
 
     // How much of the block should be dedicated to high-priority transactions,
     // included regardless of the fees they pay
-    unsigned int nBlockPrioritySize = GetArg("-blockprioritysize", DEFAULT_BLOCK_PRIORITY_SIZE);
+    unsigned int nBlockPrioritySize = params.blockprioritysize;
     nBlockPrioritySize = std::min(nBlockMaxSize, nBlockPrioritySize);
 
     // Minimum block size you want to create; block will be filled with free transactions
     // until there are no more or the block reaches this size:
-    unsigned int nBlockMinSize = GetArg("-blockminsize", DEFAULT_BLOCK_MIN_SIZE);
+    unsigned int nBlockMinSize = params.blockminsize;
     nBlockMinSize = std::min(nBlockMaxSize, nBlockMinSize);
 
     // Collect memory pool transactions into the block
@@ -105,7 +107,7 @@ CEDCBlockTemplate* CreateNewEDCBlock(const CChainParams& chainparams, const CScr
     double actualPriority = -1;
 
     std::priority_queue<CEDCTxMemPool::txiter, std::vector<CEDCTxMemPool::txiter>, ScoreCompare> clearedTxs;
-    bool fPrintPriority = GetBoolArg("-printpriority", DEFAULT_PRINTPRIORITY);
+    bool fPrintPriority = params.printpriority;
     uint64_t nBlockSize = 1000;
     uint64_t nBlockTx = 0;
     unsigned int nBlockSigOps = 100;
@@ -124,7 +126,7 @@ CEDCBlockTemplate* CreateNewEDCBlock(const CChainParams& chainparams, const CScr
         // -regtest only: allow overriding block.nVersion with
         // -blockversion=N to test forking scenarios
         if (chainparams.MineBlocksOnDemand())
-            pblock->nVersion = GetArg("-blockversion", pblock->nVersion);
+            pblock->nVersion = params.blockversion;
 
         int64_t nLockTimeCutoff = (STANDARD_LOCKTIME_VERIFY_FLAGS & LOCKTIME_MEDIAN_TIME_PAST)
                                 ? nMedianTimePast

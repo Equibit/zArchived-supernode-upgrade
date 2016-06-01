@@ -111,18 +111,6 @@ const std::string  COOKIEAUTH_FILE                     = ".cookie";
 const char * const EQUIBIT_PID_FILENAME                = "equibit.pid";
 
 
-boost::filesystem::path GetEquibitConfigFile()
-{
-	EDCparams & params = EDCparams::singleton();
-
-    boost::filesystem::path pathConfigFile( params.conf );
-
-    if (!pathConfigFile.is_complete())
-        pathConfigFile = edcGetDataDir(false) / pathConfigFile;
-
-    return pathConfigFile;
-}
-
 bool InterpretBool(const std::string& strValue)
 {
     if (strValue.empty())
@@ -145,7 +133,7 @@ void ReadEquibitConfigFile(
 	              std::map<std::string, std::string> & mapSettingsRet,
     std::map<std::string, std::vector<std::string> > & mapMultiSettingsRet )
 {
-    boost::filesystem::ifstream streamConfig(GetEquibitConfigFile());
+    boost::filesystem::ifstream streamConfig(edcGetConfigFile());
     if (!streamConfig.good())
         return; // No bitcoin.conf file is OK
 
@@ -209,6 +197,7 @@ EDCparams::EDCparams()
 	logips              = GetBoolArg( "-eblogips", EDC_DEFAULT_LOGIPS );
 	logtimemicros       = GetBoolArg( "-eblogtimemicros", EDC_DEFAULT_LOGTIMEMICROS );
 	logtimestamps       = GetBoolArg( "-eblogtimestamps", EDC_DEFAULT_LOGTIMESTAMPS );
+	mempoolreplacement  = GetBoolArg( "-ebmempoolreplacement", EDC_DEFAULT_ENABLE_REPLACEMENT );
 	nodebug             = GetBoolArg( "-ebnodebug", false );
 	regtest             = GetBoolArg( "-ebregtest", false );
 	checkblockindex     = GetBoolArg( "-ebcheckblockindex", regtest );
@@ -286,7 +275,6 @@ EDCparams::EDCparams()
 	alertnotify         = GetArg( "-ebalertnotify", "" );
 	blocknotify         = GetArg( "-ebblocknotify", "" );
 	fallbackfee         = GetArg( "-ebfallbackfee", "" );
-	mempoolreplacement  = GetArg( "-ebmempoolreplacement", EDC_DEFAULT_ENABLE_REPLACEMENT );
 	minrelaytxfee       = GetArg( "-ebminrelaytxfee", "" );
 	mintxfee            = GetArg( "-ebmintxfee", "" );
 	onion               = GetArg( "-ebonion", "" );

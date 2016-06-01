@@ -40,6 +40,8 @@ bool edcIsStandard(const CScript& scriptPubKey, txnouttype& whichType)
     if (!Solver(scriptPubKey, whichType, vSolutions))
         return false;
 
+	EDCparams & params = EDCparams::singleton();
+
     if (whichType == TX_MULTISIG)
     {
         unsigned char m = vSolutions.front()[0];
@@ -51,7 +53,7 @@ bool edcIsStandard(const CScript& scriptPubKey, txnouttype& whichType)
             return false;
     } 
 	else if (whichType == TX_NULL_DATA &&
-    (!fAcceptDatacarrier || scriptPubKey.size() > nMaxDatacarrierBytes))
+    (!params.datacarrier || scriptPubKey.size() > params.datacarriersize ))
           return false;
 
     return whichType != TX_NONSTANDARD;

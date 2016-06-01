@@ -6,17 +6,26 @@
 #include "edcapp.h"
 #include "edcparams.h"
 #include "edcutil.h"
+#include "edcmain.h"
 #include "edcchainparams.h"
 #include "clientversion.h"
 #include "rpc/server.h"
 #include "edcui_interface.h"
 #include "utilmoneystr.h"
 #include "edc/wallet/edcwallet.h"
+#include <boost/interprocess/sync/file_lock.hpp>
 
 
 extern void RegisterEquibitRPCCommands( CRPCTable & tableRPC );
 extern void RegisterEquibitWalletRPCCommands(CRPCTable & tableRPC );
 
+/** Used to pass flags to the Bind() function */
+enum BindFlags {
+    BF_NONE         = 0,
+    BF_EXPLICIT     = (1U << 0),
+    BF_REPORT_ERROR = (1U << 1),
+    BF_WHITELIST    = (1U << 2),
+};
 
 #define MIN_CORE_FILEDESCRIPTORS 150
 
@@ -28,6 +37,24 @@ void edcInitLogging()
 {
     edcLogPrintf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
     edcLogPrintf("Equibit version %s (%s)\n", FormatFullVersion(), CLIENT_DATE);
+}
+
+std::string ResolveErrMsg(const char * const optname, const std::string& strBind)
+{
+    return strprintf(_("Cannot resolve -%s address: '%s'"), optname, strBind);
+}
+
+bool Bind(const CService &addr, unsigned int flags) 
+{
+    if (!(flags & BF_EXPLICIT) && IsLimited(addr))
+        return false;
+    std::string strError;
+    if (!BindListenPort(addr, strError, (flags & BF_WHITELIST) != 0)) {
+        if (flags & BF_REPORT_ERROR)
+            return edcInitError(strError);
+        return false;
+    }
+    return true;
 }
 
 }
@@ -142,7 +169,220 @@ bool EdcAppInit(
    			return false;
 #endif // ENABLE_WALLET
 
+	    if ( params.peerbloomfilters )
+   	    	theApp.localServices( theApp.localServices() | NODE_BLOOM );
 
+    	theApp.enableReplacement( params.mempoolreplacement );
+
+    	// ** Step 4:app initialization: dir lock, daemonize, pidfile, debug log
+
+    	std::string strDataDir = edcGetDataDir().string();
+
+	    // Make sure only a single Equibit process is using the data directory.
+   	 	boost::filesystem::path pathLockFile = edcGetDataDir() / ".lock";
+
+		// empty lock file; created if it doesn't exist.
+    	FILE * file = fopen(pathLockFile.string().c_str(), "a" ); 
+	    if (file) 
+			fclose(file);
+
+   	 	try 
+		{
+        	static boost::interprocess::file_lock lock(
+				pathLockFile.string().c_str());
+
+        	if (!lock.try_lock())
+            	return edcInitError(strprintf(_("Cannot obtain a lock on data "
+					"directory %s. %s is probably already running."), 
+					strDataDir, _(PACKAGE_NAME)));
+    	} 
+		catch( const boost::interprocess::interprocess_exception & e ) 
+		{
+        	return edcInitError(strprintf(_("Cannot obtain a lock on data "
+				"directory %s. %s is probably already running.") + " %s.", 
+				strDataDir, _(PACKAGE_NAME), e.what()));
+    	}
+
+    	CreatePidFile(edcGetPidFile(), getpid());
+
+    	if (params.shrinkdebugfile)
+        	edcShrinkDebugFile();
+
+    	if (fPrintToDebugLog)
+        	edcOpenDebugLog();
+
+    	if (!params.logtimestamps)
+        	edcLogPrintf("Startup time: %s\n", 
+				DateTimeStrFormat("%Y-%m-%d %H:%M:%S", GetTime()));
+
+    	edcLogPrintf("Default data directory %s\n", 
+			edcGetDefaultDataDir().string());
+
+    	edcLogPrintf("Using data directory %s\n", edcGetDataDir() );
+    	edcLogPrintf("Using config file %s\n", edcGetConfigFile().string());
+    	edcLogPrintf("Using at most %i connections (%i file descriptors "
+			"available)\n", theApp.maxConnections(), nFD);
+
+    	std::ostringstream strErrors;
+
+    	edcLogPrintf("Using %u threads for script verification\n", params.par );
+    	if ( params.par ) 
+		{
+        	for (int i=0; i < params.par; ++i )
+            	threadGroup.create_thread( &edcThreadScriptCheck );
+    	}
+
+    	// Start the lightweight task scheduler thread
+    	CScheduler::Function serviceLoop = 
+			boost::bind(&CScheduler::serviceQueue, &scheduler);
+	    threadGroup.create_thread(boost::bind(
+			&edcTraceThread<CScheduler::Function>, "scheduler", serviceLoop));
+
+    	// **************************** Step 5: verify wallet database integrity
+#ifdef ENABLE_WALLET
+    	if (!fDisableWallet) 
+		{
+        	if (!CEDCWallet::Verify())
+            	return false;
+    	}
+#endif // ENABLE_WALLET
+
+    	// ************************************* Step 6: network initialization
+
+	    RegisterNodeSignals(GetEDCNodeSignals());
+
+    	// sanitize comments per BIP-0014, format user agent and check total siz
+    	std::vector<std::string> uacomments;
+	    BOOST_FOREACH(std::string cmt, params.uacomment)
+   	 	{
+        	if (cmt != SanitizeString(cmt, SAFE_CHARS_UA_COMMENT))
+            	return edcInitError(strprintf(_("User Agent comment (%s) contains unsafe characters."), cmt));
+        	uacomments.push_back(SanitizeString(cmt, SAFE_CHARS_UA_COMMENT));
+    	}
+    	strSubVersion = FormatSubVersion(CLIENT_NAME, CLIENT_VERSION, uacomments);
+    	if (strSubVersion.size() > MAX_SUBVERSION_LENGTH) 
+		{
+        	return edcInitError(strprintf(_("Total length of network version "
+				"string (%i) exceeds maximum length (%i). Reduce the number or "
+				"size of uacomments."),
+            	strSubVersion.size(), MAX_SUBVERSION_LENGTH));
+    	}
+
+	    if ( params.onlynet.size() > 0 ) 
+		{
+	        std::set<enum Network> nets;
+	        BOOST_FOREACH(const std::string& snet, params.onlynet ) 
+			{
+	            enum Network net = ParseNetwork(snet);
+	            if (net == NET_UNROUTABLE)
+	                return edcInitError(strprintf(_("Unknown network specified "
+						"in -onlynet: '%s'"), snet));
+	            nets.insert(net);
+	        }
+	        for (int n = 0; n < NET_MAX; n++) 
+			{
+	            enum Network net = (enum Network)n;
+	            if (!nets.count(net))
+	                SetLimited(net);
+	        }
+	    }
+	
+    	if (params.whitelist.size() > 0 ) 
+		{
+        	BOOST_FOREACH(const std::string& net, params.whitelist) 
+			{
+            	CSubNet subnet(net);
+            	if (!subnet.IsValid())
+                	return edcInitError(strprintf(_("Invalid netmask specified "
+						"in -whitelist: '%s'"), net));
+            	CNode::AddWhitelistedRange(subnet);
+        	}
+    	}
+
+    	bool proxyRandomize = params.proxyrandomize;
+
+    	// -ebproxy sets a proxy for all outgoing network traffic
+    	// -ebnoproxy (or -proxy=0) as well as the empty string can be used to 
+		// not set a proxy, this is the default
+    	std::string proxyArg = params.proxy;
+    	SetLimited(NET_TOR);
+
+    	if (proxyArg != "" && proxyArg != "0") 
+		{
+        	proxyType addrProxy = proxyType(CService(proxyArg, 9050), 
+				proxyRandomize);
+        	if (!addrProxy.IsValid())
+            	return edcInitError(strprintf(_("Invalid -proxy address: '%s'"),
+					proxyArg));
+
+        	SetProxy(NET_IPV4, addrProxy);
+        	SetProxy(NET_IPV6, addrProxy);
+        	SetProxy(NET_TOR, addrProxy);
+        	SetNameProxy(addrProxy);
+        	SetLimited(NET_TOR, false); // by default, -proxy sets onion as 
+										// reachable, unless -noonion later
+    	}
+
+	    // -ebonion can be used to set only a proxy for .onion, or override 
+		// normal proxy for .onion addresses
+		// -ebnoonion (or -onion=0) disables connecting to .onion entirely
+	    // An empty string is used to not override the onion proxy (in which 
+		// case it defaults to -proxy set above, or none)
+	    std::string onionArg = params.onion;
+	    if (onionArg != "") 
+		{
+	        if (onionArg == "0") 
+			{ 
+				// Handle -noonion/-onion=0
+	            SetLimited(NET_TOR); // set onions as unreachable
+	        } 
+			else 
+			{
+	            proxyType addrOnion = proxyType(CService(onionArg, 9050), 
+					proxyRandomize);
+
+	            if (!addrOnion.IsValid())
+	                return edcInitError(strprintf(_("Invalid -onion address: "
+						"'%s'"), onionArg));
+	            SetProxy(NET_TOR, addrOnion);
+	            SetLimited(NET_TOR, false);
+	        }
+	    }
+	
+    	// see Step 2: parameter interactions for more information about these
+	    bool fBound = false;
+	    if (params.listen) 
+		{
+	        if (params.bind.size() > 0 || params.whitebind.size() > 0 ) 
+			{
+	            BOOST_FOREACH(const std::string & strBind, params.bind) 
+				{
+	                CService addrBind;
+	                if (!Lookup(strBind.c_str(), addrBind, edcGetListenPort(), false))
+	                    return edcInitError(ResolveErrMsg("bind", strBind));
+	                fBound |= Bind(addrBind, (BF_EXPLICIT | BF_REPORT_ERROR));
+	            }
+	            BOOST_FOREACH(const std::string& strBind, params.whitebind) 
+				{
+	                CService addrBind;
+	                if (!Lookup(strBind.c_str(), addrBind, 0, false))
+	                    return edcInitError(ResolveErrMsg("whitebind", strBind));
+	                if (addrBind.GetPort() == 0)
+	                    return edcInitError(strprintf(_("Need to specify a port with -whitebind: '%s'"), strBind));
+	                fBound |= Bind(addrBind, (BF_EXPLICIT | BF_REPORT_ERROR | BF_WHITELIST));
+	            }
+	        }
+	        else 
+			{
+	            struct in_addr inaddr_any;
+	            inaddr_any.s_addr = INADDR_ANY;
+	            fBound |= Bind(CService(in6addr_any, edcGetListenPort()), BF_NONE);
+	            fBound |= Bind(CService(inaddr_any, edcGetListenPort()), !fBound ? BF_REPORT_ERROR : BF_NONE);
+	        }
+	        if (!fBound)
+	            return edcInitError(_("Failed to listen on any port. Use -eblisten=0 if you want this."));
+	    }
+	
 	}
 	catch( const std::exception & e )
 	{
@@ -159,231 +399,37 @@ bool EdcAppInit(
 }
 
 #if 0
-    fAcceptDatacarrier = GetBoolArg("-datacarrier", EDC_DEFAULT_ACCEPT_DATACARRIER);
-    nMaxDatacarrierBytes = GetArg("-datacarriersize", nMaxDatacarrierBytes);
-
-    if (GetBoolArg("-peerbloomfilters", EDC_DEFAULT_PEERBLOOMFILTERS))
-        nLocalServices |= NODE_BLOOM;
-
-    nMaxTipAge = GetArg("-maxtipage", EDC_DEFAULT_MAX_TIP_AGE);
-
-    fEnableReplacement = GetBoolArg("-mempoolreplacement", EDC_DEFAULT_ENABLE_REPLACEMENT);
-    if ((!fEnableReplacement) && mapArgs.count("-mempoolreplacement")) {
-        // Minimal effort at forwards compatibility
-        std::string strReplacementModeList = GetArg("-mempoolreplacement", "");  // default is impossible
-        std::vector<std::string> vstrReplacementModes;
-        boost::split(vstrReplacementModes, strReplacementModeList, boost::is_any_of(","));
-        fEnableReplacement = (std::find(vstrReplacementModes.begin(), vstrReplacementModes.end(), "fee") != vstrReplacementModes.end());
-    }
-
-    // ** Step 4:app initialization: dir lock, daemonize, pidfile, debug log
-
-    // Initialize elliptic curve code
-    ECC_Start();
-    globalVerifyHandle.reset(new ECCVerifyHandle());
-
-    // Sanity check
-    if (!InitSanityCheck())
-        return edcInitError(strprintf(_("Initialization sanity check failed. %s is shutting down."), _(PACKAGE_NAME)));
-
-    std::string strDataDir = edcGetDataDir().string();
-
-    // Make sure only a single Bitcoin process is using the data directory.
-    boost::filesystem::path pathLockFile = edcGetDataDir() / ".lock";
-    FILE* file = fopen(pathLockFile.string().c_str(), "a"); // empty lock file; created if it doesn't exist.
-    if (file) fclose(file);
-
-    try {
-        static boost::interprocess::file_lock lock(pathLockFile.string().c_str());
-        if (!lock.try_lock())
-            return edcInitError(strprintf(_("Cannot obtain a lock on data directory %s. %s is probably already running."), strDataDir, _(PACKAGE_NAME)));
-    } catch(const boost::interprocess::interprocess_exception& e) {
-        return edcInitError(strprintf(_("Cannot obtain a lock on data directory %s. %s is probably already running.") + " %s.", strDataDir, _(PACKAGE_NAME), e.what()));
-    }
-
-#ifndef WIN32
-    CreatePidFile(GetPidFile(), getpid());
-#endif
-    if (GetBoolArg("-shrinkdebugfile", !fDebug))
-        edcShrinkDebugFile();
-
-    if (fPrintToDebugLog)
-        edcOpenDebugLog();
-
-    if (!fLogTimestamps)
-        edcLogPrintf("Startup time: %s\n", DateTimeStrFormat("%Y-%m-%d %H:%M:%S", GetTime()));
-    edcLogPrintf("Default data directory %s\n", GetDefaultDataDir().string());
-    edcLogPrintf("Using data directory %s\n", strDataDir);
-    edcLogPrintf("Using config file %s\n", GetConfigFile().string());
-    edcLogPrintf("Using at most %i connections (%i file descriptors available)\n", theApp.maxConnections(), nFD);
-    std::ostringstream strErrors;
-
-    edcLogPrintf("Using %u threads for script verification\n", nScriptCheckThreads);
-    if (nScriptCheckThreads) {
-        for (int i=0; i<nScriptCheckThreads-1; i++)
-            threadGroup.create_thread(&ThreadScriptCheck);
-    }
-
-    // Start the lightweight task scheduler thread
-    CScheduler::Function serviceLoop = boost::bind(&CScheduler::serviceQueue, &scheduler);
-    threadGroup.create_thread(boost::bind(&edcTraceThread<CScheduler::Function>, "scheduler", serviceLoop));
-
-    /* Start the RPC server already.  It will be started in "warmup" mode
-     * and not really process calls already (but it will signify connections
-     * that the server is there and will be ready later).  Warmup mode will
-     * be disabled when initialisation is finished.
-     */
-    if (params.server)
-    {
-        uiInterface.InitMessage.connect(SetRPCWarmupStatus);
-        if (!AppInitServers(threadGroup))
-            return edcInitError(_("Unable to start HTTP server. See debug log for details."));
-    }
-
-    int64_t nStart;
-
-    // ********************************************************* Step 5: verify wallet database integrity
-#ifdef ENABLE_WALLET
-    if (!fDisableWallet) {
-        if (!CWallet::Verify())
-            return false;
-    } // (!fDisableWallet)
-#endif // ENABLE_WALLET
-    // ********************************************************* Step 6: network initialization
-
-    RegisterNodeSignals(GetNodeSignals());
-
-    // sanitize comments per BIP-0014, format user agent and check total size
-    std::vector<std::string> uacomments;
-    BOOST_FOREACH(std::string cmt, mapMultiArgs["-uacomment"])
-    {
-        if (cmt != SanitizeString(cmt, SAFE_CHARS_UA_COMMENT))
-            return edcInitError(strprintf(_("User Agent comment (%s) contains unsafe characters."), cmt));
-        uacomments.push_back(SanitizeString(cmt, SAFE_CHARS_UA_COMMENT));
-    }
-    strSubVersion = FormatSubVersion(CLIENT_NAME, CLIENT_VERSION, uacomments);
-    if (strSubVersion.size() > MAX_SUBVERSION_LENGTH) {
-        return edcInitError(strprintf(_("Total length of network version string (%i) exceeds maximum length (%i). Reduce the number or size of uacomments."),
-            strSubVersion.size(), MAX_SUBVERSION_LENGTH));
-    }
-
-    if (mapArgs.count("-onlynet")) {
-        std::set<enum Network> nets;
-        BOOST_FOREACH(const std::string& snet, mapMultiArgs["-onlynet"]) {
-            enum Network net = ParseNetwork(snet);
-            if (net == NET_UNROUTABLE)
-                return edcInitError(strprintf(_("Unknown network specified in -onlynet: '%s'"), snet));
-            nets.insert(net);
-        }
-        for (int n = 0; n < NET_MAX; n++) {
-            enum Network net = (enum Network)n;
-            if (!nets.count(net))
-                SetLimited(net);
-        }
-    }
-
-    if (mapArgs.count("-whitelist")) {
-        BOOST_FOREACH(const std::string& net, mapMultiArgs["-whitelist"]) {
-            CSubNet subnet(net);
-            if (!subnet.IsValid())
-                return edcInitError(strprintf(_("Invalid netmask specified in -whitelist: '%s'"), net));
-            CNode::AddWhitelistedRange(subnet);
-        }
-    }
-
-    bool proxyRandomize = GetBoolArg("-proxyrandomize", EDC_DEFAULT_PROXYRANDOMIZE);
-    // -proxy sets a proxy for all outgoing network traffic
-    // -noproxy (or -proxy=0) as well as the empty string can be used to not set a proxy, this is the default
-    std::string proxyArg = GetArg("-proxy", "");
-    SetLimited(NET_TOR);
-    if (proxyArg != "" && proxyArg != "0") {
-        proxyType addrProxy = proxyType(CService(proxyArg, 9050), proxyRandomize);
-        if (!addrProxy.IsValid())
-            return edcInitError(strprintf(_("Invalid -proxy address: '%s'"), proxyArg));
-
-        SetProxy(NET_IPV4, addrProxy);
-        SetProxy(NET_IPV6, addrProxy);
-        SetProxy(NET_TOR, addrProxy);
-        SetNameProxy(addrProxy);
-        SetLimited(NET_TOR, false); // by default, -proxy sets onion as reachable, unless -noonion later
-    }
-
-    // -onion can be used to set only a proxy for .onion, or override normal proxy for .onion addresses
-    // -noonion (or -onion=0) disables connecting to .onion entirely
-    // An empty string is used to not override the onion proxy (in which case it defaults to -proxy set above, or none)
-    std::string onionArg = GetArg("-onion", "");
-    if (onionArg != "") {
-        if (onionArg == "0") { // Handle -noonion/-onion=0
-            SetLimited(NET_TOR); // set onions as unreachable
-        } else {
-            proxyType addrOnion = proxyType(CService(onionArg, 9050), proxyRandomize);
-            if (!addrOnion.IsValid())
-                return edcInitError(strprintf(_("Invalid -onion address: '%s'"), onionArg));
-            SetProxy(NET_TOR, addrOnion);
-            SetLimited(NET_TOR, false);
-        }
-    }
-
-    // see Step 2: parameter interactions for more information about these
-    fListen = GetBoolArg("-listen", EDC_DEFAULT_LISTEN);
-    fDiscover = GetBoolArg("-discover", true);
-    fNameLookup = GetBoolArg("-dns", EDC_DEFAULT_NAME_LOOKUP);
-
-    bool fBound = false;
-    if (fListen) {
-        if (mapArgs.count("-bind") || mapArgs.count("-whitebind")) {
-            BOOST_FOREACH(const std::string& strBind, mapMultiArgs["-bind"]) {
-                CService addrBind;
-                if (!Lookup(strBind.c_str(), addrBind, GetListenPort(), false))
-                    return edcInitError(ResolveErrMsg("bind", strBind));
-                fBound |= Bind(addrBind, (BF_EXPLICIT | BF_REPORT_ERROR));
-            }
-            BOOST_FOREACH(const std::string& strBind, mapMultiArgs["-whitebind"]) {
-                CService addrBind;
-                if (!Lookup(strBind.c_str(), addrBind, 0, false))
-                    return edcInitError(ResolveErrMsg("whitebind", strBind));
-                if (addrBind.GetPort() == 0)
-                    return edcInitError(strprintf(_("Need to specify a port with -whitebind: '%s'"), strBind));
-                fBound |= Bind(addrBind, (BF_EXPLICIT | BF_REPORT_ERROR | BF_WHITELIST));
-            }
-        }
-        else {
-            struct in_addr inaddr_any;
-            inaddr_any.s_addr = INADDR_ANY;
-            fBound |= Bind(CService(in6addr_any, GetListenPort()), BF_NONE);
-            fBound |= Bind(CService(inaddr_any, GetListenPort()), !fBound ? BF_REPORT_ERROR : BF_NONE);
-        }
-        if (!fBound)
-            return edcInitError(_("Failed to listen on any port. Use -listen=0 if you want this."));
-    }
-
-    if (mapArgs.count("-externalip")) {
-        BOOST_FOREACH(const std::string& strAddr, mapMultiArgs["-externalip"]) {
+    if (params.externalip.size() > 0 ) 
+	{
+        BOOST_FOREACH(const std::string& strAddr, params.externalip.size() > 0 )
+		{
             CService addrLocal;
-            if (Lookup(strAddr.c_str(), addrLocal, GetListenPort(), fNameLookup) && addrLocal.IsValid())
+            if (Lookup(strAddr.c_str(), addrLocal, edcGetListenPort(), params.dns) && addrLocal.IsValid())
                 AddLocal(addrLocal, LOCAL_MANUAL);
             else
                 return edcInitError(ResolveErrMsg("externalip", strAddr));
         }
     }
 
-    BOOST_FOREACH(const std::string& strDest, mapMultiArgs["-seednode"])
+    BOOST_FOREACH(const std::string& strDest, params.seednode)
         AddOneShot(strDest);
 
 #if ENABLE_ZMQ
     pzmqNotificationInterface = CZMQNotificationInterface::CreateWithArguments(mapArgs);
 
-    if (pzmqNotificationInterface) {
+    if (pzmqNotificationInterface) 
+	{
         RegisterValidationInterface(pzmqNotificationInterface);
     }
 #endif
-    if (mapArgs.count("-maxuploadtarget")) {
-        CNode::SetMaxOutboundTarget(GetArg("-maxuploadtarget", EDC_DEFAULT_MAX_UPLOAD_TARGET)*1024*1024);
+    if (params.maxuploadtarget > 0 ) 
+	{
+        CNode::SetMaxOutboundTarget(params.maxuploadtarget, EDC_DEFAULT_MAX_UPLOAD_TARGET)*1024*1024);
     }
 
     // ********************************************************* Step 7: load block chain
 
-    fReindex = GetBoolArg("-reindex", false);
+    fReindex = params.reindex;
 
     // Upgrading to 0.8; hard-link the old blknnnn.dat files into /blocks/
     boost::filesystem::path blocksDir = edcGetDataDir() / "blocks";
@@ -391,15 +437,19 @@ bool EdcAppInit(
     {
         boost::filesystem::create_directories(blocksDir);
         bool linked = false;
-        for (unsigned int i = 1; i < 10000; i++) {
+        for (unsigned int i = 1; i < 10000; i++) 
+		{
             boost::filesystem::path source = edcGetDataDir() / strprintf("blk%04u.dat", i);
             if (!boost::filesystem::exists(source)) break;
             boost::filesystem::path dest = blocksDir / strprintf("blk%05u.dat", i-1);
-            try {
+            try 
+			{
                 boost::filesystem::create_hard_link(source, dest);
                 edcLogPrintf("Hardlinked %s -> %s\n", source.string(), dest.string());
                 linked = true;
-            } catch (const boost::filesystem::filesystem_error& e) {
+            } 
+			catch (const boost::filesystem::filesystem_error& e) 
+			{
                 // Note: hardlink creation failing is not a disaster, it just means
                 // blocks will get re-downloaded from peers.
                 edcLogPrintf("Error hardlinking blk%04u.dat: %s\n", i, e.what());
@@ -413,11 +463,11 @@ bool EdcAppInit(
     }
 
     // cache size calculations
-    int64_t nTotalCache = (GetArg("-dbcache", EDC_DEFAULT_DB_CACHE) << 20);
+    int64_t nTotalCache = (params.dbcache << 20);
     nTotalCache = std::max(nTotalCache, EDC_MIN_DB_CACHE << 20); // total cache cannot be less than EDC_MIN_DB_CACHE
     nTotalCache = std::min(nTotalCache, EDC_MAX_DB_CACHE << 20); // total cache cannot be greated than EDC_MAX_DB_CACHE
     int64_t nBlockTreeDBCache = nTotalCache / 8;
-    if (nBlockTreeDBCache > (1 << 21) && !GetBoolArg("-txindex", EDC_DEFAULT_TXINDEX))
+    if (nBlockTreeDBCache > (1 << 21) && !params.txindex)
         nBlockTreeDBCache = (1 << 21); // block tree db cache shouldn't be larger than 2 MiB
     nTotalCache -= nBlockTreeDBCache;
     int64_t nCoinDBCache = std::min(nTotalCache / 2, (nTotalCache / 4) + (1 << 23)); // use 25%-50% of the remainder for disk cache
@@ -429,15 +479,20 @@ bool EdcAppInit(
     edcLogPrintf("* Using %.1fMiB for in-memory UTXO set\n", nCoinCacheUsage * (1.0 / 1024 / 1024));
 
     bool fLoaded = false;
-    while (!fLoaded) {
+    int64_t nStart;
+
+    while (!fLoaded) 
+	{
         bool fReset = fReindex;
         std::string strLoadError;
 
         uiInterface.InitMessage(_("Loading block index..."));
 
         nStart = GetTimeMillis();
-        do {
-            try {
+        do 
+		{
+            try 
+			{
                 UnloadBlockIndex();
                 delete pcoinsTip;
                 delete pcoinsdbview;
@@ -449,14 +504,16 @@ bool EdcAppInit(
                 pcoinscatcher = new CCoinsViewErrorCatcher(pcoinsdbview);
                 pcoinsTip = new CCoinsViewCache(pcoinscatcher);
 
-                if (fReindex) {
+                if (fReindex) 
+				{
                     pblocktree->WriteReindexing(true);
                     //If we're reindexing in prune mode, wipe away unusable block files and all undo data files
                     if (fPruneMode)
                         CleanupBlockRevFiles();
                 }
 
-                if (!LoadBlockIndex()) {
+                if (!LoadBlockIndex()) 
+				{
                     strLoadError = _("Error loading block database");
                     break;
                 }
@@ -467,34 +524,39 @@ bool EdcAppInit(
                     return edcInitError(_("Incorrect or no genesis block found. Wrong datadir for network?"));
 
                 // Initialize the block index (no-op if non-empty database was already loaded)
-                if (!InitBlockIndex(chainparams)) {
+                if (!InitBlockIndex(chainparams)) 
+				{
                     strLoadError = _("Error initializing block database");
                     break;
                 }
 
                 // Check for changed -txindex state
-                if (fTxIndex != GetBoolArg("-txindex", EDC_DEFAULT_TXINDEX)) {
+                if (fTxIndex != params.txindex) 
+				{
                     strLoadError = _("You need to rebuild the database using -reindex to change -txindex");
                     break;
                 }
 
                 // Check for changed -prune state.  What we are concerned about is a user who has pruned blocks
                 // in the past, but is now trying to run unpruned.
-                if (fHavePruned && !fPruneMode) {
+                if (fHavePruned && !fPruneMode) 
+				{
                     strLoadError = _("You need to rebuild the database using -reindex to go back to unpruned mode.  This will redownload the entire blockchain");
                     break;
                 }
 
                 uiInterface.InitMessage(_("Verifying blocks..."));
-                if (fHavePruned && GetArg("-checkblocks", EDC_DEFAULT_CHECKBLOCKS) > MIN_BLOCKS_TO_KEEP) {
+                if (fHavePruned && params.checkblocks > MIN_BLOCKS_TO_KEEP) 
+				{
                     edcLogPrintf("Prune: pruned datadir may not have more than %d blocks; -checkblocks=%d may fail\n",
-                        MIN_BLOCKS_TO_KEEP, GetArg("-checkblocks", EDC_DEFAULT_CHECKBLOCKS));
+                        MIN_BLOCKS_TO_KEEP, params.checkblocks );
                 }
 
                 {
                     LOCK(cs_main);
                     CBlockIndex* tip = chainActive.Tip();
-                    if (tip && tip->nTime > GetAdjustedTime() + 2 * 60 * 60) {
+                    if (tip && tip->nTime > GetAdjustedTime() + 2 * 60 * 60) 
+					{
                         strLoadError = _("The block database contains a block which appears to be from the future. "
                                 "This may be due to your computer's date and time being set incorrectly. "
                                 "Only rebuild the block database if you are sure that your computer's date and time are correct");
@@ -502,12 +564,16 @@ bool EdcAppInit(
                     }
                 }
 
-                if (!CVerifyDB().VerifyDB(chainparams, pcoinsdbview, GetArg("-checklevel", EDC_DEFAULT_CHECKLEVEL),
-                              GetArg("-checkblocks", EDC_DEFAULT_CHECKBLOCKS))) {
+                if (!CVerifyDB().VerifyDB(chainparams, pcoinsdbview, 
+						params.checklevel,
+                        params.checkblocks )) 
+				{
                     strLoadError = _("Corrupted block database detected");
                     break;
                 }
-            } catch (const std::exception& e) {
+            } 
+			catch (const std::exception& e) 
+			{
                 if (fDebug) edcLogPrintf("%s\n", e.what());
                 strLoadError = _("Error opening block database");
                 break;
@@ -516,20 +582,27 @@ bool EdcAppInit(
             fLoaded = true;
         } while(false);
 
-        if (!fLoaded) {
+        if (!fLoaded) 
+		{
             // first suggest a reindex
-            if (!fReset) {
+            if (!fReset) 
+			{
                 bool fRet = uiInterface.ThreadSafeMessageBox(
                     strLoadError + ".\n\n" + _("Do you want to rebuild the block database now?"),
                     "", CClientUIInterface::MSG_ERROR | CClientUIInterface::BTN_ABORT);
-                if (fRet) {
+                if (fRet) 
+				{
                     fReindex = true;
                     fRequestShutdown = false;
-                } else {
+                } 
+				else 
+				{
                     edcLogPrintf("Aborted block database rebuild. Exiting.\n");
                     return false;
                 }
-            } else {
+            } 
+			else 
+			{
                 return edcInitError(strLoadError);
             }
         }
@@ -554,10 +627,13 @@ bool EdcAppInit(
 
     // ********************************************************* Step 8: load wallet
 #ifdef ENABLE_WALLET
-    if (fDisableWallet) {
+    if (fDisableWallet) 
+	{
         pwalletMain = NULL;
         edcLogPrintf("Wallet disabled!\n");
-    } else {
+    } 
+	else 
+	{
         CWallet::InitLoadWallet();
         if (!pwalletMain)
             return false;
@@ -570,10 +646,12 @@ bool EdcAppInit(
 
     // if pruning, unset the service bit and perform the initial blockstore prune
     // after any wallet rescanning has taken place.
-    if (fPruneMode) {
+    if (fPruneMode) 
+	{
         edcLogPrintf("Unsetting NODE_NETWORK on prune mode\n");
-        nLocalServices &= ~NODE_NETWORK;
-        if (!fReindex) {
+        theApp.localServices( theApp.localServices()  & ~NODE_NETWORK );
+        if (!fReindex) 
+		{
             uiInterface.InitMessage(_("Pruning blockstore..."));
             PruneAndFlush();
         }
@@ -591,13 +669,14 @@ bool EdcAppInit(
         strErrors << "Failed to connect best block";
 
     std::vector<boost::filesystem::path> vImportFiles;
-    if (mapArgs.count("-loadblock"))
+    if (params.loadblock.size() > 0 )
     {
-        BOOST_FOREACH(const std::string& strFile, mapMultiArgs["-loadblock"])
+        BOOST_FOREACH(const std::string& strFile, params.loadblock )
             vImportFiles.push_back(strFile);
     }
     threadGroup.create_thread(boost::bind(&ThreadImport, vImportFiles));
-    if (chainActive.Tip() == NULL) {
+    if (chainActive.Tip() == NULL) 
+	{
         edcLogPrintf("Waiting for genesis block to be imported...\n");
         while (!fRequestShutdown && chainActive.Tip() == NULL)
             MilliSleep(10);
@@ -622,7 +701,7 @@ bool EdcAppInit(
     edcLogPrintf("mapAddressBook.size() = %u\n",  pwalletMain ? pwalletMain->mapAddressBook.size() : 0);
 #endif
 
-    if (GetBoolArg("-listenonion", EDC_DEFAULT_LISTEN_ONION))
+    if (params.listenonion )
         StartTorControl(threadGroup, scheduler);
 
     StartNode(threadGroup, scheduler);
@@ -639,7 +718,8 @@ bool EdcAppInit(
     uiInterface.InitMessage(_("Done loading"));
 
 #ifdef ENABLE_WALLET
-    if (pwalletMain) {
+    if (pwalletMain) 
+	{
         // Add wallet transactions that aren't already in a block to mapTransactions
         pwalletMain->ReacceptWalletTransactions();
 

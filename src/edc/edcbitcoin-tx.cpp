@@ -50,7 +50,7 @@ static bool AppInitRawTx(int argc, char* argv[])
         return false;
     }
 
-    fCreateBlank = GetBoolArg("-create", false);
+    fCreateBlank = GetArg( "-create", false );
 
     if (argc<2 || mapArgs.count("-?") || mapArgs.count("-h") || mapArgs.count("-help"))
     {

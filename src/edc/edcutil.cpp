@@ -387,9 +387,10 @@ const boost::filesystem::path & edcGetDataDir(bool fNetSpecific)
     if (!path.empty())
         return path;
 
-    if (mapArgs.count("-ebdatadir"))
+	EDCparams & params = EDCparams::singleton();
+    if (params.datadir.size() > 0 )
     {
-        path = fs::system_complete(mapArgs["-ebdatadir"]);
+        path = fs::system_complete( params.datadir );
         if (!fs::is_directory(path))
         {
             path = "";
@@ -406,5 +407,29 @@ const boost::filesystem::path & edcGetDataDir(bool fNetSpecific)
     fs::create_directories(path);
 
     return path;
+}
+
+#ifndef WIN32
+boost::filesystem::path edcGetPidFile()
+{
+	EDCparams & params = EDCparams::singleton();
+    boost::filesystem::path pathPidFile( params.pid );
+
+    if (!pathPidFile.is_complete()) 
+		pathPidFile = edcGetDataDir() / pathPidFile;
+    return pathPidFile;
+}
+#endif
+
+boost::filesystem::path edcGetConfigFile()
+{
+    EDCparams & params = EDCparams::singleton();
+
+    boost::filesystem::path pathConfigFile( params.conf );
+
+    if (!pathConfigFile.is_complete())
+        pathConfigFile = edcGetDataDir(false) / pathConfigFile;
+
+    return pathConfigFile;
 }
 

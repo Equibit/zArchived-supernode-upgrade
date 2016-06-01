@@ -21,6 +21,7 @@
 #include "utilstrencodings.h"
 #include "hash.h"
 #include "edc/edcapp.h"
+#include "edc/edcparams.h"
 
 #include <stdint.h>
 
@@ -623,11 +624,13 @@ UniValue gettxout(const UniValue& params, bool fHelp)
     return ret;
 }
 
-UniValue verifychain(const UniValue& params, bool fHelp)
+UniValue verifychain(const UniValue& param, bool fHelp)
 {
-    int nCheckLevel = GetArg("-checklevel", DEFAULT_CHECKLEVEL);
-    int nCheckDepth = GetArg("-checkblocks", DEFAULT_CHECKBLOCKS);
-    if (fHelp || params.size() > 2)
+	EDCparams & params = EDCparams::singleton();
+    int nCheckLevel = params.checklevel;
+    int nCheckDepth = params.checkblocks;
+
+    if (fHelp || param.size() > 2)
         throw runtime_error(
             "verifychain ( checklevel numblocks )\n"
             "\nVerifies blockchain database.\n"
@@ -643,10 +646,10 @@ UniValue verifychain(const UniValue& params, bool fHelp)
 
     LOCK(EDC_cs_main);
 
-    if (params.size() > 0)
-        nCheckLevel = params[0].get_int();
-    if (params.size() > 1)
-        nCheckDepth = params[1].get_int();
+    if (param.size() > 0)
+        nCheckLevel = param[0].get_int();
+    if (param.size() > 1)
+        nCheckDepth = param[1].get_int();
 
     return CEDCVerifyDB().VerifyDB(edcParams(), edcPcoinsTip, nCheckLevel, nCheckDepth);
 }
@@ -922,7 +925,8 @@ UniValue mempoolInfoToJSON()
     ret.push_back(Pair("size", (int64_t) theApp.mempool().size()));
     ret.push_back(Pair("bytes", (int64_t) theApp.mempool().GetTotalTxSize()));
     ret.push_back(Pair("usage", (int64_t) theApp.mempool().DynamicMemoryUsage()));
-    size_t maxmempool = GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000;
+	EDCparams & params = EDCparams::singleton();
+    size_t maxmempool = params.maxmempool * 1000000;
     ret.push_back(Pair("maxmempool", (int64_t) maxmempool));
     ret.push_back(Pair("mempoolminfee", ValueFromAmount(theApp.mempool().GetMinFee(maxmempool).GetFeePerK())));
 

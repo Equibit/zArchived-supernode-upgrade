@@ -15,6 +15,7 @@
 #include "edc/edcutil.h"
 #include "utiltime.h"
 #include "edc/wallet/edcwallet.h"
+#include "edc/edcparams.h"
 
 #include <boost/version.hpp>
 #include <boost/filesystem.hpp>
@@ -673,8 +674,11 @@ DBErrors CEDCWalletDB::LoadWallet(CEDCWallet* pwallet)
                     // Leave other errors alone, if we try to fix them we might make things worse.
                     fNoncriticalErrors = true; // ... but do warn the user there is something wrong.
                     if (strType == "tx")
+					{
+						EDCparams & params = EDCparams::singleton();
                         // Rescan if there is a bad transaction record:
-                        SoftSetBoolArg("-rescan", true);
+                        params.rescan = true;
+					}
                 }
             }
             if (!strErr.empty())
@@ -875,7 +879,8 @@ void edcThreadFlushWalletDB(const string& strFile)
     if (fOneThread)
         return;
     fOneThread = true;
-    if (!GetBoolArg("-flushwallet", DEFAULT_FLUSHWALLET))
+	EDCparams & params = EDCparams::singleton();
+    if (!params.flushwallet )
         return;
 
     unsigned int nLastSeen = nWalletDBUpdated;
@@ -974,7 +979,10 @@ bool BackupWallet(const CEDCWallet& wallet, const string& strDest)
 //
 // Try to (very carefully!) recover wallet file if there is a problem.
 //
-bool CEDCWalletDB::Recover(CDBEnv& dbenv, const std::string& filename, bool fOnlyKeys)
+bool CEDCWalletDB::Recover(
+	           CDBEnv & dbenv, 
+	const std::string & filename, 
+	               bool fOnlyKeys )
 {
     // Recovery procedure:
     // move wallet file to wallet.timestamp.bak
@@ -1000,7 +1008,8 @@ bool CEDCWalletDB::Recover(CDBEnv& dbenv, const std::string& filename, bool fOnl
     bool fSuccess = dbenv.Salvage(newFilename, true, salvagedData);
     if (salvagedData.empty())
     {
-        edcLogPrintf("Salvage(aggressive) found no records in %s.\n", newFilename);
+        edcLogPrintf("Salvage(aggressive) found no records in %s.\n", 
+			newFilename);
         return false;
     }
     edcLogPrintf("Salvage(aggressive) found %u records\n", salvagedData.size());
@@ -1039,13 +1048,16 @@ bool CEDCWalletDB::Recover(CDBEnv& dbenv, const std::string& filename, bool fOnl
                 continue;
             if (!fReadOK)
             {
-                edcLogPrintf("WARNING: CEDCWalletDB::Recover skipping %s: %s\n", strType, strErr);
+                edcLogPrintf("WARNING: CEDCWalletDB::Recover skipping %s: %s\n",
+					strType, strErr);
                 continue;
             }
         }
+
         Dbt datKey(&row.first[0], row.first.size());
         Dbt datValue(&row.second[0], row.second.size());
         int ret2 = pdbCopy->put(ptxn, &datKey, &datValue, DB_NOOVERWRITE);
+
         if (ret2 > 0)
             fSuccess = false;
     }

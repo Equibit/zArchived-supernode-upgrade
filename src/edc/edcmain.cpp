@@ -1234,14 +1234,14 @@ bool AcceptToMemoryPoolWorker(CEDCTxMemPool& pool, CValidationState& state, cons
             return state.DoS(0, false, REJECT_NONSTANDARD, "bad-txns-too-many-sigops", false,
                 strprintf("%d", nSigOps));
 
-        CAmount mempoolRejectFee = pool.GetMinFee(GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000).GetFee(nSize);
+        CAmount mempoolRejectFee = pool.GetMinFee( params.maxmempool * 1000000).GetFee(nSize);
         if (mempoolRejectFee > 0 && nModifiedFees < mempoolRejectFee) 
 		{
             return state.DoS(0, false, REJECT_INSUFFICIENTFEE, 
 				"mempool min fee not met", false, 
 				strprintf("%d < %d", nFees, mempoolRejectFee));
         } 
-		else if (GetBoolArg("-relaypriority", DEFAULT_RELAYPRIORITY) && 
+		else if (params.relaypriority && 
 		nModifiedFees < theApp.minRelayTxFee().GetFee(nSize) && 
 		!AllowFree(entry.GetPriority(chainActive.Height() + 1))) 
 		{
@@ -1266,7 +1266,7 @@ bool AcceptToMemoryPoolWorker(CEDCTxMemPool& pool, CValidationState& state, cons
             nLastTime = nNow;
             // -limitfreerelay unit is thousand-bytes-per-minute
             // At default rate it would take over a month to fill 1GB
-            if (dFreeCount + nSize >= GetArg("-limitfreerelay", DEFAULT_LIMITFREERELAY) * 10 * 1000)
+            if (dFreeCount + nSize >= params.limitfreerelay * 10 * 1000)
                 return state.DoS(0, false, REJECT_INSUFFICIENTFEE, "rate limited free transaction");
             edcLogPrint("mempool", "Rate limit dFreeCount: %g => %g\n", dFreeCount, dFreeCount+nSize);
             dFreeCount += nSize;
@@ -1279,14 +1279,10 @@ bool AcceptToMemoryPoolWorker(CEDCTxMemPool& pool, CValidationState& state, cons
 
         // Calculate in-mempool ancestors, up to a limit.
         CEDCTxMemPool::setEntries setAncestors;
-        size_t nLimitAncestors = GetArg("-limitancestorcount", 
-			DEFAULT_ANCESTOR_LIMIT);
-        size_t nLimitAncestorSize = GetArg("-limitancestorsize", 
-			DEFAULT_ANCESTOR_SIZE_LIMIT)*1000;
-        size_t nLimitDescendants = GetArg("-limitdescendantcount", 
-			DEFAULT_DESCENDANT_LIMIT);
-        size_t nLimitDescendantSize = GetArg("-limitdescendantsize", 
-			DEFAULT_DESCENDANT_SIZE_LIMIT)*1000;
+        size_t nLimitAncestors = params.limitancestorcount;
+        size_t nLimitAncestorSize = params.limitancestorsize * 1000;
+        size_t nLimitDescendants = params.limitdescendantcount;
+        size_t nLimitDescendantSize = params.limitdescendantsize * 1000;
 
         std::string errString;
 
@@ -1483,7 +1479,8 @@ bool AcceptToMemoryPoolWorker(CEDCTxMemPool& pool, CValidationState& state, cons
         // trim mempool and check if tx was trimmed
         if (!fOverrideMempoolLimit) 
 		{
-            LimitMempoolSize(pool, GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000, GetArg("-mempoolexpiry", DEFAULT_MEMPOOL_EXPIRY) * 60 * 60);
+            LimitMempoolSize(pool, params.maxmempool * 1000000, 
+				params.mempoolexpiry * 60 * 60);
             if (!pool.exists(hash))
                 return state.DoS(0, false, REJECT_INSUFFICIENTFEE, "mempool full");
         }
@@ -1702,7 +1699,7 @@ bool edcIsInitialBlockDownload()
     if (lockIBDState)
         return false;
     bool state = (chainActive.Height() < pEDCindexBestHeader->nHeight - 24 * 6 ||
-            std::max(chainActive.Tip()->GetBlockTime(), pEDCindexBestHeader->GetBlockTime()) < GetTime() - nMaxTipAge);
+            std::max(chainActive.Tip()->GetBlockTime(), pEDCindexBestHeader->GetBlockTime()) < GetTime() - params.maxtipage );
     if (!state)
         lockIBDState = true;
     return state;
@@ -1715,7 +1712,8 @@ CBlockIndex *edcPindexBestForkTip = NULL, *edcpindexBestForkBase = NULL;
 static void AlertNotify(const std::string& strMessage)
 {
     edcUiInterface.NotifyAlertChanged();
-    std::string strCmd = GetArg("-alertnotify", "");
+ 	EDCparams & params = EDCparams::singleton();
+    std::string strCmd = params.alertnotify;
     if (strCmd.empty()) return;
 
     // Alert text should be plain ascii coming from a trusted source, but to
@@ -1814,7 +1812,8 @@ void edcMisbehaving(NodeId pnode, int howmuch)
         return;
 
     state->nMisbehavior += howmuch;
-    int banscore = GetArg("-banscore", DEFAULT_BANSCORE_THRESHOLD);
+ 	EDCparams & params = EDCparams::singleton();
+    int banscore = params.banscore;
     if (state->nMisbehavior >= banscore && state->nMisbehavior - howmuch < banscore)
     {
         edcLogPrintf("%s: %s (%d -> %d) BAN THRESHOLD EXCEEDED\n", __func__, state->name, state->nMisbehavior-howmuch, state->nMisbehavior);
@@ -3141,7 +3140,9 @@ static bool ActivateBestChainStep(
     if (fBlocksDisconnected) 
 	{
         theApp.mempool().removeForReorg(edcPcoinsTip, chainActive.Tip()->nHeight + 1, STANDARD_LOCKTIME_VERIFY_FLAGS);
-        LimitMempoolSize(theApp.mempool(), GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000, GetArg("-mempoolexpiry", DEFAULT_MEMPOOL_EXPIRY) * 60 * 60);
+ 		EDCparams & params = EDCparams::singleton();
+        LimitMempoolSize(theApp.mempool(), params.maxmempool * 1000000, 
+			params.mempoolexpiry * 60 * 60);
     }
     theApp.mempool().check(edcPcoinsTip);
 
@@ -3279,7 +3280,9 @@ bool edcInvalidateBlock(
         }
     }
 	
-    LimitMempoolSize(theApp.mempool(), GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000, GetArg("-mempoolexpiry", DEFAULT_MEMPOOL_EXPIRY) * 60 * 60);
+ 	EDCparams & params = EDCparams::singleton();
+    LimitMempoolSize(theApp.mempool(), params.maxmempool * 1000000, 
+		params.mempoolexpiry * 60 * 60);
 
     // The resulting new best tip may not be in setBlockIndexCandidates anymore, so
     // add it again.
@@ -4234,7 +4237,8 @@ bool edcInitBlockIndex( const CEDCChainParams & chainparams )
         return true;
 
     // Use the provided setting for -txindex in the new database
-    edcfTxIndex = GetBoolArg("-txindex", DEFAULT_TXINDEX);
+ 	EDCparams & params = EDCparams::singleton();
+    edcfTxIndex = params.txindex;
     edcpblocktree->WriteFlag("txindex", edcfTxIndex);
     edcLogPrintf("Initializing databases...\n");
 
@@ -4811,17 +4815,19 @@ bool static ProcessMessage(
 {
     RandAddSeedPerfmon();
     edcLogPrint("net", "received: %s (%u bytes) peer=%d\n", SanitizeString(strCommand), vRecv.size(), pfrom->id);
-    if (mapArgs.count("-dropmessagestest") && GetRand(atoi(mapArgs["-dropmessagestest"])) == 0)
+ 	EDCparams & params = EDCparams::singleton();
+    if( GetRand(params.dropmessagestest) == 0)
     {
         edcLogPrintf("dropmessagestest DROPPING RECV MESSAGE\n");
         return true;
     }
 
 
-    if (!(edcnLocalServices & NODE_BLOOM) &&
-              (strCommand == NetMsgType::FILTERLOAD ||
-               strCommand == NetMsgType::FILTERADD ||
-               strCommand == NetMsgType::FILTERCLEAR))
+	EDCapp & theApp = EDCapp::singleton();
+    if (!(theApp.localServices() & NODE_BLOOM) &&
+       (strCommand == NetMsgType::FILTERLOAD ||
+        strCommand == NetMsgType::FILTERADD ||
+        strCommand == NetMsgType::FILTERCLEAR))
     {
         if (pfrom->nVersion >= NO_BLOOM_VERSION) 
 		{
@@ -4911,7 +4917,8 @@ bool static ProcessMessage(
         if (!pfrom->fInbound)
         {
             // Advertise our address
-            if (edcfListen && !edcIsInitialBlockDownload())
+			EDCparams & params = EDCparams::singleton();
+            if (params.listen && !edcIsInitialBlockDownload())
             {
                 CAddress addr = edcGetLocalAddress(&pfrom->addr);
                 if (addr.IsRoutable())
@@ -5066,10 +5073,10 @@ bool static ProcessMessage(
             return edcError("message inv size() = %u", vInv.size());
         }
 
-        bool fBlocksOnly = GetBoolArg("-blocksonly", DEFAULT_BLOCKSONLY);
+        bool fBlocksOnly = params.blocksonly;
 
         // Allow whitelisted peers to send data other than blocks in blocks only mode if whitelistrelay is true
-        if (pfrom->fWhitelisted && GetBoolArg("-whitelistrelay", DEFAULT_WHITELISTRELAY))
+        if (pfrom->fWhitelisted && params.whitelistrelay )
             fBlocksOnly = false;
 
         LOCK(EDC_cs_main);
@@ -5249,7 +5256,8 @@ bool static ProcessMessage(
     {
         // Stop processing the transaction early if
         // We are in blocks only mode and peer is either not whitelisted or whitelistrelay is off
-        if (GetBoolArg("-blocksonly", DEFAULT_BLOCKSONLY) && (!pfrom->fWhitelisted || !GetBoolArg("-whitelistrelay", DEFAULT_WHITELISTRELAY)))
+        if (params.blocksonly && 
+			(!pfrom->fWhitelisted || !params.whitelistrelay))
         {
             LogPrint("net", "transaction sent in violation of protocol peer=%d\n", pfrom->id);
             return true;
@@ -5345,7 +5353,8 @@ bool static ProcessMessage(
             AddOrphanTx(tx, pfrom->GetId());
 
             // DoS prevention: do not allow edcMapOrphanTransactions to grow unbounded
-            unsigned int nMaxOrphanTx = (unsigned int)std::max((int64_t)0, GetArg("-maxorphantx", DEFAULT_MAX_ORPHAN_TRANSACTIONS));
+            unsigned int nMaxOrphanTx = (unsigned int)std::max((int64_t)0, 
+				params.maxorphantx );
             unsigned int nEvicted = edcLimitOrphanTxSize(nMaxOrphanTx);
             if (nEvicted > 0)
                 LogPrint("mempool", "mapOrphan overflow, removed %u tx\n", nEvicted);
@@ -5355,8 +5364,7 @@ bool static ProcessMessage(
             assert(recentRejects);
             recentRejects->insert(tx.GetHash());
 
-            if (pfrom->fWhitelisted && GetBoolArg("-whitelistforcerelay", 
-			DEFAULT_WHITELISTFORCERELAY)) 
+            if (pfrom->fWhitelisted && params.whitelistforcerelay ) 
 			{
                 // Always relay transactions received from whitelisted peers, even
                 // if they were already in the mempool or rejected from it due
@@ -6409,11 +6417,12 @@ bool SendEDCMessages(CEDCNode* pto)
         // Message: feefilter
         //
         // We don't want white listed peers to filter txs to us if we have -whitelistforcerelay
-        if (pto->nVersion >= FEEFILTER_VERSION && GetBoolArg("-feefilter", DEFAULT_FEEFILTER) &&
-            !(pto->fWhitelisted && GetBoolArg("-whitelistforcerelay", DEFAULT_WHITELISTFORCERELAY))) 
+		EDCparams & params = EDCparams::singleton();
+        if (pto->nVersion >= FEEFILTER_VERSION && params.feefilter &&
+            !(pto->fWhitelisted && params.whitelistforcerelay )) 
 		{
 			EDCapp & theApp = EDCapp::singleton();
-            CAmount currentFilter = theApp.mempool().GetMinFee(GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000).GetFeePerK();
+            CAmount currentFilter = theApp.mempool().GetMinFee(params.maxmempool * 1000000).GetFeePerK();
             int64_t timeNow = GetTimeMicros();
             if (timeNow > pto->nextSendTimeFeeFilter) 
 			{
