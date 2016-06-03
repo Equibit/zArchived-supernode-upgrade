@@ -45,9 +45,6 @@ using namespace std;
 // pool, we select by highest priority or fee rate, so we might consider
 // transactions that depend on transactions that aren't yet in the block.
 
-uint64_t edcnLastBlockTx = 0;
-uint64_t edcnLastBlockSize = 0;
-
 class ScoreCompare
 {
 public:
@@ -279,8 +276,8 @@ CEDCBlockTemplate* CreateNewEDCBlock(const CChainParams& chainparams, const CScr
                 }
             }
         }
-        edcnLastBlockTx = nBlockTx;
-        edcnLastBlockSize = nBlockSize;
+        theApp.lastBlockTx( nBlockTx );
+        theApp.lastBlockSize( nBlockSize );
         edcLogPrintf("CreateNewBlock(): total size %u txs: %u fees: %ld sigops %d\n", nBlockSize, nBlockTx, nFees, nBlockSigOps);
 
         // Compute final coinbase transaction.
@@ -318,7 +315,8 @@ void IncrementExtraNonce(CEDCBlock* pblock, const CBlockIndex* pindexPrev, unsig
     ++nExtraNonce;
     unsigned int nHeight = pindexPrev->nHeight+1; // Height first in coinbase required for block.version=2
     CEDCMutableTransaction txCoinbase(pblock->vtx[0]);
-    txCoinbase.vin[0].scriptSig = (CScript() << nHeight << CScriptNum(nExtraNonce)) + edcCOINBASE_FLAGS;
+	EDCapp & theApp = EDCapp::singleton();
+    txCoinbase.vin[0].scriptSig = (CScript() << nHeight << CScriptNum(nExtraNonce)) + theApp.coinbaseFlags();
     assert(txCoinbase.vin[0].scriptSig.size() <= 100);
 
     pblock->vtx[0] = txCoinbase;

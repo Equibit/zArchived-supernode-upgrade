@@ -67,7 +67,6 @@ CConditionVariable edccvBlockChange;
 bool edcfTxIndex = false;
 bool fEDCHavePruned = false;
 unsigned int edcnBytesPerSigOp = DEFAULT_BYTES_PER_SIGOP;
-size_t edcnCoinCacheUsage = 5000 * 300;
 int64_t nEDCMaxTipAge = DEFAULT_MAX_TIP_AGE;
 bool edcfEnableReplacement = DEFAULT_ENABLE_REPLACEMENT;
 
@@ -89,12 +88,9 @@ void edcEraseOrphansFor(NodeId peer) EXCLUSIVE_LOCKS_REQUIRED(EDC_cs_main);
 static bool IsSuperMajority(int minVersion, const CBlockIndex* pstart, unsigned nRequired, const Consensus::Params& consensusParams);
 static void CheckBlockIndex(const Consensus::Params& consensusParams);
 
-/** Constant stuff for coinbase transactions we create: */
-CScript edcCOINBASE_FLAGS;
-
 const string edcstrMessageMagic = "Equibit Signed Message:\n";
 
-bool FindBlockPos(CValidationState &state, CDiskBlockPos &pos, unsigned int nAddSize, unsigned int nHeight, uint64_t nTime, bool fKnown = false);
+bool edcFindBlockPos(CValidationState &state, CDiskBlockPos &pos, unsigned int nAddSize, unsigned int nHeight, uint64_t nTime, bool fKnown = false);
 
 // Internal stuff
 namespace 
@@ -647,7 +643,6 @@ CBlockIndex* edcFindForkInGlobalIndex(const CChain& chain, const CBlockLocator& 
 }
 
 CEDCCoinsViewCache * edcPcoinsTip = NULL;
-CBlockTreeDB *edcpblocktree = NULL;
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -1560,7 +1555,7 @@ bool GetTransaction(const uint256 &hash, CEDCTransaction &txOut, const Consensus
     if (edcfTxIndex) 
 	{
         CDiskTxPos postx;
-        if (edcpblocktree->ReadTxIndex(hash, postx)) 
+        if ( theApp.blocktree()->ReadTxIndex(hash, postx)) 
 		{
             CAutoFile file(edcOpenBlockFile(postx, true), SER_DISK, CLIENT_VERSION);
             if (file.IsNull())
@@ -1618,11 +1613,6 @@ bool GetTransaction(const uint256 &hash, CEDCTransaction &txOut, const Consensus
 
     return false;
 }
-
-
-
-
-
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -2606,7 +2596,7 @@ bool ConnectBlock(
     }
 
     if (edcfTxIndex)
-        if (!edcpblocktree->WriteTxIndex(vPos))
+        if (!theApp.blocktree()->WriteTxIndex(vPos))
             return AbortNode(state, "Failed to write transaction index");
 
     // add this block to the view's block chain
@@ -2649,9 +2639,11 @@ bool static FlushStateToDisk(CValidationState &state, FlushStateMode mode)
     static int64_t nLastSetChain = 0;
     std::set<int> setFilesToPrune;
     bool fFlushForPrune = false;
+	EDCapp & theApp = EDCapp::singleton();
+
     try 
 	{
-		if (fPruneMode && fCheckForPruning && !fReindex) 
+		if (theApp.pruneMode() && fCheckForPruning && !fReindex) 
 		{
         	edcFindFilesToPrune(setFilesToPrune, chainparams.PruneAfterHeight());
         	fCheckForPruning = false;
@@ -2660,7 +2652,7 @@ bool static FlushStateToDisk(CValidationState &state, FlushStateMode mode)
             	fFlushForPrune = true;
             	if (!fEDCHavePruned) 
 				{
-                	edcpblocktree->WriteFlag("prunedblockfiles", true);
+                	theApp.blocktree()->WriteFlag("prunedblockfiles", true);
                 	fEDCHavePruned = true;
             	}
         	}
@@ -2683,9 +2675,9 @@ bool static FlushStateToDisk(CValidationState &state, FlushStateMode mode)
 
     	size_t cacheSize = edcPcoinsTip->DynamicMemoryUsage();
     	// The cache is large and close to the limit, but we have time now (not in the middle of a block processing).
-    	bool fCacheLarge = mode == FLUSH_STATE_PERIODIC && cacheSize * (10.0/9) > edcnCoinCacheUsage;
+    	bool fCacheLarge = mode == FLUSH_STATE_PERIODIC && cacheSize * (10.0/9) > theApp.coinCacheUsage();
     	// The cache is over the limit, we have to write now.
-    	bool fCacheCritical = mode == FLUSH_STATE_IF_NEEDED && cacheSize > edcnCoinCacheUsage;
+    	bool fCacheCritical = mode == FLUSH_STATE_IF_NEEDED && cacheSize > theApp.coinCacheUsage();
     	// It's been a while since we wrote the block index to disk. Do this frequently, so we don't need to redownload after a crash.
     	bool fPeriodicWrite = mode == FLUSH_STATE_PERIODIC && nNow > nLastWrite + (int64_t)DATABASE_WRITE_INTERVAL * 1000000;
     	// It's been very long since we flushed the cache. Do this infrequently, to optimize cache usage.
@@ -2716,7 +2708,7 @@ bool static FlushStateToDisk(CValidationState &state, FlushStateMode mode)
                 	vBlocks.push_back(*it);
                 	setDirtyBlockIndex.erase(it++);
             	}
-            	if (!edcpblocktree->WriteBatchSync(vFiles, nLastBlockFile, vBlocks)) 
+            	if (!theApp.blocktree()->WriteBatchSync(vFiles, nLastBlockFile, vBlocks)) 
 				{
                 	return AbortNode(state, "Files to write to block index database");
             	}
@@ -3222,7 +3214,7 @@ bool ActivateBestChain(
                     nBlockEstimate = Checkpoints::GetTotalBlocksEstimate(chainparams.Checkpoints());
                 {
                     LOCK(edccs_vNodes);
-                    BOOST_FOREACH(CEDCNode* pnode, vEDCNodes) 
+                    BOOST_FOREACH(CEDCNode* pnode, edcvNodes) 
 					{
                         if (chainActive.Height() > (pnode->nStartingHeight != -1 ? pnode->nStartingHeight - 2000 : nBlockEstimate)) 
 						{
@@ -3441,6 +3433,7 @@ bool edcFindUndoPos(
 	CDiskBlockPos &pos, 
 	unsigned int nAddSize)
 {
+	EDCapp & theApp = EDCapp::singleton();
     pos.nFile = nFile;
 
     LOCK(cs_LastBlockFile);
@@ -3454,7 +3447,7 @@ bool edcFindUndoPos(
     unsigned int nNewChunks = (nNewSize + UNDOFILE_CHUNK_SIZE - 1) / UNDOFILE_CHUNK_SIZE;
     if (nNewChunks > nOldChunks) 
 	{
-        if (fPruneMode)
+        if (theApp.pruneMode() )
             fCheckForPruning = true;
         if (CheckDiskSpace(nNewChunks * UNDOFILE_CHUNK_SIZE - pos.nPos)) 
 		{
@@ -3732,8 +3725,8 @@ static bool AcceptBlock(
         CDiskBlockPos blockPos;
         if (dbp != NULL)
             blockPos = *dbp;
-        if (!FindBlockPos(state, blockPos, nBlockSize+8, nHeight, block.GetBlockTime(), dbp != NULL))
-            return edcError("AcceptBlock(): FindBlockPos failed");
+        if (!edcFindBlockPos(state, blockPos, nBlockSize+8, nHeight, block.GetBlockTime(), dbp != NULL))
+            return edcError("AcceptBlock(): edcFindBlockPos failed");
         if (dbp == NULL)
             if (!WriteBlockToDisk(block, blockPos, chainparams.MessageStart()))
                 AbortNode(state, "Failed to write block");
@@ -3958,7 +3951,8 @@ CBlockIndex * edcInsertBlockIndex(uint256 hash)
 bool static LoadBlockIndexDB()
 {
     const CEDCChainParams& chainparams = edcParams();
-    if (!edcpblocktree->LoadBlockIndexGuts(InsertBlockIndex))
+	EDCapp & theApp = EDCapp::singleton();
+    if (!theApp.blocktree()->LoadBlockIndexGuts(InsertBlockIndex))
         return false;
 
     boost::this_thread::interruption_point();
@@ -4008,18 +4002,18 @@ bool static LoadBlockIndexDB()
     }
 
     // Load block file info
-    edcpblocktree->ReadLastBlockFile(nLastBlockFile);
+    theApp.blocktree()->ReadLastBlockFile(nLastBlockFile);
     vinfoBlockFile.resize(nLastBlockFile + 1);
     edcLogPrintf("%s: last block file = %i\n", __func__, nLastBlockFile);
     for (int nFile = 0; nFile <= nLastBlockFile; nFile++) 
 	{
-        edcpblocktree->ReadBlockFileInfo(nFile, vinfoBlockFile[nFile]);
+        theApp.blocktree()->ReadBlockFileInfo(nFile, vinfoBlockFile[nFile]);
     }
     edcLogPrintf("%s: last block file info: %s\n", __func__, vinfoBlockFile[nLastBlockFile].ToString());
     for (int nFile = nLastBlockFile + 1; true; nFile++) 
 	{
         CBlockFileInfo info;
-        if (edcpblocktree->ReadBlockFileInfo(nFile, info)) 
+        if (theApp.blocktree()->ReadBlockFileInfo(nFile, info)) 
 		{
             vinfoBlockFile.push_back(info);
         } 
@@ -4051,17 +4045,17 @@ bool static LoadBlockIndexDB()
     }
 
     // Check whether we have ever pruned block & undo files
-    edcpblocktree->ReadFlag("prunedblockfiles", fEDCHavePruned);
+    theApp.blocktree()->ReadFlag("prunedblockfiles", fEDCHavePruned);
     if (fEDCHavePruned)
         edcLogPrintf("LoadBlockIndexDB(): Block files have previously been pruned\n");
 
     // Check whether we need to continue reindexing
     bool fReindexing = false;
-    edcpblocktree->ReadReindexing(fReindexing);
+    theApp.blocktree()->ReadReindexing(fReindexing);
     fReindex |= fReindexing;
 
     // Check whether we have a transaction index
-    edcpblocktree->ReadFlag("txindex", edcfTxIndex);
+    theApp.blocktree()->ReadFlag("txindex", edcfTxIndex);
     edcLogPrintf("%s: transaction index %s\n", __func__, edcfTxIndex ? "enabled" : "disabled");
 
     // Load pointer to end of best chain
@@ -4137,8 +4131,11 @@ bool CEDCVerifyDB::VerifyDB(
                     return edcError("VerifyDB(): *** found bad undo data at %d, hash=%s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
             }
         }
+
+		EDCapp & theApp = EDCapp::singleton();
+
         // check level 3: check for inconsistencies during memory-only disconnect of tip blocks
-        if (nCheckLevel >= 3 && pindex == pindexState && (coins.DynamicMemoryUsage() + edcPcoinsTip->DynamicMemoryUsage()) <= edcnCoinCacheUsage) 
+        if (nCheckLevel >= 3 && pindex == pindexState && (coins.DynamicMemoryUsage() + edcPcoinsTip->DynamicMemoryUsage()) <= theApp.coinCacheUsage() ) 
 		{
             bool fClean = true;
             if (!DisconnectBlock(block, state, pindex, coins, &fClean))
@@ -4238,8 +4235,9 @@ bool edcInitBlockIndex( const CEDCChainParams & chainparams )
 
     // Use the provided setting for -txindex in the new database
  	EDCparams & params = EDCparams::singleton();
+	EDCapp & theApp = EDCapp::singleton();
     edcfTxIndex = params.txindex;
-    edcpblocktree->WriteFlag("txindex", edcfTxIndex);
+    theApp.blocktree()->WriteFlag("txindex", edcfTxIndex);
     edcLogPrintf("Initializing databases...\n");
 
     // Only add the genesis block if not reindexing (in which case we reuse the one already on disk)
@@ -4252,8 +4250,8 @@ bool edcInitBlockIndex( const CEDCChainParams & chainparams )
             unsigned int nBlockSize = ::GetSerializeSize(block, SER_DISK, CLIENT_VERSION);
             CDiskBlockPos blockPos;
             CValidationState state;
-            if (!FindBlockPos(state, blockPos, nBlockSize+8, 0, block.GetBlockTime()))
-                return edcError("edcLoadBlockIndex(): FindBlockPos failed");
+            if (!edcFindBlockPos(state, blockPos, nBlockSize+8, 0, block.GetBlockTime()))
+                return edcError("edcLoadBlockIndex(): edcFindBlockPos failed");
             if (!WriteBlockToDisk(block, blockPos, chainparams.MessageStart()))
                 return edcError("edcLoadBlockIndex(): writing genesis block to disk failed");
             CBlockIndex *pindex = edcAddToBlockIndex(block);
@@ -4888,7 +4886,7 @@ bool static ProcessMessage(
         }
 
         // Disconnect if we connected to ourself
-        if (nNonce == nLocalHostNonce && nNonce > 1)
+        if (nNonce == theApp.localHostNonce() && nNonce > 1)
         {
             edcLogPrintf("connected to self at %s, disconnecting\n", pfrom->addr.ToString());
             pfrom->fDisconnect = true;
@@ -5033,7 +5031,7 @@ bool static ProcessMessage(
                     uint256 hashRand = ArithToUint256(UintToArith256(hashSalt) ^ (hashAddr<<32) ^ ((GetTime()+hashAddr)/(24*60*60)));
                     hashRand = Hash(BEGIN(hashRand), END(hashRand));
                     multimap<uint256, CEDCNode*> mapMix;
-                    BOOST_FOREACH(CEDCNode* pnode, vEDCNodes)
+                    BOOST_FOREACH(CEDCNode* pnode, edcvNodes)
                     {
                         if (pnode->nVersion < CADDR_TIME_VERSION)
                             continue;
@@ -5188,7 +5186,7 @@ bool static ProcessMessage(
             // If pruning, don't inv blocks unless we have on disk and are likely to still have
             // for some reasonable time window (1 hour) that block relay might require.
             const int nPrunedBlocksLikelyToHave = MIN_BLOCKS_TO_KEEP - 3600 / chainparams.GetConsensus().nPowTargetSpacing;
-            if (fPruneMode && (!(pindex->nStatus & BLOCK_HAVE_DATA) || pindex->nHeight <= chainActive.Tip()->nHeight - nPrunedBlocksLikelyToHave))
+            if (theApp.pruneMode() && (!(pindex->nStatus & BLOCK_HAVE_DATA) || pindex->nHeight <= chainActive.Tip()->nHeight - nPrunedBlocksLikelyToHave))
             {
                 LogPrint("net", " getblocks stopping, pruned or too old block at %d %s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
                 break;
@@ -6469,3 +6467,80 @@ public:
         edcMapOrphanTransactionsByPrev.clear();
     }
 } edcinstance_of_cmaincleanup;
+
+
+bool edcFindBlockPos(
+	CValidationState & state, 
+	   CDiskBlockPos & pos, 
+	      unsigned int nAddSize, 
+          unsigned int nHeight, 
+	          uint64_t nTime, 
+	              bool fKnown )
+{
+    LOCK(cs_LastBlockFile);
+
+    unsigned int nFile = fKnown ? pos.nFile : nLastBlockFile;
+    if (vinfoBlockFile.size() <= nFile) 
+	{
+        vinfoBlockFile.resize(nFile + 1);
+    }
+
+    if (!fKnown) 
+	{
+        while (vinfoBlockFile[nFile].nSize + nAddSize >= MAX_BLOCKFILE_SIZE) 
+		{
+            nFile++;
+            if (vinfoBlockFile.size() <= nFile) 
+			{
+                vinfoBlockFile.resize(nFile + 1);
+            }
+        }
+        pos.nFile = nFile;
+        pos.nPos = vinfoBlockFile[nFile].nSize;
+    }
+
+    if ((int)nFile != nLastBlockFile) 
+	{
+        if (!fKnown) 
+		{
+            LogPrintf("Leaving block file %i: %s\n", nLastBlockFile, vinfoBlockFile[nLastBlockFile].ToString());
+        }
+        FlushBlockFile(!fKnown);
+        nLastBlockFile = nFile;
+    }
+
+    vinfoBlockFile[nFile].AddBlock(nHeight, nTime);
+    if (fKnown)
+        vinfoBlockFile[nFile].nSize = std::max(pos.nPos + nAddSize, vinfoBlockFile[nFile].nSize);
+    else
+        vinfoBlockFile[nFile].nSize += nAddSize;
+
+	EDCapp & theApp = EDCapp::singleton();
+    if (!fKnown) 
+	{
+        unsigned int nOldChunks = (pos.nPos + BLOCKFILE_CHUNK_SIZE - 1) / BLOCKFILE_CHUNK_SIZE;
+        unsigned int nNewChunks = (vinfoBlockFile[nFile].nSize + 
+			BLOCKFILE_CHUNK_SIZE - 1) / BLOCKFILE_CHUNK_SIZE;
+
+        if (nNewChunks > nOldChunks) 
+		{
+            if (theApp.pruneMode() )
+                fCheckForPruning = true;
+            if (CheckDiskSpace(nNewChunks * BLOCKFILE_CHUNK_SIZE - pos.nPos)) 
+			{
+                FILE *file = OpenBlockFile(pos);
+                if (file) 
+				{
+                    LogPrintf("Pre-allocating up to position 0x%x in blk%05u.dat\n", nNewChunks * BLOCKFILE_CHUNK_SIZE, pos.nFile);
+                    AllocateFileRange(file, pos.nPos, nNewChunks * BLOCKFILE_CHUNK_SIZE - pos.nPos);
+                    fclose(file);
+                }
+            }
+            else
+                return state.Error("out of disk space");
+        }
+    }
+
+    setDirtyFileInfo.insert(nFile);
+    return true;
+}

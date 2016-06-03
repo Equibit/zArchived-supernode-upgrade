@@ -3245,7 +3245,8 @@ bool CEDCWallet::InitLoadWallet()
         //We can't rescan beyond non-pruned blocks, stop and throw an error
         //this might happen if a user uses a old wallet within a pruned node
         // or if he ran -disablewallet for a longer time, then decided to re-enable
-        if (fPruneMode)
+		EDCapp & theApp = EDCapp::singleton();
+        if (theApp.pruneMode() )
         {
             CBlockIndex *block = chainActive.Tip();
             while (block && block->pprev && (block->pprev->nStatus & BLOCK_HAVE_DATA) && block->pprev->nTx > 0 && pindexRescan != block)

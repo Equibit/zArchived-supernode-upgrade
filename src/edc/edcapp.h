@@ -2,11 +2,12 @@
 
 #include "edctxmempool.h"
 
+class CBlockTreeDB;
+
 
 class EDCapp
 {
 public:
-
 	int maxConnections() const		{ return maxConnections_; }
 	void maxConnections( int mc )	{ maxConnections_ = mc; }
 
@@ -39,10 +40,33 @@ public:
 	bool enableReplacement() const	{ return enableReplacement_; }
 	void enableReplacement( bool b) { enableReplacement_ = b; }
 
+	uint64_t localHostNonce() const	{ return localHostNonce_; }
+	void localHostNonce( uint64_t l){ localHostNonce_ = l; }
+
+	CBlockTreeDB * blocktree() const	{ return blocktree_; }
+	void blocktree( CBlockTreeDB * bt ) { blocktree_ = bt; }
+
+	uint64_t lastBlockSize() const		{ return lastBlockSize_; }
+	void lastBlockSize( uint64_t l )	{ lastBlockSize_ = l; }
+
+	const CScript & coinbaseFlags() const	{ return COINBASE_FLAGS_; }
+	CScript & coinbaseFlags()				{ return COINBASE_FLAGS_; }
+
+	size_t coinCacheUsage() const	{ return coinCacheUsage_; }
+	void coinCacheUsage( size_t c )	{ coinCacheUsage_ = c; }
+
+	int64_t walletUnlockTime() const	{ return walletUnlockTime_; }
+	void walletUnlockTime( int64_t w )  { walletUnlockTime_ = w; }
+
+	uint64_t lastBlockTx() const		{ return lastBlockTx_; }
+	void lastBlockTx( uint64_t ui )		{ lastBlockTx_ = ui; }
+
+
 	static EDCapp & singleton();
 
 private:
 	EDCapp();
+
 	EDCapp( const EDCapp & );
 	EDCapp & operator = ( const EDCapp & );
 
@@ -66,13 +90,20 @@ private:
 	int maxConnections_;
 	int scriptCheckThreads_;
 
+	int64_t walletUnlockTime_;
+
 	unsigned int bytesPerSigOp_;
 	unsigned int txConfirmTarget_;
 
+	size_t coinCacheUsage_;
+
 	/** Number of MiB of block files that we're trying to stay below. */
 	uint64_t pruneTarget_;
+	uint64_t localHostNonce_;
+	uint64_t lastBlockSize_;
 	
 	uint64_t localServices_;
+	uint64_t lastBlockTx_;
 
 	/** Absolute maximum transaction fee (in satoshis) used by wallet
 	 *  and mempool (rejects high fee in sendrawtransaction) 
@@ -85,18 +116,19 @@ private:
     CFeeRate minRelayTxFee_;
 
 	CEDCTxMemPool mempool_;
+
+	/* points to the active block tree (protected by EDC_cs_main) */
+	CBlockTreeDB * blocktree_;
+
+	/* Constant stuff for coinbase transactions we create: */
+	CScript COINBASE_FLAGS_;
 };
 
 /*
 	int64_t maxTipAge_;
 
-	uint64_t localHostNonce_;
-	uint64_t edcnLastBlockTx_;
-	uint64_t edcnLastBlockSize_;
 	uint64_t lastBlockTx_;
 	uint64_t lastBlockSize_;
-
-	size_t coinCacheUsage_;
 
 	CAddrMan addrman_;
 	std::vector<CEDCNode*> vNodes_;
@@ -115,7 +147,6 @@ private:
 	CEDCWallet * walletMain_;
 	CFeeRate payTxFee_;
 	CEDCClientUIInterface uiInterface_;
-	CScript COINBASE_FLAGS_;
 	CCriticalSection cs_main_;
 	BlockMap mapBlockIndex_;
 	const std::string messageMagic_;
@@ -123,5 +154,4 @@ private:
 	CConditionVariable cvBlockChange_;
 	CBlockIndex * indexBestHeader_;
 	CEDCCoinsViewCache * coinsTip_;
-	CBlockTreeDB * blocktree_;
 */

@@ -236,6 +236,8 @@ libbitcoin_server_a_SOURCES = \
   edc/rpc/edcrawtransaction.cpp \
   edc/rpc/edcmining.cpp \
   edc/rpc/edcblockchain.cpp \
+  edc/rpc/edcmisc.cpp \
+  edc/rpc/edcnet.cpp \
   edc/primitives/edctransaction.cpp \
   edc/primitives/edcblock.cpp \
   edc/edcvalidationinterface.cpp \

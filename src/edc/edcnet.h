@@ -74,12 +74,14 @@ bool edcSeenLocal(const CService& addr);
 bool edcIsLocal(const CService& addr);
 bool edcIsReachable(enum Network net);
 bool edcIsReachable(const CNetAddr &addr);
+bool edcAddLocal(const CService& addr, int nScore = LOCAL_NONE);
+bool edcAddLocal(const CNetAddr& addr, int nScore = LOCAL_NONE);
 
 
-extern uint64_t edcnLocalHostNonce;
+
 extern CAddrMan edcaddrman;
 
-extern std::vector<CEDCNode*> vEDCNodes;
+extern std::vector<CEDCNode*> edcvNodes;
 extern CCriticalSection edccs_vNodes;
 extern std::map<uint256, CEDCTransaction> edcMapRelay;
 extern std::deque<std::pair<int64_t, uint256> > edcvRelayExpiration;
@@ -88,9 +90,6 @@ extern limitedmap<uint256, int64_t> edcmapAlreadyAskedFor;
 
 extern std::vector<std::string> edcvAddedNodes;
 extern CCriticalSection edccs_vAddedNodes;
-
-extern NodeId edcnLastNodeId;
-extern CCriticalSection edccs_nLastNodeId;
 
 /** Subversion as sent to the P2P network in `version` messages */
 extern std::string edcstrSubVersion;

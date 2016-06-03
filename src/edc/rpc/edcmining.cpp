@@ -225,9 +225,6 @@ UniValue generatetoaddress(const UniValue& params, bool fHelp)
     return generateBlocks(coinbaseScript, nGenerate, nMaxTries, false);
 }
 
-extern uint64_t edcnLastBlockTx;
-extern uint64_t edcnLastBlockSize;
-
 UniValue getmininginfo(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
@@ -256,8 +253,8 @@ UniValue getmininginfo(const UniValue& params, bool fHelp)
 
     UniValue obj(UniValue::VOBJ);
     obj.push_back(Pair("blocks",           (int)chainActive.Height()));
-    obj.push_back(Pair("currentblocksize", (uint64_t)edcnLastBlockSize));
-    obj.push_back(Pair("currentblocktx",   (uint64_t)edcnLastBlockTx));
+    obj.push_back(Pair("currentblocksize", (uint64_t)theApp.lastBlockSize()));
+    obj.push_back(Pair("currentblocktx",   (uint64_t)theApp.lastBlockTx() ));
     obj.push_back(Pair("difficulty",       (double)GetDifficulty()));
     obj.push_back(Pair("errors",           GetWarnings("statusbar")));
     obj.push_back(Pair("networkhashps",    getnetworkhashps(params, false)));
@@ -436,7 +433,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
     if (strMode != "template")
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid mode");
 
-    if (vEDCNodes.empty())
+    if (edcvNodes.empty())
         throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, "Bitcoin is not connected!");
 
     if (edcIsInitialBlockDownload())
@@ -561,7 +558,8 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
     }
 
     UniValue aux(UniValue::VOBJ);
-    aux.push_back(Pair("flags", HexStr(edcCOINBASE_FLAGS.begin(), edcCOINBASE_FLAGS.end())));
+    aux.push_back(Pair("flags", HexStr( theApp.coinbaseFlags().begin(), 
+		theApp.coinbaseFlags().end())));
 
     arith_uint256 hashTarget = arith_uint256().SetCompact(pblock->nBits);
 

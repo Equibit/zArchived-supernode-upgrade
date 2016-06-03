@@ -84,13 +84,12 @@ CCriticalSection edccs_mapLocalHost;
 map<CNetAddr, LocalServiceInfo> edcmapLocalHost;
 static bool vfLimited[NET_MAX] = {};
 static CEDCNode* pnodeLocalHost = NULL;
-uint64_t edcnLocalHostNonce = 0;
 static std::vector<ListenSocket> vhListenSocket;
 CAddrMan edcaddrman;
 bool edcfAddressesInitialized = false;
 std::string edcstrSubVersion;
 
-vector<CEDCNode*> vEDCNodes;
+vector<CEDCNode*> edcvNodes;
 CCriticalSection edccs_vNodes;
 map<uint256, CEDCTransaction> edcMapRelay;
 deque<pair<int64_t, uint256> > edcvRelayExpiration;
@@ -105,9 +104,6 @@ CCriticalSection edccs_setservAddNodeAddresses;
 
 vector<std::string> edcvAddedNodes;
 CCriticalSection edccs_vAddedNodes;
-
-NodeId edcnLastNodeId = 0;
-CCriticalSection edccs_nLastNodeId;
 
 static CSemaphore *semOutbound = NULL;
 boost::condition_variable edcmessageHandlerCondition;
@@ -309,7 +305,7 @@ uint64_t CEDCNode::nMaxOutboundCycleStartTime = 0;
 CEDCNode* EDCFindNode(const CNetAddr& ip)
 {
     LOCK(edccs_vNodes);
-    BOOST_FOREACH(CEDCNode* pnode, vEDCNodes)
+    BOOST_FOREACH(CEDCNode* pnode, edcvNodes)
         if ((CNetAddr)pnode->addr == ip)
             return (pnode);
     return NULL;
@@ -318,7 +314,7 @@ CEDCNode* EDCFindNode(const CNetAddr& ip)
 CEDCNode* EDCFindNode(const CSubNet& subNet)
 {
     LOCK(edccs_vNodes);
-    BOOST_FOREACH(CEDCNode* pnode, vEDCNodes)
+    BOOST_FOREACH(CEDCNode* pnode, edcvNodes)
     if (subNet.Match((CNetAddr)pnode->addr))
         return (pnode);
     return NULL;
@@ -327,7 +323,7 @@ CEDCNode* EDCFindNode(const CSubNet& subNet)
 CEDCNode* EDCFindNode(const std::string& addrName)
 {
     LOCK(edccs_vNodes);
-    BOOST_FOREACH(CEDCNode* pnode, vEDCNodes)
+    BOOST_FOREACH(CEDCNode* pnode, edcvNodes)
         if (pnode->addrName == addrName)
             return (pnode);
     return NULL;
@@ -336,7 +332,7 @@ CEDCNode* EDCFindNode(const std::string& addrName)
 CEDCNode* EDCFindNode(const CService& addr)
 {
     LOCK(edccs_vNodes);
-    BOOST_FOREACH(CEDCNode* pnode, vEDCNodes)
+    BOOST_FOREACH(CEDCNode* pnode, edcvNodes)
         if ((CService)pnode->addr == addr)
             return (pnode);
     return NULL;
@@ -388,7 +384,7 @@ CEDCNode* ConnectEDCNode(CAddress addrConnect, const char *pszDest)
 
         {
             LOCK(edccs_vNodes);
-            vEDCNodes.push_back(pnode);
+            edcvNodes.push_back(pnode);
         }
 
         pnode->nTimeConnected = GetTime();
@@ -427,17 +423,27 @@ void CEDCNode::PushVersion()
     int64_t nTime = (fInbound ? GetAdjustedTime() : GetTime());
     CAddress addrYou = (addr.IsRoutable() && !IsProxy(addr) ? addr : CAddress(CService("0.0.0.0",0)));
     CAddress addrMe = edcGetLocalAddress(&addr);
-    GetRandBytes((unsigned char*)&edcnLocalHostNonce, sizeof(edcnLocalHostNonce));
+	uint64_t localHostNonce;
+    GetRandBytes((unsigned char*)&localHostNonce, sizeof(localHostNonce));
+	EDCapp & theApp = EDCapp::singleton();
+	theApp.localHostNonce( localHostNonce);
 
 	EDCparams & params = EDCparams::singleton();
-	EDCapp & theApp = EDCapp::singleton();
 
     if (params.logips)
         edcLogPrint("net", "send version message: version %d, blocks=%d, us=%s, them=%s, peer=%d\n", PROTOCOL_VERSION, nBestHeight, addrMe.ToString(), addrYou.ToString(), id);
     else
         edcLogPrint("net", "send version message: version %d, blocks=%d, us=%s, peer=%d\n", PROTOCOL_VERSION, nBestHeight, addrMe.ToString(), id);
-    PushMessage(NetMsgType::VERSION, PROTOCOL_VERSION, theApp.localServices(), nTime, addrYou, addrMe,
-                edcnLocalHostNonce, edcstrSubVersion, nBestHeight, !params.blocksonly);
+
+    PushMessage(
+		NetMsgType::VERSION, PROTOCOL_VERSION, theApp.localServices(), 
+		nTime, 
+		addrYou, 
+		addrMe,
+        localHostNonce, 
+		edcstrSubVersion, 
+		nBestHeight, 
+		!params.blocksonly);
 }
 
 
@@ -844,7 +850,7 @@ static bool AttemptToEvictConnection(bool fPreferNewConnection)
     {
         LOCK(edccs_vNodes);
 
-        BOOST_FOREACH(CEDCNode *node, vEDCNodes) 
+        BOOST_FOREACH(CEDCNode *node, edcvNodes) 
 		{
             if (node->fWhitelisted)
                 continue;
@@ -935,7 +941,7 @@ static void AcceptConnection(const ListenSocket& hListenSocket)
     bool whitelisted = hListenSocket.whitelisted || CEDCNode::IsWhitelistedRange(addr);
     {
         LOCK(edccs_vNodes);
-        BOOST_FOREACH(CEDCNode* pnode, vEDCNodes)
+        BOOST_FOREACH(CEDCNode* pnode, edcvNodes)
             if (pnode->fInbound)
                 nInbound++;
     }
@@ -990,7 +996,7 @@ static void AcceptConnection(const ListenSocket& hListenSocket)
 
     {
         LOCK(edccs_vNodes);
-        vEDCNodes.push_back(pnode);
+        edcvNodes.push_back(pnode);
     }
 }
 
@@ -1005,14 +1011,14 @@ void edcThreadSocketHandler()
         {
             LOCK(edccs_vNodes);
             // Disconnect unused nodes
-            vector<CEDCNode*> vNodesCopy = vEDCNodes;
+            vector<CEDCNode*> vNodesCopy = edcvNodes;
             BOOST_FOREACH(CEDCNode* pnode, vNodesCopy)
             {
                 if (pnode->fDisconnect ||
                     (pnode->GetRefCount() <= 0 && pnode->vRecvMsg.empty() && pnode->nSendSize == 0 && pnode->ssSend.empty()))
                 {
                     // remove from vNodes
-                    vEDCNodes.erase(remove(vEDCNodes.begin(), vEDCNodes.end(), pnode), vEDCNodes.end());
+                    edcvNodes.erase(remove(edcvNodes.begin(), edcvNodes.end(), pnode), edcvNodes.end());
 
                     // release outbound grant (if any)
                     pnode->grantOutbound.Release();
@@ -1057,9 +1063,9 @@ void edcThreadSocketHandler()
                 }
             }
         }
-        if(vEDCNodes.size() != nPrevNodeCount) 
+        if(edcvNodes.size() != nPrevNodeCount) 
 		{
-            nPrevNodeCount = vEDCNodes.size();
+            nPrevNodeCount = edcvNodes.size();
             edcUiInterface.NotifyNumConnectionsChanged(nPrevNodeCount);
         }
 
@@ -1088,7 +1094,7 @@ void edcThreadSocketHandler()
 
         {
             LOCK(edccs_vNodes);
-            BOOST_FOREACH(CEDCNode* pnode, vEDCNodes)
+            BOOST_FOREACH(CEDCNode* pnode, edcvNodes)
             {
                 if (pnode->hSocket == INVALID_SOCKET)
                     continue;
@@ -1164,7 +1170,7 @@ void edcThreadSocketHandler()
         vector<CEDCNode*> vNodesCopy;
         {
             LOCK(edccs_vNodes);
-            vNodesCopy = vEDCNodes;
+            vNodesCopy = edcvNodes;
             BOOST_FOREACH(CEDCNode* pnode, vNodesCopy)
                 pnode->AddRef();
         }
@@ -1305,7 +1311,7 @@ void ThreadMapPort()
                 if(externalIPAddress[0])
                 {
                     edcLogPrintf("UPnP: ExternalIPAddress = %s\n", externalIPAddress);
-                    AddLocal(CNetAddr(externalIPAddress), LOCAL_UPNP);
+                    edcAddLocal(CNetAddr(externalIPAddress), LOCAL_UPNP);
                 }
                 else
                     edcLogPrintf("UPnP: GetExternalIPAddress failed.\n");
@@ -1395,7 +1401,7 @@ void edcThreadDNSAddressSeed()
         MilliSleep(11 * 1000);
 
         LOCK(edccs_vNodes);
-        if (vEDCNodes.size() >= 2) 
+        if (edcvNodes.size() >= 2) 
 		{
             edcLogPrintf("P2P peers available. Skipped DNS seeding.\n");
             return;
@@ -1532,12 +1538,12 @@ void edcThreadOpenConnections()
         CAddress addrConnect;
 
         // Only connect out to one peer per network group (/16 for IPv4).
-        // Do this here so we don't have to critsect vEDCNodes inside mapAddresses critsect.
+        // Do this here so we don't have to critsect edcvNodes inside mapAddresses critsect.
         int nOutbound = 0;
         set<vector<unsigned char> > setConnected;
         {
             LOCK(edccs_vNodes);
-            BOOST_FOREACH(CEDCNode* pnode, vEDCNodes) 
+            BOOST_FOREACH(CEDCNode* pnode, edcvNodes) 
 			{
                 if (!pnode->fInbound) 
 				{
@@ -1642,7 +1648,7 @@ void edcThreadOpenAddedConnections()
         // (keeping in mind that addnode entries can have many IPs if params.dns)
         {
             LOCK(edccs_vNodes);
-            BOOST_FOREACH(CEDCNode* pnode, vEDCNodes)
+            BOOST_FOREACH(CEDCNode* pnode, edcvNodes)
                 for (list<vector<CService> >::iterator it = lservAddressesToAdd.begin(); it != lservAddressesToAdd.end(); it++)
                     BOOST_FOREACH(const CService& addrNode, *(it))
                         if (pnode->addr == addrNode)
@@ -1703,7 +1709,7 @@ void edcThreadMessageHandler()
         vector<CEDCNode*> vNodesCopy;
         {
             LOCK(edccs_vNodes);
-            vNodesCopy = vEDCNodes;
+            vNodesCopy = edcvNodes;
             BOOST_FOREACH(CEDCNode* pnode, vNodesCopy) 
 			{
                 pnode->AddRef();
@@ -1852,7 +1858,7 @@ bool edcBindListenPort(const CService &addrBind, string& strError, bool fWhiteli
 
 	EDCparams & params = EDCparams::singleton();
     if (addrBind.IsRoutable() && params.discover && !fWhitelisted)
-        AddLocal(addrBind, LOCAL_BIND);
+        edcAddLocal(addrBind, LOCAL_BIND);
 
     return true;
 }
@@ -1873,7 +1879,7 @@ void static Discover(boost::thread_group& threadGroup)
         {
             BOOST_FOREACH (const CNetAddr &addr, vaddr)
             {
-                if (AddLocal(addr, LOCAL_IF))
+                if (edcAddLocal(addr, LOCAL_IF))
                     edcLogPrintf("%s: %s - %s\n", __func__, pszHostName, addr.ToString());
             }
         }
@@ -1893,20 +1899,53 @@ void static Discover(boost::thread_group& threadGroup)
             {
                 struct sockaddr_in* s4 = (struct sockaddr_in*)(ifa->ifa_addr);
                 CNetAddr addr(s4->sin_addr);
-                if (AddLocal(addr, LOCAL_IF))
+                if (edcAddLocal(addr, LOCAL_IF))
                     edcLogPrintf("%s: IPv4 %s: %s\n", __func__, ifa->ifa_name, addr.ToString());
             }
             else if (ifa->ifa_addr->sa_family == AF_INET6)
             {
                 struct sockaddr_in6* s6 = (struct sockaddr_in6*)(ifa->ifa_addr);
                 CNetAddr addr(s6->sin6_addr);
-                if (AddLocal(addr, LOCAL_IF))
+                if (edcAddLocal(addr, LOCAL_IF))
                     edcLogPrintf("%s: IPv6 %s: %s\n", __func__, ifa->ifa_name, addr.ToString());
             }
         }
         freeifaddrs(myaddrs);
     }
 #endif
+}
+
+// learn a new local address
+bool edcAddLocal(const CService& addr, int nScore)
+{
+    if (!addr.IsRoutable())
+        return false;
+
+	EDCparams & params = EDCparams::singleton();
+    if (!params.discover && nScore < LOCAL_MANUAL)
+        return false;
+
+    if (IsLimited(addr))
+        return false;
+
+    LogPrintf("edcAddLocal(%s,%i)\n", addr.ToString(), nScore);
+
+    {
+        LOCK(cs_mapLocalHost);
+        bool fAlready = mapLocalHost.count(addr) > 0;
+        LocalServiceInfo &info = mapLocalHost[addr];
+        if (!fAlready || nScore >= info.nScore) {
+            info.nScore = nScore + (fAlready ? 1 : 0);
+            info.nPort = addr.GetPort();
+        }
+    }
+
+    return true;
+}
+
+bool edcAddLocal(const CNetAddr &addr, int nScore)
+{
+    return edcAddLocal(CService(addr, GetListenPort()), nScore);
 }
 
 void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
@@ -2015,7 +2054,7 @@ public:
     ~CNetCleanup()
     {
         // Close sockets
-        BOOST_FOREACH(CEDCNode* pnode, vEDCNodes)
+        BOOST_FOREACH(CEDCNode* pnode, edcvNodes)
             if (pnode->hSocket != INVALID_SOCKET)
                 CloseSocket(pnode->hSocket);
         BOOST_FOREACH(ListenSocket& hListenSocket, vhListenSocket)
@@ -2024,11 +2063,11 @@ public:
                     edcLogPrintf("CloseSocket(hListenSocket) failed with error %s\n", NetworkErrorString(WSAGetLastError()));
 
         // clean up some globals (to help leak detection)
-        BOOST_FOREACH(CEDCNode *pnode, vEDCNodes)
+        BOOST_FOREACH(CEDCNode *pnode, edcvNodes)
             delete pnode;
         BOOST_FOREACH(CEDCNode *pnode, vNodesDisconnected)
             delete pnode;
-        vEDCNodes.clear();
+        edcvNodes.clear();
         vNodesDisconnected.clear();
         vhListenSocket.clear();
         delete semOutbound;
@@ -2061,7 +2100,7 @@ void RelayTransaction(const CEDCTransaction& tx, CFeeRate feerate)
         edcvRelayExpiration.push_back(std::make_pair(GetTime() + 15 * 60, inv.hash));
     }
     LOCK(edccs_vNodes);
-    BOOST_FOREACH(CEDCNode* pnode, vEDCNodes)
+    BOOST_FOREACH(CEDCNode* pnode, edcvNodes)
     {
         pnode->PushInventory(inv);
     }
@@ -2280,8 +2319,11 @@ CEDCNode::CEDCNode(SOCKET hSocketIn, const CAddress& addrIn, const std::string& 
     mapRecvBytesPerMsgCmd[NET_MESSAGE_COMMAND_OTHER] = 0;
 
     {
-        LOCK(edccs_nLastNodeId);
-        id = edcnLastNodeId++;
+		static NodeId lastNodeId = 0;
+		static CCriticalSection lastNodeIdCS;
+
+        LOCK(lastNodeIdCS);
+        id = lastNodeId++;
     }
 
 	EDCparams & params = EDCparams::singleton();

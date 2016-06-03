@@ -16,6 +16,7 @@
 #include "edc/wallet/edcwallet.h"
 #include "edc/edcmerkleblock.h"
 #include "edc/edccore_io.h"
+#include "edc/edcapp.h"
 
 #include <fstream>
 #include <stdint.h>
@@ -128,7 +129,8 @@ UniValue importprivkey(const UniValue& params, bool fHelp)
     if (params.size() > 2)
         fRescan = params[2].get_bool();
 
-    if (fRescan && fPruneMode)
+	EDCapp & theApp = EDCapp::singleton();
+    if (fRescan && theApp.pruneMode())
         throw JSONRPCError(RPC_WALLET_ERROR, "Rescan is disabled in pruned mode");
 
     CBitcoinSecret vchSecret;
@@ -230,7 +232,8 @@ UniValue importaddress(const UniValue& params, bool fHelp)
     if (params.size() > 2)
         fRescan = params[2].get_bool();
 
-    if (fRescan && fPruneMode)
+	EDCapp & theApp = EDCapp::singleton();
+    if (fRescan && theApp.pruneMode())
         throw JSONRPCError(RPC_WALLET_ERROR, "Rescan is disabled in pruned mode");
 
     // Whether to import a p2sh version, too
@@ -407,7 +410,8 @@ UniValue importpubkey(const UniValue& params, bool fHelp)
     if (params.size() > 2)
         fRescan = params[2].get_bool();
 
-    if (fRescan && fPruneMode)
+	EDCapp & theApp = EDCapp::singleton();
+    if (fRescan && theApp.pruneMode())
         throw JSONRPCError(RPC_WALLET_ERROR, "Rescan is disabled in pruned mode");
 
     if (!IsHex(params[0].get_str()))
@@ -452,7 +456,8 @@ UniValue importwallet(const UniValue& params, bool fHelp)
             + HelpExampleRpc("importwallet", "\"test\"")
         );
 
-    if (fPruneMode)
+	EDCapp & theApp = EDCapp::singleton();
+    if (theApp.pruneMode())
         throw JSONRPCError(RPC_WALLET_ERROR, "Importing wallets is disabled in pruned mode");
 
     LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);

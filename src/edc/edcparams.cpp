@@ -735,7 +735,7 @@ bool EDCparams::validate()
     int64_t nMempoolSizeMax = maxmempool * 1000000;
     int64_t nMempoolSizeMin = limitdescendantsize * 1000 * 40;
     if (nMempoolSizeMax < 0 || nMempoolSizeMax < nMempoolSizeMin)
-        return edcInitError(strprintf(_("-maxmempool must be at least %d MB"), std::ceil(nMempoolSizeMin / 1000000.0)));
+        return edcInitError(strprintf(_("-ebmaxmempool must be at least %d MB"), std::ceil(nMempoolSizeMin / 1000000.0)));
 
     // block pruning; get the amount of disk space (in MiB) to allot for 
 	// block & undo files

@@ -29,17 +29,16 @@
 
 using namespace std;
 
-int64_t nWalletUnlockTime;
 static CCriticalSection cs_nWalletUnlockTime;
 
-std::string HelpRequiringPassphrase()
+std::string edcHelpRequiringPassphrase()
 {
     return edcPwalletMain && edcPwalletMain->IsCrypted()
         ? "\nRequires wallet passphrase to be set with walletpassphrase call."
         : "";
 }
 
-bool EnsureWalletIsAvailable(bool avoidException)
+bool edcEnsureWalletIsAvailable(bool avoidException)
 {
     if (!edcPwalletMain)
     {
@@ -51,7 +50,7 @@ bool EnsureWalletIsAvailable(bool avoidException)
     return true;
 }
 
-void EnsureWalletIsUnlocked()
+void edcEnsureWalletIsUnlocked()
 {
     if (edcPwalletMain->IsLocked())
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Please enter the wallet passphrase with walletpassphrase first.");
@@ -102,7 +101,7 @@ void WalletTxToJSON(const CEDCWalletTx& wtx, UniValue& entry)
         entry.push_back(Pair(item.first, item.second));
 }
 
-string AccountFromValue(const UniValue& value)
+string edcAccountFromValue(const UniValue& value)
 {
     string strAccount = value.get_str();
     if (strAccount == "*")
@@ -110,9 +109,9 @@ string AccountFromValue(const UniValue& value)
     return strAccount;
 }
 
-UniValue getnewaddress(const UniValue& params, bool fHelp)
+UniValue edcgetnewaddress(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() > 1)
@@ -135,7 +134,7 @@ UniValue getnewaddress(const UniValue& params, bool fHelp)
     // Parse the account first so we don't generate a key if there's an error
     string strAccount;
     if (params.size() > 0)
-        strAccount = AccountFromValue(params[0]);
+        strAccount = edcAccountFromValue(params[0]);
 
     if (!edcPwalletMain->IsLocked())
         edcPwalletMain->TopUpKeyPool();
@@ -152,7 +151,7 @@ UniValue getnewaddress(const UniValue& params, bool fHelp)
 }
 
 
-CBitcoinAddress GetAccountAddress(string strAccount, bool bForceNew=false)
+CBitcoinAddress edcGetAccountAddress(string strAccount, bool bForceNew=false)
 {
     CEDCWalletDB walletdb(edcPwalletMain->strWalletFile);
 
@@ -192,9 +191,9 @@ CBitcoinAddress GetAccountAddress(string strAccount, bool bForceNew=false)
     return CBitcoinAddress(account.vchPubKey.GetID());
 }
 
-UniValue getaccountaddress(const UniValue& params, bool fHelp)
+UniValue edcgetaccountaddress(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() != 1)
@@ -215,18 +214,18 @@ UniValue getaccountaddress(const UniValue& params, bool fHelp)
     LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
 
     // Parse the account first so we don't generate a key if there's an error
-    string strAccount = AccountFromValue(params[0]);
+    string strAccount = edcAccountFromValue(params[0]);
 
     UniValue ret(UniValue::VSTR);
 
-    ret = GetAccountAddress(strAccount).ToString();
+    ret = edcGetAccountAddress(strAccount).ToString();
     return ret;
 }
 
 
-UniValue getrawchangeaddress(const UniValue& params, bool fHelp)
+UniValue edcgetrawchangeaddress(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() > 1)
@@ -259,9 +258,9 @@ UniValue getrawchangeaddress(const UniValue& params, bool fHelp)
 }
 
 
-UniValue setaccount(const UniValue& params, bool fHelp)
+UniValue edcsetaccount(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() < 1 || params.size() > 2)
@@ -284,7 +283,7 @@ UniValue setaccount(const UniValue& params, bool fHelp)
 
     string strAccount;
     if (params.size() > 1)
-        strAccount = AccountFromValue(params[1]);
+        strAccount = edcAccountFromValue(params[1]);
 
     // Only add the account if the address is yours.
     if (IsMine(*edcPwalletMain, address.Get()))
@@ -293,8 +292,8 @@ UniValue setaccount(const UniValue& params, bool fHelp)
         if (edcPwalletMain->mapAddressBook.count(address.Get()))
         {
             string strOldAccount = edcPwalletMain->mapAddressBook[address.Get()].name;
-            if (address == GetAccountAddress(strOldAccount))
-                GetAccountAddress(strOldAccount, true);
+            if (address == edcGetAccountAddress(strOldAccount))
+                edcGetAccountAddress(strOldAccount, true);
         }
         edcPwalletMain->SetAddressBook(address.Get(), strAccount, "receive");
     }
@@ -305,9 +304,9 @@ UniValue setaccount(const UniValue& params, bool fHelp)
 }
 
 
-UniValue getaccount(const UniValue& params, bool fHelp)
+UniValue edcgetaccount(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() != 1)
@@ -337,9 +336,9 @@ UniValue getaccount(const UniValue& params, bool fHelp)
 }
 
 
-UniValue getaddressesbyaccount(const UniValue& params, bool fHelp)
+UniValue edcgetaddressesbyaccount(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() != 1)
@@ -360,7 +359,7 @@ UniValue getaddressesbyaccount(const UniValue& params, bool fHelp)
 
     LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
 
-    string strAccount = AccountFromValue(params[0]);
+    string strAccount = edcAccountFromValue(params[0]);
 
     // Find all addresses that have the given account
     UniValue ret(UniValue::VARR);
@@ -408,16 +407,16 @@ static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtr
         throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of the wallet and coins were spent in the copy but not marked as spent here.");
 }
 
-UniValue sendtoaddress(const UniValue& params, bool fHelp)
+UniValue edcsendtoaddress(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() < 2 || params.size() > 5)
         throw runtime_error(
             "sendtoaddress \"bitcoinaddress\" amount ( \"comment\" \"comment-to\" subtractfeefromamount )\n"
             "\nSend an amount to a given address.\n"
-            + HelpRequiringPassphrase() +
+            + edcHelpRequiringPassphrase() +
             "\nArguments:\n"
             "1. \"bitcoinaddress\"  (string, required) The bitcoin address to send to.\n"
             "2. \"amount\"      (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
@@ -459,16 +458,16 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp)
     if (params.size() > 4)
         fSubtractFeeFromAmount = params[4].get_bool();
 
-    EnsureWalletIsUnlocked();
+    edcEnsureWalletIsUnlocked();
 
     SendMoney(address.Get(), nAmount, fSubtractFeeFromAmount, wtx);
 
     return wtx.GetHash().GetHex();
 }
 
-UniValue listaddressgroupings(const UniValue& params, bool fHelp)
+UniValue edclistaddressgroupings(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp)
@@ -517,16 +516,16 @@ UniValue listaddressgroupings(const UniValue& params, bool fHelp)
     return jsonGroupings;
 }
 
-UniValue signmessage(const UniValue& params, bool fHelp)
+UniValue edcsignmessage(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() != 2)
         throw runtime_error(
             "signmessage \"bitcoinaddress\" \"message\"\n"
             "\nSign a message with the private key of an address"
-            + HelpRequiringPassphrase() + "\n"
+            + edcHelpRequiringPassphrase() + "\n"
             "\nArguments:\n"
             "1. \"bitcoinaddress\"  (string, required) The bitcoin address to use for the private key.\n"
             "2. \"message\"         (string, required) The message to create a signature of.\n"
@@ -545,7 +544,7 @@ UniValue signmessage(const UniValue& params, bool fHelp)
 
     LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
 
-    EnsureWalletIsUnlocked();
+    edcEnsureWalletIsUnlocked();
 
     string strAddress = params[0].get_str();
     string strMessage = params[1].get_str();
@@ -573,9 +572,9 @@ UniValue signmessage(const UniValue& params, bool fHelp)
     return EncodeBase64(&vchSig[0], vchSig.size());
 }
 
-UniValue getreceivedbyaddress(const UniValue& params, bool fHelp)
+UniValue edcgetreceivedbyaddress(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() < 1 || params.size() > 2)
@@ -631,9 +630,9 @@ UniValue getreceivedbyaddress(const UniValue& params, bool fHelp)
 }
 
 
-UniValue getreceivedbyaccount(const UniValue& params, bool fHelp)
+UniValue edcgetreceivedbyaccount(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() < 1 || params.size() > 2)
@@ -664,7 +663,7 @@ UniValue getreceivedbyaccount(const UniValue& params, bool fHelp)
         nMinDepth = params[1].get_int();
 
     // Get the set of pub keys assigned to account
-    string strAccount = AccountFromValue(params[0]);
+    string strAccount = edcAccountFromValue(params[0]);
     set<CTxDestination> setAddress = edcPwalletMain->GetAccountAddresses(strAccount);
 
     // Tally
@@ -688,7 +687,7 @@ UniValue getreceivedbyaccount(const UniValue& params, bool fHelp)
 }
 
 
-CAmount GetAccountBalance(CEDCWalletDB& walletdb, const string& strAccount, int nMinDepth, const isminefilter& filter)
+CAmount edcGetAccountBalance(CEDCWalletDB& walletdb, const string& strAccount, int nMinDepth, const isminefilter& filter)
 {
     CAmount nBalance = 0;
 
@@ -713,16 +712,16 @@ CAmount GetAccountBalance(CEDCWalletDB& walletdb, const string& strAccount, int 
     return nBalance;
 }
 
-CAmount GetAccountBalance(const string& strAccount, int nMinDepth, const isminefilter& filter)
+CAmount edcGetAccountBalance(const string& strAccount, int nMinDepth, const isminefilter& filter)
 {
     CEDCWalletDB walletdb(edcPwalletMain->strWalletFile);
-    return GetAccountBalance(walletdb, strAccount, nMinDepth, filter);
+    return edcGetAccountBalance(walletdb, strAccount, nMinDepth, filter);
 }
 
 
-UniValue getbalance(const UniValue& params, bool fHelp)
+UniValue edcgetbalance(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() > 3)
@@ -791,16 +790,16 @@ UniValue getbalance(const UniValue& params, bool fHelp)
         return  ValueFromAmount(nBalance);
     }
 
-    string strAccount = AccountFromValue(params[0]);
+    string strAccount = edcAccountFromValue(params[0]);
 
-    CAmount nBalance = GetAccountBalance(strAccount, nMinDepth, filter);
+    CAmount nBalance = edcGetAccountBalance(strAccount, nMinDepth, filter);
 
     return ValueFromAmount(nBalance);
 }
 
-UniValue getunconfirmedbalance(const UniValue &params, bool fHelp)
+UniValue edcgetunconfirmedbalance(const UniValue &params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() > 0)
@@ -814,9 +813,9 @@ UniValue getunconfirmedbalance(const UniValue &params, bool fHelp)
 }
 
 
-UniValue movecmd(const UniValue& params, bool fHelp)
+UniValue edcmovecmd(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() < 3 || params.size() > 5)
@@ -842,8 +841,8 @@ UniValue movecmd(const UniValue& params, bool fHelp)
 
     LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
 
-    string strFrom = AccountFromValue(params[0]);
-    string strTo = AccountFromValue(params[1]);
+    string strFrom = edcAccountFromValue(params[0]);
+    string strTo = edcAccountFromValue(params[1]);
     CAmount nAmount = AmountFromValue(params[2]);
     if (nAmount <= 0)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
@@ -887,16 +886,16 @@ UniValue movecmd(const UniValue& params, bool fHelp)
 }
 
 
-UniValue sendfrom(const UniValue& params, bool fHelp)
+UniValue edcsendfrom(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() < 3 || params.size() > 6)
         throw runtime_error(
             "sendfrom \"fromaccount\" \"tobitcoinaddress\" amount ( minconf \"comment\" \"comment-to\" )\n"
             "\nDEPRECATED (use sendtoaddress). Sent an amount from an account to a bitcoin address."
-            + HelpRequiringPassphrase() + "\n"
+            + edcHelpRequiringPassphrase() + "\n"
             "\nArguments:\n"
             "1. \"fromaccount\"       (string, required) The name of the account to send funds from. May be the default account using \"\".\n"
             "2. \"tobitcoinaddress\"  (string, required) The bitcoin address to send funds to.\n"
@@ -920,7 +919,7 @@ UniValue sendfrom(const UniValue& params, bool fHelp)
 
     LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
 
-    string strAccount = AccountFromValue(params[0]);
+    string strAccount = edcAccountFromValue(params[0]);
     CBitcoinAddress address(params[1].get_str());
     if (!address.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address");
@@ -938,10 +937,10 @@ UniValue sendfrom(const UniValue& params, bool fHelp)
     if (params.size() > 5 && !params[5].isNull() && !params[5].get_str().empty())
         wtx.mapValue["to"]      = params[5].get_str();
 
-    EnsureWalletIsUnlocked();
+    edcEnsureWalletIsUnlocked();
 
     // Check funds
-    CAmount nBalance = GetAccountBalance(strAccount, nMinDepth, ISMINE_SPENDABLE);
+    CAmount nBalance = edcGetAccountBalance(strAccount, nMinDepth, ISMINE_SPENDABLE);
     if (nAmount > nBalance)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Account has insufficient funds");
 
@@ -951,16 +950,16 @@ UniValue sendfrom(const UniValue& params, bool fHelp)
 }
 
 
-UniValue sendmany(const UniValue& params, bool fHelp)
+UniValue edcsendmany(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() < 2 || params.size() > 5)
         throw runtime_error(
             "sendmany \"fromaccount\" {\"address\":amount,...} ( minconf \"comment\" [\"address\",...] )\n"
             "\nSend multiple times. Amounts are double-precision floating point numbers."
-            + HelpRequiringPassphrase() + "\n"
+            + edcHelpRequiringPassphrase() + "\n"
             "\nArguments:\n"
             "1. \"fromaccount\"         (string, required) DEPRECATED. The account to send the funds from. Should be \"\" for the default account\n"
             "2. \"amounts\"             (string, required) A json object with addresses and amounts\n"
@@ -994,7 +993,7 @@ UniValue sendmany(const UniValue& params, bool fHelp)
 
     LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
 
-    string strAccount = AccountFromValue(params[0]);
+    string strAccount = edcAccountFromValue(params[0]);
     UniValue sendTo = params[1].get_obj();
     int nMinDepth = 1;
     if (params.size() > 2)
@@ -1042,10 +1041,10 @@ UniValue sendmany(const UniValue& params, bool fHelp)
         vecSend.push_back(recipient);
     }
 
-    EnsureWalletIsUnlocked();
+    edcEnsureWalletIsUnlocked();
 
     // Check funds
-    CAmount nBalance = GetAccountBalance(strAccount, nMinDepth, ISMINE_SPENDABLE);
+    CAmount nBalance = edcGetAccountBalance(strAccount, nMinDepth, ISMINE_SPENDABLE);
     if (totalAmount > nBalance)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Account has insufficient funds");
 
@@ -1066,14 +1065,14 @@ UniValue sendmany(const UniValue& params, bool fHelp)
 // Defined in rpc/misc.cpp
 extern CScript _createmultisig_redeemScript(const UniValue& params);
 
-UniValue addmultisigaddress(const UniValue& params, bool fHelp)
+UniValue edcaddmultisigaddress(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() < 2 || params.size() > 3)
     {
-        string msg = "addmultisigaddress nrequired [\"key\",...] ( \"account\" )\n"
+        string msg = "eb_addmultisigaddress nrequired [\"key\",...] ( \"account\" )\n"
             "\nAdd a nrequired-to-sign multisignature address to the wallet.\n"
             "Each key is a Bitcoin address or hex-encoded public key.\n"
             "If 'account' is specified (DEPRECATED), assign address to that account.\n"
@@ -1092,9 +1091,9 @@ UniValue addmultisigaddress(const UniValue& params, bool fHelp)
 
             "\nExamples:\n"
             "\nAdd a multisig address from 2 addresses\n"
-            + HelpExampleCli("addmultisigaddress", "2 \"[\\\"16sSauSf5pF2UkUwvKGq4qjNRzBZYqgEL5\\\",\\\"171sgjn4YtPu27adkKGrdDwzRTxnRkBfKV\\\"]\"") +
+            + HelpExampleCli("eb_addmultisigaddress", "2 \"[\\\"16sSauSf5pF2UkUwvKGq4qjNRzBZYqgEL5\\\",\\\"171sgjn4YtPu27adkKGrdDwzRTxnRkBfKV\\\"]\"") +
             "\nAs json rpc call\n"
-            + HelpExampleRpc("addmultisigaddress", "2, \"[\\\"16sSauSf5pF2UkUwvKGq4qjNRzBZYqgEL5\\\",\\\"171sgjn4YtPu27adkKGrdDwzRTxnRkBfKV\\\"]\"")
+            + HelpExampleRpc("eb_addmultisigaddress", "2, \"[\\\"16sSauSf5pF2UkUwvKGq4qjNRzBZYqgEL5\\\",\\\"171sgjn4YtPu27adkKGrdDwzRTxnRkBfKV\\\"]\"")
         ;
         throw runtime_error(msg);
     }
@@ -1103,7 +1102,7 @@ UniValue addmultisigaddress(const UniValue& params, bool fHelp)
 
     string strAccount;
     if (params.size() > 2)
-        strAccount = AccountFromValue(params[2]);
+        strAccount = edcAccountFromValue(params[2]);
 
     // Construct using pay-to-script-hash:
     CScript inner = _createmultisig_redeemScript(params);
@@ -1251,9 +1250,9 @@ UniValue ListReceived(const UniValue& params, bool fByAccounts)
     return ret;
 }
 
-UniValue listreceivedbyaddress(const UniValue& params, bool fHelp)
+UniValue edclistreceivedbyaddress(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() > 3)
@@ -1289,9 +1288,9 @@ UniValue listreceivedbyaddress(const UniValue& params, bool fHelp)
     return ListReceived(params, false);
 }
 
-UniValue listreceivedbyaccount(const UniValue& params, bool fHelp)
+UniValue edclistreceivedbyaccount(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() > 3)
@@ -1409,7 +1408,7 @@ void ListTransactions(const CEDCWalletTx& wtx, const string& strAccount, int nMi
     }
 }
 
-void AcentryToJSON(const CAccountingEntry& acentry, const string& strAccount, UniValue& ret)
+void edcAcentryToJSON(const CAccountingEntry& acentry, const string& strAccount, UniValue& ret)
 {
     bool fAllAccounts = (strAccount == string("*"));
 
@@ -1426,9 +1425,9 @@ void AcentryToJSON(const CAccountingEntry& acentry, const string& strAccount, Un
     }
 }
 
-UniValue listtransactions(const UniValue& params, bool fHelp)
+UniValue edclisttransactions(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() > 4)
@@ -1523,7 +1522,7 @@ UniValue listtransactions(const UniValue& params, bool fHelp)
             ListTransactions(*pwtx, strAccount, 0, true, ret, filter);
         CAccountingEntry *const pacentry = (*it).second.second;
         if (pacentry != 0)
-            AcentryToJSON(*pacentry, strAccount, ret);
+            edcAcentryToJSON(*pacentry, strAccount, ret);
 
         if ((int)ret.size() >= (nCount+nFrom)) break;
     }
@@ -1553,9 +1552,9 @@ UniValue listtransactions(const UniValue& params, bool fHelp)
     return ret;
 }
 
-UniValue listaccounts(const UniValue& params, bool fHelp)
+UniValue edclistaccounts(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() > 2)
@@ -1634,9 +1633,9 @@ UniValue listaccounts(const UniValue& params, bool fHelp)
     return ret;
 }
 
-UniValue listsinceblock(const UniValue& params, bool fHelp)
+UniValue edclistsinceblock(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp)
@@ -1726,9 +1725,9 @@ UniValue listsinceblock(const UniValue& params, bool fHelp)
     return ret;
 }
 
-UniValue gettransaction(const UniValue& params, bool fHelp)
+UniValue edcgettransaction(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() < 1 || params.size() > 2)
@@ -1806,9 +1805,9 @@ UniValue gettransaction(const UniValue& params, bool fHelp)
     return entry;
 }
 
-UniValue abandontransaction(const UniValue& params, bool fHelp)
+UniValue edcabandontransaction(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() != 1)
@@ -1841,20 +1840,20 @@ UniValue abandontransaction(const UniValue& params, bool fHelp)
 }
 
 
-UniValue backupwallet(const UniValue& params, bool fHelp)
+UniValue edcbackupwallet(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "backupwallet \"destination\"\n"
+            "eb_backupwallet \"destination\"\n"
             "\nSafely copies current wallet file to destination, which can be a directory or a path with filename.\n"
             "\nArguments:\n"
             "1. \"destination\"   (string) The destination directory or file\n"
             "\nExamples:\n"
-            + HelpExampleCli("backupwallet", "\"backup.dat\"")
-            + HelpExampleRpc("backupwallet", "\"backup.dat\"")
+            + HelpExampleCli("eb_backupwallet", "\"backup.dat\"")
+            + HelpExampleRpc("eb_backupwallet", "\"backup.dat\"")
         );
 
     LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
@@ -1867,16 +1866,16 @@ UniValue backupwallet(const UniValue& params, bool fHelp)
 }
 
 
-UniValue keypoolrefill(const UniValue& params, bool fHelp)
+UniValue edckeypoolrefill(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() > 1)
         throw runtime_error(
             "keypoolrefill ( newsize )\n"
             "\nFills the keypool."
-            + HelpRequiringPassphrase() + "\n"
+            + edcHelpRequiringPassphrase() + "\n"
             "\nArguments\n"
             "1. newsize     (numeric, optional, default=100) The new keypool size\n"
             "\nExamples:\n"
@@ -1895,7 +1894,7 @@ UniValue keypoolrefill(const UniValue& params, bool fHelp)
         kpSize = (unsigned int)params[0].get_int();
     }
 
-    EnsureWalletIsUnlocked();
+    edcEnsureWalletIsUnlocked();
     edcPwalletMain->TopUpKeyPool(kpSize);
 
     if (edcPwalletMain->GetKeyPoolSize() < kpSize)
@@ -1908,13 +1907,14 @@ UniValue keypoolrefill(const UniValue& params, bool fHelp)
 static void LockWallet(CEDCWallet* pWallet)
 {
     LOCK(cs_nWalletUnlockTime);
-    nWalletUnlockTime = 0;
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.walletUnlockTime( 0 );
     pWallet->Lock();
 }
 
-UniValue walletpassphrase(const UniValue& params, bool fHelp)
+UniValue edcwalletpassphrase(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (edcPwalletMain->IsCrypted() && (fHelp || params.size() != 2))
@@ -1966,16 +1966,17 @@ UniValue walletpassphrase(const UniValue& params, bool fHelp)
 
     int64_t nSleepTime = params[1].get_int64();
     LOCK(cs_nWalletUnlockTime);
-    nWalletUnlockTime = GetTime() + nSleepTime;
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.walletUnlockTime( GetTime() + nSleepTime );
     RPCRunLater("lockwallet", boost::bind(LockWallet, edcPwalletMain), nSleepTime);
 
     return NullUniValue;
 }
 
 
-UniValue walletpassphrasechange(const UniValue& params, bool fHelp)
+UniValue edcwalletpassphrasechange(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (edcPwalletMain->IsCrypted() && (fHelp || params.size() != 2))
@@ -2020,9 +2021,9 @@ UniValue walletpassphrasechange(const UniValue& params, bool fHelp)
 }
 
 
-UniValue walletlock(const UniValue& params, bool fHelp)
+UniValue edcwalletlock(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (edcPwalletMain->IsCrypted() && (fHelp || params.size() != 0))
@@ -2050,23 +2051,25 @@ UniValue walletlock(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_WALLET_WRONG_ENC_STATE, "Error: running with an unencrypted wallet, but walletlock was called.");
 
     {
+		EDCapp & theApp = EDCapp::singleton();
+
         LOCK(cs_nWalletUnlockTime);
         edcPwalletMain->Lock();
-        nWalletUnlockTime = 0;
+        theApp.walletUnlockTime( 0 );
     }
 
     return NullUniValue;
 }
 
 
-UniValue encryptwallet(const UniValue& params, bool fHelp)
+UniValue edcencryptwallet(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (!edcPwalletMain->IsCrypted() && (fHelp || params.size() != 1))
         throw runtime_error(
-            "encryptwallet \"passphrase\"\n"
+            "eb_encryptwallet \"passphrase\"\n"
             "\nEncrypts the wallet with 'passphrase'. This is for first time encryption.\n"
             "After this, any calls that interact with private keys such as sending or signing \n"
             "will require the passphrase to be set prior the making these calls.\n"
@@ -2077,7 +2080,7 @@ UniValue encryptwallet(const UniValue& params, bool fHelp)
             "1. \"passphrase\"    (string) The pass phrase to encrypt the wallet with. It must be at least 1 character, but should be long.\n"
             "\nExamples:\n"
             "\nEncrypt you wallet\n"
-            + HelpExampleCli("encryptwallet", "\"my pass phrase\"") +
+            + HelpExampleCli("eb_encryptwallet", "\"my pass phrase\"") +
             "\nNow set the passphrase to use the wallet, such as for signing or sending bitcoin\n"
             + HelpExampleCli("walletpassphrase", "\"my pass phrase\"") +
             "\nNow we can so something like sign\n"
@@ -2085,7 +2088,7 @@ UniValue encryptwallet(const UniValue& params, bool fHelp)
             "\nNow lock the wallet again by removing the passphrase\n"
             + HelpExampleCli("walletlock", "") +
             "\nAs a json rpc call\n"
-            + HelpExampleRpc("encryptwallet", "\"my pass phrase\"")
+            + HelpExampleRpc("eb_encryptwallet", "\"my pass phrase\"")
         );
 
     LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
@@ -2093,7 +2096,7 @@ UniValue encryptwallet(const UniValue& params, bool fHelp)
     if (fHelp)
         return true;
     if (edcPwalletMain->IsCrypted())
-        throw JSONRPCError(RPC_WALLET_WRONG_ENC_STATE, "Error: running with an encrypted wallet, but encryptwallet was called.");
+        throw JSONRPCError(RPC_WALLET_WRONG_ENC_STATE, "Error: running with an encrypted wallet, but eb_encryptwallet was called.");
 
     // TODO: get rid of this .c_str() by implementing 
 	// SecureString::operator=(std::string)
@@ -2104,7 +2107,7 @@ UniValue encryptwallet(const UniValue& params, bool fHelp)
 
     if (strWalletPass.length() < 1)
         throw runtime_error(
-            "encryptwallet <passphrase>\n"
+            "eb_encryptwallet <passphrase>\n"
             "Encrypts the wallet with <passphrase>.");
 
     if (!edcPwalletMain->EncryptWallet(strWalletPass))
@@ -2117,9 +2120,9 @@ UniValue encryptwallet(const UniValue& params, bool fHelp)
     return "wallet encrypted; Bitcoin server stopping, restart to run with encrypted wallet. The keypool has been flushed, you need to make a new backup.";
 }
 
-UniValue lockunspent(const UniValue& params, bool fHelp)
+UniValue edclockunspent(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() < 1 || params.size() > 2)
@@ -2204,9 +2207,9 @@ UniValue lockunspent(const UniValue& params, bool fHelp)
     return true;
 }
 
-UniValue listlockunspent(const UniValue& params, bool fHelp)
+UniValue edclistlockunspent(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() > 0)
@@ -2253,9 +2256,9 @@ UniValue listlockunspent(const UniValue& params, bool fHelp)
     return ret;
 }
 
-UniValue settxfee(const UniValue& params, bool fHelp)
+UniValue edcsettxfee(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() < 1 || params.size() > 1)
@@ -2280,9 +2283,11 @@ UniValue settxfee(const UniValue& params, bool fHelp)
     return true;
 }
 
-UniValue getwalletinfo(const UniValue& params, bool fHelp)
+UniValue edcgetwalletinfo(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+	EDCapp & theApp = EDCapp::singleton();
+
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() != 0)
@@ -2317,14 +2322,14 @@ UniValue getwalletinfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("keypoololdest", edcPwalletMain->GetOldestKeyPoolTime()));
     obj.push_back(Pair("keypoolsize",   (int)edcPwalletMain->GetKeyPoolSize()));
     if (edcPwalletMain->IsCrypted())
-        obj.push_back(Pair("unlocked_until", nWalletUnlockTime));
+        obj.push_back(Pair("unlocked_until", theApp.walletUnlockTime() ));
     obj.push_back(Pair("paytxfee",      ValueFromAmount(edcpayTxFee.GetFeePerK())));
     return obj;
 }
 
-UniValue resendwallettransactions(const UniValue& params, bool fHelp)
+UniValue edcresendwallettransactions(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() != 0)
@@ -2347,9 +2352,9 @@ UniValue resendwallettransactions(const UniValue& params, bool fHelp)
     return result;
 }
 
-UniValue listunspent(const UniValue& params, bool fHelp)
+UniValue edclistunspent(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() > 3)
@@ -2472,21 +2477,21 @@ UniValue listunspent(const UniValue& params, bool fHelp)
     return results;
 }
 
-UniValue fundrawtransaction(const UniValue& params, bool fHelp)
+UniValue edcfundrawtransaction(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-                            "fundrawtransaction \"hexstring\" ( options )\n"
+                            "eb_fundrawtransaction \"hexstring\" ( options )\n"
                             "\nAdd inputs to a transaction until it has enough in value to meet its out value.\n"
                             "This will not modify existing inputs, and will add one change output to the outputs.\n"
                             "Note that inputs which were signed may need to be resigned after completion since in/outputs have been added.\n"
                             "The inputs added will not be signed, use signrawtransaction for that.\n"
                             "Note that all existing inputs must have their previous output transaction be in the wallet.\n"
                             "Note that all inputs selected must be of standard form and P2SH scripts must be\n"
-                            "in the wallet using importaddress or addmultisigaddress (to calculate fees).\n"
+                            "in the wallet using importaddress or eb_addmultisigaddress (to calculate fees).\n"
                             "You can see whether this is the case by checking the \"solvable\" field in the listunspent output.\n"
                             "Only pay-to-pubkey, multisig, and P2SH versions thereof are currently supported for watch-only\n"
                             "\nArguments:\n"
@@ -2510,7 +2515,7 @@ UniValue fundrawtransaction(const UniValue& params, bool fHelp)
                             "\nCreate a transaction with no inputs\n"
                             + HelpExampleCli("createrawtransaction", "\"[]\" \"{\\\"myaddress\\\":0.01}\"") +
                             "\nAdd sufficient unsigned inputs to meet the output value\n"
-                            + HelpExampleCli("fundrawtransaction", "\"rawtransactionhex\"") +
+                            + HelpExampleCli("eb_fundrawtransaction", "\"rawtransactionhex\"") +
                             "\nSign the transaction\n"
                             + HelpExampleCli("signrawtransaction", "\"fundedtransactionhex\"") +
                             "\nSend the transaction\n"
@@ -2599,54 +2604,54 @@ extern UniValue removeprunedfunds(const UniValue& params, bool fHelp);
 static const CRPCCommand commands[] =
 { //  category              name                        actor (function)           okSafeMode
     //  --------------------- ------------------------    -----------------------    ----------
-    { "rawtransactions",    "fundrawtransaction",       &fundrawtransaction,       false },
-    { "hidden",             "resendwallettransactions", &resendwallettransactions, true  },
-    { "wallet",             "abandontransaction",       &abandontransaction,       false },
-    { "wallet",             "addmultisigaddress",       &addmultisigaddress,       true  },
-    { "wallet",             "backupwallet",             &backupwallet,             true  },
-    { "wallet",             "dumpprivkey",              &dumpprivkey,              true  },
-    { "wallet",             "dumpwallet",               &dumpwallet,               true  },
-    { "wallet",             "encryptwallet",            &encryptwallet,            true  },
-    { "wallet",             "getaccountaddress",        &getaccountaddress,        true  },
-    { "wallet",             "getaccount",               &getaccount,               true  },
-    { "wallet",             "getaddressesbyaccount",    &getaddressesbyaccount,    true  },
-    { "wallet",             "getbalance",               &getbalance,               false },
-    { "wallet",             "getnewaddress",            &getnewaddress,            true  },
-    { "wallet",             "getrawchangeaddress",      &getrawchangeaddress,      true  },
-    { "wallet",             "getreceivedbyaccount",     &getreceivedbyaccount,     false },
-    { "wallet",             "getreceivedbyaddress",     &getreceivedbyaddress,     false },
-    { "wallet",             "gettransaction",           &gettransaction,           false },
-    { "wallet",             "getunconfirmedbalance",    &getunconfirmedbalance,    false },
-    { "wallet",             "getwalletinfo",            &getwalletinfo,            false },
-    { "wallet",             "importprivkey",            &importprivkey,            true  },
-    { "wallet",             "importwallet",             &importwallet,             true  },
-    { "wallet",             "importaddress",            &importaddress,            true  },
-    { "wallet",             "importprunedfunds",        &importprunedfunds,        true  },
-    { "wallet",             "importpubkey",             &importpubkey,             true  },
-    { "wallet",             "keypoolrefill",            &keypoolrefill,            true  },
-    { "wallet",             "listaccounts",             &listaccounts,             false },
-    { "wallet",             "listaddressgroupings",     &listaddressgroupings,     false },
-    { "wallet",             "listlockunspent",          &listlockunspent,          false },
-    { "wallet",             "listreceivedbyaccount",    &listreceivedbyaccount,    false },
-    { "wallet",             "listreceivedbyaddress",    &listreceivedbyaddress,    false },
-    { "wallet",             "listsinceblock",           &listsinceblock,           false },
-    { "wallet",             "listtransactions",         &listtransactions,         false },
-    { "wallet",             "listunspent",              &listunspent,              false },
-    { "wallet",             "lockunspent",              &lockunspent,              true  },
-    { "wallet",             "move",                     &movecmd,                  false },
-    { "wallet",             "sendfrom",                 &sendfrom,                 false },
-    { "wallet",             "sendmany",                 &sendmany,                 false },
-    { "wallet",             "sendtoaddress",            &sendtoaddress,            false },
-    { "wallet",             "setaccount",               &setaccount,               true  },
-    { "wallet",             "settxfee",                 &settxfee,                 true  },
-    { "wallet",             "signmessage",              &signmessage,              true  },
-    { "wallet",             "walletlock",               &walletlock,               true  },
-    { "wallet",             "walletpassphrasechange",   &walletpassphrasechange,   true  },
-    { "wallet",             "walletpassphrase",         &walletpassphrase,         true  },
-    { "wallet",             "removeprunedfunds",        &removeprunedfunds,        true  },
+    { "rawtransactions",    "eb_fundrawtransaction",       &edcfundrawtransaction,       false },
+    { "hidden",             "eb_resendwallettransactions", &edcresendwallettransactions, true  },
+    { "wallet",             "eb_abandontransaction",       &edcabandontransaction,       false },
+    { "wallet",             "eb_addmultisigaddress",       &edcaddmultisigaddress,       true  },
+    { "wallet",             "eb_backupwallet",             &edcbackupwallet,             true  },
+    { "wallet",             "eb_dumpprivkey",              &dumpprivkey,              true  },
+    { "wallet",             "eb_dumpwallet",               &dumpwallet,               true  },
+    { "wallet",             "eb_encryptwallet",            &edcencryptwallet,            true  },
+    { "wallet",             "eb_getaccountaddress",        &edcgetaccountaddress,        true  },
+    { "wallet",             "eb_getaccount",               &edcgetaccount,               true  },
+    { "wallet",             "eb_getaddressesbyaccount",    &edcgetaddressesbyaccount,    true  },
+    { "wallet",             "eb_getbalance",               &edcgetbalance,               false },
+    { "wallet",             "eb_getnewaddress",            &edcgetnewaddress,            true  },
+    { "wallet",             "eb_getrawchangeaddress",      &edcgetrawchangeaddress,      true  },
+    { "wallet",             "eb_getreceivedbyaccount",     &edcgetreceivedbyaccount,     false },
+    { "wallet",             "eb_getreceivedbyaddress",     &edcgetreceivedbyaddress,     false },
+    { "wallet",             "eb_gettransaction",           &edcgettransaction,           false },
+    { "wallet",             "eb_getunconfirmedbalance",    &edcgetunconfirmedbalance,    false },
+    { "wallet",             "eb_getwalletinfo",            &edcgetwalletinfo,            false },
+    { "wallet",             "eb_importprivkey",            &importprivkey,            true  },
+    { "wallet",             "eb_importwallet",             &importwallet,             true  },
+    { "wallet",             "eb_importaddress",            &importaddress,            true  },
+    { "wallet",             "eb_importprunedfunds",        &importprunedfunds,        true  },
+    { "wallet",             "eb_importpubkey",             &importpubkey,             true  },
+    { "wallet",             "eb_keypoolrefill",            &edckeypoolrefill,            true  },
+    { "wallet",             "eb_listaccounts",             &edclistaccounts,             false },
+    { "wallet",             "eb_listaddressgroupings",     &edclistaddressgroupings,     false },
+    { "wallet",             "eb_listlockunspent",          &edclistlockunspent,          false },
+    { "wallet",             "eb_listreceivedbyaccount",    &edclistreceivedbyaccount,    false },
+    { "wallet",             "eb_listreceivedbyaddress",    &edclistreceivedbyaddress,    false },
+    { "wallet",             "eb_listsinceblock",           &edclistsinceblock,           false },
+    { "wallet",             "eb_listtransactions",         &edclisttransactions,         false },
+    { "wallet",             "eb_listunspent",              &edclistunspent,              false },
+    { "wallet",             "eb_lockunspent",              &edclockunspent,              true  },
+    { "wallet",             "eb_move",                     &edcmovecmd,                  false },
+    { "wallet",             "eb_sendfrom",                 &edcsendfrom,                 false },
+    { "wallet",             "eb_sendmany",                 &edcsendmany,                 false },
+    { "wallet",             "eb_sendtoaddress",            &edcsendtoaddress,            false },
+    { "wallet",             "eb_setaccount",               &edcsetaccount,               true  },
+    { "wallet",             "eb_settxfee",                 &edcsettxfee,                 true  },
+    { "wallet",             "eb_signmessage",              &edcsignmessage,              true  },
+    { "wallet",             "eb_walletlock",               &edcwalletlock,               true  },
+    { "wallet",             "eb_walletpassphrasechange",   &edcwalletpassphrasechange,   true  },
+    { "wallet",             "eb_walletpassphrase",         &edcwalletpassphrase,         true  },
+    { "wallet",             "eb_removeprunedfunds",        &removeprunedfunds,        true  },
 };
 
-void RegisterWalletRPCCommands(CRPCTable &tableRPC)
+void edcRegisterWalletRPCCommands(CRPCTable &tableRPC)
 {
     for (unsigned int vcidx = 0; vcidx < ARRAYLEN(commands); vcidx++)
         tableRPC.appendCommand(commands[vcidx].name, &commands[vcidx]);

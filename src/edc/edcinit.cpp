@@ -156,7 +156,7 @@ bool EdcAppInit(
     	// a transaction spammer can cheaply fill blocks using
     	// 1-satoshi-fee transactions. It should be set above the real
     	// cost to you of processing a transaction.
-    	if (mapArgs.count("-minrelaytxfee"))
+    	if (params.minrelaytxfee.size() > 0 )
     	{
         	CAmount n = 0;
         	if (ParseMoney(params.minrelaytxfee, n) && n > 0)
@@ -405,7 +405,7 @@ bool EdcAppInit(
 		{
             CService addrLocal;
             if (Lookup(strAddr.c_str(), addrLocal, edcGetListenPort(), params.dns) && addrLocal.IsValid())
-                AddLocal(addrLocal, LOCAL_MANUAL);
+                edcAddLocal(addrLocal, LOCAL_MANUAL);
             else
                 return edcInitError(ResolveErrMsg("externalip", strAddr));
         }
@@ -472,11 +472,11 @@ bool EdcAppInit(
     nTotalCache -= nBlockTreeDBCache;
     int64_t nCoinDBCache = std::min(nTotalCache / 2, (nTotalCache / 4) + (1 << 23)); // use 25%-50% of the remainder for disk cache
     nTotalCache -= nCoinDBCache;
-    nCoinCacheUsage = nTotalCache; // the rest goes to in-memory cache
+    theApp.coinCacheUsage( nTotalCache ); // the rest goes to in-memory cache
     edcLogPrintf("Cache configuration:\n");
     edcLogPrintf("* Using %.1fMiB for block index database\n", nBlockTreeDBCache * (1.0 / 1024 / 1024));
     edcLogPrintf("* Using %.1fMiB for chain state database\n", nCoinDBCache * (1.0 / 1024 / 1024));
-    edcLogPrintf("* Using %.1fMiB for in-memory UTXO set\n", nCoinCacheUsage * (1.0 / 1024 / 1024));
+    edcLogPrintf("* Using %.1fMiB for in-memory UTXO set\n", theApp.coinCacheUsage() * (1.0 / 1024 / 1024));
 
     bool fLoaded = false;
     int64_t nStart;
@@ -497,18 +497,18 @@ bool EdcAppInit(
                 delete pcoinsTip;
                 delete pcoinsdbview;
                 delete pcoinscatcher;
-                delete pblocktree;
+                delete theApp.blocktree();
 
-                pblocktree = new CBlockTreeDB(nBlockTreeDBCache, false, fReindex);
+                theApp.blocktree( new CBlockTreeDB(nBlockTreeDBCache, false, fReindex) );
                 pcoinsdbview = new CCoinsViewDB(nCoinDBCache, false, fReindex);
                 pcoinscatcher = new CCoinsViewErrorCatcher(pcoinsdbview);
                 pcoinsTip = new CCoinsViewCache(pcoinscatcher);
 
                 if (fReindex) 
 				{
-                    pblocktree->WriteReindexing(true);
+                    theApp.blocktree()->WriteReindexing(true);
                     //If we're reindexing in prune mode, wipe away unusable block files and all undo data files
-                    if (fPruneMode)
+                    if (theApp.pruneMode())
                         CleanupBlockRevFiles();
                 }
 
@@ -539,7 +539,7 @@ bool EdcAppInit(
 
                 // Check for changed -prune state.  What we are concerned about is a user who has pruned blocks
                 // in the past, but is now trying to run unpruned.
-                if (fHavePruned && !fPruneMode) 
+                if (fHavePruned && !theApp.pruneMode()) 
 				{
                     strLoadError = _("You need to rebuild the database using -reindex to go back to unpruned mode.  This will redownload the entire blockchain");
                     break;
@@ -646,7 +646,7 @@ bool EdcAppInit(
 
     // if pruning, unset the service bit and perform the initial blockstore prune
     // after any wallet rescanning has taken place.
-    if (fPruneMode) 
+    if (theApp.pruneMode()) 
 	{
         edcLogPrintf("Unsetting NODE_NETWORK on prune mode\n");
         theApp.localServices( theApp.localServices()  & ~NODE_NETWORK );
@@ -659,7 +659,7 @@ bool EdcAppInit(
 
     // ********************************************************* Step 10: import blocks
 
-    if (mapArgs.count("-blocknotify"))
+    if (params.blocknotify.size() > 0 )
         uiInterface.NotifyBlockTip.connect(BlockNotifyCallback);
 
     uiInterface.InitMessage(_("Activating best chain..."));
@@ -730,4 +730,148 @@ bool EdcAppInit(
 
     return !fRequestShutdown;
 }
+
+
+void edcShutdown()
+{
+    LogPrintf("%s: In progress...\n", __func__);
+    static CCriticalSection cs_Shutdown;
+    TRY_LOCK(cs_Shutdown, lockShutdown);
+    if (!lockShutdown)
+        return;
+
+    /// Note: Shutdown() must be able to handle cases in which AppInit2() failed part of the way,
+    /// for example if the data directory was found to be locked.
+    /// Be sure that anything that writes files or flushes caches only does this if the respective
+    /// module was initialized.
+    RenameThread("bitcoin-shutoff");
+    mempool.AddTransactionsUpdated(1);
+
+    StopHTTPRPC();
+    StopREST();
+    StopRPC();
+    StopHTTPServer();
+#ifdef ENABLE_WALLET
+    if (pwalletMain)
+        pwalletMain->Flush(false);
+#endif
+    StopNode();
+    StopTorControl();
+    UnregisterNodeSignals(GetNodeSignals());
+
+    if (fFeeEstimatesInitialized)
+    {
+        boost::filesystem::path est_path = GetDataDir() / FEE_ESTIMATES_FILENAME;
+        CAutoFile est_fileout(fopen(est_path.string().c_str(), "wb"), SER_DISK, CLIENT_VERSION);
+        if (!est_fileout.IsNull())
+            mempool.WriteFeeEstimates(est_fileout);
+        else
+            LogPrintf("%s: Failed to write fee estimates to %s\n", __func__, est_path.string());
+        fFeeEstimatesInitialized = false;
+    }
+
+    {
+        LOCK(cs_main);
+        if (pcoinsTip != NULL) {
+            FlushStateToDisk();
+        }
+        delete pcoinsTip;
+        pcoinsTip = NULL;
+        delete pcoinscatcher;
+        pcoinscatcher = NULL;
+        delete pcoinsdbview;
+        pcoinsdbview = NULL;
+        delete theApp.blocktree();
+        theApp.blocktree( NULL );
+    }
+#ifdef ENABLE_WALLET
+    if (pwalletMain)
+        pwalletMain->Flush(true);
+#endif
+
+#if ENABLE_ZMQ
+    if (pzmqNotificationInterface) {
+        UnregisterValidationInterface(pzmqNotificationInterface);
+        delete pzmqNotificationInterface;
+        pzmqNotificationInterface = NULL;
+    }
+#endif
+
+#ifndef WIN32
+    try {
+        boost::filesystem::remove(GetPidFile());
+    } catch (const boost::filesystem::filesystem_error& e) {
+        LogPrintf("%s: Unable to remove pidfile: %s\n", __func__, e.what());
+    }
+#endif
+    UnregisterAllValidationInterfaces();
+#ifdef ENABLE_WALLET
+    delete pwalletMain;
+    pwalletMain = NULL;
+#endif
+    globalVerifyHandle.reset();
+    ECC_Stop();
+    LogPrintf("%s: done\n", __func__);
+}
+
+
+void edcThreadImport(std::vector<boost::filesystem::path> vImportFiles)
+{
+    const CChainParams& chainparams = Params();
+    RenameThread("bitcoin-loadblk");
+    // -reindex
+    if (fReindex) {
+        CImportingNow imp;
+        int nFile = 0;
+        while (true) {
+            CDiskBlockPos pos(nFile, 0);
+            if (!boost::filesystem::exists(GetBlockPosFilename(pos, "blk")))
+                break; // No block files left to reindex
+            FILE *file = OpenBlockFile(pos, true);
+            if (!file)
+                break; // This error is logged in OpenBlockFile
+            LogPrintf("Reindexing block file blk%05u.dat...\n", (unsigned int)nFile);
+            LoadExternalBlockFile(chainparams, file, &pos);
+            nFile++;
+        }
+        theApp.blocktree()->WriteReindexing(false);
+        fReindex = false;
+        LogPrintf("Reindexing finished\n");
+        // To avoid ending up in a situation without genesis block, re-try initializing (no-op if reindexing worked):
+        InitBlockIndex(chainparams);
+    }
+
+    // hardcoded $DATADIR/bootstrap.dat
+    boost::filesystem::path pathBootstrap = GetDataDir() / "bootstrap.dat";
+    if (boost::filesystem::exists(pathBootstrap)) {
+        FILE *file = fopen(pathBootstrap.string().c_str(), "rb");
+        if (file) {
+            CImportingNow imp;
+            boost::filesystem::path pathBootstrapOld = GetDataDir() / "bootstrap.dat.old";
+            LogPrintf("Importing bootstrap.dat...\n");
+            LoadExternalBlockFile(chainparams, file);
+            RenameOver(pathBootstrap, pathBootstrapOld);
+        } else {
+            LogPrintf("Warning: Could not open bootstrap file %s\n", pathBootstrap.string());
+        }
+    }
+
+    // -loadblock=
+    BOOST_FOREACH(const boost::filesystem::path& path, vImportFiles) {
+        FILE *file = fopen(path.string().c_str(), "rb");
+        if (file) {
+            CImportingNow imp;
+            LogPrintf("Importing blocks file %s...\n", path.string());
+            LoadExternalBlockFile(chainparams, file);
+        } else {
+            LogPrintf("Warning: Could not open blocks file %s\n", path.string());
+        }
+    }
+
+    if (GetBoolArg("-stopafterblockimport", DEFAULT_STOPAFTERBLOCKIMPORT)) {
+        LogPrintf("Stopping after block import\n");
+        StartShutdown();
+    }
+}
+
 #endif

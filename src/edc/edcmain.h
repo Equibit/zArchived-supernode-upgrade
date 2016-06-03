@@ -44,17 +44,13 @@ class CValidationState;
 struct CNodeStateStats;
 struct LockPoints;
 
-extern CScript edcCOINBASE_FLAGS;
 extern CCriticalSection EDC_cs_main;
 typedef boost::unordered_map<uint256, CBlockIndex*, BlockHasher> BlockMap;
 extern BlockMap edcMapBlockIndex;
-extern uint64_t nLastBlockTx;
-extern uint64_t nLastBlockSize;
 extern const std::string edcstrMessageMagic;
 extern CWaitableCriticalSection edccsBestBlock;
 extern CConditionVariable edccvBlockChange;
 extern bool edcfTxIndex;
-extern size_t edcnCoinCacheUsage;
 /** If the tip is older than this (in seconds), the node is considered to be in initial block download. */
 extern int64_t nEDCMaxTipAge;
 extern bool edcfEnableReplacement;
@@ -66,7 +62,6 @@ extern CBlockIndex *pEDCindexBestHeader;
 /** True if any block files have ever been pruned. */
 extern bool fEDCHavePruned;
 /** True if we're running in -prune mode. */
-extern bool fPruneMode;
 
 /** Register with a network node to receive its signals */
 void RegisterNodeSignals(CNodeSignals& nodeSignals);
@@ -324,9 +319,6 @@ bool edcResetBlockFailureFlags(CBlockIndex *pindex);
 
 /** Global variable that points to the active CEDCCoinsView (protected by EDC_cs_main) */
 extern CEDCCoinsViewCache *edcPcoinsTip;
-
-/** Global variable that points to the active block tree (protected by EDC_cs_main) */
-extern CBlockTreeDB *edcpblocktree;
 
 /**
  * Return the spend height, which is one more than the inputs.GetBestBlock().
