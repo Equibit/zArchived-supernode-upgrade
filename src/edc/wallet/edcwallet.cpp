@@ -37,13 +37,6 @@
 
 using namespace std;
 
-CEDCWallet* edcPwalletMain = NULL;
-/** Transaction fee set by the user */
-CFeeRate edcpayTxFee(DEFAULT_TRANSACTION_FEE);
-unsigned int edcnTxConfirmTarget = DEFAULT_TX_CONFIRM_TARGET;
-bool edcbSpendZeroConfChange = DEFAULT_SPEND_ZEROCONF_CHANGE;
-bool edcfSendFreeTransactions = DEFAULT_SEND_FREE_TRANSACTIONS;
-
 const char * edcDEFAULT_WALLET_DAT = "edcwallet.dat";
 
 /**
@@ -646,8 +639,12 @@ void CEDCWallet::MarkDirty()
     }
 }
 
+extern int64_t edcGetAdjustedTime();
+
 bool CEDCWallet::AddToWallet(const CEDCWalletTx& wtxIn, bool fFromLoadWallet, CEDCWalletDB* pwalletdb)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     uint256 hash = wtxIn.GetHash();
 
     if (fFromLoadWallet)
@@ -680,14 +677,14 @@ bool CEDCWallet::AddToWallet(const CEDCWalletTx& wtxIn, bool fFromLoadWallet, CE
         bool fInsertedNew = ret.second;
         if (fInsertedNew)
         {
-            wtx.nTimeReceived = GetAdjustedTime();
+            wtx.nTimeReceived = edcGetAdjustedTime();
             wtx.nOrderPos = IncOrderPosNext(pwalletdb);
             wtxOrdered.insert(make_pair(wtx.nOrderPos, TxPair(&wtx, (CAccountingEntry*)0)));
 
             wtx.nTimeSmart = wtx.nTimeReceived;
             if (!wtxIn.hashUnset())
             {
-                if (edcMapBlockIndex.count(wtxIn.hashBlock))
+                if (theApp.mapBlockIndex().count(wtxIn.hashBlock))
                 {
                     int64_t latestNow = wtx.nTimeReceived;
                     int64_t latestEntry = 0;
@@ -720,7 +717,7 @@ bool CEDCWallet::AddToWallet(const CEDCWalletTx& wtxIn, bool fFromLoadWallet, CE
                         }
                     }
 
-                    int64_t blocktime = edcMapBlockIndex[wtxIn.hashBlock]->GetBlockTime();
+                    int64_t blocktime = theApp.mapBlockIndex()[wtxIn.hashBlock]->GetBlockTime();
                     wtx.nTimeSmart = std::max(latestEntry, std::min(blocktime, latestNow));
                 }
                 else
@@ -900,15 +897,17 @@ bool CEDCWallet::AbandonTransaction(const uint256& hashTx)
 
 void CEDCWallet::MarkConflicted(const uint256& hashBlock, const uint256& hashTx)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     LOCK2(EDC_cs_main, cs_wallet);
 
     int conflictconfirms = 0;
-    if (edcMapBlockIndex.count(hashBlock)) 
+    if (theApp.mapBlockIndex().count(hashBlock)) 
 	{
-        CBlockIndex* pindex = edcMapBlockIndex[hashBlock];
-        if (chainActive.Contains(pindex)) 
+        CBlockIndex* pindex = theApp.mapBlockIndex()[hashBlock];
+        if (theApp.chainActive().Contains(pindex)) 
 		{
-            conflictconfirms = -(chainActive.Height() - pindex->nHeight + 1);
+            conflictconfirms = -(theApp.chainActive().Height() - pindex->nHeight + 1);
         }
     }
     // If number of conflict confirms cannot be determined, this means
@@ -1249,6 +1248,8 @@ void CEDCWalletTx::GetAccountAmounts(const string& strAccount, CAmount& nReceive
  */
 int CEDCWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     int ret = 0;
     int64_t nNow = GetTime();
     const CChainParams& chainParams = Params();
@@ -1260,11 +1261,11 @@ int CEDCWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate
         // no need to read and scan block, if block was created before
         // our wallet birthday (as adjusted for block time variability)
         while (pindex && nTimeFirstKey && (pindex->GetBlockTime() < (nTimeFirstKey - 7200)))
-            pindex = chainActive.Next(pindex);
+            pindex = theApp.chainActive().Next(pindex);
 
         ShowProgress(_("Rescanning..."), 0); // show rescan progress in GUI as dialog or on splashscreen, if -rescan on startup
         double dProgressStart = Checkpoints::GuessVerificationProgress(chainParams.Checkpoints(), pindex, false);
-        double dProgressTip = Checkpoints::GuessVerificationProgress(chainParams.Checkpoints(), chainActive.Tip(), false);
+        double dProgressTip = Checkpoints::GuessVerificationProgress(chainParams.Checkpoints(), theApp.chainActive().Tip(), false);
         while (pindex)
         {
             if (pindex->nHeight % 100 == 0 && dProgressTip - dProgressStart > 0.0)
@@ -1278,7 +1279,7 @@ int CEDCWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate
                     ret++;
             }
 
-            pindex = chainActive.Next(pindex);
+            pindex = theApp.chainActive().Next(pindex);
             if (GetTime() >= nNow + 60) 
 			{
                 nNow = GetTime();
@@ -1527,6 +1528,8 @@ bool CEDCWalletTx::InMempool() const
 
 bool CEDCWalletTx::IsTrusted() const
 {
+	EDCparams & params = EDCparams::singleton();
+
     // Quick answer in most cases
     if (!CheckFinalTx(*this))
         return false;
@@ -1535,7 +1538,7 @@ bool CEDCWalletTx::IsTrusted() const
         return true;
     if (nDepth < 0)
         return false;
-    if (!edcbSpendZeroConfChange || !IsFromMe(ISMINE_ALL)) // using wtx's cached debit
+    if (!params.spendzeroconfchange || !IsFromMe(ISMINE_ALL)) // using wtx's cached debit
         return false;
 
     // Don't trust unconfirmed transactions from us unless they are in the mempool.
@@ -1964,10 +1967,12 @@ bool CEDCWallet::SelectCoins(const vector<CEDCOutput>& vAvailableCoins, const CA
             ++it;
     }
 
+	EDCparams & params = EDCparams::singleton();
+
     bool res = nTargetValue <= nValueFromPresetInputs ||
         SelectCoinsMinConf(nTargetValue - nValueFromPresetInputs, 1, 6, vCoins, setCoinsRet, nValueRet) ||
         SelectCoinsMinConf(nTargetValue - nValueFromPresetInputs, 1, 1, vCoins, setCoinsRet, nValueRet) ||
-        (edcbSpendZeroConfChange && SelectCoinsMinConf(nTargetValue - nValueFromPresetInputs, 0, 1, vCoins, setCoinsRet, nValueRet));
+        (params.spendzeroconfchange && SelectCoinsMinConf(nTargetValue - nValueFromPresetInputs, 0, 1, vCoins, setCoinsRet, nValueRet));
 
     // because SelectCoinsMinConf clears the setCoinsRet, we now add the possible inputs to the coinset
     setCoinsRet.insert(setPresetCoins.begin(), setPresetCoins.end());
@@ -2025,6 +2030,8 @@ bool CEDCWallet::FundTransaction(CEDCMutableTransaction& tx, CAmount& nFeeRet, i
 bool CEDCWallet::CreateTransaction(const vector<CRecipient>& vecSend, CEDCWalletTx& wtxNew, CEDCReserveKey& reservekey, CAmount& nFeeRet,
                                 int& nChangePosInOut, std::string& strFailReason, const CCoinControl* coinControl, bool sign)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     CAmount nValue = 0;
     int nChangePosRequest = nChangePosInOut;
     unsigned int nSubtractFeeFromAmount = 0;
@@ -2070,7 +2077,7 @@ bool CEDCWallet::CreateTransaction(const vector<CRecipient>& vecSend, CEDCWallet
     // enough, that fee sniping isn't a problem yet, but by implementing a fix
     // now we ensure code won't be written that makes assumptions about
     // nLockTime that preclude a fix later.
-    txNew.nLockTime = chainActive.Height();
+    txNew.nLockTime = theApp.chainActive().Height();
 
     // Secondly occasionally randomly pick a nLockTime even further back, so
     // that transactions that are delayed after signing for whatever reason,
@@ -2079,7 +2086,7 @@ bool CEDCWallet::CreateTransaction(const vector<CRecipient>& vecSend, CEDCWallet
     if (GetRandInt(10) == 0)
         txNew.nLockTime = std::max(0, (int)txNew.nLockTime - GetRandInt(100));
 
-    assert(txNew.nLockTime <= (unsigned int)chainActive.Height());
+    assert(txNew.nLockTime <= (unsigned int)theApp.chainActive().Height());
     assert(txNew.nLockTime < LOCKTIME_THRESHOLD);
 
     {
@@ -2292,18 +2299,19 @@ bool CEDCWallet::CreateTransaction(const vector<CRecipient>& vecSend, CEDCWallet
                 dPriority = wtxNew.ComputePriority(dPriority, nBytes);
 
 				EDCapp & theApp = EDCapp::singleton();
+				EDCparams & params = EDCparams::singleton();
 
                 // Can we complete this as a free transaction?
-                if (edcfSendFreeTransactions && nBytes <= MAX_FREE_TRANSACTION_CREATE_SIZE)
+                if (params.sendfreetransactions && nBytes <= MAX_FREE_TRANSACTION_CREATE_SIZE)
                 {
                     // Not enough fee: enough priority?
-                    double dPriorityNeeded = theApp.mempool().estimateSmartPriority(edcnTxConfirmTarget);
+                    double dPriorityNeeded = theApp.mempool().estimateSmartPriority(params.txconfirmtarget);
                     // Require at least hard-coded AllowFree.
                     if (dPriority >= dPriorityNeeded && AllowFree(dPriority))
                         break;
                 }
 
-                CAmount nFeeNeeded = GetMinimumFee(nBytes, edcnTxConfirmTarget, theApp.mempool());
+                CAmount nFeeNeeded = GetMinimumFee(nBytes, params.txconfirmtarget, theApp.mempool());
                 if (coinControl && nFeeNeeded > 0 && coinControl->nMinimumTotalFee > nFeeNeeded) 
 				{
                     nFeeNeeded = coinControl->nMinimumTotalFee;
@@ -2403,8 +2411,10 @@ CAmount CEDCWallet::GetRequiredFee(unsigned int nTxBytes)
 
 CAmount CEDCWallet::GetMinimumFee(unsigned int nTxBytes, unsigned int nConfirmTarget, const CEDCTxMemPool& pool)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     // payTxFee is user-set "I want to pay this much"
-    CAmount nFeeNeeded = edcpayTxFee.GetFee(nTxBytes);
+    CAmount nFeeNeeded = theApp.payTxFee().GetFee(nTxBytes);
     // User didn't set: use -txconfirmtarget to estimate...
     if (nFeeNeeded == 0) 
 	{
@@ -2417,7 +2427,6 @@ CAmount CEDCWallet::GetMinimumFee(unsigned int nTxBytes, unsigned int nConfirmTa
     // prevent user from paying a fee below edcminRelayTxFee or minTxFee
     nFeeNeeded = std::max(nFeeNeeded, GetRequiredFee(nTxBytes));
     // But always obey the maximum
-	EDCapp & theApp = EDCapp::singleton();
     if (nFeeNeeded > theApp.maxTxFee() )
         nFeeNeeded = theApp.maxTxFee();
     return nFeeNeeded;
@@ -3004,6 +3013,8 @@ public:
 
 void CEDCWallet::GetKeyBirthTimes(std::map<CKeyID, int64_t> &mapKeyBirth) const 
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     AssertLockHeld(cs_wallet); // mapKeyMetadata
     mapKeyBirth.clear();
 
@@ -3013,7 +3024,7 @@ void CEDCWallet::GetKeyBirthTimes(std::map<CKeyID, int64_t> &mapKeyBirth) const
             mapKeyBirth[it->first] = it->second.nCreateTime;
 
     // map in which we'll infer heights of other keys
-    CBlockIndex *pindexMax = chainActive[std::max(0, chainActive.Height() - 144)]; // the tip can be reorganised; use a 144-block safety margin
+    CBlockIndex *pindexMax = theApp.chainActive()[std::max(0, theApp.chainActive().Height() - 144)]; // the tip can be reorganised; use a 144-block safety margin
     std::map<CKeyID, CBlockIndex*> mapKeyFirstBlock;
     std::set<CKeyID> setKeys;
     GetKeys(setKeys);
@@ -3034,9 +3045,9 @@ void CEDCWallet::GetKeyBirthTimes(std::map<CKeyID, int64_t> &mapKeyBirth) const
 	{
         // iterate over all wallet transactions...
         const CEDCWalletTx &wtx = (*it).second;
-        BlockMap::const_iterator blit = edcMapBlockIndex.find(wtx.hashBlock);
+        BlockMap::const_iterator blit = theApp.mapBlockIndex().find(wtx.hashBlock);
 
-        if (blit != edcMapBlockIndex.end() && chainActive.Contains(blit->second)) 
+        if (blit != theApp.mapBlockIndex().end() && theApp.chainActive().Contains(blit->second)) 
 		{
             // ... which are already in a block
             int nHeight = blit->second->nHeight;
@@ -3106,6 +3117,8 @@ bool CEDCWallet::GetDestData(const CTxDestination &dest, const std::string &key,
 
 std::string CEDCWallet::GetWalletHelpString(bool showDebug)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     std::string strUsage = HelpMessageGroup(_("Equibit Wallet options:"));
     strUsage += HelpMessageOpt("-ebdisablewallet", _("Do not load the wallet and disable wallet RPC calls"));
     strUsage += HelpMessageOpt("-ebkeypool=<n>", strprintf(_("Set key pool size to <n> (default: %u)"), DEFAULT_KEYPOOL_SIZE));
@@ -3114,7 +3127,7 @@ std::string CEDCWallet::GetWalletHelpString(bool showDebug)
     strUsage += HelpMessageOpt("-ebmintxfee=<amt>", strprintf(_("Fees (in %s/kB) smaller than this are considered zero fee for transaction creation (default: %s)"),
                                                             CURRENCY_UNIT, FormatMoney(DEFAULT_TRANSACTION_MINFEE)));
     strUsage += HelpMessageOpt("-ebpaytxfee=<amt>", strprintf(_("Fee (in %s/kB) to add to transactions you send (default: %s)"),
-                                                            CURRENCY_UNIT, FormatMoney(edcpayTxFee.GetFeePerK())));
+                                                            CURRENCY_UNIT, FormatMoney(theApp.payTxFee().GetFeePerK())));
     strUsage += HelpMessageOpt("-ebrescan", _("Rescan the block chain for missing wallet transactions on startup"));
     strUsage += HelpMessageOpt("-ebsalvagewallet", _("Attempt to recover private keys from a corrupt wallet on startup"));
     if (showDebug)
@@ -3142,6 +3155,7 @@ std::string CEDCWallet::GetWalletHelpString(bool showDebug)
 
 bool CEDCWallet::InitLoadWallet()
 {	
+	EDCapp & theApp = EDCapp::singleton();
 	EDCparams & params = EDCparams::singleton();
     std::string walletFile = params.wallet;
 
@@ -3221,26 +3235,26 @@ bool CEDCWallet::InitLoadWallet()
                 return edcInitError(_("Cannot write default address") += "\n");
         }
 
-        walletInstance->SetBestChain(chainActive.GetLocator());
+        walletInstance->SetBestChain(theApp.chainActive().GetLocator());
     }
 
     edcLogPrintf(" wallet      %15dms\n", GetTimeMillis() - nStart);
 
     RegisterValidationInterface(walletInstance);
 
-    CBlockIndex *pindexRescan = chainActive.Tip();
+    CBlockIndex *pindexRescan = theApp.chainActive().Tip();
     if ( params.rescan )
-        pindexRescan = chainActive.Genesis();
+        pindexRescan = theApp.chainActive().Genesis();
     else
     {
         CEDCWalletDB walletdb(walletFile);
         CBlockLocator locator;
         if (walletdb.ReadBestBlock(locator))
-            pindexRescan = edcFindForkInGlobalIndex(chainActive, locator);
+            pindexRescan = edcFindForkInGlobalIndex(theApp.chainActive(), locator);
         else
-            pindexRescan = chainActive.Genesis();
+            pindexRescan = theApp.chainActive().Genesis();
     }
-    if (chainActive.Tip() && chainActive.Tip() != pindexRescan)
+    if (theApp.chainActive().Tip() && theApp.chainActive().Tip() != pindexRescan)
     {
         //We can't rescan beyond non-pruned blocks, stop and throw an error
         //this might happen if a user uses a old wallet within a pruned node
@@ -3248,7 +3262,7 @@ bool CEDCWallet::InitLoadWallet()
 		EDCapp & theApp = EDCapp::singleton();
         if (theApp.pruneMode() )
         {
-            CBlockIndex *block = chainActive.Tip();
+            CBlockIndex *block = theApp.chainActive().Tip();
             while (block && block->pprev && (block->pprev->nStatus & BLOCK_HAVE_DATA) && block->pprev->nTx > 0 && pindexRescan != block)
                 block = block->pprev;
 
@@ -3257,11 +3271,11 @@ bool CEDCWallet::InitLoadWallet()
         }
 
         edcUiInterface.InitMessage(_("Rescanning..."));
-        edcLogPrintf("Rescanning last %i blocks (from block %i)...\n", chainActive.Height() - pindexRescan->nHeight, pindexRescan->nHeight);
+        edcLogPrintf("Rescanning last %i blocks (from block %i)...\n", theApp.chainActive().Height() - pindexRescan->nHeight, pindexRescan->nHeight);
         nStart = GetTimeMillis();
         walletInstance->ScanForWalletTransactions(pindexRescan, true);
         edcLogPrintf(" rescan      %15dms\n", GetTimeMillis() - nStart);
-        walletInstance->SetBestChain(chainActive.GetLocator());
+        walletInstance->SetBestChain(theApp.chainActive().GetLocator());
         nWalletDBUpdated++;
 
         // Restore wallet transaction metadata after -zapwallettxes=1
@@ -3291,7 +3305,7 @@ bool CEDCWallet::InitLoadWallet()
     }
     walletInstance->SetBroadcastTransactions(params.walletbroadcast );
 
-    edcPwalletMain = walletInstance;
+    theApp.walletMain( walletInstance );
     return true;
 }
 
@@ -3329,9 +3343,9 @@ bool CEDCWallet::ParameterInteraction()
         if (nFeePerK > HIGH_TX_FEE_PER_KB)
             edcInitWarning(_("-ebpaytxfee is set very high! This is the transaction fee you will pay if you send a transaction."));
 
-        edcpayTxFee = CFeeRate(nFeePerK, 1000);
+        theApp.payTxFee( CFeeRate(nFeePerK, 1000) );
 
-        if (edcpayTxFee < theApp.minRelayTxFee())
+        if (theApp.payTxFee() < theApp.minRelayTxFee())
         {
             return edcInitError(strprintf(_(
 				"Invalid amount for -paytxfee=<amount>: '%s' (must be at "
@@ -3355,16 +3369,15 @@ bool CEDCWallet::ParameterInteraction()
         }
     }
 
-    edcnTxConfirmTarget = params.txconfirmtarget;
-    edcbSpendZeroConfChange = params.spendzeroconfchange;
-    edcfSendFreeTransactions = params.sendfreetransactions;
-
     return true;
 }
 
 int CEDCMerkleTx::SetMerkleBranch(const CEDCBlock& block)
 {
     AssertLockHeld(EDC_cs_main);
+
+	EDCapp & theApp = EDCapp::singleton();
+
     CEDCBlock blockTmp;
 
     // Update the tx's hashBlock
@@ -3382,33 +3395,35 @@ int CEDCMerkleTx::SetMerkleBranch(const CEDCBlock& block)
     }
 
     // Is the tx in a block that's in the main chain
-    BlockMap::iterator mi = edcMapBlockIndex.find(hashBlock);
-    if (mi == edcMapBlockIndex.end())
+    BlockMap::iterator mi = theApp.mapBlockIndex().find(hashBlock);
+    if (mi == theApp.mapBlockIndex().end())
         return 0;
     const CBlockIndex* pindex = (*mi).second;
-    if (!pindex || !chainActive.Contains(pindex))
+    if (!pindex || !theApp.chainActive().Contains(pindex))
         return 0;
 
-    return chainActive.Height() - pindex->nHeight + 1;
+    return theApp.chainActive().Height() - pindex->nHeight + 1;
 }
 
 int CEDCMerkleTx::GetDepthInMainChain(const CBlockIndex* &pindexRet) const
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (hashUnset())
         return 0;
 
     AssertLockHeld(EDC_cs_main);
 
     // Find the block it claims to be in
-    BlockMap::iterator mi = edcMapBlockIndex.find(hashBlock);
-    if (mi == edcMapBlockIndex.end())
+    BlockMap::iterator mi = theApp.mapBlockIndex().find(hashBlock);
+    if (mi == theApp.mapBlockIndex().end())
         return 0;
     CBlockIndex* pindex = (*mi).second;
-    if (!pindex || !chainActive.Contains(pindex))
+    if (!pindex || !theApp.chainActive().Contains(pindex))
         return 0;
 
     pindexRet = pindex;
-    return ((nIndex == -1) ? (-1) : 1) * (chainActive.Height() - pindex->nHeight + 1);
+    return ((nIndex == -1) ? (-1) : 1) * (theApp.chainActive().Height() - pindex->nHeight + 1);
 }
 
 int CEDCMerkleTx::GetBlocksToMaturity() const

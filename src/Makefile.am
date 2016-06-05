@@ -119,6 +119,7 @@ BITCOIN_CORE_H = \
   edc/edcapp.h \
   edc/bitmessage.h \
   edc/edcchainparams.h \
+  edc/edccheckpoints.h \
   edc/edcbloom.h \
   edc/edccoins.h \
   edc/edccompressor.h \
@@ -220,6 +221,7 @@ libbitcoin_server_a_SOURCES = \
   edc/bitmessage.cpp \
   edc/rpcedc.cpp \
   edc/edcchainparams.cpp \
+  edc/edccheckpoints.cpp \
   edc/edccompressor.cpp \
   edc/policy/edcrbf.cpp \
   edc/policy/edcfees.cpp \
@@ -256,6 +258,7 @@ libbitcoin_server_a_SOURCES = \
   edc/edcui_interface.cpp \
   edc/edcparams.cpp \
   edc/edcutil.cpp \
+  edc/edctimedata.cpp \
   script/sigcache.cpp \
   script/ismine.cpp \
   timedata.cpp \

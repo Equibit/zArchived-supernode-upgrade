@@ -33,15 +33,9 @@
 
 class CEDCWallet;
 
-extern CEDCWallet* edcPwalletMain;
-
 /**
  * Settings
  */
-extern CFeeRate edcpayTxFee;
-extern unsigned int edcnTxConfirmTarget;
-extern bool edcbSpendZeroConfChange;
-extern bool edcfSendFreeTransactions;
 extern const char * edcDEFAULT_WALLET_DAT;
 
 class CBlockIndex;

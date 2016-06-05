@@ -136,6 +136,8 @@ static bool CheckWarmup(HTTPRequest* req)
 static bool rest_headers(HTTPRequest* req,
                          const std::string& strURIPart)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!CheckWarmup(req))
         return false;
     std::string param;
@@ -159,14 +161,14 @@ static bool rest_headers(HTTPRequest* req,
     headers.reserve(count);
     {
         LOCK(EDC_cs_main);
-        BlockMap::const_iterator it = edcMapBlockIndex.find(hash);
-        const CBlockIndex *pindex = (it != edcMapBlockIndex.end()) ? it->second : NULL;
-        while (pindex != NULL && chainActive.Contains(pindex)) 
+        BlockMap::const_iterator it = theApp.mapBlockIndex().find(hash);
+        const CBlockIndex *pindex = (it != theApp.mapBlockIndex().end()) ? it->second : NULL;
+        while (pindex != NULL && theApp.chainActive().Contains(pindex)) 
 		{
             headers.push_back(pindex);
             if (headers.size() == (unsigned long)count)
                 break;
-            pindex = chainActive.Next(pindex);
+            pindex = theApp.chainActive().Next(pindex);
         }
     }
 
@@ -218,6 +220,8 @@ static bool rest_block(HTTPRequest* req,
                        const std::string& strURIPart,
                        bool showTxDetails)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!CheckWarmup(req))
         return false;
     std::string hashStr;
@@ -231,11 +235,11 @@ static bool rest_block(HTTPRequest* req,
     CBlockIndex* pblockindex = NULL;
     {
         LOCK(EDC_cs_main);
-        if (edcMapBlockIndex.count(hash) == 0)
+        if (theApp.mapBlockIndex().count(hash) == 0)
             return RESTERR(req, HTTP_NOT_FOUND, hashStr + " not found");
 
-        pblockindex = edcMapBlockIndex[hash];
-        if (fHavePruned && !(pblockindex->nStatus & BLOCK_HAVE_DATA) && pblockindex->nTx > 0)
+        pblockindex = theApp.mapBlockIndex()[hash];
+        if (theApp.havePruned() && !(pblockindex->nStatus & BLOCK_HAVE_DATA) && pblockindex->nTx > 0)
             return RESTERR(req, HTTP_NOT_FOUND, hashStr + " not available (pruned data)");
 
         if (!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))
@@ -432,6 +436,8 @@ static bool rest_tx(HTTPRequest* req, const std::string& strURIPart)
 
 static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!CheckWarmup(req))
         return false;
     std::string param;
@@ -542,7 +548,7 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
         CEDCCoinsView viewDummy;
         CEDCCoinsViewCache view(&viewDummy);
 
-        CEDCCoinsViewCache& viewChain = *edcPcoinsTip;
+        CEDCCoinsViewCache& viewChain = *theApp.coinsTip();
         CEDCCoinsViewMemPool viewMempool(&viewChain, theApp.mempool() );
 
         if (fCheckMemPool)
@@ -581,7 +587,7 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
         // serialize data
         // use exact same output as mentioned in Bip64
         CDataStream ssGetUTXOResponse(SER_NETWORK, PROTOCOL_VERSION);
-        ssGetUTXOResponse << chainActive.Height() << chainActive.Tip()->GetBlockHash() << bitmap << outs;
+        ssGetUTXOResponse << theApp.chainActive().Height() << theApp.chainActive().Tip()->GetBlockHash() << bitmap << outs;
         string ssGetUTXOResponseString = ssGetUTXOResponse.str();
 
         req->WriteHeader("Content-Type", "application/octet-stream");
@@ -592,7 +598,7 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
     case RF_HEX: 
 	{
         CDataStream ssGetUTXOResponse(SER_NETWORK, PROTOCOL_VERSION);
-        ssGetUTXOResponse << chainActive.Height() << chainActive.Tip()->GetBlockHash() << bitmap << outs;
+        ssGetUTXOResponse << theApp.chainActive().Height() << theApp.chainActive().Tip()->GetBlockHash() << bitmap << outs;
         string strHex = HexStr(ssGetUTXOResponse.begin(), ssGetUTXOResponse.end()) + "\n";
 
         req->WriteHeader("Content-Type", "text/plain");
@@ -606,8 +612,8 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
 
         // pack in some essentials
         // use more or less the same output as mentioned in Bip64
-        objGetUTXOResponse.push_back(Pair("chainHeight", chainActive.Height()));
-        objGetUTXOResponse.push_back(Pair("chaintipHash", chainActive.Tip()->GetBlockHash().GetHex()));
+        objGetUTXOResponse.push_back(Pair("chainHeight", theApp.chainActive().Height()));
+        objGetUTXOResponse.push_back(Pair("chaintipHash", theApp.chainActive().Tip()->GetBlockHash().GetHex()));
         objGetUTXOResponse.push_back(Pair("bitmap", bitmapStringRepresentation));
 
         UniValue utxos(UniValue::VARR);

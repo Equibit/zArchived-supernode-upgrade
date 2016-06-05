@@ -27,6 +27,7 @@ using namespace std;
 
 UniValue getconnectioncount(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
     if (fHelp || params.size() != 0)
         throw runtime_error(
             "getconnectioncount\n"
@@ -38,13 +39,14 @@ UniValue getconnectioncount(const UniValue& params, bool fHelp)
             + HelpExampleRpc("getconnectioncount", "")
         );
 
-    LOCK2(cs_main, cs_vNodes);
+    LOCK2(cs_main, theApp.vNodesCS());
 
-    return (int)vNodes.size();
+    return (int)theApp.vNodes().size();
 }
 
 UniValue ping(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
     if (fHelp || params.size() != 0)
         throw runtime_error(
             "ping\n"
@@ -57,9 +59,9 @@ UniValue ping(const UniValue& params, bool fHelp)
         );
 
     // Request that each node send a ping during next message processing pass
-    LOCK2(cs_main, cs_vNodes);
+    LOCK2(cs_main, theApp.vNodesCS());
 
-    BOOST_FOREACH(CNode* pNode, vNodes) {
+    BOOST_FOREACH(CEDCNode* pNode, theApp.vNodes()) {
         pNode->fPingQueued = true;
     }
 
@@ -68,11 +70,12 @@ UniValue ping(const UniValue& params, bool fHelp)
 
 static void CopyNodeStats(std::vector<CNodeStats>& vstats)
 {
+	EDCapp & theApp = EDCapp::singleton();
     vstats.clear();
 
-    LOCK(cs_vNodes);
-    vstats.reserve(vNodes.size());
-    BOOST_FOREACH(CNode* pnode, vNodes) {
+    LOCK(theApp.vNodesCS());
+    vstats.reserve(theApp.vNodes().size());
+    BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes()) {
         CNodeStats stats;
         pnode->copyStats(stats);
         vstats.push_back(stats);
@@ -199,6 +202,8 @@ UniValue getpeerinfo(const UniValue& params, bool fHelp)
 
 UniValue addnode(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     string strCommand;
     if (params.size() == 2)
         strCommand = params[1].get_str();
@@ -225,23 +230,23 @@ UniValue addnode(const UniValue& params, bool fHelp)
         return NullUniValue;
     }
 
-    LOCK(cs_vAddedNodes);
-    vector<string>::iterator it = vAddedNodes.begin();
-    for(; it != vAddedNodes.end(); it++)
+    LOCK(theApp.addedNodesCS());
+    vector<string>::iterator it = theApp.addedNodes().begin();
+    for(; it != theApp.addedNodes().end(); it++)
         if (strNode == *it)
             break;
 
     if (strCommand == "add")
     {
-        if (it != vAddedNodes.end())
+        if (it != theApp.addedNodes().end())
             throw JSONRPCError(RPC_CLIENT_NODE_ALREADY_ADDED, "Error: Node already added");
-        vAddedNodes.push_back(strNode);
+        theApp.addedNodes().push_back(strNode);
     }
     else if(strCommand == "remove")
     {
-        if (it == vAddedNodes.end())
+        if (it == theApp.addedNodes().end())
             throw JSONRPCError(RPC_CLIENT_NODE_NOT_ADDED, "Error: Node has not been added.");
-        vAddedNodes.erase(it);
+        theApp.addedNodes().erase(it);
     }
 
     return NullUniValue;
@@ -271,6 +276,8 @@ UniValue disconnectnode(const UniValue& params, bool fHelp)
 
 UniValue getaddednodeinfo(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
             "getaddednodeinfo dns ( \"node\" )\n"
@@ -307,15 +314,15 @@ UniValue getaddednodeinfo(const UniValue& params, bool fHelp)
     list<string> laddedNodes(0);
     if (params.size() == 1)
     {
-        LOCK(cs_vAddedNodes);
-        BOOST_FOREACH(const std::string& strAddNode, vAddedNodes)
+        LOCK(theApp.addedNodesCS());
+        BOOST_FOREACH(const std::string& strAddNode, theApp.addedNodes())
             laddedNodes.push_back(strAddNode);
     }
     else
     {
         string strNode = params[1].get_str();
-        LOCK(cs_vAddedNodes);
-        BOOST_FOREACH(const std::string& strAddNode, vAddedNodes) {
+        LOCK(theApp.addedNodesCS());
+        BOOST_FOREACH(const std::string& strAddNode, theApp.addedNodes()) {
             if (strAddNode == strNode)
             {
                 laddedNodes.push_back(strAddNode);
@@ -353,7 +360,7 @@ UniValue getaddednodeinfo(const UniValue& params, bool fHelp)
         }
     }
 
-    LOCK(cs_vNodes);
+    LOCK(theApp.vNodesCS());
     for (list<pair<string, vector<CService> > >::iterator it = laddedAddreses.begin(); it != laddedAddreses.end(); it++)
     {
         UniValue obj(UniValue::VOBJ);
@@ -365,7 +372,8 @@ UniValue getaddednodeinfo(const UniValue& params, bool fHelp)
             bool fFound = false;
             UniValue node(UniValue::VOBJ);
             node.push_back(Pair("address", addrNode.ToString()));
-            BOOST_FOREACH(CNode* pnode, vNodes) {
+            BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes()) 
+			{
                 if (pnode->addr == addrNode)
                 {
                     fFound = true;
@@ -450,6 +458,8 @@ static UniValue GetNetworksInfo()
     return networks;
 }
 
+extern int64_t edcGetTimeOffset();
+
 UniValue getnetworkinfo(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
@@ -495,17 +505,17 @@ UniValue getnetworkinfo(const UniValue& params, bool fHelp)
 
     UniValue obj(UniValue::VOBJ);
     obj.push_back(Pair("version",       CLIENT_VERSION));
-    obj.push_back(Pair("subversion",    strSubVersion));
+    obj.push_back(Pair("subversion",    theApp.strSubVersion() ));
     obj.push_back(Pair("protocolversion",PROTOCOL_VERSION));
     obj.push_back(Pair("localservices",       strprintf("%016x", theApp.localServices())));
-    obj.push_back(Pair("timeoffset",    GetTimeOffset()));
-    obj.push_back(Pair("connections",   (int)vNodes.size()));
+    obj.push_back(Pair("timeoffset",    edcGetTimeOffset()));
+    obj.push_back(Pair("connections",   (int)theApp.vNodes().size()));
     obj.push_back(Pair("networks",      GetNetworksInfo()));
     obj.push_back(Pair("relayfee",      ValueFromAmount(::minRelayTxFee.GetFeePerK())));
     UniValue localAddresses(UniValue::VARR);
     {
-        LOCK(cs_mapLocalHost);
-        BOOST_FOREACH(const PAIRTYPE(CNetAddr, LocalServiceInfo) &item, mapLocalHost)
+        LOCK(theApp.mapLocalHostCS());
+        BOOST_FOREACH(const PAIRTYPE(CNetAddr, LocalServiceInfo) &item, theApp.mapLocalHost())
         {
             UniValue rec(UniValue::VOBJ);
             rec.push_back(Pair("address", item.first.ToString()));
@@ -515,7 +525,7 @@ UniValue getnetworkinfo(const UniValue& params, bool fHelp)
         }
     }
     obj.push_back(Pair("localaddresses", localAddresses));
-    obj.push_back(Pair("warnings",       GetWarnings("statusbar")));
+    obj.push_back(Pair("warnings",       edcGetWarnings("statusbar")));
     return obj;
 }
 

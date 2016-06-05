@@ -91,6 +91,8 @@ std::string DecodeDumpString(const std::string &str)
 
 UniValue importprivkey(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
     
@@ -115,7 +117,7 @@ UniValue importprivkey(const UniValue& params, bool fHelp)
         );
 
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     EnsureWalletIsUnlocked();
 
@@ -129,7 +131,6 @@ UniValue importprivkey(const UniValue& params, bool fHelp)
     if (params.size() > 2)
         fRescan = params[2].get_bool();
 
-	EDCapp & theApp = EDCapp::singleton();
     if (fRescan && theApp.pruneMode())
         throw JSONRPCError(RPC_WALLET_ERROR, "Rescan is disabled in pruned mode");
 
@@ -145,24 +146,24 @@ UniValue importprivkey(const UniValue& params, bool fHelp)
     assert(key.VerifyPubKey(pubkey));
     CKeyID vchAddress = pubkey.GetID();
     {
-        edcPwalletMain->MarkDirty();
-        edcPwalletMain->SetAddressBook(vchAddress, strLabel, "receive");
+        theApp.walletMain()->MarkDirty();
+        theApp.walletMain()->SetAddressBook(vchAddress, strLabel, "receive");
 
         // Don't throw error in case a key is already there
-        if (edcPwalletMain->HaveKey(vchAddress))
+        if (theApp.walletMain()->HaveKey(vchAddress))
             return NullUniValue;
 
-        edcPwalletMain->mapKeyMetadata[vchAddress].nCreateTime = 1;
+        theApp.walletMain()->mapKeyMetadata[vchAddress].nCreateTime = 1;
 
-        if (!edcPwalletMain->AddKeyPubKey(key, pubkey))
+        if (!theApp.walletMain()->AddKeyPubKey(key, pubkey))
             throw JSONRPCError(RPC_WALLET_ERROR, "Error adding key to wallet");
 
         // whenever a key is imported, we need to scan the whole chain
-        edcPwalletMain->nTimeFirstKey = 1; // 0 would be considered 'no value'
+        theApp.walletMain()->nTimeFirstKey = 1; // 0 would be considered 'no value'
 
         if (fRescan) 
 		{
-            edcPwalletMain->ScanForWalletTransactions(chainActive.Genesis(), true);
+            theApp.walletMain()->ScanForWalletTransactions(theApp.chainActive().Genesis(), true);
         }
     }
 
@@ -172,17 +173,19 @@ UniValue importprivkey(const UniValue& params, bool fHelp)
 void ImportAddress(const CBitcoinAddress& address, const string& strLabel);
 void ImportScript(const CScript& script, const string& strLabel, bool isRedeemScript)
 {
-    if (!isRedeemScript && ::IsMine(*edcPwalletMain, script) == ISMINE_SPENDABLE)
+	EDCapp & theApp = EDCapp::singleton();
+
+    if (!isRedeemScript && ::IsMine(*theApp.walletMain(), script) == ISMINE_SPENDABLE)
         throw JSONRPCError(RPC_WALLET_ERROR, "The wallet already contains the private key for this address or script");
 
-    edcPwalletMain->MarkDirty();
+    theApp.walletMain()->MarkDirty();
 
-    if (!edcPwalletMain->HaveWatchOnly(script) && !edcPwalletMain->AddWatchOnly(script))
+    if (!theApp.walletMain()->HaveWatchOnly(script) && !theApp.walletMain()->AddWatchOnly(script))
         throw JSONRPCError(RPC_WALLET_ERROR, "Error adding address to wallet");
 
     if (isRedeemScript) 
 	{
-        if (!edcPwalletMain->HaveCScript(script) && !edcPwalletMain->AddCScript(script))
+        if (!theApp.walletMain()->HaveCScript(script) && !theApp.walletMain()->AddCScript(script))
             throw JSONRPCError(RPC_WALLET_ERROR, "Error adding p2sh redeemScript to wallet");
         ImportAddress(CBitcoinAddress(CScriptID(script)), strLabel);
     }
@@ -190,11 +193,13 @@ void ImportScript(const CScript& script, const string& strLabel, bool isRedeemSc
 
 void ImportAddress(const CBitcoinAddress& address, const string& strLabel)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     CScript script = GetScriptForDestination(address.Get());
     ImportScript(script, strLabel, false);
     // add to address book or update label
     if (address.IsValid())
-        edcPwalletMain->SetAddressBook(address.Get(), strLabel, "receive");
+        theApp.walletMain()->SetAddressBook(address.Get(), strLabel, "receive");
 }
 
 UniValue importaddress(const UniValue& params, bool fHelp)
@@ -241,7 +246,7 @@ UniValue importaddress(const UniValue& params, bool fHelp)
     if (params.size() > 3)
         fP2SH = params[3].get_bool();
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     CBitcoinAddress address(params[0].get_str());
     if (address.IsValid()) 
@@ -262,8 +267,8 @@ UniValue importaddress(const UniValue& params, bool fHelp)
 
     if (fRescan)
     {
-        edcPwalletMain->ScanForWalletTransactions(chainActive.Genesis(), true);
-        edcPwalletMain->ReacceptWalletTransactions();
+        theApp.walletMain()->ScanForWalletTransactions(theApp.chainActive().Genesis(), true);
+        theApp.walletMain()->ReacceptWalletTransactions();
     }
 
     return NullUniValue;
@@ -271,6 +276,8 @@ UniValue importaddress(const UniValue& params, bool fHelp)
 
 UniValue importprunedfunds(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -288,7 +295,7 @@ UniValue importprunedfunds(const UniValue& params, bool fHelp)
     if (!DecodeHexTx(tx, params[0].get_str()))
         throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "TX decode failed");
     uint256 hashTx = tx.GetHash();
-    CEDCWalletTx wtx(edcPwalletMain,tx);
+    CEDCWalletTx wtx(theApp.walletMain(),tx);
 
     CDataStream ssMB(ParseHexV(params[1], "proof"), SER_NETWORK, PROTOCOL_VERSION);
     CMerkleBlock merkleBlock;
@@ -306,7 +313,7 @@ UniValue importprunedfunds(const UniValue& params, bool fHelp)
 	{
         LOCK(EDC_cs_main);
 
-        if (!edcMapBlockIndex.count(merkleBlock.header.GetHash()) || !chainActive.Contains(edcMapBlockIndex[merkleBlock.header.GetHash()]))
+        if (!theApp.mapBlockIndex().count(merkleBlock.header.GetHash()) || !theApp.chainActive().Contains(theApp.mapBlockIndex()[merkleBlock.header.GetHash()]))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found in chain");
 
         vector<uint256>::const_iterator it;
@@ -325,12 +332,12 @@ UniValue importprunedfunds(const UniValue& params, bool fHelp)
     wtx.nIndex = txnIndex;
     wtx.hashBlock = merkleBlock.header.GetHash();
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-    if (edcPwalletMain->IsMine(tx)) 
+    if (theApp.walletMain()->IsMine(tx)) 
 	{
-        CEDCWalletDB walletdb(edcPwalletMain->strWalletFile, "r+", false);
-        edcPwalletMain->AddToWallet(wtx, false, &walletdb);
+        CEDCWalletDB walletdb(theApp.walletMain()->strWalletFile, "r+", false);
+        theApp.walletMain()->AddToWallet(wtx, false, &walletdb);
         return NullUniValue;
     }
 
@@ -339,6 +346,8 @@ UniValue importprunedfunds(const UniValue& params, bool fHelp)
 
 UniValue removeprunedfunds(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -354,7 +363,7 @@ UniValue removeprunedfunds(const UniValue& params, bool fHelp)
             + HelpExampleRpc("removprunedfunds", "\"a8d0c0184dde994a09ec054286f1ce581bebf46446a512166eae7628734ea0a5\"")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     uint256 hash;
     hash.SetHex(params[0].get_str());
@@ -362,7 +371,7 @@ UniValue removeprunedfunds(const UniValue& params, bool fHelp)
     vHash.push_back(hash);
     vector<uint256> vHashOut;
 
-    if(edcPwalletMain->ZapSelectTx(vHash, vHashOut) != DB_LOAD_OK) 
+    if(theApp.walletMain()->ZapSelectTx(vHash, vHashOut) != DB_LOAD_OK) 
 	{
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Could not properly delete the transaction.");
     }
@@ -372,7 +381,7 @@ UniValue removeprunedfunds(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Transaction does not exist in wallet.");
     }
 
-    edcThreadFlushWalletDB(edcPwalletMain->strWalletFile);
+    edcThreadFlushWalletDB(theApp.walletMain()->strWalletFile);
 
     return NullUniValue;
 }
@@ -421,15 +430,15 @@ UniValue importpubkey(const UniValue& params, bool fHelp)
     if (!pubKey.IsFullyValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Pubkey is not a valid public key");
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     ImportAddress(CBitcoinAddress(pubKey.GetID()), strLabel);
     ImportScript(GetScriptForRawPubKey(pubKey), strLabel, false);
 
     if (fRescan)
     {
-        edcPwalletMain->ScanForWalletTransactions(chainActive.Genesis(), true);
-        edcPwalletMain->ReacceptWalletTransactions();
+        theApp.walletMain()->ScanForWalletTransactions(theApp.chainActive().Genesis(), true);
+        theApp.walletMain()->ReacceptWalletTransactions();
     }
 
     return NullUniValue;
@@ -460,7 +469,7 @@ UniValue importwallet(const UniValue& params, bool fHelp)
     if (theApp.pruneMode())
         throw JSONRPCError(RPC_WALLET_ERROR, "Importing wallets is disabled in pruned mode");
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     EnsureWalletIsUnlocked();
 
@@ -469,17 +478,17 @@ UniValue importwallet(const UniValue& params, bool fHelp)
     if (!file.is_open())
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Cannot open wallet dump file");
 
-    int64_t nTimeBegin = chainActive.Tip()->GetBlockTime();
+    int64_t nTimeBegin = theApp.chainActive().Tip()->GetBlockTime();
 
     bool fGood = true;
 
     int64_t nFilesize = std::max((int64_t)1, (int64_t)file.tellg());
     file.seekg(0, file.beg);
 
-    edcPwalletMain->ShowProgress(_("Importing..."), 0); // show progress dialog in GUI
+    theApp.walletMain()->ShowProgress(_("Importing..."), 0); // show progress dialog in GUI
     while (file.good()) 
 	{
-        edcPwalletMain->ShowProgress("", std::max(1, std::min(99, (int)(((double)file.tellg() / (double)nFilesize) * 100))));
+        theApp.walletMain()->ShowProgress("", std::max(1, std::min(99, (int)(((double)file.tellg() / (double)nFilesize) * 100))));
         std::string line;
         std::getline(file, line);
 
@@ -501,7 +510,7 @@ UniValue importwallet(const UniValue& params, bool fHelp)
         assert(key.VerifyPubKey(pubkey));
         CKeyID keyid = pubkey.GetID();
 
-        if (edcPwalletMain->HaveKey(keyid)) 
+        if (theApp.walletMain()->HaveKey(keyid)) 
 		{
             edcLogPrintf("Skipping import of %s (key already present)\n", CBitcoinAddress(keyid).ToString());
             continue;
@@ -528,29 +537,29 @@ UniValue importwallet(const UniValue& params, bool fHelp)
 
         edcLogPrintf("Importing %s...\n", CBitcoinAddress(keyid).ToString());
 
-        if (!edcPwalletMain->AddKeyPubKey(key, pubkey)) 
+        if (!theApp.walletMain()->AddKeyPubKey(key, pubkey)) 
 		{
             fGood = false;
             continue;
         }
-        edcPwalletMain->mapKeyMetadata[keyid].nCreateTime = nTime;
+        theApp.walletMain()->mapKeyMetadata[keyid].nCreateTime = nTime;
         if (fLabel)
-            edcPwalletMain->SetAddressBook(keyid, strLabel, "receive");
+            theApp.walletMain()->SetAddressBook(keyid, strLabel, "receive");
         nTimeBegin = std::min(nTimeBegin, nTime);
     }
     file.close();
-    edcPwalletMain->ShowProgress("", 100); // hide progress dialog in GUI
+    theApp.walletMain()->ShowProgress("", 100); // hide progress dialog in GUI
 
-    CBlockIndex *pindex = chainActive.Tip();
+    CBlockIndex *pindex = theApp.chainActive().Tip();
     while (pindex && pindex->pprev && pindex->GetBlockTime() > nTimeBegin - 7200)
         pindex = pindex->pprev;
 
-    if (!edcPwalletMain->nTimeFirstKey || nTimeBegin < edcPwalletMain->nTimeFirstKey)
-        edcPwalletMain->nTimeFirstKey = nTimeBegin;
+    if (!theApp.walletMain()->nTimeFirstKey || nTimeBegin < theApp.walletMain()->nTimeFirstKey)
+        theApp.walletMain()->nTimeFirstKey = nTimeBegin;
 
-    edcLogPrintf("Rescanning last %i blocks\n", chainActive.Height() - pindex->nHeight + 1);
-    edcPwalletMain->ScanForWalletTransactions(pindex);
-    edcPwalletMain->MarkDirty();
+    edcLogPrintf("Rescanning last %i blocks\n", theApp.chainActive().Height() - pindex->nHeight + 1);
+    theApp.walletMain()->ScanForWalletTransactions(pindex);
+    theApp.walletMain()->MarkDirty();
 
     if (!fGood)
         throw JSONRPCError(RPC_WALLET_ERROR, "Error adding some keys to wallet");
@@ -560,6 +569,8 @@ UniValue importwallet(const UniValue& params, bool fHelp)
 
 UniValue dumpprivkey(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
     
@@ -578,7 +589,7 @@ UniValue dumpprivkey(const UniValue& params, bool fHelp)
             + HelpExampleRpc("dumpprivkey", "\"myaddress\"")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     EnsureWalletIsUnlocked();
 
@@ -590,7 +601,7 @@ UniValue dumpprivkey(const UniValue& params, bool fHelp)
     if (!address.GetKeyID(keyID))
         throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to a key");
     CKey vchSecret;
-    if (!edcPwalletMain->GetKey(keyID, vchSecret))
+    if (!theApp.walletMain()->GetKey(keyID, vchSecret))
         throw JSONRPCError(RPC_WALLET_ERROR, "Private key for address " + strAddress + " is not known");
     return CBitcoinSecret(vchSecret).ToString();
 }
@@ -598,6 +609,8 @@ UniValue dumpprivkey(const UniValue& params, bool fHelp)
 
 UniValue dumpwallet(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
     
@@ -612,7 +625,7 @@ UniValue dumpwallet(const UniValue& params, bool fHelp)
             + HelpExampleRpc("dumpwallet", "\"test\"")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     EnsureWalletIsUnlocked();
 
@@ -623,8 +636,8 @@ UniValue dumpwallet(const UniValue& params, bool fHelp)
 
     std::map<CKeyID, int64_t> mapKeyBirth;
     std::set<CKeyID> setKeyPool;
-    edcPwalletMain->GetKeyBirthTimes(mapKeyBirth);
-    edcPwalletMain->GetAllReserveKeys(setKeyPool);
+    theApp.walletMain()->GetKeyBirthTimes(mapKeyBirth);
+    theApp.walletMain()->GetAllReserveKeys(setKeyPool);
 
     // sort time/key pairs
     std::vector<std::pair<int64_t, CKeyID> > vKeyBirth;
@@ -638,8 +651,8 @@ UniValue dumpwallet(const UniValue& params, bool fHelp)
     // produce output
     file << strprintf("# Wallet dump created by Bitcoin %s (%s)\n", CLIENT_BUILD, CLIENT_DATE);
     file << strprintf("# * Created on %s\n", EncodeDumpTime(GetTime()));
-    file << strprintf("# * Best block at time of backup was %i (%s),\n", chainActive.Height(), chainActive.Tip()->GetBlockHash().ToString());
-    file << strprintf("#   mined on %s\n", EncodeDumpTime(chainActive.Tip()->GetBlockTime()));
+    file << strprintf("# * Best block at time of backup was %i (%s),\n", theApp.chainActive().Height(), theApp.chainActive().Tip()->GetBlockHash().ToString());
+    file << strprintf("#   mined on %s\n", EncodeDumpTime(theApp.chainActive().Tip()->GetBlockTime()));
     file << "\n";
     for (std::vector<std::pair<int64_t, CKeyID> >::const_iterator it = vKeyBirth.begin(); it != vKeyBirth.end(); it++)
 	{
@@ -647,11 +660,11 @@ UniValue dumpwallet(const UniValue& params, bool fHelp)
         std::string strTime = EncodeDumpTime(it->first);
         std::string strAddr = CBitcoinAddress(keyid).ToString();
         CKey key;
-        if (edcPwalletMain->GetKey(keyid, key)) 
+        if (theApp.walletMain()->GetKey(keyid, key)) 
 		{
-            if (edcPwalletMain->mapAddressBook.count(keyid)) 
+            if (theApp.walletMain()->mapAddressBook.count(keyid)) 
 			{
-                file << strprintf("%s %s label=%s # addr=%s\n", CBitcoinSecret(key).ToString(), strTime, EncodeDumpString(edcPwalletMain->mapAddressBook[keyid].name), strAddr);
+                file << strprintf("%s %s label=%s # addr=%s\n", CBitcoinSecret(key).ToString(), strTime, EncodeDumpString(theApp.walletMain()->mapAddressBook[keyid].name), strAddr);
             } 
 			else if (setKeyPool.count(keyid)) 
 			{

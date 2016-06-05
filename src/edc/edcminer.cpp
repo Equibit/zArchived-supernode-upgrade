@@ -56,6 +56,8 @@ public:
     }
 };
 
+extern int64_t edcGetAdjustedTime();
+
 CEDCBlockTemplate* CreateNewEDCBlock(const CChainParams& chainparams, const CScript& scriptPubKeyIn)
 {
     // Create new block
@@ -114,9 +116,9 @@ CEDCBlockTemplate* CreateNewEDCBlock(const CChainParams& chainparams, const CScr
     {
 		EDCapp & theApp = EDCapp::singleton();
         LOCK2(EDC_cs_main, theApp.mempool().cs);
-        CBlockIndex* pindexPrev = chainActive.Tip();
+        CBlockIndex* pindexPrev = theApp.chainActive().Tip();
         const int nHeight = pindexPrev->nHeight + 1;
-        pblock->nTime = GetAdjustedTime();
+        pblock->nTime = edcGetAdjustedTime();
         const int64_t nMedianTimePast = pindexPrev->GetMedianTimePast();
 
         pblock->nVersion = edcComputeBlockVersion(pindexPrev, chainparams.GetConsensus());

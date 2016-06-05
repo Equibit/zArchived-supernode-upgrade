@@ -71,8 +71,6 @@ bool EdcAppInit(
 
 	try
 	{
-        params.server = true;
-
     	// Set this early so that parameter interactions go to console
 	    edcInitLogging();
 
@@ -172,8 +170,6 @@ bool EdcAppInit(
 	    if ( params.peerbloomfilters )
    	    	theApp.localServices( theApp.localServices() | NODE_BLOOM );
 
-    	theApp.enableReplacement( params.mempoolreplacement );
-
     	// ** Step 4:app initialization: dir lock, daemonize, pidfile, debug log
 
     	std::string strDataDir = edcGetDataDir().string();
@@ -205,7 +201,7 @@ bool EdcAppInit(
 
     	CreatePidFile(edcGetPidFile(), getpid());
 
-    	if (params.shrinkdebugfile)
+    	if (params.debug.size() > 0 )
         	edcShrinkDebugFile();
 
     	if (fPrintToDebugLog)
@@ -259,13 +255,13 @@ bool EdcAppInit(
             	return edcInitError(strprintf(_("User Agent comment (%s) contains unsafe characters."), cmt));
         	uacomments.push_back(SanitizeString(cmt, SAFE_CHARS_UA_COMMENT));
     	}
-    	strSubVersion = FormatSubVersion(CLIENT_NAME, CLIENT_VERSION, uacomments);
-    	if (strSubVersion.size() > MAX_SUBVERSION_LENGTH) 
+    	theApp.strSubVersion( FormatSubVersion(CLIENT_NAME, CLIENT_VERSION, uacomments) );
+    	if (theApp.strSubVersion().size() > MAX_SUBVERSION_LENGTH) 
 		{
         	return edcInitError(strprintf(_("Total length of network version "
 				"string (%i) exceeds maximum length (%i). Reduce the number or "
 				"size of uacomments."),
-            	strSubVersion.size(), MAX_SUBVERSION_LENGTH));
+            	theApp.strSubVersion().size(), MAX_SUBVERSION_LENGTH));
     	}
 
 	    if ( params.onlynet.size() > 0 ) 
@@ -429,7 +425,7 @@ bool EdcAppInit(
 
     // ********************************************************* Step 7: load block chain
 
-    fReindex = params.reindex;
+    theApp.reindex( params.reindex );
 
     // Upgrading to 0.8; hard-link the old blknnnn.dat files into /blocks/
     boost::filesystem::path blocksDir = edcGetDataDir() / "blocks";
@@ -458,7 +454,7 @@ bool EdcAppInit(
         }
         if (linked)
         {
-            fReindex = true;
+            theApp.reindex( true );
         }
     }
 
@@ -483,7 +479,7 @@ bool EdcAppInit(
 
     while (!fLoaded) 
 	{
-        bool fReset = fReindex;
+        bool fReset = theApp.reindex();
         std::string strLoadError;
 
         uiInterface.InitMessage(_("Loading block index..."));
@@ -494,17 +490,17 @@ bool EdcAppInit(
             try 
 			{
                 UnloadBlockIndex();
-                delete pcoinsTip;
+                delete theApp.coinsTip();
                 delete pcoinsdbview;
                 delete pcoinscatcher;
                 delete theApp.blocktree();
 
-                theApp.blocktree( new CBlockTreeDB(nBlockTreeDBCache, false, fReindex) );
-                pcoinsdbview = new CCoinsViewDB(nCoinDBCache, false, fReindex);
+                theApp.blocktree( new CBlockTreeDB(nBlockTreeDBCache, false, theApp.reindex() ) );
+                pcoinsdbview = new CCoinsViewDB(nCoinDBCache, false, theApp.reindex() );
                 pcoinscatcher = new CCoinsViewErrorCatcher(pcoinsdbview);
-                pcoinsTip = new CCoinsViewCache(pcoinscatcher);
+                theApp.coinsTip( new CCoinsViewCache(pcoinscatcher) );
 
-                if (fReindex) 
+                if (theApp.reindex()) 
 				{
                     theApp.blocktree()->WriteReindexing(true);
                     //If we're reindexing in prune mode, wipe away unusable block files and all undo data files
@@ -520,7 +516,7 @@ bool EdcAppInit(
 
                 // If the loaded chain has a wrong genesis, bail out immediately
                 // (we're likely using a testnet datadir, or the other way around).
-                if (!mapBlockIndex.empty() && mapBlockIndex.count(chainparams.GetConsensus().hashGenesisBlock) == 0)
+                if (!theApp.mapBlockIndex().empty() && edcMapBlockIndex.count(chainparams.GetConsensus().hashGenesisBlock) == 0)
                     return edcInitError(_("Incorrect or no genesis block found. Wrong datadir for network?"));
 
                 // Initialize the block index (no-op if non-empty database was already loaded)
@@ -531,7 +527,7 @@ bool EdcAppInit(
                 }
 
                 // Check for changed -txindex state
-                if (fTxIndex != params.txindex) 
+                if ( theApp.txIndex() != params.txindex) 
 				{
                     strLoadError = _("You need to rebuild the database using -reindex to change -txindex");
                     break;
@@ -539,14 +535,14 @@ bool EdcAppInit(
 
                 // Check for changed -prune state.  What we are concerned about is a user who has pruned blocks
                 // in the past, but is now trying to run unpruned.
-                if (fHavePruned && !theApp.pruneMode()) 
+                if (theApp.havePruned() && !theApp.pruneMode()) 
 				{
                     strLoadError = _("You need to rebuild the database using -reindex to go back to unpruned mode.  This will redownload the entire blockchain");
                     break;
                 }
 
                 uiInterface.InitMessage(_("Verifying blocks..."));
-                if (fHavePruned && params.checkblocks > MIN_BLOCKS_TO_KEEP) 
+                if (theApp.havePruned() && params.checkblocks > MIN_BLOCKS_TO_KEEP) 
 				{
                     edcLogPrintf("Prune: pruned datadir may not have more than %d blocks; -checkblocks=%d may fail\n",
                         MIN_BLOCKS_TO_KEEP, params.checkblocks );
@@ -554,8 +550,8 @@ bool EdcAppInit(
 
                 {
                     LOCK(cs_main);
-                    CBlockIndex* tip = chainActive.Tip();
-                    if (tip && tip->nTime > GetAdjustedTime() + 2 * 60 * 60) 
+                    CBlockIndex* tip = theApp.chainActive().Tip();
+                    if (tip && tip->nTime > edcGetAdjustedTime() + 2 * 60 * 60) 
 					{
                         strLoadError = _("The block database contains a block which appears to be from the future. "
                                 "This may be due to your computer's date and time being set incorrectly. "
@@ -574,7 +570,8 @@ bool EdcAppInit(
             } 
 			catch (const std::exception& e) 
 			{
-                if (fDebug) edcLogPrintf("%s\n", e.what());
+                if (params.debug.size() > 0 )
+					edcLogPrintf("%s\n", e.what());
                 strLoadError = _("Error opening block database");
                 break;
             }
@@ -592,7 +589,7 @@ bool EdcAppInit(
                     "", CClientUIInterface::MSG_ERROR | CClientUIInterface::BTN_ABORT);
                 if (fRet) 
 				{
-                    fReindex = true;
+                    theApp.reindex( true );
                     fRequestShutdown = false;
                 } 
 				else 
@@ -629,13 +626,13 @@ bool EdcAppInit(
 #ifdef ENABLE_WALLET
     if (fDisableWallet) 
 	{
-        pwalletMain = NULL;
+        theApp.walletMain( NULL );
         edcLogPrintf("Wallet disabled!\n");
     } 
 	else 
 	{
         CWallet::InitLoadWallet();
-        if (!pwalletMain)
+        if (!theApp.walletMain())
             return false;
     }
 #else // ENABLE_WALLET
@@ -650,7 +647,7 @@ bool EdcAppInit(
 	{
         edcLogPrintf("Unsetting NODE_NETWORK on prune mode\n");
         theApp.localServices( theApp.localServices()  & ~NODE_NETWORK );
-        if (!fReindex) 
+        if (!theApp.reindex()) 
 		{
             uiInterface.InitMessage(_("Pruning blockstore..."));
             PruneAndFlush();
@@ -675,10 +672,10 @@ bool EdcAppInit(
             vImportFiles.push_back(strFile);
     }
     threadGroup.create_thread(boost::bind(&ThreadImport, vImportFiles));
-    if (chainActive.Tip() == NULL) 
+    if (theApp.chainActive().Tip() == NULL) 
 	{
         edcLogPrintf("Waiting for genesis block to be imported...\n");
-        while (!fRequestShutdown && chainActive.Tip() == NULL)
+        while (!fRequestShutdown && theApp.chainActive().Tip() == NULL)
             MilliSleep(10);
     }
 
@@ -693,12 +690,12 @@ bool EdcAppInit(
     RandAddSeedPerfmon();
 
     //// debug print
-    edcLogPrintf("mapBlockIndex.size() = %u\n",   mapBlockIndex.size());
-    edcLogPrintf("nBestHeight = %d\n",                   chainActive.Height());
+    edcLogPrintf("mapBlockIndex.size() = %u\n",  theApp.mapBlockIndex().size());
+    edcLogPrintf("nBestHeight = %d\n",           theApp.chainActive().Height());
 #ifdef ENABLE_WALLET
-    edcLogPrintf("setKeyPool.size() = %u\n",      pwalletMain ? pwalletMain->setKeyPool.size() : 0);
-    edcLogPrintf("mapWallet.size() = %u\n",       pwalletMain ? pwalletMain->mapWallet.size() : 0);
-    edcLogPrintf("mapAddressBook.size() = %u\n",  pwalletMain ? pwalletMain->mapAddressBook.size() : 0);
+    edcLogPrintf("setKeyPool.size() = %u\n",     theApp.walletMain() ? theApp.walletMain()->setKeyPool.size() : 0);
+    edcLogPrintf("mapWallet.size() = %u\n",      theApp.walletMain() ? theApp.walletMain()->mapWallet.size() : 0);
+    edcLogPrintf("mapAddressBook.size() = %u\n", theApp.walletMain() ? theApp.walletMain()->mapAddressBook.size() : 0);
 #endif
 
     if (params.listenonion )
@@ -709,7 +706,7 @@ bool EdcAppInit(
     // Monitor the chain, and alert if we get blocks much quicker or slower than expected
     int64_t nPowTargetSpacing = Params().GetConsensus().nPowTargetSpacing;
     CScheduler::Function f = boost::bind(&PartitionCheck, &IsInitialBlockDownload,
-                                         boost::ref(cs_main), boost::cref(pindexBestHeader), nPowTargetSpacing);
+                                         boost::ref(cs_main), boost::cref(theApp.indexBestHeader()), nPowTargetSpacing);
     scheduler.scheduleEvery(f, nPowTargetSpacing);
 
     // ********************************************************* Step 12: finished
@@ -718,13 +715,13 @@ bool EdcAppInit(
     uiInterface.InitMessage(_("Done loading"));
 
 #ifdef ENABLE_WALLET
-    if (pwalletMain) 
+    if (theApp.walletMain()) 
 	{
         // Add wallet transactions that aren't already in a block to mapTransactions
-        pwalletMain->ReacceptWalletTransactions();
+        theApp.walletMain()->ReacceptWalletTransactions();
 
         // Run a thread to flush wallet periodically
-        threadGroup.create_thread(boost::bind(&ThreadFlushWalletDB, boost::ref(pwalletMain->strWalletFile)));
+        threadGroup.create_thread(boost::bind(&ThreadFlushWalletDB, boost::ref(theApp.walletMain()->strWalletFile)));
     }
 #endif
 
@@ -752,8 +749,8 @@ void edcShutdown()
     StopRPC();
     StopHTTPServer();
 #ifdef ENABLE_WALLET
-    if (pwalletMain)
-        pwalletMain->Flush(false);
+    if (theApp.walletMain())
+        theApp.walletMain()->Flush(false);
 #endif
     StopNode();
     StopTorControl();
@@ -772,11 +769,11 @@ void edcShutdown()
 
     {
         LOCK(cs_main);
-        if (pcoinsTip != NULL) {
+        if (theApp.coinsTip() != NULL) {
             FlushStateToDisk();
         }
-        delete pcoinsTip;
-        pcoinsTip = NULL;
+        delete theApp.coinsTip();
+        theApp.coinsTip( NULL );
         delete pcoinscatcher;
         pcoinscatcher = NULL;
         delete pcoinsdbview;
@@ -785,8 +782,8 @@ void edcShutdown()
         theApp.blocktree( NULL );
     }
 #ifdef ENABLE_WALLET
-    if (pwalletMain)
-        pwalletMain->Flush(true);
+    if (theApp.walletMain())
+        theApp.walletMain()->Flush(true);
 #endif
 
 #if ENABLE_ZMQ
@@ -806,21 +803,37 @@ void edcShutdown()
 #endif
     UnregisterAllValidationInterfaces();
 #ifdef ENABLE_WALLET
-    delete pwalletMain;
-    pwalletMain = NULL;
+    delete theApp.walletMain();
+    theApp.walletMain( NULL );
 #endif
     globalVerifyHandle.reset();
     ECC_Stop();
     LogPrintf("%s: done\n", __func__);
 }
 
+struct CImportingNow
+{
+    CImportingNow() 
+	{
+		EDCapp & theApp = EDCapp::singleton();
+        assert(theApp.importing() == false);
+        theApp.importing( true );
+    }
+
+    ~CImportingNow() 
+	{
+		EDCapp & theApp = EDCapp::singleton();
+        assert(theApp.importing() == true);
+        theApp.importing( false );
+    }
+};
 
 void edcThreadImport(std::vector<boost::filesystem::path> vImportFiles)
 {
     const CChainParams& chainparams = Params();
     RenameThread("bitcoin-loadblk");
     // -reindex
-    if (fReindex) {
+    if (theApp.reindex()) {
         CImportingNow imp;
         int nFile = 0;
         while (true) {
@@ -835,7 +848,7 @@ void edcThreadImport(std::vector<boost::filesystem::path> vImportFiles)
             nFile++;
         }
         theApp.blocktree()->WriteReindexing(false);
-        fReindex = false;
+        theApp.reindex( false );
         LogPrintf("Reindexing finished\n");
         // To avoid ending up in a situation without genesis block, re-try initializing (no-op if reindexing worked):
         InitBlockIndex(chainparams);

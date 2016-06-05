@@ -36,14 +36,16 @@ void ScriptPubKeyToJSON(const CScript& scriptPubKey, UniValue& out, bool fInclud
 
 double GetDifficulty(const CBlockIndex* blockindex)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     // Floating point number that is a multiple of the minimum difficulty,
     // minimum difficulty = 1.0.
     if (blockindex == NULL)
     {
-        if (chainActive.Tip() == NULL)
+        if (theApp.chainActive().Tip() == NULL)
             return 1.0;
         else
-            blockindex = chainActive.Tip();
+            blockindex = theApp.chainActive().Tip();
     }
 
     int nShift = (blockindex->nBits >> 24) & 0xff;
@@ -67,12 +69,14 @@ double GetDifficulty(const CBlockIndex* blockindex)
 
 UniValue blockheaderToJSON(const CBlockIndex* blockindex)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     UniValue result(UniValue::VOBJ);
     result.push_back(Pair("hash", blockindex->GetBlockHash().GetHex()));
     int confirmations = -1;
     // Only report confirmations if the block is on the main chain
-    if (chainActive.Contains(blockindex))
-        confirmations = chainActive.Height() - blockindex->nHeight + 1;
+    if (theApp.chainActive().Contains(blockindex))
+        confirmations = theApp.chainActive().Height() - blockindex->nHeight + 1;
     result.push_back(Pair("confirmations", confirmations));
     result.push_back(Pair("height", blockindex->nHeight));
     result.push_back(Pair("version", blockindex->nVersion));
@@ -87,7 +91,7 @@ UniValue blockheaderToJSON(const CBlockIndex* blockindex)
 
     if (blockindex->pprev)
         result.push_back(Pair("previousblockhash", blockindex->pprev->GetBlockHash().GetHex()));
-    CBlockIndex *pnext = chainActive.Next(blockindex);
+    CBlockIndex *pnext = theApp.chainActive().Next(blockindex);
     if (pnext)
         result.push_back(Pair("nextblockhash", pnext->GetBlockHash().GetHex()));
     return result;
@@ -95,12 +99,14 @@ UniValue blockheaderToJSON(const CBlockIndex* blockindex)
 
 UniValue blockToJSON(const CEDCBlock& block, const CBlockIndex* blockindex, bool txDetails = false)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     UniValue result(UniValue::VOBJ);
     result.push_back(Pair("hash", blockindex->GetBlockHash().GetHex()));
     int confirmations = -1;
     // Only report confirmations if the block is on the main chain
-    if (chainActive.Contains(blockindex))
-        confirmations = chainActive.Height() - blockindex->nHeight + 1;
+    if (theApp.chainActive().Contains(blockindex))
+        confirmations = theApp.chainActive().Height() - blockindex->nHeight + 1;
     result.push_back(Pair("confirmations", confirmations));
     result.push_back(Pair("size", (int)::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION)));
     result.push_back(Pair("height", blockindex->nHeight));
@@ -129,7 +135,7 @@ UniValue blockToJSON(const CEDCBlock& block, const CBlockIndex* blockindex, bool
 
     if (blockindex->pprev)
         result.push_back(Pair("previousblockhash", blockindex->pprev->GetBlockHash().GetHex()));
-    CBlockIndex *pnext = chainActive.Next(blockindex);
+    CBlockIndex *pnext = theApp.chainActive().Next(blockindex);
     if (pnext)
         result.push_back(Pair("nextblockhash", pnext->GetBlockHash().GetHex()));
     return result;
@@ -137,6 +143,8 @@ UniValue blockToJSON(const CEDCBlock& block, const CBlockIndex* blockindex, bool
 
 UniValue getblockcount(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (fHelp || params.size() != 0)
         throw runtime_error(
             "getblockcount\n"
@@ -149,11 +157,13 @@ UniValue getblockcount(const UniValue& params, bool fHelp)
         );
 
     LOCK(EDC_cs_main);
-    return chainActive.Height();
+    return theApp.chainActive().Height();
 }
 
 UniValue getbestblockhash(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (fHelp || params.size() != 0)
         throw runtime_error(
             "getbestblockhash\n"
@@ -166,7 +176,7 @@ UniValue getbestblockhash(const UniValue& params, bool fHelp)
         );
 
     LOCK(EDC_cs_main);
-    return chainActive.Tip()->GetBlockHash().GetHex();
+    return theApp.chainActive().Tip()->GetBlockHash().GetHex();
 }
 
 UniValue getdifficulty(const UniValue& params, bool fHelp)
@@ -204,7 +214,7 @@ UniValue mempoolToJSON(bool fVerbose = false)
             info.push_back(Pair("time", e.GetTime()));
             info.push_back(Pair("height", (int)e.GetHeight()));
             info.push_back(Pair("startingpriority", e.GetPriority(e.GetHeight())));
-            info.push_back(Pair("currentpriority", e.GetPriority(chainActive.Height())));
+            info.push_back(Pair("currentpriority", e.GetPriority(theApp.chainActive().Height())));
             info.push_back(Pair("descendantcount", e.GetCountWithDescendants()));
             info.push_back(Pair("descendantsize", e.GetSizeWithDescendants()));
             info.push_back(Pair("descendantfees", e.GetModFeesWithDescendants()));
@@ -287,6 +297,8 @@ UniValue getrawmempool(const UniValue& params, bool fHelp)
 
 UniValue getblockhash(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (fHelp || params.size() != 1)
         throw runtime_error(
             "getblockhash index\n"
@@ -303,15 +315,17 @@ UniValue getblockhash(const UniValue& params, bool fHelp)
     LOCK(EDC_cs_main);
 
     int nHeight = params[0].get_int();
-    if (nHeight < 0 || nHeight > chainActive.Height())
+    if (nHeight < 0 || nHeight > theApp.chainActive().Height())
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Block height out of range");
 
-    CBlockIndex* pblockindex = chainActive[nHeight];
+    CBlockIndex* pblockindex = theApp.chainActive()[nHeight];
     return pblockindex->GetBlockHash().GetHex();
 }
 
 UniValue getblockheader(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
             "getblockheader \"hash\" ( verbose )\n"
@@ -353,10 +367,10 @@ UniValue getblockheader(const UniValue& params, bool fHelp)
     if (params.size() > 1)
         fVerbose = params[1].get_bool();
 
-    if (edcMapBlockIndex.count(hash) == 0)
+    if (theApp.mapBlockIndex().count(hash) == 0)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
 
-    CBlockIndex* pblockindex = edcMapBlockIndex[hash];
+    CBlockIndex* pblockindex = theApp.mapBlockIndex()[hash];
 
     if (!fVerbose)
     {
@@ -371,6 +385,7 @@ UniValue getblockheader(const UniValue& params, bool fHelp)
 
 UniValue getblock(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
             "getblock \"hash\" ( verbose )\n"
@@ -417,13 +432,13 @@ UniValue getblock(const UniValue& params, bool fHelp)
     if (params.size() > 1)
         fVerbose = params[1].get_bool();
 
-    if (edcMapBlockIndex.count(hash) == 0)
+    if (theApp.mapBlockIndex().count(hash) == 0)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
 
     CEDCBlock block;
-    CBlockIndex* pblockindex = edcMapBlockIndex[hash];
+    CBlockIndex* pblockindex = theApp.mapBlockIndex()[hash];
 
-    if (fHavePruned && !(pblockindex->nStatus & BLOCK_HAVE_DATA) && pblockindex->nTx > 0)
+    if (theApp.havePruned() && !(pblockindex->nStatus & BLOCK_HAVE_DATA) && pblockindex->nTx > 0)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Block not available (pruned data)");
 
     if(!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))
@@ -456,13 +471,14 @@ struct CCoinsStats
 //! Calculate statistics about the unspent transaction output set
 static bool GetUTXOStats(CEDCCoinsView *view, CCoinsStats &stats)
 {
+	EDCapp & theApp = EDCapp::singleton();
     boost::scoped_ptr<CEDCCoinsViewCursor> pcursor(view->Cursor());
 
     CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
     stats.hashBlock = pcursor->GetBestBlock();
     {
         LOCK(EDC_cs_main);
-        stats.nHeight = edcMapBlockIndex.find(stats.hashBlock)->second->nHeight;
+        stats.nHeight = theApp.mapBlockIndex().find(stats.hashBlock)->second->nHeight;
     }
     ss << stats.hashBlock;
     CAmount nTotalAmount = 0;
@@ -502,6 +518,8 @@ static bool GetUTXOStats(CEDCCoinsView *view, CCoinsStats &stats)
 
 UniValue gettxoutsetinfo(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (fHelp || params.size() != 0)
         throw runtime_error(
             "gettxoutsetinfo\n"
@@ -526,7 +544,7 @@ UniValue gettxoutsetinfo(const UniValue& params, bool fHelp)
 
     CCoinsStats stats;
     edcFlushStateToDisk();
-    if (GetUTXOStats(edcPcoinsTip, stats)) 
+    if (GetUTXOStats(theApp.coinsTip(), stats)) 
 	{
         ret.push_back(Pair("height", (int64_t)stats.nHeight));
         ret.push_back(Pair("bestblock", stats.hashBlock.GetHex()));
@@ -593,21 +611,21 @@ UniValue gettxout(const UniValue& params, bool fHelp)
     if (fMempool) 
 	{
         LOCK(theApp.mempool().cs);
-        CEDCCoinsViewMemPool view(edcPcoinsTip, theApp.mempool());
+        CEDCCoinsViewMemPool view(theApp.coinsTip(), theApp.mempool());
         if (!view.GetCoins(hash, coins))
             return NullUniValue;
         theApp.mempool().pruneSpent(hash, coins); // TODO: this should be done by the CCoinsViewMemPool
     } 
 	else 
 	{
-        if (!edcPcoinsTip->GetCoins(hash, coins))
+        if (!theApp.coinsTip()->GetCoins(hash, coins))
             return NullUniValue;
     }
 
     if (n<0 || (unsigned int)n>=coins.vout.size() || coins.vout[n].IsNull())
         return NullUniValue;
 
-    BlockMap::iterator it = edcMapBlockIndex.find(edcPcoinsTip->GetBestBlock());
+    BlockMap::iterator it = theApp.mapBlockIndex().find(theApp.coinsTip()->GetBestBlock());
     CBlockIndex *pindex = it->second;
     ret.push_back(Pair("bestblock", pindex->GetBlockHash().GetHex()));
     if ((unsigned int)coins.nHeight == MEMPOOL_HEIGHT)
@@ -626,7 +644,9 @@ UniValue gettxout(const UniValue& params, bool fHelp)
 
 UniValue verifychain(const UniValue& param, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
 	EDCparams & params = EDCparams::singleton();
+
     int nCheckLevel = params.checklevel;
     int nCheckDepth = params.checkblocks;
 
@@ -651,7 +671,7 @@ UniValue verifychain(const UniValue& param, bool fHelp)
     if (param.size() > 1)
         nCheckDepth = param[1].get_int();
 
-    return CEDCVerifyDB().VerifyDB(edcParams(), edcPcoinsTip, nCheckLevel, nCheckDepth);
+    return CEDCVerifyDB().VerifyDB(edcParams(), theApp.coinsTip(), nCheckLevel, nCheckDepth);
 }
 
 /** Implementation of IsSuperMajority with better feedback */
@@ -758,17 +778,17 @@ UniValue getblockchaininfo(const UniValue& params, bool fHelp)
 
     UniValue obj(UniValue::VOBJ);
     obj.push_back(Pair("chain",                 Params().NetworkIDString()));
-    obj.push_back(Pair("blocks",                (int)chainActive.Height()));
-    obj.push_back(Pair("headers",               pEDCindexBestHeader ? pEDCindexBestHeader->nHeight : -1));
-    obj.push_back(Pair("bestblockhash",         chainActive.Tip()->GetBlockHash().GetHex()));
+    obj.push_back(Pair("blocks",                (int)theApp.chainActive().Height()));
+    obj.push_back(Pair("headers",               theApp.indexBestHeader() ? theApp.indexBestHeader()->nHeight : -1));
+    obj.push_back(Pair("bestblockhash",         theApp.chainActive().Tip()->GetBlockHash().GetHex()));
     obj.push_back(Pair("difficulty",            (double)GetDifficulty()));
-    obj.push_back(Pair("mediantime",            (int64_t)chainActive.Tip()->GetMedianTimePast()));
-    obj.push_back(Pair("verificationprogress",  Checkpoints::GuessVerificationProgress(Params().Checkpoints(), chainActive.Tip())));
-    obj.push_back(Pair("chainwork",             chainActive.Tip()->nChainWork.GetHex()));
+    obj.push_back(Pair("mediantime",            (int64_t)theApp.chainActive().Tip()->GetMedianTimePast()));
+    obj.push_back(Pair("verificationprogress",  Checkpoints::GuessVerificationProgress(Params().Checkpoints(), theApp.chainActive().Tip())));
+    obj.push_back(Pair("chainwork",             theApp.chainActive().Tip()->nChainWork.GetHex()));
     obj.push_back(Pair("pruned",                theApp.pruneMode() ));
 
     const Consensus::Params& consensusParams = Params().GetConsensus();
-    CBlockIndex* tip = chainActive.Tip();
+    CBlockIndex* tip = theApp.chainActive().Tip();
     UniValue softforks(UniValue::VARR);
     UniValue bip9_softforks(UniValue::VOBJ);
     softforks.push_back(SoftForkDesc("bip34", 2, tip, consensusParams));
@@ -780,7 +800,7 @@ UniValue getblockchaininfo(const UniValue& params, bool fHelp)
 
     if (theApp.pruneMode() )
     {
-        CBlockIndex *block = chainActive.Tip();
+        CBlockIndex *block = theApp.chainActive().Tip();
         while (block && block->pprev && (block->pprev->nStatus & BLOCK_HAVE_DATA))
             block = block->pprev;
 
@@ -806,6 +826,7 @@ struct CompareBlocksByHeight
 
 UniValue getchaintips(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
     if (fHelp || params.size() != 0)
         throw runtime_error(
             "getchaintips\n"
@@ -840,19 +861,19 @@ UniValue getchaintips(const UniValue& params, bool fHelp)
     LOCK(EDC_cs_main);
 
     /*
-     * Idea:  the set of chain tips is chainActive.tip, plus orphan blocks which do not have another orphan building off of them. 
+     * Idea:  the set of chain tips is theApp.chainActive().tip, plus orphan blocks which do not have another orphan building off of them. 
      * Algorithm:
-     *  - Make one pass through edcMapBlockIndex, picking out the orphan blocks, and also storing a set of the orphan block's pprev pointers.
+     *  - Make one pass through theApp.mapBlockIndex(), picking out the orphan blocks, and also storing a set of the orphan block's pprev pointers.
      *  - Iterate through the orphan blocks. If the block isn't pointed to by another orphan, it is a chain tip.
-     *  - add chainActive.Tip()
+     *  - add theApp.chainActive().Tip()
      */
     std::set<const CBlockIndex*, CompareBlocksByHeight> setTips;
     std::set<const CBlockIndex*> setOrphans;
     std::set<const CBlockIndex*> setPrevs;
 
-    BOOST_FOREACH(const PAIRTYPE(const uint256, CBlockIndex*)& item, edcMapBlockIndex)
+    BOOST_FOREACH(const PAIRTYPE(const uint256, CBlockIndex*)& item, theApp.mapBlockIndex())
     {
-        if (!chainActive.Contains(item.second)) 
+        if (!theApp.chainActive().Contains(item.second)) 
 		{
             setOrphans.insert(item.second);
             setPrevs.insert(item.second->pprev);
@@ -868,7 +889,7 @@ UniValue getchaintips(const UniValue& params, bool fHelp)
     }
 
     // Always report the currently active tip.
-    setTips.insert(chainActive.Tip());
+    setTips.insert(theApp.chainActive().Tip());
 
     /* Construct the output array.  */
     UniValue res(UniValue::VARR);
@@ -878,11 +899,11 @@ UniValue getchaintips(const UniValue& params, bool fHelp)
         obj.push_back(Pair("height", block->nHeight));
         obj.push_back(Pair("hash", block->phashBlock->GetHex()));
 
-        const int branchLen = block->nHeight - chainActive.FindFork(block)->nHeight;
+        const int branchLen = block->nHeight - theApp.chainActive().FindFork(block)->nHeight;
         obj.push_back(Pair("branchlen", branchLen));
 
         string status;
-        if (chainActive.Contains(block)) 
+        if (theApp.chainActive().Contains(block)) 
 		{
             // This block is part of the currently active chain.
             status = "active";
@@ -959,6 +980,7 @@ UniValue getmempoolinfo(const UniValue& params, bool fHelp)
 
 UniValue invalidateblock(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
     if (fHelp || params.size() != 1)
         throw runtime_error(
             "invalidateblock \"hash\"\n"
@@ -977,10 +999,10 @@ UniValue invalidateblock(const UniValue& params, bool fHelp)
 
     {
         LOCK(EDC_cs_main);
-        if (edcMapBlockIndex.count(hash) == 0)
+        if (theApp.mapBlockIndex().count(hash) == 0)
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
 
-        CBlockIndex* pblockindex = edcMapBlockIndex[hash];
+        CBlockIndex* pblockindex = theApp.mapBlockIndex()[hash];
         edcInvalidateBlock(state, edcParams(), pblockindex);
     }
 
@@ -999,6 +1021,7 @@ UniValue invalidateblock(const UniValue& params, bool fHelp)
 
 UniValue reconsiderblock(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
     if (fHelp || params.size() != 1)
         throw runtime_error(
             "reconsiderblock \"hash\"\n"
@@ -1017,10 +1040,10 @@ UniValue reconsiderblock(const UniValue& params, bool fHelp)
 
     {
         LOCK(EDC_cs_main);
-        if (edcMapBlockIndex.count(hash) == 0)
+        if (theApp.mapBlockIndex().count(hash) == 0)
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
 
-        CBlockIndex* pblockindex = edcMapBlockIndex[hash];
+        CBlockIndex* pblockindex = theApp.mapBlockIndex()[hash];
         edcResetBlockFailureFlags(pblockindex);
     }
 

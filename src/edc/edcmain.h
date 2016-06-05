@@ -44,24 +44,11 @@ class CValidationState;
 struct CNodeStateStats;
 struct LockPoints;
 
-extern CCriticalSection EDC_cs_main;
 typedef boost::unordered_map<uint256, CBlockIndex*, BlockHasher> BlockMap;
-extern BlockMap edcMapBlockIndex;
+
+extern CCriticalSection EDC_cs_main;
 extern const std::string edcstrMessageMagic;
 extern CWaitableCriticalSection edccsBestBlock;
-extern CConditionVariable edccvBlockChange;
-extern bool edcfTxIndex;
-/** If the tip is older than this (in seconds), the node is considered to be in initial block download. */
-extern int64_t nEDCMaxTipAge;
-extern bool edcfEnableReplacement;
-
-/** Best header we've seen so far (used for getheaders queries' starting points). */
-extern CBlockIndex *pEDCindexBestHeader;
-
-/** Pruning-related variables and constants */
-/** True if any block files have ever been pruned. */
-extern bool fEDCHavePruned;
-/** True if we're running in -prune mode. */
 
 /** Register with a network node to receive its signals */
 void RegisterNodeSignals(CNodeSignals& nodeSignals);
@@ -114,7 +101,7 @@ bool edcIsInitialBlockDownload();
  * - "gui": get all warnings, translated (where possible) for GUI
  * This function only returns the highest priority warning of the set selected by strFor.
  */
-std::string GetWarnings(const std::string& strFor);
+std::string edcGetWarnings(const std::string& strFor);
 
 /** Retrieve a transaction (from memory pool, or from disk, if possible) */
 bool GetTransaction(const uint256 &hash, CEDCTransaction &tx, const Consensus::Params& params, uint256 &hashBlock, bool fAllowSlow = false);
@@ -297,7 +284,7 @@ bool ConnectBlock(const CEDCBlock& block, CValidationState& state, CBlockIndex* 
  *  of problems. Note that in any case, coins may be modified. */
 bool DisconnectBlock(const CEDCBlock& block, CValidationState& state, const CBlockIndex* pindex, CEDCCoinsViewCache& coins, bool* pfClean = NULL);
 
-/** Check a block is completely valid from start to finish (only works on top of our current best block, with EDC_cs_main held) */
+/** Check a block is completely valid from start to finish (only works on top of our current best block, with mainCS held) */
 bool TestBlockValidity(CValidationState& state, const CEDCChainParams& chainparams, const CEDCBlock& block, CBlockIndex* pindexPrev, bool fCheckPOW = true, bool fCheckMerkleRoot = true);
 
 /** RAII wrapper for VerifyDB: Verify consistency of the block and coin databases */
@@ -317,12 +304,9 @@ bool edcInvalidateBlock(CValidationState& state, const CEDCChainParams& chainpar
 /** Remove invalidity status from a block and its descendants. */
 bool edcResetBlockFailureFlags(CBlockIndex *pindex);
 
-/** Global variable that points to the active CEDCCoinsView (protected by EDC_cs_main) */
-extern CEDCCoinsViewCache *edcPcoinsTip;
-
 /**
  * Return the spend height, which is one more than the inputs.GetBestBlock().
- * While checking, GetBestBlock() refers to the parent block. (protected by EDC_cs_main)
+ * While checking, GetBestBlock() refers to the parent block. (protected by mainCS)
  * This is also true for mempool checks.
  */
 int GetSpendHeight(const CEDCCoinsViewCache& inputs);
@@ -332,4 +316,5 @@ int GetSpendHeight(const CEDCCoinsViewCache& inputs);
  */
 int32_t edcComputeBlockVersion(const CBlockIndex* pindexPrev, const Consensus::Params& params);
 
+bool edcTestLockPointValidity(const LockPoints* lp);
 #endif // EDC_EDCMAIN_H

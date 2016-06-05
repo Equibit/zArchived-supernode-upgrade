@@ -77,24 +77,15 @@ namespace
 
 const static std::string NET_MESSAGE_COMMAND_OTHER = "*other*";
 
-//
-// Global state variables
-//
-CCriticalSection edccs_mapLocalHost;
-map<CNetAddr, LocalServiceInfo> edcmapLocalHost;
-static bool vfLimited[NET_MAX] = {};
-static CEDCNode* pnodeLocalHost = NULL;
-static std::vector<ListenSocket> vhListenSocket;
-CAddrMan edcaddrman;
-bool edcfAddressesInitialized = false;
-std::string edcstrSubVersion;
+namespace
+{
+bool vfLimited[NET_MAX] = {};
+CEDCNode* pnodeLocalHost = NULL;
+std::vector<ListenSocket> vhListenSocket;
+deque<pair<int64_t, uint256> > relayExpiration;
+}
 
-vector<CEDCNode*> edcvNodes;
-CCriticalSection edccs_vNodes;
-map<uint256, CEDCTransaction> edcMapRelay;
-deque<pair<int64_t, uint256> > edcvRelayExpiration;
-CCriticalSection edccs_mapRelay;
-limitedmap<uint256, int64_t> edcmapAlreadyAskedFor(MAX_INV_SZ);
+bool edcfAddressesInitialized = false;
 
 static deque<string> vOneShots;
 CCriticalSection edccs_vOneShots;
@@ -102,15 +93,13 @@ CCriticalSection edccs_vOneShots;
 set<CNetAddr> edcsetservAddNodeAddresses;
 CCriticalSection edccs_setservAddNodeAddresses;
 
-vector<std::string> edcvAddedNodes;
-CCriticalSection edccs_vAddedNodes;
-
 static CSemaphore *semOutbound = NULL;
 boost::condition_variable edcmessageHandlerCondition;
 
 // Signals for message handling
 static CEDCNodeSignals g_signals;
 CEDCNodeSignals& GetEDCNodeSignals() { return g_signals; }
+
 
 unsigned short edcGetListenPort()
 {
@@ -121,6 +110,7 @@ unsigned short edcGetListenPort()
 // find 'best' local address for a particular peer
 bool edcGetLocal(CService& addr, const CNetAddr *paddrPeer)
 {
+	EDCapp & theApp = EDCapp::singleton();
 	EDCparams & params = EDCparams::singleton();
 
     if (!params.listen)
@@ -129,8 +119,8 @@ bool edcGetLocal(CService& addr, const CNetAddr *paddrPeer)
     int nBestScore = -1;
     int nBestReachability = -1;
     {
-        LOCK(edccs_mapLocalHost);
-        for (map<CNetAddr, LocalServiceInfo>::iterator it = edcmapLocalHost.begin(); it != edcmapLocalHost.end(); it++)
+        LOCK(theApp.mapLocalHostCS());
+        for (map<CNetAddr, LocalServiceInfo>::iterator it = theApp.mapLocalHost().begin(); it != theApp.mapLocalHost().end(); it++)
         {
             int nScore = (*it).second.nScore;
             int nReachability = (*it).first.GetReachabilityFrom(paddrPeer);
@@ -166,6 +156,8 @@ static std::vector<CAddress> convertSeed6(const std::vector<SeedSpec6> &vSeedsIn
     return vSeedsOut;
 }
 
+extern int64_t edcGetAdjustedTime();
+
 // get best local address for a particular peer as a CAddress
 // Otherwise, return the unroutable 0.0.0.0 but filled in with
 // the normal parameters, since the IP may be changed to a useful
@@ -180,16 +172,17 @@ CAddress edcGetLocalAddress(const CNetAddr *paddrPeer)
     }
 	EDCapp & theApp = EDCapp::singleton();
     ret.nServices = theApp.localServices();
-    ret.nTime = GetAdjustedTime();
+    ret.nTime = edcGetAdjustedTime();
     return ret;
 }
 
 int edcGetnScore(const CService& addr)
 {
-    LOCK(edccs_mapLocalHost);
-    if (edcmapLocalHost.count(addr) == LOCAL_NONE)
+	EDCapp & theApp = EDCapp::singleton();
+    LOCK(theApp.mapLocalHostCS());
+    if (theApp.mapLocalHost().count(addr) == LOCAL_NONE)
         return 0;
-    return edcmapLocalHost[addr].nScore;
+    return theApp.mapLocalHost()[addr].nScore;
 }
 
 // Is our peer's addrLocal potentially useful as an external IP source?
@@ -226,24 +219,27 @@ void AdvertiseLocal(CEDCNode *pnode)
 
 bool edcRemoveLocal(const CService& addr)
 {
-    LOCK(edccs_mapLocalHost);
+	EDCapp & theApp = EDCapp::singleton();
+    LOCK(theApp.mapLocalHostCS());
     edcLogPrintf("RemoveLocal(%s)\n", addr.ToString());
-    edcmapLocalHost.erase(addr);
+    theApp.mapLocalHost().erase(addr);
     return true;
 }
 
 /** Make a particular network entirely off-limits (no automatic connects to it) */
 void edcSetLimited(enum Network net, bool fLimited)
 {
+	EDCapp & theApp = EDCapp::singleton();
     if (net == NET_UNROUTABLE)
         return;
-    LOCK(edccs_mapLocalHost);
+    LOCK(theApp.mapLocalHostCS());
     vfLimited[net] = fLimited;
 }
 
 bool edcIsLimited(enum Network net)
 {
-    LOCK(edccs_mapLocalHost);
+	EDCapp & theApp = EDCapp::singleton();
+    LOCK(theApp.mapLocalHostCS());
     return vfLimited[net];
 }
 
@@ -255,11 +251,12 @@ bool edcIsLimited(const CNetAddr &addr)
 /** vote for a local address */
 bool edcSeenLocal(const CService& addr)
 {
+	EDCapp & theApp = EDCapp::singleton();
     {
-        LOCK(edccs_mapLocalHost);
-        if (edcmapLocalHost.count(addr) == 0)
+        LOCK(theApp.mapLocalHostCS());
+        if (theApp.mapLocalHost().count(addr) == 0)
             return false;
-        edcmapLocalHost[addr].nScore++;
+        theApp.mapLocalHost()[addr].nScore++;
     }
     return true;
 }
@@ -268,14 +265,16 @@ bool edcSeenLocal(const CService& addr)
 /** check whether a given address is potentially local */
 bool edcIsLocal(const CService& addr)
 {
-    LOCK(edccs_mapLocalHost);
-    return edcmapLocalHost.count(addr) > 0;
+	EDCapp & theApp = EDCapp::singleton();
+    LOCK(theApp.mapLocalHostCS());
+    return theApp.mapLocalHost().count(addr) > 0;
 }
 
 /** check whether a given network is one we can probably connect to */
 bool edcIsReachable(enum Network net)
 {
-    LOCK(edccs_mapLocalHost);
+	EDCapp & theApp = EDCapp::singleton();
+    LOCK(theApp.mapLocalHostCS());
     return !vfLimited[net];
 }
 
@@ -288,7 +287,8 @@ bool edcIsReachable(const CNetAddr& addr)
 
 void edcAddressCurrentlyConnected(const CService& addr)
 {
-    edcaddrman.Connected(addr);
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.addrman().Connected(addr);
 }
 
 
@@ -304,8 +304,9 @@ uint64_t CEDCNode::nMaxOutboundCycleStartTime = 0;
 
 CEDCNode* EDCFindNode(const CNetAddr& ip)
 {
-    LOCK(edccs_vNodes);
-    BOOST_FOREACH(CEDCNode* pnode, edcvNodes)
+	EDCapp & theApp = EDCapp::singleton();
+    LOCK(theApp.vNodesCS());
+    BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
         if ((CNetAddr)pnode->addr == ip)
             return (pnode);
     return NULL;
@@ -313,17 +314,19 @@ CEDCNode* EDCFindNode(const CNetAddr& ip)
 
 CEDCNode* EDCFindNode(const CSubNet& subNet)
 {
-    LOCK(edccs_vNodes);
-    BOOST_FOREACH(CEDCNode* pnode, edcvNodes)
+	EDCapp & theApp = EDCapp::singleton();
+    LOCK(theApp.vNodesCS());
+    BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
     if (subNet.Match((CNetAddr)pnode->addr))
         return (pnode);
     return NULL;
 }
 
 CEDCNode* EDCFindNode(const std::string& addrName)
-{
-    LOCK(edccs_vNodes);
-    BOOST_FOREACH(CEDCNode* pnode, edcvNodes)
+{	
+	EDCapp & theApp = EDCapp::singleton();
+    LOCK(theApp.vNodesCS());
+    BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
         if (pnode->addrName == addrName)
             return (pnode);
     return NULL;
@@ -331,8 +334,9 @@ CEDCNode* EDCFindNode(const std::string& addrName)
 
 CEDCNode* EDCFindNode(const CService& addr)
 {
-    LOCK(edccs_vNodes);
-    BOOST_FOREACH(CEDCNode* pnode, edcvNodes)
+	EDCapp & theApp = EDCapp::singleton();
+    LOCK(theApp.vNodesCS());
+    BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
         if ((CService)pnode->addr == addr)
             return (pnode);
     return NULL;
@@ -357,7 +361,7 @@ CEDCNode* ConnectEDCNode(CAddress addrConnect, const char *pszDest)
     /// debug print
     edcLogPrint("net", "trying connection %s lastseen=%.1fhrs\n",
         pszDest ? pszDest : addrConnect.ToString(),
-        pszDest ? 0.0 : (double)(GetAdjustedTime() - addrConnect.nTime)/3600.0);
+        pszDest ? 0.0 : (double)(edcGetAdjustedTime() - addrConnect.nTime)/3600.0);
 
     // Connect
     SOCKET hSocket;
@@ -376,15 +380,15 @@ CEDCNode* ConnectEDCNode(CAddress addrConnect, const char *pszDest)
             return NULL;
         }
 
-        edcaddrman.Attempt(addrConnect);
+        theApp.addrman().Attempt(addrConnect);
 
         // Add node
         CEDCNode* pnode = new CEDCNode(hSocket, addrConnect, pszDest ? pszDest : "", false);
         pnode->AddRef();
 
         {
-            LOCK(edccs_vNodes);
-            edcvNodes.push_back(pnode);
+            LOCK(theApp.vNodesCS());
+            theApp.vNodes().push_back(pnode);
         }
 
         pnode->nTimeConnected = GetTime();
@@ -395,7 +399,7 @@ CEDCNode* ConnectEDCNode(CAddress addrConnect, const char *pszDest)
 	{
         // If connecting to the node failed, and failure is not caused by a problem connecting to
         // the proxy, mark this as an attempt.
-        edcaddrman.Attempt(addrConnect);
+        theApp.addrman().Attempt(addrConnect);
     }
 
     return NULL;
@@ -420,7 +424,7 @@ void CEDCNode::PushVersion()
 {
     int nBestHeight = g_signals.GetHeight().get_value_or(0);
 
-    int64_t nTime = (fInbound ? GetAdjustedTime() : GetTime());
+    int64_t nTime = (fInbound ? edcGetAdjustedTime() : GetTime());
     CAddress addrYou = (addr.IsRoutable() && !IsProxy(addr) ? addr : CAddress(CService("0.0.0.0",0)));
     CAddress addrMe = edcGetLocalAddress(&addr);
 	uint64_t localHostNonce;
@@ -441,7 +445,7 @@ void CEDCNode::PushVersion()
 		addrYou, 
 		addrMe,
         localHostNonce, 
-		edcstrSubVersion, 
+		theApp.strSubVersion(), 
 		nBestHeight, 
 		!params.blocksonly);
 }
@@ -758,13 +762,15 @@ class CEDCNodeRef
 public:
     CEDCNodeRef(CEDCNode *pnode) : _pnode(pnode) 
 	{
-        LOCK(edccs_vNodes);
+		EDCapp & theApp = EDCapp::singleton();
+        LOCK(theApp.vNodesCS());
         _pnode->AddRef();
     }
 
     ~CEDCNodeRef() 
 	{
-        LOCK(edccs_vNodes);
+		EDCapp & theApp = EDCapp::singleton();
+        LOCK(theApp.vNodesCS());
         _pnode->Release();
     }
 
@@ -773,9 +779,10 @@ public:
 
     CEDCNodeRef& operator =(const CEDCNodeRef& other)
     {
+		EDCapp & theApp = EDCapp::singleton();
         if (this != &other) 
 		{
-            LOCK(edccs_vNodes);
+            LOCK(theApp.vNodesCS());
 
             _pnode->Release();
             _pnode = other._pnode;
@@ -787,7 +794,8 @@ public:
     CEDCNodeRef(const CEDCNodeRef& other):
         _pnode(other._pnode)
     {
-        LOCK(edccs_vNodes);
+		EDCapp & theApp = EDCapp::singleton();
+        LOCK(theApp.vNodesCS());
         _pnode->AddRef();
     }
 private:
@@ -846,11 +854,12 @@ public:
   */
 static bool AttemptToEvictConnection(bool fPreferNewConnection) 
 {
+	EDCapp & theApp = EDCapp::singleton();
     std::vector<CEDCNodeRef> vEvictionCandidates;
     {
-        LOCK(edccs_vNodes);
+        LOCK(theApp.vNodesCS());
 
-        BOOST_FOREACH(CEDCNode *node, edcvNodes) 
+        BOOST_FOREACH(CEDCNode *node, theApp.vNodes()) 
 		{
             if (node->fWhitelisted)
                 continue;
@@ -940,8 +949,8 @@ static void AcceptConnection(const ListenSocket& hListenSocket)
 
     bool whitelisted = hListenSocket.whitelisted || CEDCNode::IsWhitelistedRange(addr);
     {
-        LOCK(edccs_vNodes);
-        BOOST_FOREACH(CEDCNode* pnode, edcvNodes)
+        LOCK(theApp.vNodesCS());
+        BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
             if (pnode->fInbound)
                 nInbound++;
     }
@@ -995,13 +1004,14 @@ static void AcceptConnection(const ListenSocket& hListenSocket)
     edcLogPrint("net", "connection from %s accepted\n", addr.ToString());
 
     {
-        LOCK(edccs_vNodes);
-        edcvNodes.push_back(pnode);
+        LOCK(theApp.vNodesCS());
+        theApp.vNodes().push_back(pnode);
     }
 }
 
 void edcThreadSocketHandler()
 {
+	EDCapp & theApp = EDCapp::singleton();
     unsigned int nPrevNodeCount = 0;
     while (true)
     {
@@ -1009,16 +1019,20 @@ void edcThreadSocketHandler()
         // Disconnect nodes
         //
         {
-            LOCK(edccs_vNodes);
+            LOCK(theApp.vNodesCS());
             // Disconnect unused nodes
-            vector<CEDCNode*> vNodesCopy = edcvNodes;
+            vector<CEDCNode*> vNodesCopy = theApp.vNodes();
             BOOST_FOREACH(CEDCNode* pnode, vNodesCopy)
             {
                 if (pnode->fDisconnect ||
                     (pnode->GetRefCount() <= 0 && pnode->vRecvMsg.empty() && pnode->nSendSize == 0 && pnode->ssSend.empty()))
                 {
                     // remove from vNodes
-                    edcvNodes.erase(remove(edcvNodes.begin(), edcvNodes.end(), pnode), edcvNodes.end());
+                    theApp.vNodes().erase(
+						remove(	theApp.vNodes().begin(), 
+								theApp.vNodes().end(), 
+								pnode), 
+						theApp.vNodes().end());
 
                     // release outbound grant (if any)
                     pnode->grantOutbound.Release();
@@ -1063,9 +1077,9 @@ void edcThreadSocketHandler()
                 }
             }
         }
-        if(edcvNodes.size() != nPrevNodeCount) 
+        if(theApp.vNodes().size() != nPrevNodeCount) 
 		{
-            nPrevNodeCount = edcvNodes.size();
+            nPrevNodeCount = theApp.vNodes().size();
             edcUiInterface.NotifyNumConnectionsChanged(nPrevNodeCount);
         }
 
@@ -1093,8 +1107,8 @@ void edcThreadSocketHandler()
         }
 
         {
-            LOCK(edccs_vNodes);
-            BOOST_FOREACH(CEDCNode* pnode, edcvNodes)
+            LOCK(theApp.vNodesCS());
+            BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
             {
                 if (pnode->hSocket == INVALID_SOCKET)
                     continue;
@@ -1169,8 +1183,8 @@ void edcThreadSocketHandler()
         //
         vector<CEDCNode*> vNodesCopy;
         {
-            LOCK(edccs_vNodes);
-            vNodesCopy = edcvNodes;
+            LOCK(theApp.vNodesCS());
+            vNodesCopy = theApp.vNodes();
             BOOST_FOREACH(CEDCNode* pnode, vNodesCopy)
                 pnode->AddRef();
         }
@@ -1263,7 +1277,7 @@ void edcThreadSocketHandler()
             }
         }
         {
-            LOCK(edccs_vNodes);
+            LOCK(theApp.vNodesCS());
             BOOST_FOREACH(CEDCNode* pnode, vNodesCopy)
                 pnode->Release();
         }
@@ -1395,13 +1409,15 @@ void edcMapPort(bool)
 void edcThreadDNSAddressSeed()
 {
 	EDCparams & params = EDCparams::singleton();
+	EDCapp & theApp = EDCapp::singleton();
+
     // goal: only query DNS seeds if address need is acute
-    if ((edcaddrman.size() > 0) && !params.forcednsseed ) 
+    if ((theApp.addrman().size() > 0) && !params.forcednsseed ) 
 	{
         MilliSleep(11 * 1000);
 
-        LOCK(edccs_vNodes);
-        if (edcvNodes.size() >= 2) 
+        LOCK(theApp.vNodesCS());
+        if (theApp.vNodes().size() >= 2) 
 		{
             edcLogPrintf("P2P peers available. Skipped DNS seeding.\n");
             return;
@@ -1435,7 +1451,7 @@ void edcThreadDNSAddressSeed()
                 }
             }
             // TODO: The seed name resolve may fail, yielding an IP of [::], 
-			// which results in edcaddrman assigning the same source to 
+			// which results in theApp.addrman() assigning the same source to 
 			// results from different seeds. This should switch to a hard-coded
 			// stable dummy IP for each seed name, so that the
             // resolve is not required at all.
@@ -1443,7 +1459,7 @@ void edcThreadDNSAddressSeed()
 			{
                 CService seedSource;
                 Lookup(seed.name.c_str(), seedSource, 0, true);
-                edcaddrman.Add(vAdd, seedSource);
+                theApp.addrman().Add(vAdd, seedSource);
             }
         }
     }
@@ -1453,13 +1469,15 @@ void edcThreadDNSAddressSeed()
 
 void edcDumpAddresses()
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     int64_t nStart = GetTimeMillis();
 
     CAddrDB adb;
-    adb.Write(edcaddrman);
+    adb.Write(theApp.addrman());
 
     edcLogPrint("net", "Flushed %d addresses to peers.dat  %dms\n",
-           edcaddrman.size(), GetTimeMillis() - nStart);
+           theApp.addrman().size(), GetTimeMillis() - nStart);
 }
 
 void edcDumpData()
@@ -1509,6 +1527,8 @@ void edcThreadOpenConnections()
         }
     }
 
+	EDCapp & theApp = EDCapp::singleton();
+
     // Initiate network connections
     int64_t nStart = GetTime();
     while (true)
@@ -1521,13 +1541,13 @@ void edcThreadOpenConnections()
         boost::this_thread::interruption_point();
 
         // Add seed nodes if DNS seeds are all down (an infrastructure attack?).
-        if (edcaddrman.size() == 0 && (GetTime() - nStart > 60)) 
+        if (theApp.addrman().size() == 0 && (GetTime() - nStart > 60)) 
 		{
             static bool done = false;
             if (!done) 
 			{
                 edcLogPrintf("Adding fixed seed nodes as DNS doesn't seem to be available.\n");
-                edcaddrman.Add(convertSeed6(Params().FixedSeeds()), CNetAddr("127.0.0.1"));
+                theApp.addrman().Add(convertSeed6(Params().FixedSeeds()), CNetAddr("127.0.0.1"));
                 done = true;
             }
         }
@@ -1538,12 +1558,12 @@ void edcThreadOpenConnections()
         CAddress addrConnect;
 
         // Only connect out to one peer per network group (/16 for IPv4).
-        // Do this here so we don't have to critsect edcvNodes inside mapAddresses critsect.
+        // Do this here so we don't have to critsect theApp.vNodes() inside mapAddresses critsect.
         int nOutbound = 0;
         set<vector<unsigned char> > setConnected;
         {
-            LOCK(edccs_vNodes);
-            BOOST_FOREACH(CEDCNode* pnode, edcvNodes) 
+            LOCK(theApp.vNodesCS());
+            BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes()) 
 			{
                 if (!pnode->fInbound) 
 				{
@@ -1553,20 +1573,20 @@ void edcThreadOpenConnections()
             }
         }
 
-        int64_t nANow = GetAdjustedTime();
+        int64_t nANow = edcGetAdjustedTime();
 
         int nTries = 0;
         while (true)
         {
-            CAddrInfo addr = edcaddrman.Select();
+            CAddrInfo addr = theApp.addrman().Select();
 
             // if we selected an invalid address, restart
             if (!addr.IsValid() || setConnected.count(addr.GetGroup()) || edcIsLocal(addr))
                 break;
 
-            // If we didn't find an appropriate destination after trying 100 addresses fetched from edcaddrman,
+            // If we didn't find an appropriate destination after trying 100 addresses fetched from theApp.addrman(),
             // stop this loop, and let the outer loop run again (which sleeps, adds seed nodes, recalculates
-            // already-connected network ranges, ...) before trying new edcaddrman addresses.
+            // already-connected network ranges, ...) before trying new theApp.addrman() addresses.
             nTries++;
             if (nTries > 100)
                 break;
@@ -1593,10 +1613,11 @@ void edcThreadOpenConnections()
 
 void edcThreadOpenAddedConnections()
 {
+	EDCapp & theApp = EDCapp::singleton();
 	EDCparams & params = EDCparams::singleton();
     {
-        LOCK(edccs_vAddedNodes);
-        edcvAddedNodes = params.addnode;
+        LOCK(theApp.addedNodesCS());
+        theApp.addedNodes() = params.addnode;
     }
 
     if (HaveNameProxy()) 
@@ -1605,8 +1626,8 @@ void edcThreadOpenAddedConnections()
 		{
             list<string> lAddresses(0);
             {
-                LOCK(edccs_vAddedNodes);
-                BOOST_FOREACH(const std::string& strAddNode, edcvAddedNodes)
+                LOCK(theApp.addedNodesCS());
+                BOOST_FOREACH(const std::string& strAddNode, theApp.addedNodes())
                     lAddresses.push_back(strAddNode);
             }
             BOOST_FOREACH(const std::string& strAddNode, lAddresses) 
@@ -1624,8 +1645,8 @@ void edcThreadOpenAddedConnections()
     {
         list<string> lAddresses(0);
         {
-            LOCK(edccs_vAddedNodes);
-            BOOST_FOREACH(const std::string& strAddNode, edcvAddedNodes)
+            LOCK(theApp.addedNodesCS());
+            BOOST_FOREACH(const std::string& strAddNode, theApp.addedNodes())
                 lAddresses.push_back(strAddNode);
         }
 
@@ -1634,7 +1655,7 @@ void edcThreadOpenAddedConnections()
 		{
             vector<CService> vservNode(0);
 			EDCparams & params = EDCparams::singleton();
-            if(Lookup(strAddNode.c_str(), vservNode, Params().GetDefaultPort(),				params.dns, 0))
+            if(Lookup(strAddNode.c_str(), vservNode, Params().GetDefaultPort(),				fNameLookup, 0))
             {
                 lservAddressesToAdd.push_back(vservNode);
                 {
@@ -1647,8 +1668,8 @@ void edcThreadOpenAddedConnections()
         // Attempt to connect to each IP for each addnode entry until at least one is successful per addnode entry
         // (keeping in mind that addnode entries can have many IPs if params.dns)
         {
-            LOCK(edccs_vNodes);
-            BOOST_FOREACH(CEDCNode* pnode, edcvNodes)
+            LOCK(theApp.vNodesCS());
+            BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
                 for (list<vector<CService> >::iterator it = lservAddressesToAdd.begin(); it != lservAddressesToAdd.end(); it++)
                     BOOST_FOREACH(const CService& addrNode, *(it))
                         if (pnode->addr == addrNode)
@@ -1701,6 +1722,7 @@ bool edcOpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *gran
 
 void edcThreadMessageHandler()
 {
+	EDCapp & theApp = EDCapp::singleton();
     boost::mutex condition_mutex;
     boost::unique_lock<boost::mutex> lock(condition_mutex);
 
@@ -1708,8 +1730,8 @@ void edcThreadMessageHandler()
     {
         vector<CEDCNode*> vNodesCopy;
         {
-            LOCK(edccs_vNodes);
-            vNodesCopy = edcvNodes;
+            LOCK(theApp.vNodesCS());
+            vNodesCopy = theApp.vNodes();
             BOOST_FOREACH(CEDCNode* pnode, vNodesCopy) 
 			{
                 pnode->AddRef();
@@ -1752,7 +1774,7 @@ void edcThreadMessageHandler()
         }
 
         {
-            LOCK(edccs_vNodes);
+            LOCK(theApp.vNodesCS());
             BOOST_FOREACH(CEDCNode* pnode, vNodesCopy)
                 pnode->Release();
         }
@@ -1950,13 +1972,15 @@ bool edcAddLocal(const CNetAddr &addr, int nScore)
 
 void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     edcUiInterface.InitMessage(_("Loading addresses..."));
     // Load addresses from peers.dat
     int64_t nStart = GetTimeMillis();
     {
         CAddrDB adb;
-        if (adb.Read(edcaddrman))
-            edcLogPrintf("Loaded %i addresses from peers.dat  %dms\n", edcaddrman.size(), GetTimeMillis() - nStart);
+        if (adb.Read(theApp.addrman()))
+            edcLogPrintf("Loaded %i addresses from peers.dat  %dms\n", theApp.addrman().size(), GetTimeMillis() - nStart);
         else 
 		{
             edcLogPrintf("Invalid or missing peers.dat; recreating\n");
@@ -1987,7 +2011,6 @@ void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
 
     edcfAddressesInitialized = true;
 
-	EDCapp & theApp = EDCapp::singleton();
     if (semOutbound == NULL) 
 	{
         // initialize semaphore
@@ -2053,8 +2076,9 @@ public:
 
     ~CNetCleanup()
     {
+		EDCapp & theApp = EDCapp::singleton();
         // Close sockets
-        BOOST_FOREACH(CEDCNode* pnode, edcvNodes)
+        BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
             if (pnode->hSocket != INVALID_SOCKET)
                 CloseSocket(pnode->hSocket);
         BOOST_FOREACH(ListenSocket& hListenSocket, vhListenSocket)
@@ -2063,11 +2087,11 @@ public:
                     edcLogPrintf("CloseSocket(hListenSocket) failed with error %s\n", NetworkErrorString(WSAGetLastError()));
 
         // clean up some globals (to help leak detection)
-        BOOST_FOREACH(CEDCNode *pnode, edcvNodes)
+        BOOST_FOREACH(CEDCNode *pnode, theApp.vNodes())
             delete pnode;
         BOOST_FOREACH(CEDCNode *pnode, vNodesDisconnected)
             delete pnode;
-        edcvNodes.clear();
+        theApp.vNodes().clear();
         vNodesDisconnected.clear();
         vhListenSocket.clear();
         delete semOutbound;
@@ -2086,21 +2110,22 @@ edcinstance_of_cnetcleanup;
 
 void RelayTransaction(const CEDCTransaction& tx, CFeeRate feerate)
 {
+	EDCapp & theApp = EDCapp::singleton();
     CInv inv(MSG_TX, tx.GetHash());
     {
-        LOCK(edccs_mapRelay);
+        LOCK(theApp.mapRelayCS());
         // Expire old relay messages
-        while (!edcvRelayExpiration.empty() && edcvRelayExpiration.front().first < GetTime())
+        while (!relayExpiration.empty() && relayExpiration.front().first < GetTime())
         {
-            edcMapRelay.erase(edcvRelayExpiration.front().second);
-            edcvRelayExpiration.pop_front();
+            theApp.mapRelay().erase(relayExpiration.front().second);
+            relayExpiration.pop_front();
         }
 
-        edcMapRelay.insert(std::make_pair(inv.hash, tx));
-        edcvRelayExpiration.push_back(std::make_pair(GetTime() + 15 * 60, inv.hash));
+        theApp.mapRelay().insert(std::make_pair(inv.hash, tx));
+        relayExpiration.push_back(std::make_pair(GetTime() + 15 * 60, inv.hash));
     }
-    LOCK(edccs_vNodes);
-    BOOST_FOREACH(CEDCNode* pnode, edcvNodes)
+    LOCK(theApp.vNodesCS());
+    BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
     {
         pnode->PushInventory(inv);
     }
@@ -2351,6 +2376,8 @@ CEDCNode::~CEDCNode()
 
 void CEDCNode::AskFor(const CInv& inv)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (mapAskFor.size() > MAPASKFOR_MAX_SZ || setAskFor.size() > SETASKFOR_MAX_SZ)
         return;
     // a peer may not have multiple non-responded queue positions for a single inv item
@@ -2360,8 +2387,10 @@ void CEDCNode::AskFor(const CInv& inv)
     // We're using mapAskFor as a priority queue,
     // the key is the earliest time the request can be sent
     int64_t nRequestTime;
-    limitedmap<uint256, int64_t>::const_iterator it = edcmapAlreadyAskedFor.find(inv.hash);
-    if (it != edcmapAlreadyAskedFor.end())
+    limitedmap<uint256, int64_t>::const_iterator it = 
+		theApp.mapAlreadyAskedFor().find(inv.hash);
+
+    if (it != theApp.mapAlreadyAskedFor().end())
         nRequestTime = it->second;
     else
         nRequestTime = 0;
@@ -2376,10 +2405,10 @@ void CEDCNode::AskFor(const CInv& inv)
 
     // Each retry is 2 minutes after the last
     nRequestTime = std::max(nRequestTime + 2 * 60 * 1000000, nNow);
-    if (it != edcmapAlreadyAskedFor.end())
-        edcmapAlreadyAskedFor.update(it, nRequestTime);
+    if (it != theApp.mapAlreadyAskedFor().end())
+        theApp.mapAlreadyAskedFor().update(it, nRequestTime);
     else
-        edcmapAlreadyAskedFor.insert(std::make_pair(inv.hash, nRequestTime));
+        theApp.mapAlreadyAskedFor().insert(std::make_pair(inv.hash, nRequestTime));
     mapAskFor.insert(std::make_pair(nRequestTime, inv));
 }
 

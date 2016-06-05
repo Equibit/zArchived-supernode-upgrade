@@ -1,13 +1,24 @@
 #pragma once
 
 #include "edctxmempool.h"
+#include "limitedmap.h"
+#include "addrman.h"
+#include "main.h"
+#include "net.h"
+
 
 class CBlockTreeDB;
+class CEDCNode;
+class CEDCCoinsViewCache;
+class CEDCWallet;
 
 
 class EDCapp
 {
 public:
+	static EDCapp & singleton();
+
+
 	int maxConnections() const		{ return maxConnections_; }
 	void maxConnections( int mc )	{ maxConnections_ = mc; }
 
@@ -37,9 +48,6 @@ public:
 	uint64_t localServices() const	{ return localServices_; }
 	void localServices( uint64_t l ){ localServices_ = l; }
 
-	bool enableReplacement() const	{ return enableReplacement_; }
-	void enableReplacement( bool b) { enableReplacement_ = b; }
-
 	uint64_t localHostNonce() const	{ return localHostNonce_; }
 	void localHostNonce( uint64_t l){ localHostNonce_ = l; }
 
@@ -61,8 +69,58 @@ public:
 	uint64_t lastBlockTx() const		{ return lastBlockTx_; }
 	void lastBlockTx( uint64_t ui )		{ lastBlockTx_ = ui; }
 
+	CAddrMan & addrman()		{ return addrman_; }
 
-	static EDCapp & singleton();
+	const std::string	& strSubVersion() const		{ return strSubVersion_; }
+	void strSubVersion( const std::string & ssv )	{ strSubVersion_ = ssv; }
+
+	bool txIndex() const	{ return txIndex_; }
+	void txIndex( bool b )	{ txIndex_ = b; }
+
+	std::vector<CEDCNode*> & vNodes()	{ return vNodes_; }
+	CCriticalSection & vNodesCS()		{ return vNodesCS_; }
+
+	std::map<uint256, CEDCTransaction> & mapRelay()	{ return mapRelay_; }
+	CCriticalSection & mapRelayCS()					{ return mapRelayCS_; }
+
+	bool havePruned() const		{ return havePruned_; }
+	void havePruned( bool b )	{ havePruned_ = b; }
+
+	limitedmap<uint256, int64_t> & mapAlreadyAskedFor() 
+	{ 
+		return mapAlreadyAskedFor_; 
+	}
+
+	std::vector<std::string> & addedNodes()	{ return addedNodes_; }
+	CCriticalSection & addedNodesCS()		{ return addedNodesCS_; }
+
+	CCriticalSection & mapLocalHostCS()		{ return mapLocalHostCS_; }
+	std::map<CNetAddr, LocalServiceInfo> & mapLocalHost() { return mapLocalHost_; }
+
+	BlockMap & mapBlockIndex()	{ return mapBlockIndex_; }
+
+	bool importing() const	{ return importing_; }
+	void importing( bool b ){ importing_ = b; }
+
+	bool reindex() const	{ return reindex_; }
+	void reindex( bool r )	{ reindex_ = r; }
+
+	CChain & chainActive() { return chainActive_; }
+
+	CEDCCoinsViewCache * coinsTip()			{ return coinsTip_; }
+	void coinsTip( CEDCCoinsViewCache * p ) { coinsTip_ = p; }
+
+	CBlockIndex * indexBestHeader()			{ return indexBestHeader_; }
+	void indexBestHeader( CBlockIndex * i )	{ indexBestHeader_ = i; }
+
+	CEDCWallet * walletMain()			{ return walletMain_; }
+	void walletMain( CEDCWallet * p ) 	{ walletMain_ = p; }
+
+	CFeeRate & payTxFee()				{ return payTxFee_; }
+	void payTxFee( const CFeeRate & p )	{ payTxFee_ = p; }
+
+	unsigned int walletDBUpdated() const	{ return walletDBUpdated_; }
+	void incWalletDBUpdated()				{ ++walletDBUpdated_; }
 
 private:
 	EDCapp();
@@ -72,15 +130,20 @@ private:
 
 	bool debug_;
 	bool discover_;
-	bool enableReplacement_;
+
+	/* True if any block files have ever been pruned. */
 	bool havePruned_;
+
 	bool listen_;
+
+	/* True if we're running in -prune mode. */
 	bool pruneMode_;
-	bool sendFreeTransactions_;
 	bool spendZeroConfChange_;
 	bool txIndex_;
 	bool isBareMultisigStd_;
 	bool requireStandard_;
+	bool importing_;
+	bool reindex_;
 
 	int connectTimeout_;
 
@@ -92,7 +155,6 @@ private:
 
 	int64_t walletUnlockTime_;
 
-	unsigned int bytesPerSigOp_;
 	unsigned int txConfirmTarget_;
 
 	size_t coinCacheUsage_;
@@ -122,36 +184,40 @@ private:
 
 	/* Constant stuff for coinbase transactions we create: */
 	CScript COINBASE_FLAGS_;
-};
-
-/*
-	int64_t maxTipAge_;
-
-	uint64_t lastBlockTx_;
-	uint64_t lastBlockSize_;
 
 	CAddrMan addrman_;
-	std::vector<CEDCNode*> vNodes_;
-	CCriticalSection cs_vNodes_;
+
+	/* Subversion as sent to the P2P network in `version` messages */
+	std::string	strSubVersion_;
+
 	std::map<uint256, CEDCTransaction> mapRelay_;
-	std::deque<std::pair<int64_t, uint256> > relayExpiration_;
-	CCriticalSection cs_mapRelay_;
+	CCriticalSection mapRelayCS_;
+
+	std::vector<CEDCNode*> vNodes_;
+	CCriticalSection vNodesCS_;
+
 	limitedmap<uint256, int64_t> mapAlreadyAskedFor_;
+
 	std::vector<std::string> addedNodes_;
-	CCriticalSection cs_addedNodes_;
-	NodeId lastNodeId_;
-	CCriticalSection cs_lastNodeId_;
-	std::string subVersion_;
-	CCriticalSection cs_mapLocalHost_;
+	CCriticalSection addedNodesCS_;
+
+	CCriticalSection mapLocalHostCS_;
 	std::map<CNetAddr, LocalServiceInfo> mapLocalHost_;
-	CEDCWallet * walletMain_;
-	CFeeRate payTxFee_;
-	CEDCClientUIInterface uiInterface_;
-	CCriticalSection cs_main_;
+
 	BlockMap mapBlockIndex_;
-	const std::string messageMagic_;
-	CWaitableCriticalSection csBestBlock_;
-	CConditionVariable cvBlockChange_;
-	CBlockIndex * indexBestHeader_;
+
+	CChain chainActive_;
+
+	/** Global variable that points to the active CEDCCoinsView (protected by EDC_cs_main) */
 	CEDCCoinsViewCache * coinsTip_;
-*/
+
+	/** Best header we've seen so far (used for getheaders queries' starting points). */
+	CBlockIndex * indexBestHeader_;
+
+	CEDCWallet * walletMain_;
+
+	/** Transaction fee set by the user */
+	CFeeRate	payTxFee_;
+
+	unsigned int walletDBUpdated_;
+};

@@ -12,6 +12,9 @@
 #include "util.h"
 
 
+extern std::string edcstrMiscWarning;
+
+
 /** Send a string to the log output */
 int edcLogPrintStr(const std::string &str);
 

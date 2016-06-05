@@ -33,14 +33,18 @@ static CCriticalSection cs_nWalletUnlockTime;
 
 std::string edcHelpRequiringPassphrase()
 {
-    return edcPwalletMain && edcPwalletMain->IsCrypted()
+	EDCapp & theApp = EDCapp::singleton();
+
+    return theApp.walletMain() && theApp.walletMain()->IsCrypted()
         ? "\nRequires wallet passphrase to be set with walletpassphrase call."
         : "";
 }
 
 bool edcEnsureWalletIsAvailable(bool avoidException)
 {
-    if (!edcPwalletMain)
+	EDCapp & theApp = EDCapp::singleton();
+
+    if (!theApp.walletMain())
     {
         if (!avoidException)
             throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (disabled)");
@@ -52,12 +56,16 @@ bool edcEnsureWalletIsAvailable(bool avoidException)
 
 void edcEnsureWalletIsUnlocked()
 {
-    if (edcPwalletMain->IsLocked())
+	EDCapp & theApp = EDCapp::singleton();
+
+    if (theApp.walletMain()->IsLocked())
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Please enter the wallet passphrase with walletpassphrase first.");
 }
 
 void WalletTxToJSON(const CEDCWalletTx& wtx, UniValue& entry)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     int confirms = wtx.GetDepthInMainChain();
     entry.push_back(Pair("confirmations", confirms));
     if (wtx.IsCoinBase())
@@ -66,7 +74,7 @@ void WalletTxToJSON(const CEDCWalletTx& wtx, UniValue& entry)
     {
         entry.push_back(Pair("blockhash", wtx.hashBlock.GetHex()));
         entry.push_back(Pair("blockindex", wtx.nIndex));
-        entry.push_back(Pair("blocktime", edcMapBlockIndex[wtx.hashBlock]->GetBlockTime()));
+        entry.push_back(Pair("blocktime", theApp.mapBlockIndex()[wtx.hashBlock]->GetBlockTime()));
     } 
 	else 
 	{
@@ -111,6 +119,8 @@ string edcAccountFromValue(const UniValue& value)
 
 UniValue edcgetnewaddress(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -129,23 +139,23 @@ UniValue edcgetnewaddress(const UniValue& params, bool fHelp)
             + HelpExampleRpc("getnewaddress", "")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     // Parse the account first so we don't generate a key if there's an error
     string strAccount;
     if (params.size() > 0)
         strAccount = edcAccountFromValue(params[0]);
 
-    if (!edcPwalletMain->IsLocked())
-        edcPwalletMain->TopUpKeyPool();
+    if (!theApp.walletMain()->IsLocked())
+        theApp.walletMain()->TopUpKeyPool();
 
     // Generate a new key that is added to wallet
     CPubKey newKey;
-    if (!edcPwalletMain->GetKeyFromPool(newKey))
+    if (!theApp.walletMain()->GetKeyFromPool(newKey))
         throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
     CKeyID keyID = newKey.GetID();
 
-    edcPwalletMain->SetAddressBook(keyID, strAccount, "receive");
+    theApp.walletMain()->SetAddressBook(keyID, strAccount, "receive");
 
     return CBitcoinAddress(keyID).ToString();
 }
@@ -153,7 +163,9 @@ UniValue edcgetnewaddress(const UniValue& params, bool fHelp)
 
 CBitcoinAddress edcGetAccountAddress(string strAccount, bool bForceNew=false)
 {
-    CEDCWalletDB walletdb(edcPwalletMain->strWalletFile);
+	EDCapp & theApp = EDCapp::singleton();
+
+    CEDCWalletDB walletdb(theApp.walletMain()->strWalletFile);
 
     CAccount account;
     walletdb.ReadAccount(strAccount, account);
@@ -166,8 +178,8 @@ CBitcoinAddress edcGetAccountAddress(string strAccount, bool bForceNew=false)
 		{
             // Check if the current key has been used
             CScript scriptPubKey = GetScriptForDestination(account.vchPubKey.GetID());
-            for (map<uint256, CEDCWalletTx>::iterator it = edcPwalletMain->mapWallet.begin();
-                 it != edcPwalletMain->mapWallet.end() && account.vchPubKey.IsValid();
+            for (map<uint256, CEDCWalletTx>::iterator it = theApp.walletMain()->mapWallet.begin();
+                 it != theApp.walletMain()->mapWallet.end() && account.vchPubKey.IsValid();
                  ++it)
                 BOOST_FOREACH(const CEDCTxOut& txout, (*it).second.vout)
                     if (txout.scriptPubKey == scriptPubKey) 
@@ -181,10 +193,10 @@ CBitcoinAddress edcGetAccountAddress(string strAccount, bool bForceNew=false)
     // Generate a new key
     if (bForceNew) 
 	{
-        if (!edcPwalletMain->GetKeyFromPool(account.vchPubKey))
+        if (!theApp.walletMain()->GetKeyFromPool(account.vchPubKey))
             throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
 
-        edcPwalletMain->SetAddressBook(account.vchPubKey.GetID(), strAccount, "receive");
+        theApp.walletMain()->SetAddressBook(account.vchPubKey.GetID(), strAccount, "receive");
         walletdb.WriteAccount(strAccount, account);
     }
 
@@ -193,6 +205,8 @@ CBitcoinAddress edcGetAccountAddress(string strAccount, bool bForceNew=false)
 
 UniValue edcgetaccountaddress(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -211,7 +225,7 @@ UniValue edcgetaccountaddress(const UniValue& params, bool fHelp)
             + HelpExampleRpc("getaccountaddress", "\"myaccount\"")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     // Parse the account first so we don't generate a key if there's an error
     string strAccount = edcAccountFromValue(params[0]);
@@ -225,6 +239,8 @@ UniValue edcgetaccountaddress(const UniValue& params, bool fHelp)
 
 UniValue edcgetrawchangeaddress(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -240,12 +256,12 @@ UniValue edcgetrawchangeaddress(const UniValue& params, bool fHelp)
             + HelpExampleRpc("getrawchangeaddress", "")
        );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-    if (!edcPwalletMain->IsLocked())
-        edcPwalletMain->TopUpKeyPool();
+    if (!theApp.walletMain()->IsLocked())
+        theApp.walletMain()->TopUpKeyPool();
 
-    CEDCReserveKey reservekey(edcPwalletMain);
+    CEDCReserveKey reservekey(theApp.walletMain());
     CPubKey vchPubKey;
     if (!reservekey.GetReservedKey(vchPubKey))
         throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
@@ -260,6 +276,8 @@ UniValue edcgetrawchangeaddress(const UniValue& params, bool fHelp)
 
 UniValue edcsetaccount(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -275,7 +293,7 @@ UniValue edcsetaccount(const UniValue& params, bool fHelp)
             + HelpExampleRpc("setaccount", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\", \"tabby\"")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     CBitcoinAddress address(params[0].get_str());
     if (!address.IsValid())
@@ -286,16 +304,16 @@ UniValue edcsetaccount(const UniValue& params, bool fHelp)
         strAccount = edcAccountFromValue(params[1]);
 
     // Only add the account if the address is yours.
-    if (IsMine(*edcPwalletMain, address.Get()))
+    if (IsMine(*theApp.walletMain(), address.Get()))
     {
         // Detect when changing the account of an address that is the 'unused current key' of another account:
-        if (edcPwalletMain->mapAddressBook.count(address.Get()))
+        if (theApp.walletMain()->mapAddressBook.count(address.Get()))
         {
-            string strOldAccount = edcPwalletMain->mapAddressBook[address.Get()].name;
+            string strOldAccount = theApp.walletMain()->mapAddressBook[address.Get()].name;
             if (address == edcGetAccountAddress(strOldAccount))
                 edcGetAccountAddress(strOldAccount, true);
         }
-        edcPwalletMain->SetAddressBook(address.Get(), strAccount, "receive");
+        theApp.walletMain()->SetAddressBook(address.Get(), strAccount, "receive");
     }
     else
         throw JSONRPCError(RPC_MISC_ERROR, "setaccount can only be used with own address");
@@ -306,6 +324,8 @@ UniValue edcsetaccount(const UniValue& params, bool fHelp)
 
 UniValue edcgetaccount(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -322,15 +342,15 @@ UniValue edcgetaccount(const UniValue& params, bool fHelp)
             + HelpExampleRpc("getaccount", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\"")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     CBitcoinAddress address(params[0].get_str());
     if (!address.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address");
 
     string strAccount;
-    map<CTxDestination, CAddressBookData>::iterator mi = edcPwalletMain->mapAddressBook.find(address.Get());
-    if (mi != edcPwalletMain->mapAddressBook.end() && !(*mi).second.name.empty())
+    map<CTxDestination, CAddressBookData>::iterator mi = theApp.walletMain()->mapAddressBook.find(address.Get());
+    if (mi != theApp.walletMain()->mapAddressBook.end() && !(*mi).second.name.empty())
         strAccount = (*mi).second.name;
     return strAccount;
 }
@@ -338,6 +358,8 @@ UniValue edcgetaccount(const UniValue& params, bool fHelp)
 
 UniValue edcgetaddressesbyaccount(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -357,13 +379,13 @@ UniValue edcgetaddressesbyaccount(const UniValue& params, bool fHelp)
             + HelpExampleRpc("getaddressesbyaccount", "\"tabby\"")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     string strAccount = edcAccountFromValue(params[0]);
 
     // Find all addresses that have the given account
     UniValue ret(UniValue::VARR);
-    BOOST_FOREACH(const PAIRTYPE(CBitcoinAddress, CAddressBookData)& item, edcPwalletMain->mapAddressBook)
+    BOOST_FOREACH(const PAIRTYPE(CBitcoinAddress, CAddressBookData)& item, theApp.walletMain()->mapAddressBook)
     {
         const CBitcoinAddress& address = item.first;
         const string& strName = item.second.name;
@@ -375,7 +397,9 @@ UniValue edcgetaddressesbyaccount(const UniValue& params, bool fHelp)
 
 static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtractFeeFromAmount, CEDCWalletTx& wtxNew)
 {
-    CAmount curBalance = edcPwalletMain->GetBalance();
+	EDCapp & theApp = EDCapp::singleton();
+
+    CAmount curBalance = theApp.walletMain()->GetBalance();
 
     // Check amount
     if (nValue <= 0)
@@ -388,7 +412,7 @@ static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtr
     CScript scriptPubKey = GetScriptForDestination(address);
 
     // Create and send the transaction
-    CEDCReserveKey reservekey(edcPwalletMain);
+    CEDCReserveKey reservekey(theApp.walletMain());
     CAmount nFeeRequired;
     std::string strError;
     vector<CRecipient> vecSend;
@@ -397,18 +421,20 @@ static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtr
 
     vecSend.push_back(recipient);
 
-    if (!edcPwalletMain->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError)) 
+    if (!theApp.walletMain()->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError)) 
 	{
-        if (!fSubtractFeeFromAmount && nValue + nFeeRequired > edcPwalletMain->GetBalance())
+        if (!fSubtractFeeFromAmount && nValue + nFeeRequired > theApp.walletMain()->GetBalance())
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
-    if (!edcPwalletMain->CommitTransaction(wtxNew, reservekey))
+    if (!theApp.walletMain()->CommitTransaction(wtxNew, reservekey))
         throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of the wallet and coins were spent in the copy but not marked as spent here.");
 }
 
 UniValue edcsendtoaddress(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -436,7 +462,7 @@ UniValue edcsendtoaddress(const UniValue& params, bool fHelp)
             + HelpExampleRpc("sendtoaddress", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", 0.1, \"donation\", \"seans outpost\"")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     CBitcoinAddress address(params[0].get_str());
     if (!address.IsValid())
@@ -467,6 +493,8 @@ UniValue edcsendtoaddress(const UniValue& params, bool fHelp)
 
 UniValue edclistaddressgroupings(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -493,11 +521,11 @@ UniValue edclistaddressgroupings(const UniValue& params, bool fHelp)
             + HelpExampleRpc("listaddressgroupings", "")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     UniValue jsonGroupings(UniValue::VARR);
-    map<CTxDestination, CAmount> balances = edcPwalletMain->GetAddressBalances();
-    BOOST_FOREACH(set<CTxDestination> grouping, edcPwalletMain->GetAddressGroupings())
+    map<CTxDestination, CAmount> balances = theApp.walletMain()->GetAddressBalances();
+    BOOST_FOREACH(set<CTxDestination> grouping, theApp.walletMain()->GetAddressGroupings())
     {
         UniValue jsonGrouping(UniValue::VARR);
         BOOST_FOREACH(CTxDestination address, grouping)
@@ -506,8 +534,8 @@ UniValue edclistaddressgroupings(const UniValue& params, bool fHelp)
             addressInfo.push_back(CBitcoinAddress(address).ToString());
             addressInfo.push_back(ValueFromAmount(balances[address]));
             {
-                if (edcPwalletMain->mapAddressBook.find(CBitcoinAddress(address).Get()) != edcPwalletMain->mapAddressBook.end())
-                    addressInfo.push_back(edcPwalletMain->mapAddressBook.find(CBitcoinAddress(address).Get())->second.name);
+                if (theApp.walletMain()->mapAddressBook.find(CBitcoinAddress(address).Get()) != theApp.walletMain()->mapAddressBook.end())
+                    addressInfo.push_back(theApp.walletMain()->mapAddressBook.find(CBitcoinAddress(address).Get())->second.name);
             }
             jsonGrouping.push_back(addressInfo);
         }
@@ -518,6 +546,8 @@ UniValue edclistaddressgroupings(const UniValue& params, bool fHelp)
 
 UniValue edcsignmessage(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -542,7 +572,7 @@ UniValue edcsignmessage(const UniValue& params, bool fHelp)
             + HelpExampleRpc("signmessage", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\", \"my message\"")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     edcEnsureWalletIsUnlocked();
 
@@ -558,7 +588,7 @@ UniValue edcsignmessage(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to key");
 
     CKey key;
-    if (!edcPwalletMain->GetKey(keyID, key))
+    if (!theApp.walletMain()->GetKey(keyID, key))
         throw JSONRPCError(RPC_WALLET_ERROR, "Private key not available");
 
     CHashWriter ss(SER_GETHASH, 0);
@@ -574,6 +604,8 @@ UniValue edcsignmessage(const UniValue& params, bool fHelp)
 
 UniValue edcgetreceivedbyaddress(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -597,14 +629,14 @@ UniValue edcgetreceivedbyaddress(const UniValue& params, bool fHelp)
             + HelpExampleRpc("getreceivedbyaddress", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\", 6")
        );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     // Bitcoin address
     CBitcoinAddress address = CBitcoinAddress(params[0].get_str());
     if (!address.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address");
     CScript scriptPubKey = GetScriptForDestination(address.Get());
-    if (!IsMine(*edcPwalletMain,scriptPubKey))
+    if (!IsMine(*theApp.walletMain(),scriptPubKey))
         return (double)0.0;
 
     // Minimum confirmations
@@ -614,7 +646,7 @@ UniValue edcgetreceivedbyaddress(const UniValue& params, bool fHelp)
 
     // Tally
     CAmount nAmount = 0;
-    for (map<uint256, CEDCWalletTx>::iterator it = edcPwalletMain->mapWallet.begin(); it != edcPwalletMain->mapWallet.end(); ++it)
+    for (map<uint256, CEDCWalletTx>::iterator it = theApp.walletMain()->mapWallet.begin(); it != theApp.walletMain()->mapWallet.end(); ++it)
     {
         const CEDCWalletTx& wtx = (*it).second;
         if (wtx.IsCoinBase() || !CheckFinalTx(wtx))
@@ -632,6 +664,8 @@ UniValue edcgetreceivedbyaddress(const UniValue& params, bool fHelp)
 
 UniValue edcgetreceivedbyaccount(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -655,7 +689,7 @@ UniValue edcgetreceivedbyaccount(const UniValue& params, bool fHelp)
             + HelpExampleRpc("getreceivedbyaccount", "\"tabby\", 6")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     // Minimum confirmations
     int nMinDepth = 1;
@@ -664,11 +698,11 @@ UniValue edcgetreceivedbyaccount(const UniValue& params, bool fHelp)
 
     // Get the set of pub keys assigned to account
     string strAccount = edcAccountFromValue(params[0]);
-    set<CTxDestination> setAddress = edcPwalletMain->GetAccountAddresses(strAccount);
+    set<CTxDestination> setAddress = theApp.walletMain()->GetAccountAddresses(strAccount);
 
     // Tally
     CAmount nAmount = 0;
-    for (map<uint256, CEDCWalletTx>::iterator it = edcPwalletMain->mapWallet.begin(); it != edcPwalletMain->mapWallet.end(); ++it)
+    for (map<uint256, CEDCWalletTx>::iterator it = theApp.walletMain()->mapWallet.begin(); it != theApp.walletMain()->mapWallet.end(); ++it)
     {
         const CEDCWalletTx& wtx = (*it).second;
         if (wtx.IsCoinBase() || !CheckFinalTx(wtx))
@@ -677,7 +711,7 @@ UniValue edcgetreceivedbyaccount(const UniValue& params, bool fHelp)
         BOOST_FOREACH(const CEDCTxOut& txout, wtx.vout)
         {
             CTxDestination address;
-            if (ExtractDestination(txout.scriptPubKey, address) && IsMine(*edcPwalletMain, address) && setAddress.count(address))
+            if (ExtractDestination(txout.scriptPubKey, address) && IsMine(*theApp.walletMain(), address) && setAddress.count(address))
                 if (wtx.GetDepthInMainChain() >= nMinDepth)
                     nAmount += txout.nValue;
         }
@@ -689,10 +723,12 @@ UniValue edcgetreceivedbyaccount(const UniValue& params, bool fHelp)
 
 CAmount edcGetAccountBalance(CEDCWalletDB& walletdb, const string& strAccount, int nMinDepth, const isminefilter& filter)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     CAmount nBalance = 0;
 
     // Tally wallet transactions
-    for (map<uint256, CEDCWalletTx>::iterator it = edcPwalletMain->mapWallet.begin(); it != edcPwalletMain->mapWallet.end(); ++it)
+    for (map<uint256, CEDCWalletTx>::iterator it = theApp.walletMain()->mapWallet.begin(); it != theApp.walletMain()->mapWallet.end(); ++it)
     {
         const CEDCWalletTx& wtx = (*it).second;
         if (!CheckFinalTx(wtx) || wtx.GetBlocksToMaturity() > 0 || wtx.GetDepthInMainChain() < 0)
@@ -714,13 +750,17 @@ CAmount edcGetAccountBalance(CEDCWalletDB& walletdb, const string& strAccount, i
 
 CAmount edcGetAccountBalance(const string& strAccount, int nMinDepth, const isminefilter& filter)
 {
-    CEDCWalletDB walletdb(edcPwalletMain->strWalletFile);
+	EDCapp & theApp = EDCapp::singleton();
+
+    CEDCWalletDB walletdb(theApp.walletMain()->strWalletFile);
     return edcGetAccountBalance(walletdb, strAccount, nMinDepth, filter);
 }
 
 
 UniValue edcgetbalance(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -746,10 +786,10 @@ UniValue edcgetbalance(const UniValue& params, bool fHelp)
             + HelpExampleRpc("getbalance", "\"*\", 6")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     if (params.size() == 0)
-        return  ValueFromAmount(edcPwalletMain->GetBalance());
+        return  ValueFromAmount(theApp.walletMain()->GetBalance());
 
     int nMinDepth = 1;
     if (params.size() > 1)
@@ -766,8 +806,8 @@ UniValue edcgetbalance(const UniValue& params, bool fHelp)
         // getbalance and "getbalance * 1 true" should return the same number
         CAmount nBalance = 0;
 
-        for (map<uint256, CEDCWalletTx>::iterator it = edcPwalletMain->mapWallet.begin(); 
-		it != edcPwalletMain->mapWallet.end(); ++it)
+        for (map<uint256, CEDCWalletTx>::iterator it = theApp.walletMain()->mapWallet.begin(); 
+		it != theApp.walletMain()->mapWallet.end(); ++it)
         {
             const CEDCWalletTx& wtx = (*it).second;
             if (!CheckFinalTx(wtx) || wtx.GetBlocksToMaturity() > 0 || wtx.GetDepthInMainChain() < 0)
@@ -799,6 +839,8 @@ UniValue edcgetbalance(const UniValue& params, bool fHelp)
 
 UniValue edcgetunconfirmedbalance(const UniValue &params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -807,14 +849,17 @@ UniValue edcgetunconfirmedbalance(const UniValue &params, bool fHelp)
                 "getunconfirmedbalance\n"
                 "Returns the server's total unconfirmed balance\n");
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-    return ValueFromAmount(edcPwalletMain->GetUnconfirmedBalance());
+    return ValueFromAmount(theApp.walletMain()->GetUnconfirmedBalance());
 }
 
+extern int64_t edcGetAdjustedTime();
 
 UniValue edcmovecmd(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -839,7 +884,7 @@ UniValue edcmovecmd(const UniValue& params, bool fHelp)
             + HelpExampleRpc("move", "\"timotei\", \"akiko\", 0.01, 6, \"happy birthday!\"")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     string strFrom = edcAccountFromValue(params[0]);
     string strTo = edcAccountFromValue(params[1]);
@@ -853,31 +898,31 @@ UniValue edcmovecmd(const UniValue& params, bool fHelp)
     if (params.size() > 4)
         strComment = params[4].get_str();
 
-    CEDCWalletDB walletdb(edcPwalletMain->strWalletFile);
+    CEDCWalletDB walletdb(theApp.walletMain()->strWalletFile);
     if (!walletdb.TxnBegin())
         throw JSONRPCError(RPC_DATABASE_ERROR, "database error");
 
-    int64_t nNow = GetAdjustedTime();
+    int64_t nNow = edcGetAdjustedTime();
 
     // Debit
     CAccountingEntry debit;
-    debit.nOrderPos = edcPwalletMain->IncOrderPosNext(&walletdb);
+    debit.nOrderPos = theApp.walletMain()->IncOrderPosNext(&walletdb);
     debit.strAccount = strFrom;
     debit.nCreditDebit = -nAmount;
     debit.nTime = nNow;
     debit.strOtherAccount = strTo;
     debit.strComment = strComment;
-    edcPwalletMain->AddAccountingEntry(debit, walletdb);
+    theApp.walletMain()->AddAccountingEntry(debit, walletdb);
 
     // Credit
     CAccountingEntry credit;
-    credit.nOrderPos = edcPwalletMain->IncOrderPosNext(&walletdb);
+    credit.nOrderPos = theApp.walletMain()->IncOrderPosNext(&walletdb);
     credit.strAccount = strTo;
     credit.nCreditDebit = nAmount;
     credit.nTime = nNow;
     credit.strOtherAccount = strFrom;
     credit.strComment = strComment;
-    edcPwalletMain->AddAccountingEntry(credit, walletdb);
+    theApp.walletMain()->AddAccountingEntry(credit, walletdb);
 
     if (!walletdb.TxnCommit())
         throw JSONRPCError(RPC_DATABASE_ERROR, "database error");
@@ -888,6 +933,8 @@ UniValue edcmovecmd(const UniValue& params, bool fHelp)
 
 UniValue edcsendfrom(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -917,7 +964,7 @@ UniValue edcsendfrom(const UniValue& params, bool fHelp)
             + HelpExampleRpc("sendfrom", "\"tabby\", \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", 0.01, 6, \"donation\", \"seans outpost\"")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     string strAccount = edcAccountFromValue(params[0]);
     CBitcoinAddress address(params[1].get_str());
@@ -952,6 +999,8 @@ UniValue edcsendfrom(const UniValue& params, bool fHelp)
 
 UniValue edcsendmany(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -991,7 +1040,7 @@ UniValue edcsendmany(const UniValue& params, bool fHelp)
             + HelpExampleRpc("sendmany", "\"\", \"{\\\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\\\":0.01,\\\"1353tsE8YMTA4EuV7dgUXGjNFf9KpVvKHz\\\":0.02}\", 6, \"testing\"")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     string strAccount = edcAccountFromValue(params[0]);
     UniValue sendTo = params[1].get_obj();
@@ -1049,14 +1098,14 @@ UniValue edcsendmany(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Account has insufficient funds");
 
     // Send
-    CEDCReserveKey keyChange(edcPwalletMain);
+    CEDCReserveKey keyChange(theApp.walletMain());
     CAmount nFeeRequired = 0;
     int nChangePosRet = -1;
     string strFailReason;
-    bool fCreated = edcPwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, nChangePosRet, strFailReason);
+    bool fCreated = theApp.walletMain()->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, nChangePosRet, strFailReason);
     if (!fCreated)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, strFailReason);
-    if (!edcPwalletMain->CommitTransaction(wtx, keyChange))
+    if (!theApp.walletMain()->CommitTransaction(wtx, keyChange))
         throw JSONRPCError(RPC_WALLET_ERROR, "Transaction commit failed");
 
     return wtx.GetHash().GetHex();
@@ -1067,6 +1116,8 @@ extern CScript _createmultisig_redeemScript(const UniValue& params);
 
 UniValue edcaddmultisigaddress(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -1098,7 +1149,7 @@ UniValue edcaddmultisigaddress(const UniValue& params, bool fHelp)
         throw runtime_error(msg);
     }
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     string strAccount;
     if (params.size() > 2)
@@ -1107,9 +1158,9 @@ UniValue edcaddmultisigaddress(const UniValue& params, bool fHelp)
     // Construct using pay-to-script-hash:
     CScript inner = _createmultisig_redeemScript(params);
     CScriptID innerID(inner);
-    edcPwalletMain->AddCScript(inner);
+    theApp.walletMain()->AddCScript(inner);
 
-    edcPwalletMain->SetAddressBook(innerID, strAccount, "send");
+    theApp.walletMain()->SetAddressBook(innerID, strAccount, "send");
     return CBitcoinAddress(innerID).ToString();
 }
 
@@ -1130,6 +1181,8 @@ struct tallyitem
 
 UniValue ListReceived(const UniValue& params, bool fByAccounts)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     // Minimum confirmations
     int nMinDepth = 1;
     if (params.size() > 0)
@@ -1147,7 +1200,7 @@ UniValue ListReceived(const UniValue& params, bool fByAccounts)
 
     // Tally
     map<CBitcoinAddress, tallyitem> mapTally;
-    for (map<uint256, CEDCWalletTx>::iterator it = edcPwalletMain->mapWallet.begin(); it != edcPwalletMain->mapWallet.end(); ++it)
+    for (map<uint256, CEDCWalletTx>::iterator it = theApp.walletMain()->mapWallet.begin(); it != theApp.walletMain()->mapWallet.end(); ++it)
     {
         const CEDCWalletTx& wtx = (*it).second;
 
@@ -1164,7 +1217,7 @@ UniValue ListReceived(const UniValue& params, bool fByAccounts)
             if (!ExtractDestination(txout.scriptPubKey, address))
                 continue;
 
-            isminefilter mine = IsMine(*edcPwalletMain, address);
+            isminefilter mine = IsMine(*theApp.walletMain(), address);
             if(!(mine & filter))
                 continue;
 
@@ -1180,7 +1233,7 @@ UniValue ListReceived(const UniValue& params, bool fByAccounts)
     // Reply
     UniValue ret(UniValue::VARR);
     map<string, tallyitem> mapAccountTally;
-    BOOST_FOREACH(const PAIRTYPE(CBitcoinAddress, CAddressBookData)& item, edcPwalletMain->mapAddressBook)
+    BOOST_FOREACH(const PAIRTYPE(CBitcoinAddress, CAddressBookData)& item, theApp.walletMain()->mapAddressBook)
     {
         const CBitcoinAddress& address = item.first;
         const string& strAccount = item.second.name;
@@ -1252,6 +1305,8 @@ UniValue ListReceived(const UniValue& params, bool fByAccounts)
 
 UniValue edclistreceivedbyaddress(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -1283,13 +1338,15 @@ UniValue edclistreceivedbyaddress(const UniValue& params, bool fHelp)
             + HelpExampleRpc("listreceivedbyaddress", "6, true, true")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     return ListReceived(params, false);
 }
 
 UniValue edclistreceivedbyaccount(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -1320,7 +1377,7 @@ UniValue edclistreceivedbyaccount(const UniValue& params, bool fHelp)
             + HelpExampleRpc("listreceivedbyaccount", "6, true, true")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     return ListReceived(params, true);
 }
@@ -1334,6 +1391,8 @@ static void MaybePushAddress(UniValue & entry, const CTxDestination &dest)
 
 void ListTransactions(const CEDCWalletTx& wtx, const string& strAccount, int nMinDepth, bool fLong, UniValue& ret, const isminefilter& filter)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     CAmount nFee;
     string strSentAccount;
     list<COutputEntry> listReceived;
@@ -1350,14 +1409,14 @@ void ListTransactions(const CEDCWalletTx& wtx, const string& strAccount, int nMi
         BOOST_FOREACH(const COutputEntry& s, listSent)
         {
             UniValue entry(UniValue::VOBJ);
-            if(involvesWatchonly || (::IsMine(*edcPwalletMain, s.destination) & ISMINE_WATCH_ONLY))
+            if(involvesWatchonly || (::IsMine(*theApp.walletMain(), s.destination) & ISMINE_WATCH_ONLY))
                 entry.push_back(Pair("involvesWatchonly", true));
             entry.push_back(Pair("account", strSentAccount));
             MaybePushAddress(entry, s.destination);
             entry.push_back(Pair("category", "send"));
             entry.push_back(Pair("amount", ValueFromAmount(-s.amount)));
-            if (edcPwalletMain->mapAddressBook.count(s.destination))
-                entry.push_back(Pair("label", edcPwalletMain->mapAddressBook[s.destination].name));
+            if (theApp.walletMain()->mapAddressBook.count(s.destination))
+                entry.push_back(Pair("label", theApp.walletMain()->mapAddressBook[s.destination].name));
             entry.push_back(Pair("vout", s.vout));
             entry.push_back(Pair("fee", ValueFromAmount(-nFee)));
             if (fLong)
@@ -1373,12 +1432,12 @@ void ListTransactions(const CEDCWalletTx& wtx, const string& strAccount, int nMi
         BOOST_FOREACH(const COutputEntry& r, listReceived)
         {
             string account;
-            if (edcPwalletMain->mapAddressBook.count(r.destination))
-                account = edcPwalletMain->mapAddressBook[r.destination].name;
+            if (theApp.walletMain()->mapAddressBook.count(r.destination))
+                account = theApp.walletMain()->mapAddressBook[r.destination].name;
             if (fAllAccounts || (account == strAccount))
             {
                 UniValue entry(UniValue::VOBJ);
-                if(involvesWatchonly || (::IsMine(*edcPwalletMain, r.destination) & ISMINE_WATCH_ONLY))
+                if(involvesWatchonly || (::IsMine(*theApp.walletMain(), r.destination) & ISMINE_WATCH_ONLY))
                     entry.push_back(Pair("involvesWatchonly", true));
                 entry.push_back(Pair("account", account));
                 MaybePushAddress(entry, r.destination);
@@ -1397,7 +1456,7 @@ void ListTransactions(const CEDCWalletTx& wtx, const string& strAccount, int nMi
                     entry.push_back(Pair("category", "receive"));
                 }
                 entry.push_back(Pair("amount", ValueFromAmount(r.amount)));
-                if (edcPwalletMain->mapAddressBook.count(r.destination))
+                if (theApp.walletMain()->mapAddressBook.count(r.destination))
                     entry.push_back(Pair("label", account));
                 entry.push_back(Pair("vout", r.vout));
                 if (fLong)
@@ -1427,6 +1486,8 @@ void edcAcentryToJSON(const CAccountingEntry& acentry, const string& strAccount,
 
 UniValue edclisttransactions(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -1489,7 +1550,7 @@ UniValue edclisttransactions(const UniValue& params, bool fHelp)
             + HelpExampleRpc("listtransactions", "\"*\", 20, 100")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     string strAccount = "*";
     if (params.size() > 0)
@@ -1512,7 +1573,7 @@ UniValue edclisttransactions(const UniValue& params, bool fHelp)
 
     UniValue ret(UniValue::VARR);
 
-    const CEDCWallet::TxItems & txOrdered = edcPwalletMain->wtxOrdered;
+    const CEDCWallet::TxItems & txOrdered = theApp.walletMain()->wtxOrdered;
 
     // iterate backwards until we have nCount items to return:
     for (CEDCWallet::TxItems::const_reverse_iterator it = txOrdered.rbegin(); it != txOrdered.rend(); ++it)
@@ -1554,6 +1615,8 @@ UniValue edclisttransactions(const UniValue& params, bool fHelp)
 
 UniValue edclistaccounts(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -1580,7 +1643,7 @@ UniValue edclistaccounts(const UniValue& params, bool fHelp)
             + HelpExampleRpc("listaccounts", "6")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     int nMinDepth = 1;
     if (params.size() > 0)
@@ -1591,13 +1654,13 @@ UniValue edclistaccounts(const UniValue& params, bool fHelp)
             includeWatchonly = includeWatchonly | ISMINE_WATCH_ONLY;
 
     map<string, CAmount> mapAccountBalances;
-    BOOST_FOREACH(const PAIRTYPE(CTxDestination, CAddressBookData)& entry, edcPwalletMain->mapAddressBook) 
+    BOOST_FOREACH(const PAIRTYPE(CTxDestination, CAddressBookData)& entry, theApp.walletMain()->mapAddressBook) 
 	{
-        if (IsMine(*edcPwalletMain, entry.first) & includeWatchonly) // This address belongs to me
+        if (IsMine(*theApp.walletMain(), entry.first) & includeWatchonly) // This address belongs to me
             mapAccountBalances[entry.second.name] = 0;
     }
 
-    for (map<uint256, CEDCWalletTx>::iterator it = edcPwalletMain->mapWallet.begin(); it != edcPwalletMain->mapWallet.end(); ++it)
+    for (map<uint256, CEDCWalletTx>::iterator it = theApp.walletMain()->mapWallet.begin(); it != theApp.walletMain()->mapWallet.end(); ++it)
     {
         const CEDCWalletTx& wtx = (*it).second;
         CAmount nFee;
@@ -1614,14 +1677,14 @@ UniValue edclistaccounts(const UniValue& params, bool fHelp)
         if (nDepth >= nMinDepth)
         {
             BOOST_FOREACH(const COutputEntry& r, listReceived)
-                if (edcPwalletMain->mapAddressBook.count(r.destination))
-                    mapAccountBalances[edcPwalletMain->mapAddressBook[r.destination].name] += r.amount;
+                if (theApp.walletMain()->mapAddressBook.count(r.destination))
+                    mapAccountBalances[theApp.walletMain()->mapAddressBook[r.destination].name] += r.amount;
                 else
                     mapAccountBalances[""] += r.amount;
         }
     }
 
-    const list<CAccountingEntry> & acentries = edcPwalletMain->laccentries;
+    const list<CAccountingEntry> & acentries = theApp.walletMain()->laccentries;
     BOOST_FOREACH(const CAccountingEntry& entry, acentries)
         mapAccountBalances[entry.strAccount] += entry.nCreditDebit;
 
@@ -1635,6 +1698,8 @@ UniValue edclistaccounts(const UniValue& params, bool fHelp)
 
 UniValue edclistsinceblock(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -1675,7 +1740,7 @@ UniValue edclistsinceblock(const UniValue& params, bool fHelp)
             + HelpExampleRpc("listsinceblock", "\"000000000000000bacf66f7497b7dc45ef753ee9a7d38571037cdb1a57f663ad\", 6")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     CBlockIndex *pindex = NULL;
     int target_confirms = 1;
@@ -1686,8 +1751,8 @@ UniValue edclistsinceblock(const UniValue& params, bool fHelp)
         uint256 blockId;
 
         blockId.SetHex(params[0].get_str());
-        BlockMap::iterator it = edcMapBlockIndex.find(blockId);
-        if (it != edcMapBlockIndex.end())
+        BlockMap::iterator it = theApp.mapBlockIndex().find(blockId);
+        if (it != theApp.mapBlockIndex().end())
             pindex = it->second;
     }
 
@@ -1703,11 +1768,11 @@ UniValue edclistsinceblock(const UniValue& params, bool fHelp)
         if(params[2].get_bool())
             filter = filter | ISMINE_WATCH_ONLY;
 
-    int depth = pindex ? (1 + chainActive.Height() - pindex->nHeight) : -1;
+    int depth = pindex ? (1 + theApp.chainActive().Height() - pindex->nHeight) : -1;
 
     UniValue transactions(UniValue::VARR);
 
-    for (map<uint256, CEDCWalletTx>::iterator it = edcPwalletMain->mapWallet.begin(); it != edcPwalletMain->mapWallet.end(); it++)
+    for (map<uint256, CEDCWalletTx>::iterator it = theApp.walletMain()->mapWallet.begin(); it != theApp.walletMain()->mapWallet.end(); it++)
     {
         CEDCWalletTx tx = (*it).second;
 
@@ -1715,7 +1780,7 @@ UniValue edclistsinceblock(const UniValue& params, bool fHelp)
             ListTransactions(tx, "*", 0, true, transactions, filter);
     }
 
-    CBlockIndex *pblockLast = chainActive[chainActive.Height() + 1 - target_confirms];
+    CBlockIndex *pblockLast = theApp.chainActive()[theApp.chainActive().Height() + 1 - target_confirms];
     uint256 lastblock = pblockLast ? pblockLast->GetBlockHash() : uint256();
 
     UniValue ret(UniValue::VOBJ);
@@ -1727,6 +1792,8 @@ UniValue edclistsinceblock(const UniValue& params, bool fHelp)
 
 UniValue edcgettransaction(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -1769,7 +1836,7 @@ UniValue edcgettransaction(const UniValue& params, bool fHelp)
             + HelpExampleRpc("gettransaction", "\"1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d\"")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     uint256 hash;
     hash.SetHex(params[0].get_str());
@@ -1780,9 +1847,9 @@ UniValue edcgettransaction(const UniValue& params, bool fHelp)
             filter = filter | ISMINE_WATCH_ONLY;
 
     UniValue entry(UniValue::VOBJ);
-    if (!edcPwalletMain->mapWallet.count(hash))
+    if (!theApp.walletMain()->mapWallet.count(hash))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid or non-wallet transaction id");
-    const CEDCWalletTx& wtx = edcPwalletMain->mapWallet[hash];
+    const CEDCWalletTx& wtx = theApp.walletMain()->mapWallet[hash];
 
     CAmount nCredit = wtx.GetCredit(filter);
     CAmount nDebit = wtx.GetDebit(filter);
@@ -1807,6 +1874,8 @@ UniValue edcgettransaction(const UniValue& params, bool fHelp)
 
 UniValue edcabandontransaction(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -1826,14 +1895,14 @@ UniValue edcabandontransaction(const UniValue& params, bool fHelp)
             + HelpExampleRpc("abandontransaction", "\"1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d\"")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     uint256 hash;
     hash.SetHex(params[0].get_str());
 
-    if (!edcPwalletMain->mapWallet.count(hash))
+    if (!theApp.walletMain()->mapWallet.count(hash))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid or non-wallet transaction id");
-    if (!edcPwalletMain->AbandonTransaction(hash))
+    if (!theApp.walletMain()->AbandonTransaction(hash))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Transaction not eligible for abandonment");
 
     return NullUniValue;
@@ -1842,6 +1911,8 @@ UniValue edcabandontransaction(const UniValue& params, bool fHelp)
 
 UniValue edcbackupwallet(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -1856,10 +1927,10 @@ UniValue edcbackupwallet(const UniValue& params, bool fHelp)
             + HelpExampleRpc("eb_backupwallet", "\"backup.dat\"")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     string strDest = params[0].get_str();
-    if (!BackupWallet(*edcPwalletMain, strDest))
+    if (!BackupWallet(*theApp.walletMain(), strDest))
         throw JSONRPCError(RPC_WALLET_ERROR, "Error: Wallet backup failed!");
 
     return NullUniValue;
@@ -1868,6 +1939,8 @@ UniValue edcbackupwallet(const UniValue& params, bool fHelp)
 
 UniValue edckeypoolrefill(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -1883,7 +1956,7 @@ UniValue edckeypoolrefill(const UniValue& params, bool fHelp)
             + HelpExampleRpc("keypoolrefill", "")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     // 0 is interpreted by TopUpKeyPool() as the default keypool size given by -keypool
     unsigned int kpSize = 0;
@@ -1895,9 +1968,9 @@ UniValue edckeypoolrefill(const UniValue& params, bool fHelp)
     }
 
     edcEnsureWalletIsUnlocked();
-    edcPwalletMain->TopUpKeyPool(kpSize);
+    theApp.walletMain()->TopUpKeyPool(kpSize);
 
-    if (edcPwalletMain->GetKeyPoolSize() < kpSize)
+    if (theApp.walletMain()->GetKeyPoolSize() < kpSize)
         throw JSONRPCError(RPC_WALLET_ERROR, "Error refreshing keypool.");
 
     return NullUniValue;
@@ -1914,10 +1987,12 @@ static void LockWallet(CEDCWallet* pWallet)
 
 UniValue edcwalletpassphrase(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
-    if (edcPwalletMain->IsCrypted() && (fHelp || params.size() != 2))
+    if (theApp.walletMain()->IsCrypted() && (fHelp || params.size() != 2))
         throw runtime_error(
             "walletpassphrase \"passphrase\" timeout\n"
             "\nStores the wallet decryption key in memory for 'timeout' seconds.\n"
@@ -1937,11 +2012,11 @@ UniValue edcwalletpassphrase(const UniValue& params, bool fHelp)
             + HelpExampleRpc("walletpassphrase", "\"my pass phrase\", 60")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     if (fHelp)
         return true;
-    if (!edcPwalletMain->IsCrypted())
+    if (!theApp.walletMain()->IsCrypted())
         throw JSONRPCError(RPC_WALLET_WRONG_ENC_STATE, "Error: running with an unencrypted wallet, but walletpassphrase was called.");
 
     // Note that the walletpassphrase is stored in params[0] which is not mlock()ed
@@ -1954,7 +2029,7 @@ UniValue edcwalletpassphrase(const UniValue& params, bool fHelp)
 
     if (strWalletPass.length() > 0)
     {
-        if (!edcPwalletMain->Unlock(strWalletPass))
+        if (!theApp.walletMain()->Unlock(strWalletPass))
             throw JSONRPCError(RPC_WALLET_PASSPHRASE_INCORRECT, "Error: The wallet passphrase entered was incorrect.");
     }
     else
@@ -1962,13 +2037,12 @@ UniValue edcwalletpassphrase(const UniValue& params, bool fHelp)
             "walletpassphrase <passphrase> <timeout>\n"
             "Stores the wallet decryption key in memory for <timeout> seconds.");
 
-    edcPwalletMain->TopUpKeyPool();
+    theApp.walletMain()->TopUpKeyPool();
 
     int64_t nSleepTime = params[1].get_int64();
     LOCK(cs_nWalletUnlockTime);
-	EDCapp & theApp = EDCapp::singleton();
     theApp.walletUnlockTime( GetTime() + nSleepTime );
-    RPCRunLater("lockwallet", boost::bind(LockWallet, edcPwalletMain), nSleepTime);
+    RPCRunLater("lockwallet", boost::bind(LockWallet, theApp.walletMain()), nSleepTime);
 
     return NullUniValue;
 }
@@ -1976,10 +2050,12 @@ UniValue edcwalletpassphrase(const UniValue& params, bool fHelp)
 
 UniValue edcwalletpassphrasechange(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
-    if (edcPwalletMain->IsCrypted() && (fHelp || params.size() != 2))
+    if (theApp.walletMain()->IsCrypted() && (fHelp || params.size() != 2))
         throw runtime_error(
             "walletpassphrasechange \"oldpassphrase\" \"newpassphrase\"\n"
             "\nChanges the wallet passphrase from 'oldpassphrase' to 'newpassphrase'.\n"
@@ -1991,11 +2067,11 @@ UniValue edcwalletpassphrasechange(const UniValue& params, bool fHelp)
             + HelpExampleRpc("walletpassphrasechange", "\"old one\", \"new one\"")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     if (fHelp)
         return true;
-    if (!edcPwalletMain->IsCrypted())
+    if (!theApp.walletMain()->IsCrypted())
         throw JSONRPCError(RPC_WALLET_WRONG_ENC_STATE, "Error: running with an unencrypted wallet, but walletpassphrasechange was called.");
 
     // TODO: get rid of these .c_str() calls by implementing 
@@ -2014,7 +2090,7 @@ UniValue edcwalletpassphrasechange(const UniValue& params, bool fHelp)
             "walletpassphrasechange <oldpassphrase> <newpassphrase>\n"
             "Changes the wallet passphrase from <oldpassphrase> to <newpassphrase>.");
 
-    if (!edcPwalletMain->ChangeWalletPassphrase(strOldWalletPass, strNewWalletPass))
+    if (!theApp.walletMain()->ChangeWalletPassphrase(strOldWalletPass, strNewWalletPass))
         throw JSONRPCError(RPC_WALLET_PASSPHRASE_INCORRECT, "Error: The wallet passphrase entered was incorrect.");
 
     return NullUniValue;
@@ -2023,10 +2099,12 @@ UniValue edcwalletpassphrasechange(const UniValue& params, bool fHelp)
 
 UniValue edcwalletlock(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
-    if (edcPwalletMain->IsCrypted() && (fHelp || params.size() != 0))
+    if (theApp.walletMain()->IsCrypted() && (fHelp || params.size() != 0))
         throw runtime_error(
             "walletlock\n"
             "\nRemoves the wallet encryption key from memory, locking the wallet.\n"
@@ -2043,18 +2121,18 @@ UniValue edcwalletlock(const UniValue& params, bool fHelp)
             + HelpExampleRpc("walletlock", "")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     if (fHelp)
         return true;
-    if (!edcPwalletMain->IsCrypted())
+    if (!theApp.walletMain()->IsCrypted())
         throw JSONRPCError(RPC_WALLET_WRONG_ENC_STATE, "Error: running with an unencrypted wallet, but walletlock was called.");
 
     {
 		EDCapp & theApp = EDCapp::singleton();
 
         LOCK(cs_nWalletUnlockTime);
-        edcPwalletMain->Lock();
+        theApp.walletMain()->Lock();
         theApp.walletUnlockTime( 0 );
     }
 
@@ -2064,10 +2142,12 @@ UniValue edcwalletlock(const UniValue& params, bool fHelp)
 
 UniValue edcencryptwallet(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
-    if (!edcPwalletMain->IsCrypted() && (fHelp || params.size() != 1))
+    if (!theApp.walletMain()->IsCrypted() && (fHelp || params.size() != 1))
         throw runtime_error(
             "eb_encryptwallet \"passphrase\"\n"
             "\nEncrypts the wallet with 'passphrase'. This is for first time encryption.\n"
@@ -2091,11 +2171,11 @@ UniValue edcencryptwallet(const UniValue& params, bool fHelp)
             + HelpExampleRpc("eb_encryptwallet", "\"my pass phrase\"")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     if (fHelp)
         return true;
-    if (edcPwalletMain->IsCrypted())
+    if (theApp.walletMain()->IsCrypted())
         throw JSONRPCError(RPC_WALLET_WRONG_ENC_STATE, "Error: running with an encrypted wallet, but eb_encryptwallet was called.");
 
     // TODO: get rid of this .c_str() by implementing 
@@ -2110,7 +2190,7 @@ UniValue edcencryptwallet(const UniValue& params, bool fHelp)
             "eb_encryptwallet <passphrase>\n"
             "Encrypts the wallet with <passphrase>.");
 
-    if (!edcPwalletMain->EncryptWallet(strWalletPass))
+    if (!theApp.walletMain()->EncryptWallet(strWalletPass))
         throw JSONRPCError(RPC_WALLET_ENCRYPTION_FAILED, "Error: Failed to encrypt the wallet.");
 
     // BDB seems to have a bad habit of writing old data into
@@ -2122,6 +2202,8 @@ UniValue edcencryptwallet(const UniValue& params, bool fHelp)
 
 UniValue edclockunspent(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -2162,7 +2244,7 @@ UniValue edclockunspent(const UniValue& params, bool fHelp)
             + HelpExampleRpc("lockunspent", "false, \"[{\\\"txid\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"vout\\\":1}]\"")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     if (params.size() == 1)
         RPCTypeCheck(params, boost::assign::list_of(UniValue::VBOOL));
@@ -2174,7 +2256,7 @@ UniValue edclockunspent(const UniValue& params, bool fHelp)
     if (params.size() == 1) 
 	{
         if (fUnlock)
-            edcPwalletMain->UnlockAllCoins();
+            theApp.walletMain()->UnlockAllCoins();
         return true;
     }
 
@@ -2199,9 +2281,9 @@ UniValue edclockunspent(const UniValue& params, bool fHelp)
         COutPoint outpt(uint256S(txid), nOutput);
 
         if (fUnlock)
-            edcPwalletMain->UnlockCoin(outpt);
+            theApp.walletMain()->UnlockCoin(outpt);
         else
-            edcPwalletMain->LockCoin(outpt);
+            theApp.walletMain()->LockCoin(outpt);
     }
 
     return true;
@@ -2209,6 +2291,8 @@ UniValue edclockunspent(const UniValue& params, bool fHelp)
 
 UniValue edclistlockunspent(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -2238,10 +2322,10 @@ UniValue edclistlockunspent(const UniValue& params, bool fHelp)
             + HelpExampleRpc("listlockunspent", "")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     vector<COutPoint> vOutpts;
-    edcPwalletMain->ListLockedCoins(vOutpts);
+    theApp.walletMain()->ListLockedCoins(vOutpts);
 
     UniValue ret(UniValue::VARR);
 
@@ -2258,6 +2342,8 @@ UniValue edclistlockunspent(const UniValue& params, bool fHelp)
 
 UniValue edcsettxfee(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -2274,12 +2360,12 @@ UniValue edcsettxfee(const UniValue& params, bool fHelp)
             + HelpExampleRpc("settxfee", "0.00001")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     // Amount
     CAmount nAmount = AmountFromValue(params[0]);
 
-    edcpayTxFee = CFeeRate(nAmount, 1000);
+    theApp.payTxFee( CFeeRate(nAmount, 1000) );
     return true;
 }
 
@@ -2311,24 +2397,26 @@ UniValue edcgetwalletinfo(const UniValue& params, bool fHelp)
             + HelpExampleRpc("getwalletinfo", "")
         );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     UniValue obj(UniValue::VOBJ);
-    obj.push_back(Pair("walletversion", edcPwalletMain->GetVersion()));
-    obj.push_back(Pair("balance",       ValueFromAmount(edcPwalletMain->GetBalance())));
-    obj.push_back(Pair("unconfirmed_balance", ValueFromAmount(edcPwalletMain->GetUnconfirmedBalance())));
-    obj.push_back(Pair("immature_balance",    ValueFromAmount(edcPwalletMain->GetImmatureBalance())));
-    obj.push_back(Pair("txcount",       (int)edcPwalletMain->mapWallet.size()));
-    obj.push_back(Pair("keypoololdest", edcPwalletMain->GetOldestKeyPoolTime()));
-    obj.push_back(Pair("keypoolsize",   (int)edcPwalletMain->GetKeyPoolSize()));
-    if (edcPwalletMain->IsCrypted())
+    obj.push_back(Pair("walletversion", theApp.walletMain()->GetVersion()));
+    obj.push_back(Pair("balance",       ValueFromAmount(theApp.walletMain()->GetBalance())));
+    obj.push_back(Pair("unconfirmed_balance", ValueFromAmount(theApp.walletMain()->GetUnconfirmedBalance())));
+    obj.push_back(Pair("immature_balance",    ValueFromAmount(theApp.walletMain()->GetImmatureBalance())));
+    obj.push_back(Pair("txcount",       (int)theApp.walletMain()->mapWallet.size()));
+    obj.push_back(Pair("keypoololdest", theApp.walletMain()->GetOldestKeyPoolTime()));
+    obj.push_back(Pair("keypoolsize",   (int)theApp.walletMain()->GetKeyPoolSize()));
+    if (theApp.walletMain()->IsCrypted())
         obj.push_back(Pair("unlocked_until", theApp.walletUnlockTime() ));
-    obj.push_back(Pair("paytxfee",      ValueFromAmount(edcpayTxFee.GetFeePerK())));
+    obj.push_back(Pair("paytxfee",      ValueFromAmount(theApp.payTxFee().GetFeePerK())));
     return obj;
 }
 
 UniValue edcresendwallettransactions(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -2341,9 +2429,9 @@ UniValue edcresendwallettransactions(const UniValue& params, bool fHelp)
             "Returns array of transaction ids that were re-broadcast.\n"
             );
 
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-    std::vector<uint256> txids = edcPwalletMain->ResendWalletTransactionsBefore(GetTime());
+    std::vector<uint256> txids = theApp.walletMain()->ResendWalletTransactionsBefore(GetTime());
     UniValue result(UniValue::VARR);
     BOOST_FOREACH(const uint256& txid, txids)
     {
@@ -2354,6 +2442,8 @@ UniValue edcresendwallettransactions(const UniValue& params, bool fHelp)
 
 UniValue edclistunspent(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -2423,9 +2513,9 @@ UniValue edclistunspent(const UniValue& params, bool fHelp)
 
     UniValue results(UniValue::VARR);
     vector<CEDCOutput> vecOutputs;
-    assert(edcPwalletMain != NULL);
-    LOCK2(EDC_cs_main, edcPwalletMain->cs_wallet);
-    edcPwalletMain->AvailableCoins(vecOutputs, false, NULL, true);
+    assert(theApp.walletMain() != NULL);
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
+    theApp.walletMain()->AvailableCoins(vecOutputs, false, NULL, true);
     BOOST_FOREACH(const CEDCOutput& out, vecOutputs) 
 	{
         if (out.nDepth < nMinDepth || out.nDepth > nMaxDepth)
@@ -2451,8 +2541,8 @@ UniValue edclistunspent(const UniValue& params, bool fHelp)
         if (ExtractDestination(out.tx->vout[out.i].scriptPubKey, address)) 
 		{
             entry.push_back(Pair("address", CBitcoinAddress(address).ToString()));
-            if (edcPwalletMain->mapAddressBook.count(address))
-                entry.push_back(Pair("account", edcPwalletMain->mapAddressBook[address].name));
+            if (theApp.walletMain()->mapAddressBook.count(address))
+                entry.push_back(Pair("account", theApp.walletMain()->mapAddressBook[address].name));
         }
 
         entry.push_back(Pair("scriptPubKey", HexStr(pk.begin(), pk.end())));
@@ -2463,7 +2553,7 @@ UniValue edclistunspent(const UniValue& params, bool fHelp)
 			{
                 const CScriptID& hash = boost::get<CScriptID>(address);
                 CScript redeemScript;
-                if (edcPwalletMain->GetCScript(hash, redeemScript))
+                if (theApp.walletMain()->GetCScript(hash, redeemScript))
                     entry.push_back(Pair("redeemScript", HexStr(redeemScript.begin(), redeemScript.end())));
             }
         }
@@ -2479,6 +2569,8 @@ UniValue edclistunspent(const UniValue& params, bool fHelp)
 
 UniValue edcfundrawtransaction(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -2581,7 +2673,7 @@ UniValue edcfundrawtransaction(const UniValue& params, bool fHelp)
     CAmount nFee;
     string strFailReason;
 
-    if(!edcPwalletMain->FundTransaction(tx, nFee, changePosition, strFailReason, includeWatching, lockUnspents, changeAddress))
+    if(!theApp.walletMain()->FundTransaction(tx, nFee, changePosition, strFailReason, includeWatching, lockUnspents, changeAddress))
         throw JSONRPCError(RPC_INTERNAL_ERROR, strFailReason);
 
     UniValue result(UniValue::VOBJ);

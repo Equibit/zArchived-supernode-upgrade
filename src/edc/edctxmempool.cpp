@@ -584,7 +584,7 @@ void CEDCTxMemPool::removeForReorg(const CEDCCoinsViewCache *pcoins, unsigned in
 	{
         const CEDCTransaction& tx = it->GetTx();
         LockPoints lp = it->GetLockPoints();
-        bool validLP =  TestLockPointValidity(&lp);
+        bool validLP =  edcTestLockPointValidity(&lp);
         if (!CheckFinalTx(tx, flags) || 
 		    !CheckSequenceLocks(tx, flags, &lp, validLP)) 
 		{

@@ -27,6 +27,8 @@
 
 using namespace std;
 
+extern int64_t edcGetTimeOffset();
+
 /**
  * @note Do not add or change anything in the information returned by this
  * method. `getinfo` exists for backwards-compatibility only. It combines
@@ -73,7 +75,7 @@ UniValue getinfo(const UniValue& params, bool fHelp)
         );
 
 #ifdef ENABLE_WALLET
-    LOCK2(cs_main, pwalletMain ? &pwalletMain->cs_wallet : NULL);
+    LOCK2(cs_main, theApp.walletMain() ? &theApp.walletMain()->cs_wallet : NULL);
 #else
     LOCK(cs_main);
 #endif
@@ -85,28 +87,28 @@ UniValue getinfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("version", CLIENT_VERSION));
     obj.push_back(Pair("protocolversion", PROTOCOL_VERSION));
 #ifdef ENABLE_WALLET
-    if (pwalletMain) {
-        obj.push_back(Pair("walletversion", pwalletMain->GetVersion()));
-        obj.push_back(Pair("balance",       ValueFromAmount(pwalletMain->GetBalance())));
+    if (theApp.walletMain()) {
+        obj.push_back(Pair("walletversion", theApp.walletMain()->GetVersion()));
+        obj.push_back(Pair("balance",       ValueFromAmount(theApp.walletMain()->GetBalance())));
     }
 #endif
-    obj.push_back(Pair("blocks",        (int)chainActive.Height()));
-    obj.push_back(Pair("timeoffset",    GetTimeOffset()));
-    obj.push_back(Pair("connections",   (int)vNodes.size()));
+    obj.push_back(Pair("blocks",        (int)theApp.chainActive().Height()));
+    obj.push_back(Pair("timeoffset",    edcGetTimeOffset()));
+    obj.push_back(Pair("connections",   (int)theApp.vNodes().size()));
     obj.push_back(Pair("proxy",         (proxy.IsValid() ? proxy.proxy.ToStringIPPort() : string())));
     obj.push_back(Pair("difficulty",    (double)GetDifficulty()));
     obj.push_back(Pair("testnet",       Params().TestnetToBeDeprecatedFieldRPC()));
 #ifdef ENABLE_WALLET
-    if (pwalletMain) {
-        obj.push_back(Pair("keypoololdest", pwalletMain->GetOldestKeyPoolTime()));
-        obj.push_back(Pair("keypoolsize",   (int)pwalletMain->GetKeyPoolSize()));
+    if (theApp.walletMain()) {
+        obj.push_back(Pair("keypoololdest", theApp.walletMain()->GetOldestKeyPoolTime()));
+        obj.push_back(Pair("keypoolsize",   (int)theApp.walletMain()->GetKeyPoolSize()));
     }
-    if (pwalletMain && pwalletMain->IsCrypted())
+    if (theApp.walletMain() && theApp.walletMain()->IsCrypted())
         obj.push_back(Pair("unlocked_until", theApp.walletUnlockTime() ));
-    obj.push_back(Pair("paytxfee",      ValueFromAmount(payTxFee.GetFeePerK())));
+    obj.push_back(Pair("paytxfee",      ValueFromAmount(theApp.payTxFee().GetFeePerK())));
 #endif
     obj.push_back(Pair("relayfee",      ValueFromAmount(::minRelayTxFee.GetFeePerK())));
-    obj.push_back(Pair("errors",        GetWarnings("statusbar")));
+    obj.push_back(Pair("errors",        edcGetWarnings("statusbar")));
     return obj;
 }
 
@@ -117,10 +119,12 @@ public:
     UniValue operator()(const CNoDestination &dest) const { return UniValue(UniValue::VOBJ); }
 
     UniValue operator()(const CKeyID &keyID) const {
+		EDCapp & theApp = EDCapp::singleton();
+
         UniValue obj(UniValue::VOBJ);
         CPubKey vchPubKey;
         obj.push_back(Pair("isscript", false));
-        if (pwalletMain && pwalletMain->GetPubKey(keyID, vchPubKey)) {
+        if (theApp.walletMain() && theApp.walletMain()->GetPubKey(keyID, vchPubKey)) {
             obj.push_back(Pair("pubkey", HexStr(vchPubKey)));
             obj.push_back(Pair("iscompressed", vchPubKey.IsCompressed()));
         }
@@ -128,10 +132,12 @@ public:
     }
 
     UniValue operator()(const CScriptID &scriptID) const {
+		EDCapp & theApp = EDCapp::singleton();
+
         UniValue obj(UniValue::VOBJ);
         CScript subscript;
         obj.push_back(Pair("isscript", true));
-        if (pwalletMain && pwalletMain->GetCScript(scriptID, subscript)) {
+        if (theApp.walletMain() && theApp.walletMain()->GetCScript(scriptID, subscript)) {
             std::vector<CTxDestination> addresses;
             txnouttype whichType;
             int nRequired;
@@ -152,6 +158,8 @@ public:
 
 UniValue validateaddress(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (fHelp || params.size() != 1)
         throw runtime_error(
             "validateaddress \"bitcoinaddress\"\n"
@@ -176,7 +184,7 @@ UniValue validateaddress(const UniValue& params, bool fHelp)
         );
 
 #ifdef ENABLE_WALLET
-    LOCK2(cs_main, pwalletMain ? &pwalletMain->cs_wallet : NULL);
+    LOCK2(cs_main, theApp.walletMain() ? &theApp.walletMain()->cs_wallet : NULL);
 #else
     LOCK(cs_main);
 #endif
@@ -196,13 +204,13 @@ UniValue validateaddress(const UniValue& params, bool fHelp)
         ret.push_back(Pair("scriptPubKey", HexStr(scriptPubKey.begin(), scriptPubKey.end())));
 
 #ifdef ENABLE_WALLET
-        isminetype mine = pwalletMain ? IsMine(*pwalletMain, dest) : ISMINE_NO;
+        isminetype mine = theApp.walletMain() ? IsMine(*theApp.walletMain(), dest) : ISMINE_NO;
         ret.push_back(Pair("ismine", (mine & ISMINE_SPENDABLE) ? true : false));
         ret.push_back(Pair("iswatchonly", (mine & ISMINE_WATCH_ONLY) ? true: false));
         UniValue detail = boost::apply_visitor(DescribeAddressVisitor(), dest);
         ret.pushKVs(detail);
-        if (pwalletMain && pwalletMain->mapAddressBook.count(dest))
-            ret.push_back(Pair("account", pwalletMain->mapAddressBook[dest].name));
+        if (theApp.walletMain() && theApp.walletMain()->mapAddressBook.count(dest))
+            ret.push_back(Pair("account", theApp.walletMain()->mapAddressBook[dest].name));
 #endif
     }
     return ret;
@@ -213,6 +221,8 @@ UniValue validateaddress(const UniValue& params, bool fHelp)
  */
 CScript _createmultisig_redeemScript(const UniValue& params)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     int nRequired = params[0].get_int();
     const UniValue& keys = params[1].get_array();
 
@@ -233,14 +243,14 @@ CScript _createmultisig_redeemScript(const UniValue& params)
 #ifdef ENABLE_WALLET
         // Case 1: Bitcoin address and we have full public key:
         CBitcoinAddress address(ks);
-        if (pwalletMain && address.IsValid())
+        if (theApp.walletMain() && address.IsValid())
         {
             CKeyID keyID;
             if (!address.GetKeyID(keyID))
                 throw runtime_error(
                     strprintf("%s does not refer to a key",ks));
             CPubKey vchPubKey;
-            if (!pwalletMain->GetPubKey(keyID, vchPubKey))
+            if (!theApp.walletMain()->GetPubKey(keyID, vchPubKey))
                 throw runtime_error(
                     strprintf("no full public key for address %s",ks));
             if (!vchPubKey.IsFullyValid())
@@ -413,6 +423,8 @@ UniValue signmessagewithprivkey(const UniValue& params, bool fHelp)
 
 UniValue setmocktime(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (fHelp || params.size() != 1)
         throw runtime_error(
             "setmocktime timestamp\n"
@@ -425,17 +437,18 @@ UniValue setmocktime(const UniValue& params, bool fHelp)
     if (!Params().MineBlocksOnDemand())
         throw runtime_error("setmocktime for regression testing (-regtest mode) only");
 
-    // cs_vNodes is locked and node send/receive times are updated
+    // vNodesCS is locked and node send/receive times are updated
     // atomically with the time change to prevent peers from being
     // disconnected because we think we haven't communicated with them
     // in a long time.
-    LOCK2(cs_main, cs_vNodes);
+    LOCK2(cs_main, theApp.vNodesCS());
 
     RPCTypeCheck(params, boost::assign::list_of(UniValue::VNUM));
     SetMockTime(params[0].get_int64());
 
     uint64_t t = GetTime();
-    BOOST_FOREACH(CNode* pnode, vNodes) {
+    BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes()) 
+	{
         pnode->nLastSend = pnode->nLastRecv = t;
     }
 

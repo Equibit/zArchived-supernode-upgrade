@@ -56,19 +56,10 @@ using namespace std;
 /**
  * Global state
  */
-
 CCriticalSection EDC_cs_main;
 
-BlockMap edcMapBlockIndex;
-CBlockIndex *pEDCindexBestHeader = NULL;
 int64_t edcnTimeBestReceived = 0;
 CWaitableCriticalSection edccsBestBlock;
-CConditionVariable edccvBlockChange;
-bool edcfTxIndex = false;
-bool fEDCHavePruned = false;
-unsigned int edcnBytesPerSigOp = DEFAULT_BYTES_PER_SIGOP;
-int64_t nEDCMaxTipAge = DEFAULT_MAX_TIP_AGE;
-bool edcfEnableReplacement = DEFAULT_ENABLE_REPLACEMENT;
 
 FeeFilterRounder edcfilterRounder(EDCapp::singleton().minRelayTxFee());
 
@@ -207,6 +198,8 @@ namespace
 // Registration of network node signals.
 //
 
+extern int64_t edcGetAdjustedTime();
+
 namespace 
 {
 
@@ -292,8 +285,9 @@ CNodeState *State(NodeId pnode)
 
 int GetHeight()
 {
+	EDCapp & theApp = EDCapp::singleton();
     LOCK(EDC_cs_main);
-    return chainActive.Height();
+    return theApp.chainActive().Height();
 }
 
 void UpdatePreferredDownload(CEDCNode* node, CNodeState* state)
@@ -405,13 +399,15 @@ void MarkBlockAsInFlight(NodeId nodeid, const uint256& hash, const Consensus::Pa
 /** Check whether the last unknown block a peer advertised is not yet known. */
 void ProcessBlockAvailability(NodeId nodeid) 
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     CNodeState *state = State(nodeid);
     assert(state != NULL);
 
     if (!state->hashLastUnknownBlock.IsNull()) 
 	{
-        BlockMap::iterator itOld = edcMapBlockIndex.find(state->hashLastUnknownBlock);
-        if (itOld != edcMapBlockIndex.end() && itOld->second->nChainWork > 0) 
+        BlockMap::iterator itOld = theApp.mapBlockIndex().find(state->hashLastUnknownBlock);
+        if (itOld != theApp.mapBlockIndex().end() && itOld->second->nChainWork > 0) 
 		{
             if (state->pindexBestKnownBlock == NULL || itOld->second->nChainWork >= state->pindexBestKnownBlock->nChainWork)
                 state->pindexBestKnownBlock = itOld->second;
@@ -423,13 +419,15 @@ void ProcessBlockAvailability(NodeId nodeid)
 /** Update tracking information about which blocks a peer is assumed to have. */
 void UpdateBlockAvailability(NodeId nodeid, const uint256 &hash) 
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     CNodeState *state = State(nodeid);
     assert(state != NULL);
 
     ProcessBlockAvailability(nodeid);
 
-    BlockMap::iterator it = edcMapBlockIndex.find(hash);
-    if (it != edcMapBlockIndex.end() && it->second->nChainWork > 0) 
+    BlockMap::iterator it = theApp.mapBlockIndex().find(hash);
+    if (it != theApp.mapBlockIndex().end() && it->second->nChainWork > 0) 
 	{
         // An actually better block was announced.
         if (state->pindexBestKnownBlock == NULL || 
@@ -446,7 +444,8 @@ void UpdateBlockAvailability(NodeId nodeid, const uint256 &hash)
 // Requires EDC_cs_main
 bool CanDirectFetch(const Consensus::Params &consensusParams)
 {
-    return chainActive.Tip()->GetBlockTime() > GetAdjustedTime() - consensusParams.nPowTargetSpacing * 20;
+	EDCapp & theApp = EDCapp::singleton();
+    return theApp.chainActive().Tip()->GetBlockTime() > edcGetAdjustedTime() - consensusParams.nPowTargetSpacing * 20;
 }
 
 // Requires EDC_cs_main
@@ -492,6 +491,7 @@ void FindNextBlocksToDownload(
 	std::vector<CBlockIndex*>& vBlocks, 
 	NodeId& nodeStaller) 
 {
+	EDCapp & theApp = EDCapp::singleton();
     if (count == 0)
         return;
 
@@ -503,7 +503,7 @@ void FindNextBlocksToDownload(
     ProcessBlockAvailability(nodeid);
 
     if (state->pindexBestKnownBlock == NULL || 
-	    state->pindexBestKnownBlock->nChainWork < chainActive.Tip()->nChainWork)
+	    state->pindexBestKnownBlock->nChainWork < theApp.chainActive().Tip()->nChainWork)
 	{
         // This peer has nothing interesting.
         return;
@@ -513,7 +513,7 @@ void FindNextBlocksToDownload(
 	{
         // Bootstrap quickly by guessing a parent of our best tip is the forking point.
         // Guessing wrong in either direction is not a problem.
-        state->pindexLastCommonBlock = chainActive[std::min(state->pindexBestKnownBlock->nHeight, chainActive.Height())];
+        state->pindexLastCommonBlock = theApp.chainActive()[std::min(state->pindexBestKnownBlock->nHeight, theApp.chainActive().Height())];
     }
 
     // If the peer reorganized, our previous pindexLastCommonBlock may not be an ancestor
@@ -555,7 +555,7 @@ void FindNextBlocksToDownload(
                 // We consider the chain that this peer is on invalid.
                 return;
             }
-            if (pindex->nStatus & BLOCK_HAVE_DATA || chainActive.Contains(pindex)) 
+            if (pindex->nStatus & BLOCK_HAVE_DATA || theApp.chainActive().Contains(pindex)) 
 			{
                 if (pindex->nChainTx)
                     state->pindexLastCommonBlock = pindex;
@@ -628,11 +628,12 @@ void UnregisterNodeSignals(CEDCNodeSignals& nodeSignals)
 
 CBlockIndex* edcFindForkInGlobalIndex(const CChain& chain, const CBlockLocator& locator)
 {
+	EDCapp & theApp = EDCapp::singleton();
     // Find the first block the caller has in the main chain
     BOOST_FOREACH(const uint256& hash, locator.vHave) 
 	{
-        BlockMap::iterator mi = edcMapBlockIndex.find(hash);
-        if (mi != edcMapBlockIndex.end())
+        BlockMap::iterator mi = theApp.mapBlockIndex().find(hash);
+        if (mi != theApp.mapBlockIndex().end())
         {
             CBlockIndex* pindex = (*mi).second;
             if (chain.Contains(pindex))
@@ -641,8 +642,6 @@ CBlockIndex* edcFindForkInGlobalIndex(const CChain& chain, const CBlockLocator& 
     }
     return chain.Genesis();
 }
-
-CEDCCoinsViewCache * edcPcoinsTip = NULL;
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -745,6 +744,7 @@ bool IsFinalTx(const CEDCTransaction &tx, int nBlockHeight, int64_t nBlockTime)
 
 bool CheckFinalTx(const CEDCTransaction &tx, int flags)
 {
+	EDCapp & theApp = EDCapp::singleton();
     AssertLockHeld(EDC_cs_main);
 
     // By convention a negative value for flags indicates that the
@@ -755,13 +755,13 @@ bool CheckFinalTx(const CEDCTransaction &tx, int flags)
     // scheduled, so no flags are set.
     flags = std::max(flags, 0);
 
-    // CheckFinalTx() uses chainActive.Height()+1 to evaluate
+    // CheckFinalTx() uses theApp.chainActive().Height()+1 to evaluate
     // nLockTime because when IsFinalTx() is called within
     // CBlock::AcceptBlock(), the height of the block *being*
     // evaluated is what is used. Thus if we want to know if a
     // transaction can be part of the *next* block, we need to call
-    // IsFinalTx() with one more than chainActive.Height().
-    const int nBlockHeight = chainActive.Height() + 1;
+    // IsFinalTx() with one more than theApp.chainActive().Height().
+    const int nBlockHeight = theApp.chainActive().Height() + 1;
 
     // BIP113 will require that time-locked transactions have nLockTime set to
     // less than the median time of the previous block they're contained in.
@@ -769,8 +769,8 @@ bool CheckFinalTx(const CEDCTransaction &tx, int flags)
     // chain tip, so we use that to calculate the median time passed to
     // IsFinalTx() if LOCKTIME_MEDIAN_TIME_PAST is set.
     const int64_t nBlockTime = (flags & LOCKTIME_MEDIAN_TIME_PAST)
-                             ? chainActive.Tip()->GetMedianTimePast()
-                             : GetAdjustedTime();
+                             ? theApp.chainActive().Tip()->GetMedianTimePast()
+                             : edcGetAdjustedTime();
 
     return IsFinalTx(tx, nBlockHeight, nBlockTime);
 }
@@ -864,6 +864,27 @@ bool SequenceLocks(const CEDCTransaction &tx, int flags, std::vector<int>* prevH
     return EvaluateSequenceLocks(block, CalculateSequenceLocks(tx, flags, prevHeights, block));
 }
 
+bool edcTestLockPointValidity(const LockPoints* lp)
+{
+    AssertLockHeld(cs_main);
+    assert(lp);
+
+	EDCapp & theApp = EDCapp::singleton();
+
+    // If there are relative lock times then the maxInputBlock will be set
+    // If there are no relative lock times, the LockPoints don't depend on the chain
+    if (lp->maxInputBlock) {
+        // Check whether theApp.chainActive() is an extension of the block at which the LockPoints
+        // calculation was valid.  If not LockPoints are no longer valid
+        if (!theApp.chainActive().Contains(lp->maxInputBlock)) {
+            return false;
+        }
+    }
+
+    // LockPoints still valid
+    return true;
+}
+
 bool CheckSequenceLocks(const CEDCTransaction &tx, int flags, LockPoints* lp, bool useExistingLockPoints)
 {
 	EDCapp & theApp = EDCapp::singleton();
@@ -871,15 +892,15 @@ bool CheckSequenceLocks(const CEDCTransaction &tx, int flags, LockPoints* lp, bo
     AssertLockHeld(EDC_cs_main);
     AssertLockHeld(theApp.mempool().cs);
 
-    CBlockIndex* tip = chainActive.Tip();
+    CBlockIndex* tip = theApp.chainActive().Tip();
     CBlockIndex index;
     index.pprev = tip;
-    // CheckSequenceLocks() uses chainActive.Height()+1 to evaluate
+    // CheckSequenceLocks() uses theApp.chainActive().Height()+1 to evaluate
     // height based locks because when SequenceLocks() is called within
     // ConnectBlock(), the height of the block *being*
     // evaluated is what is used.
     // Thus if we want to know if a transaction can be part of the
-    // *next* block, we need to use one more than chainActive.Height()
+    // *next* block, we need to use one more than theApp.chainActive().Height()
     index.nHeight = tip->nHeight + 1;
 
     std::pair<int, int64_t> lockPair;
@@ -891,8 +912,8 @@ bool CheckSequenceLocks(const CEDCTransaction &tx, int flags, LockPoints* lp, bo
     }
     else 
 	{
-        // edcPcoinsTip contains the UTXO set for chainActive.Tip()
-        CEDCCoinsViewMemPool viewMemPool(edcPcoinsTip, theApp.mempool());
+        // coinsTip contains the UTXO set for theApp.chainActive().Tip()
+        CEDCCoinsViewMemPool viewMemPool(theApp.coinsTip(), theApp.mempool());
         std::vector<int> prevheights;
         prevheights.resize(tx.vin.size());
 
@@ -1028,6 +1049,8 @@ bool CheckTransaction(const CEDCTransaction& tx, CValidationState &state)
 
 void LimitMempoolSize(CEDCTxMemPool& pool, size_t limit, unsigned long age) 
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     int expired = pool.Expire(GetTime() - age);
     if (expired != 0)
         edcLogPrint("mempool", "Expired %i transactions from the memory pool\n", expired);
@@ -1035,7 +1058,7 @@ void LimitMempoolSize(CEDCTxMemPool& pool, size_t limit, unsigned long age)
     std::vector<uint256> vNoSpendsRemaining;
     pool.TrimToSize(limit, &vNoSpendsRemaining);
     BOOST_FOREACH(const uint256& removed, vNoSpendsRemaining)
-        edcPcoinsTip->Uncache(removed);
+        theApp.coinsTip()->Uncache(removed);
 }
 
 bool AcceptToMemoryPoolWorker(CEDCTxMemPool& pool, CValidationState& state, const CEDCTransaction& tx, bool fLimitFree,
@@ -1106,7 +1129,7 @@ bool AcceptToMemoryPoolWorker(CEDCTxMemPool& pool, CValidationState& state, cons
                 // unconfirmed ancestors anyway; doing otherwise is hopelessly
                 // insecure.
                 bool fReplacementOptOut = true;
-                if (edcfEnableReplacement)
+                if (params.mempoolreplacement)
                 {
                     BOOST_FOREACH(const CEDCTxIn &txin, ptxConflicting->vin)
                     {
@@ -1135,11 +1158,11 @@ bool AcceptToMemoryPoolWorker(CEDCTxMemPool& pool, CValidationState& state, cons
         LockPoints lp;
         {
         LOCK(pool.cs);
-        CEDCCoinsViewMemPool viewMemPool(edcPcoinsTip, pool);
+        CEDCCoinsViewMemPool viewMemPool(theApp.coinsTip(), pool);
         view.SetBackend(viewMemPool);
 
         // do we already have it?
-        bool fHadTxInCache = edcPcoinsTip->HaveCoinsInCache(hash);
+        bool fHadTxInCache = theApp.coinsTip()->HaveCoinsInCache(hash);
         if (view.HaveCoins(hash)) 
 		{
             if (!fHadTxInCache)
@@ -1152,7 +1175,7 @@ bool AcceptToMemoryPoolWorker(CEDCTxMemPool& pool, CValidationState& state, cons
         // and only helps with filling in pfMissingInputs (to determine missing vs spent).
         BOOST_FOREACH(const CEDCTxIn txin, tx.vin) 
 		{
-            if (!edcPcoinsTip->HaveCoinsInCache(txin.prevout.hash))
+            if (!theApp.coinsTip()->HaveCoinsInCache(txin.prevout.hash))
                 vHashTxnToUncache.push_back(txin.prevout.hash);
             if (!view.HaveCoins(txin.prevout.hash)) 
 			{
@@ -1198,7 +1221,7 @@ bool AcceptToMemoryPoolWorker(CEDCTxMemPool& pool, CValidationState& state, cons
         pool.ApplyDeltas(hash, nPriorityDummy, nModifiedFees);
 
         CAmount inChainInputValue;
-        double dPriority = view.GetPriority(tx, chainActive.Height(), inChainInputValue);
+        double dPriority = view.GetPriority(tx, theApp.chainActive().Height(), inChainInputValue);
 
         // Keep track of transactions that spend a coinbase, which we re-scan
         // during reorgs to ensure COINBASE_MATURITY is still met.
@@ -1213,7 +1236,7 @@ bool AcceptToMemoryPoolWorker(CEDCTxMemPool& pool, CValidationState& state, cons
             }
         }
 
-        CEDCTxMemPoolEntry entry(tx, nFees, GetTime(), dPriority, chainActive.Height(), pool.HasNoInputsOf(tx), inChainInputValue, fSpendsCoinbase, nSigOps, lp);
+        CEDCTxMemPoolEntry entry(tx, nFees, GetTime(), dPriority, theApp.chainActive().Height(), pool.HasNoInputsOf(tx), inChainInputValue, fSpendsCoinbase, nSigOps, lp);
         unsigned int nSize = entry.GetTxSize();
         if (txFeeRate) 
 		{
@@ -1238,7 +1261,7 @@ bool AcceptToMemoryPoolWorker(CEDCTxMemPool& pool, CValidationState& state, cons
         } 
 		else if (params.relaypriority && 
 		nModifiedFees < theApp.minRelayTxFee().GetFee(nSize) && 
-		!AllowFree(entry.GetPriority(chainActive.Height() + 1))) 
+		!AllowFree(entry.GetPriority(theApp.chainActive().Height() + 1))) 
 		{
             // Require that free transactions have sufficient priority to be mined in the next block.
             return state.DoS(0, false, REJECT_INSUFFICIENTFEE, "insufficient priority");
@@ -1528,13 +1551,15 @@ FILE* edcOpenUndoFile(const CDiskBlockPos &pos, bool fReadOnly = false )
 bool AcceptToMemoryPool(CEDCTxMemPool& pool, CValidationState &state, const CEDCTransaction &tx, bool fLimitFree,
                         bool* pfMissingInputs, CFeeRate* txFeeRate, bool fOverrideMempoolLimit, const CAmount nAbsurdFee)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     std::vector<uint256> vHashTxToUncache;
     bool res = AcceptToMemoryPoolWorker(pool, state, tx, fLimitFree, pfMissingInputs, txFeeRate, fOverrideMempoolLimit, nAbsurdFee, vHashTxToUncache);
 
     if (!res) 
 	{
         BOOST_FOREACH(const uint256& hashTx, vHashTxToUncache)
-            edcPcoinsTip->Uncache(hashTx);
+            theApp.coinsTip()->Uncache(hashTx);
     }
     return res;
 }
@@ -1552,7 +1577,7 @@ bool GetTransaction(const uint256 &hash, CEDCTransaction &txOut, const Consensus
         return true;
     }
 
-    if (edcfTxIndex) 
+    if ( theApp.txIndex() ) 
 	{
         CDiskTxPos postx;
         if ( theApp.blocktree()->ReadTxIndex(hash, postx)) 
@@ -1585,13 +1610,13 @@ bool GetTransaction(const uint256 &hash, CEDCTransaction &txOut, const Consensus
 		// scan it
         int nHeight = -1;
         {
-            const CEDCCoinsViewCache &view = *edcPcoinsTip;
+            const CEDCCoinsViewCache &view = *theApp.coinsTip();
             const CEDCCoins* coins = view.AccessCoins(hash);
             if (coins)
                 nHeight = coins->nHeight;
         }
         if (nHeight > 0)
-            pindexSlow = chainActive[nHeight];
+            pindexSlow = theApp.chainActive()[nHeight];
     }
 
     if (pindexSlow) 
@@ -1678,18 +1703,20 @@ bool ReadBlockFromDisk(CEDCBlock& block, const CBlockIndex* pindex, const Consen
 
 bool edcIsInitialBlockDownload()
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     const CEDCChainParams& chainParams = edcParams();
     LOCK(EDC_cs_main);
-    if (fImporting || fReindex)
+    if (theApp.importing() || theApp.reindex() )
         return true;
 	EDCparams & params = EDCparams::singleton();
-    if (params.checkpoints && chainActive.Height() < Checkpoints::GetTotalBlocksEstimate(chainParams.Checkpoints()))
+    if (params.checkpoints && theApp.chainActive().Height() < Checkpoints::GetTotalBlocksEstimate(chainParams.Checkpoints()))
         return true;
     static bool lockIBDState = false;
     if (lockIBDState)
         return false;
-    bool state = (chainActive.Height() < pEDCindexBestHeader->nHeight - 24 * 6 ||
-            std::max(chainActive.Tip()->GetBlockTime(), pEDCindexBestHeader->GetBlockTime()) < GetTime() - params.maxtipage );
+    bool state = (theApp.chainActive().Height() < theApp.indexBestHeader()->nHeight - 24 * 6 ||
+            std::max(theApp.chainActive().Tip()->GetBlockTime(), theApp.indexBestHeader()->GetBlockTime()) < GetTime() - params.maxtipage );
     if (!state)
         lockIBDState = true;
     return state;
@@ -1720,6 +1747,9 @@ static void AlertNotify(const std::string& strMessage)
 void edcCheckForkWarningConditions()
 {
     AssertLockHeld(EDC_cs_main);
+
+	EDCapp & theApp = EDCapp::singleton();
+
     // Before we get past initial download, we cannot reliably alert about forks
     // (we assume we don't get stuck on a fork before the last checkpoint)
     if (edcIsInitialBlockDownload())
@@ -1727,10 +1757,10 @@ void edcCheckForkWarningConditions()
 
     // If our best fork is no longer within 72 blocks (+/- 12 hours if no one mines it)
     // of our head, drop it
-    if (edcPindexBestForkTip && chainActive.Height() - edcPindexBestForkTip->nHeight >= 72)
+    if (edcPindexBestForkTip && theApp.chainActive().Height() - edcPindexBestForkTip->nHeight >= 72)
         edcPindexBestForkTip = NULL;
 
-    if (edcPindexBestForkTip || (pindexBestInvalid && pindexBestInvalid->nChainWork > chainActive.Tip()->nChainWork + (GetBlockProof(*chainActive.Tip()) * 6)))
+    if (edcPindexBestForkTip || (pindexBestInvalid && pindexBestInvalid->nChainWork > theApp.chainActive().Tip()->nChainWork + (GetBlockProof(*theApp.chainActive().Tip()) * 6)))
     {
         if (!edcfLargeWorkForkFound && edcpindexBestForkBase)
         {
@@ -1761,9 +1791,12 @@ void edcCheckForkWarningConditions()
 void edcCheckForkWarningConditionsOnNewFork(CBlockIndex* pindexNewForkTip)
 {
     AssertLockHeld(EDC_cs_main);
+
+	EDCapp & theApp = EDCapp::singleton();
+
     // If we are on a fork that is sufficiently large, set a warning flag
     CBlockIndex* pfork = pindexNewForkTip;
-    CBlockIndex* plonger = chainActive.Tip();
+    CBlockIndex* plonger = theApp.chainActive().Tip();
     while (pfork && pfork != plonger)
     {
         while (plonger && plonger->nHeight > pfork->nHeight)
@@ -1782,7 +1815,7 @@ void edcCheckForkWarningConditionsOnNewFork(CBlockIndex* pindexNewForkTip)
     // the 7-block condition and from this always have the most-likely-to-cause-warning fork
     if (pfork && (!edcPindexBestForkTip || (edcPindexBestForkTip && pindexNewForkTip->nHeight > edcPindexBestForkTip->nHeight)) &&
             pindexNewForkTip->nChainWork - pfork->nChainWork > (GetBlockProof(*pfork) * 7) &&
-            chainActive.Height() - pindexNewForkTip->nHeight < 72)
+            theApp.chainActive().Height() - pindexNewForkTip->nHeight < 72)
     {
         edcPindexBestForkTip = pindexNewForkTip;
         edcpindexBestForkBase = pfork;
@@ -1814,6 +1847,7 @@ void edcMisbehaving(NodeId pnode, int howmuch)
 
 void static InvalidChainFound(CBlockIndex* pindexNew)
 {
+	EDCapp & theApp = EDCapp::singleton();
     if (!pindexBestInvalid || pindexNew->nChainWork > pindexBestInvalid->nChainWork)
         pindexBestInvalid = pindexNew;
 
@@ -1821,10 +1855,10 @@ void static InvalidChainFound(CBlockIndex* pindexNew)
       pindexNew->GetBlockHash().ToString(), pindexNew->nHeight,
       log(pindexNew->nChainWork.getdouble())/log(2.0), DateTimeStrFormat("%Y-%m-%d %H:%M:%S",
       pindexNew->GetBlockTime()));
-    CBlockIndex *tip = chainActive.Tip();
+    CBlockIndex *tip = theApp.chainActive().Tip();
     assert (tip);
     edcLogPrintf("%s:  current best=%s  height=%d  log2_work=%.8g  date=%s\n", __func__,
-      tip->GetBlockHash().ToString(), chainActive.Height(), log(tip->nChainWork.getdouble())/log(2.0),
+      tip->GetBlockHash().ToString(), theApp.chainActive().Height(), log(tip->nChainWork.getdouble())/log(2.0),
       DateTimeStrFormat("%Y-%m-%d %H:%M:%S", tip->GetBlockTime()));
     edcCheckForkWarningConditions();
 }
@@ -1902,8 +1936,9 @@ bool CEDCScriptCheck::operator()()
 
 int GetSpendHeight(const CEDCCoinsViewCache& inputs)
 {
+	EDCapp & theApp = EDCapp::singleton();
     LOCK(EDC_cs_main);
-    CBlockIndex* pindexPrev = edcMapBlockIndex.find(inputs.GetBestBlock())->second;
+    CBlockIndex* pindexPrev = theApp.mapBlockIndex().find(inputs.GetBestBlock())->second;
     return pindexPrev->nHeight + 1;
 }
 
@@ -2084,7 +2119,7 @@ bool UndoReadFromDisk(CEDCBlockUndo& blockundo, const CDiskBlockPos& pos, const 
 /** Abort with a message */
 bool AbortNode(const std::string& strMessage, const std::string& userMessage="")
 {
-    strMiscWarning = strMessage;
+    edcstrMiscWarning = strMessage;
     edcLogPrintf("*** %s\n", strMessage);
     edcUiInterface.ThreadSafeMessageBox(
         userMessage.empty() ? _("Error: A fatal internal error occurred, see debug.log for details") : userMessage,
@@ -2258,7 +2293,7 @@ void edcPartitionCheck(
     if (bestHeader == NULL || initialDownloadCheck()) return;
 
     static int64_t lastAlertTime = 0;
-    int64_t now = GetAdjustedTime();
+    int64_t now = edcGetAdjustedTime();
     if (lastAlertTime > now-60*60*24) return; // Alert at most once per day
 
     const int SPAN_HOURS=4;
@@ -2268,7 +2303,7 @@ void edcPartitionCheck(
     boost::math::poisson_distribution<double> poisson(BLOCKS_EXPECTED);
 
     std::string strWarning;
-    int64_t startTime = GetAdjustedTime()-SPAN_SECONDS;
+    int64_t startTime = edcGetAdjustedTime()-SPAN_SECONDS;
 
     LOCK(cs);
     const CBlockIndex* i = bestHeader;
@@ -2304,7 +2339,7 @@ void edcPartitionCheck(
     }
     if (!strWarning.empty())
     {
-        strMiscWarning = strWarning;
+        edcstrMiscWarning = strWarning;
         AlertNotify(strWarning);
         lastAlertTime = now;
     }
@@ -2595,7 +2630,7 @@ bool ConnectBlock(
         setDirtyBlockIndex.insert(pindex);
     }
 
-    if (edcfTxIndex)
+    if (theApp.txIndex())
         if (!theApp.blocktree()->WriteTxIndex(vPos))
             return AbortNode(state, "Failed to write transaction index");
 
@@ -2643,17 +2678,17 @@ bool static FlushStateToDisk(CValidationState &state, FlushStateMode mode)
 
     try 
 	{
-		if (theApp.pruneMode() && fCheckForPruning && !fReindex) 
+		if (theApp.pruneMode() && fCheckForPruning && !theApp.reindex() ) 
 		{
         	edcFindFilesToPrune(setFilesToPrune, chainparams.PruneAfterHeight());
         	fCheckForPruning = false;
         	if (!setFilesToPrune.empty()) 
 			{
             	fFlushForPrune = true;
-            	if (!fEDCHavePruned) 
+            	if (!theApp.havePruned()) 
 				{
                 	theApp.blocktree()->WriteFlag("prunedblockfiles", true);
-                	fEDCHavePruned = true;
+                	theApp.havePruned( true );
             	}
         	}
     	}
@@ -2673,7 +2708,7 @@ bool static FlushStateToDisk(CValidationState &state, FlushStateMode mode)
         	nLastSetChain = nNow;
     	}
 
-    	size_t cacheSize = edcPcoinsTip->DynamicMemoryUsage();
+    	size_t cacheSize = theApp.coinsTip()->DynamicMemoryUsage();
     	// The cache is large and close to the limit, but we have time now (not in the middle of a block processing).
     	bool fCacheLarge = mode == FLUSH_STATE_PERIODIC && cacheSize * (10.0/9) > theApp.coinCacheUsage();
     	// The cache is over the limit, we have to write now.
@@ -2728,10 +2763,10 @@ bool static FlushStateToDisk(CValidationState &state, FlushStateMode mode)
         	// twice (once in the log, and once in the tables). This is already
         	// an overestimation, as most will delete an existing entry or
         	// overwrite one. Still, use a conservative safety factor of 2.
-        	if (!CheckDiskSpace(128 * 2 * 2 * edcPcoinsTip->GetCacheSize()))
+        	if (!CheckDiskSpace(128 * 2 * 2 *theApp.coinsTip()->GetCacheSize()))
             	return state.Error("out of disk space");
         	// Flush the chainstate (which may refer to block index entries).
-        	if (!edcPcoinsTip->Flush())
+        	if (!theApp.coinsTip()->Flush())
             	return AbortNode(state, "Failed to write to coin database");
         	nLastFlush = nNow;
     	}
@@ -2740,7 +2775,7 @@ bool static FlushStateToDisk(CValidationState &state, FlushStateMode mode)
 		((mode == FLUSH_STATE_ALWAYS || mode == FLUSH_STATE_PERIODIC) && nNow > nLastSetChain + (int64_t)DATABASE_WRITE_INTERVAL * 1000000)) 
 		{
         	// Update best block in wallet (so we can detect restored wallets).
-        	GetEDCMainSignals().SetBestChain(chainActive.GetLocator());
+        	GetEDCMainSignals().SetBestChain(theApp.chainActive().GetLocator());
 	        nLastSetChain = nNow;
    	 	}
     } 
@@ -2766,32 +2801,32 @@ void edcPruneAndFlush()
     FlushStateToDisk(state, FLUSH_STATE_NONE);
 }
 
-/** Update chainActive and related internal data structures. */
+/** Update theApp.chainActive() and related internal data structures. */
 void static UpdateTip(
 			  CBlockIndex * pindexNew, 
 	const CEDCChainParams & chainParams) 
 {
-    chainActive.SetTip(pindexNew);
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.chainActive().SetTip(pindexNew);
 
     // New best block
     edcnTimeBestReceived = GetTime();
-	EDCapp & theApp = EDCapp::singleton();
     theApp.mempool().AddTransactionsUpdated(1);
 
     edcLogPrintf("%s: new best=%s height=%d version=0x%08x log2_work=%.8g tx=%lu date='%s' progress=%f cache=%.1fMiB(%utx)\n", __func__,
-      chainActive.Tip()->GetBlockHash().ToString(), chainActive.Height(), chainActive.Tip()->nVersion,
-      log(chainActive.Tip()->nChainWork.getdouble())/log(2.0), (unsigned long)chainActive.Tip()->nChainTx,
-      DateTimeStrFormat("%Y-%m-%d %H:%M:%S", chainActive.Tip()->GetBlockTime()),
-      Checkpoints::GuessVerificationProgress(chainParams.Checkpoints(), chainActive.Tip()), edcPcoinsTip->DynamicMemoryUsage() * (1.0 / (1<<20)), edcPcoinsTip->GetCacheSize());
+      theApp.chainActive().Tip()->GetBlockHash().ToString(), theApp.chainActive().Height(), theApp.chainActive().Tip()->nVersion,
+      log(theApp.chainActive().Tip()->nChainWork.getdouble())/log(2.0), (unsigned long)theApp.chainActive().Tip()->nChainTx,
+      DateTimeStrFormat("%Y-%m-%d %H:%M:%S", theApp.chainActive().Tip()->GetBlockTime()),
+      Checkpoints::GuessVerificationProgress(chainParams.Checkpoints(), theApp.chainActive().Tip()), theApp.coinsTip()->DynamicMemoryUsage() * (1.0 / (1<<20)), theApp.coinsTip()->GetCacheSize());
 
-    edccvBlockChange.notify_all();
+    cvBlockChange.notify_all();
 
     // Check the version of the last 100 blocks to see if we need to upgrade:
     static bool fWarned = false;
     if (!edcIsInitialBlockDownload())
     {
         int nUpgraded = 0;
-        const CBlockIndex* pindex = chainActive.Tip();
+        const CBlockIndex* pindex = theApp.chainActive().Tip();
         for (int bit = 0; bit < VERSIONBITS_NUM_BITS; bit++) 
 		{
             WarningBitsConditionChecker checker(bit);
@@ -2800,10 +2835,10 @@ void static UpdateTip(
 			{
                 if (state == THRESHOLD_ACTIVE) 
 				{
-                    strMiscWarning = strprintf(_("Warning: unknown new rules activated (versionbit %i)"), bit);
+                    edcstrMiscWarning = strprintf(_("Warning: unknown new rules activated (versionbit %i)"), bit);
                     if (!fWarned) 
 					{
-                        AlertNotify(strMiscWarning);
+                        AlertNotify(edcstrMiscWarning);
                         fWarned = true;
                     }
                 } 
@@ -2824,23 +2859,25 @@ void static UpdateTip(
             edcLogPrintf("%s: %d of last 100 blocks have unexpected version\n", __func__, nUpgraded);
         if (nUpgraded > 100/2)
         {
-            // strMiscWarning is read by GetWarnings(), called by Qt and the JSON-RPC code to warn the user:
-            strMiscWarning = _("Warning: Unknown block versions being mined! It's possible unknown rules are in effect");
+            // edcstrMiscWarning is read by edcGetWarnings(), called by Qt and the JSON-RPC code to warn the user:
+            edcstrMiscWarning = _("Warning: Unknown block versions being mined! It's possible unknown rules are in effect");
             if (!fWarned) 
 			{
-                AlertNotify(strMiscWarning);
+                AlertNotify(edcstrMiscWarning);
                 fWarned = true;
             }
         }
     }
 }
 
-/** Disconnect chainActive's tip. You probably want to call mempool.removeForReorg and manually re-limit mempool size after this, with EDC_cs_main held. */
+/** Disconnect theApp.chainActive()'s tip. You probably want to call mempool.removeForReorg and manually re-limit mempool size after this, with EDC_cs_main held. */
 bool static DisconnectTip(
 	  	 CValidationState & state, 
 	const CEDCChainParams & chainparams)
 {
-    CBlockIndex *pindexDelete = chainActive.Tip();
+	EDCapp & theApp = EDCapp::singleton();
+
+    CBlockIndex *pindexDelete = theApp.chainActive().Tip();
     assert(pindexDelete);
     // Read block from disk.
     CEDCBlock block;
@@ -2849,7 +2886,7 @@ bool static DisconnectTip(
     // Apply the block atomically to the chain state.
     int64_t nStart = GetTimeMicros();
     {
-        CEDCCoinsViewCache view(edcPcoinsTip);
+        CEDCCoinsViewCache view(theApp.coinsTip());
         if (!DisconnectBlock(block, state, pindexDelete, view))
             return edcError("DisconnectTip(): DisconnectBlock %s failed", pindexDelete->GetBlockHash().ToString());
         assert(view.Flush());
@@ -2860,7 +2897,6 @@ bool static DisconnectTip(
         return false;
     // Resurrect mempool transactions from the disconnected block.
     std::vector<uint256> vHashUpdate;
-	EDCapp & theApp = EDCapp::singleton();
     BOOST_FOREACH(const CEDCTransaction &tx, block.vtx) 
 	{
         // ignore validation errors in resurrected transactions
@@ -2881,7 +2917,7 @@ bool static DisconnectTip(
     // UpdateTransactionsFromBlock finds descendants of any transactions in this
     // block that were added back and cleans up the mempool state.
     theApp.mempool().UpdateTransactionsFromBlock(vHashUpdate);
-    // Update chainActive and related variables.
+    // Update theApp.chainActive() and related variables.
     UpdateTip(pindexDelete->pprev, chainparams);
     // Let wallets know transactions went from 1-confirmed to
     // 0-confirmed or conflicted:
@@ -2899,7 +2935,7 @@ static int64_t nTimeChainState = 0;
 static int64_t nTimePostConnect = 0;
 
 /**
- * Connect a new block to chainActive. pblock is either NULL or a pointer to a CBlock
+ * Connect a new block to theApp.chainActive(). pblock is either NULL or a pointer to a CBlock
  * corresponding to pindexNew, to bypass loading it again from disk.
  */
 bool static ConnectTip(
@@ -2908,7 +2944,10 @@ bool static ConnectTip(
 		      CBlockIndex * pindexNew, 
 	      const CEDCBlock * pblock)
 {
-    assert(pindexNew->pprev == chainActive.Tip());
+	EDCapp & theApp = EDCapp::singleton();
+
+    assert(pindexNew->pprev == theApp.chainActive().Tip());
+
     // Read block from disk.
     int64_t nTime1 = GetTimeMicros();
     CEDCBlock block;
@@ -2924,7 +2963,7 @@ bool static ConnectTip(
     int64_t nTime3;
     edcLogPrint("bench", "  - Load block from disk: %.2fms [%.2fs]\n", (nTime2 - nTime1) * 0.001, nTimeReadFromDisk * 0.000001);
     {
-        CEDCCoinsViewCache view(edcPcoinsTip);
+        CEDCCoinsViewCache view(theApp.coinsTip());
         bool rv = ConnectBlock(*pblock, state, pindexNew, view, chainparams);
         GetEDCMainSignals().BlockChecked(*pblock, state);
 
@@ -2948,9 +2987,9 @@ bool static ConnectTip(
     edcLogPrint("bench", "  - Writing chainstate: %.2fms [%.2fs]\n", (nTime5 - nTime4) * 0.001, nTimeChainState * 0.000001);
     // Remove conflicting transactions from the mempool.
     list<CEDCTransaction> txConflicted;
-	EDCapp & theApp = EDCapp::singleton();
+
     theApp.mempool().removeForBlock(pblock->vtx, pindexNew->nHeight, txConflicted, !edcIsInitialBlockDownload());
-    // Update chainActive & related variables.
+    // Update theApp.chainActive() & related variables.
     UpdateTip(pindexNew, chainparams);
     // Tell wallet about transactions that went from theApp.mempool()
     // to conflicted:
@@ -2976,6 +3015,8 @@ bool static ConnectTip(
  */
 static CBlockIndex* FindMostWorkChain() 
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     do 
 	{
         CBlockIndex *pindexNew = NULL;
@@ -2992,7 +3033,7 @@ static CBlockIndex* FindMostWorkChain()
         // Just going until the active chain is an optimization, as we know all blocks in it are valid already.
         CBlockIndex *pindexTest = pindexNew;
         bool fInvalidAncestor = false;
-        while (pindexTest && !chainActive.Contains(pindexTest)) 
+        while (pindexTest && !theApp.chainActive().Contains(pindexTest)) 
 		{
             assert(pindexTest->nChainTx || pindexTest->nHeight == 0);
 
@@ -3039,10 +3080,12 @@ static CBlockIndex* FindMostWorkChain()
 /** Delete all entries in setBlockIndexCandidates that are worse than the current tip. */
 static void PruneBlockIndexCandidates() 
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     // Note that we can't delete the current block itself, as we may need to return to it later in case a
     // reorganization to a better block fails.
     std::set<CBlockIndex*, CBlockIndexWorkComparator>::iterator it = setBlockIndexCandidates.begin();
-    while (it != setBlockIndexCandidates.end() && setBlockIndexCandidates.value_comp()(*it, chainActive.Tip())) 
+    while (it != setBlockIndexCandidates.end() && setBlockIndexCandidates.value_comp()(*it, theApp.chainActive().Tip())) 
 	{
         setBlockIndexCandidates.erase(it++);
     }
@@ -3060,14 +3103,16 @@ static bool ActivateBestChainStep(
 	          CBlockIndex * pindexMostWork, 
           const CEDCBlock * pblock)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     AssertLockHeld(EDC_cs_main);
     bool fInvalidFound = false;
-    const CBlockIndex *pindexOldTip = chainActive.Tip();
-    const CBlockIndex *pindexFork = chainActive.FindFork(pindexMostWork);
+    const CBlockIndex *pindexOldTip = theApp.chainActive().Tip();
+    const CBlockIndex *pindexFork = theApp.chainActive().FindFork(pindexMostWork);
 
     // Disconnect active blocks which are no longer in the best chain.
     bool fBlocksDisconnected = false;
-    while (chainActive.Tip() && chainActive.Tip() != pindexFork) 
+    while (theApp.chainActive().Tip() && theApp.chainActive().Tip() != pindexFork) 
 	{
         if (!DisconnectTip(state, chainparams))
             return false;
@@ -3118,7 +3163,7 @@ static bool ActivateBestChainStep(
 			{
                 PruneBlockIndexCandidates();
                 if (!pindexOldTip || 
-				    chainActive.Tip()->nChainWork > pindexOldTip->nChainWork)
+				    theApp.chainActive().Tip()->nChainWork > pindexOldTip->nChainWork)
 				{
                     // We're in a better position than we were. Return temporarily to release the lock.
                     fContinue = false;
@@ -3128,15 +3173,15 @@ static bool ActivateBestChainStep(
         }
     }
 
-	EDCapp & theApp = EDCapp::singleton();
+
     if (fBlocksDisconnected) 
 	{
-        theApp.mempool().removeForReorg(edcPcoinsTip, chainActive.Tip()->nHeight + 1, STANDARD_LOCKTIME_VERIFY_FLAGS);
+        theApp.mempool().removeForReorg(theApp.coinsTip(), theApp.chainActive().Tip()->nHeight + 1, STANDARD_LOCKTIME_VERIFY_FLAGS);
  		EDCparams & params = EDCparams::singleton();
         LimitMempoolSize(theApp.mempool(), params.maxmempool * 1000000, 
 			params.mempoolexpiry * 60 * 60);
     }
-    theApp.mempool().check(edcPcoinsTip);
+    theApp.mempool().check(theApp.coinsTip());
 
     // Callbacks/notifications for a new best chain.
     if (fInvalidFound)
@@ -3157,6 +3202,8 @@ bool ActivateBestChain(
 	const CEDCChainParams & chainparams, 
 	      const CEDCBlock * pblock) 
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     CBlockIndex *pindexMostWork = NULL;
     do 
 	{
@@ -3169,18 +3216,18 @@ bool ActivateBestChain(
         bool fInitialDownload;
         {
             LOCK(EDC_cs_main);
-            CBlockIndex *pindexOldTip = chainActive.Tip();
+            CBlockIndex *pindexOldTip = theApp.chainActive().Tip();
             pindexMostWork = FindMostWorkChain();
 
             // Whether we have anything to do at all.
-            if (pindexMostWork == NULL || pindexMostWork == chainActive.Tip())
+            if (pindexMostWork == NULL || pindexMostWork == theApp.chainActive().Tip())
                 return true;
 
             if (!ActivateBestChainStep(state, chainparams, pindexMostWork, pblock && pblock->GetHash() == pindexMostWork->GetBlockHash() ? pblock : NULL))
                 return false;
 
-            pindexNewTip = chainActive.Tip();
-            pindexFork = chainActive.FindFork(pindexOldTip);
+            pindexNewTip = theApp.chainActive().Tip();
+            pindexFork = theApp.chainActive().FindFork(pindexOldTip);
             fInitialDownload = edcIsInitialBlockDownload();
         }
         // When we reach this point, we switched to a new tip (stored in pindexNewTip).
@@ -3213,10 +3260,10 @@ bool ActivateBestChain(
                 if (params.checkpoints)
                     nBlockEstimate = Checkpoints::GetTotalBlocksEstimate(chainparams.Checkpoints());
                 {
-                    LOCK(edccs_vNodes);
-                    BOOST_FOREACH(CEDCNode* pnode, edcvNodes) 
+                    LOCK(theApp.vNodesCS());
+                    BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes()) 
 					{
-                        if (chainActive.Height() > (pnode->nStartingHeight != -1 ? pnode->nStartingHeight - 2000 : nBlockEstimate)) 
+                        if (theApp.chainActive().Height() > (pnode->nStartingHeight != -1 ? pnode->nStartingHeight - 2000 : nBlockEstimate)) 
 						{
                             BOOST_REVERSE_FOREACH(const uint256& hash, vHashes)
 							{
@@ -3232,7 +3279,7 @@ bool ActivateBestChain(
                 }
             }
         }
-    } while(pindexMostWork != chainActive.Tip());
+    } while(pindexMostWork != theApp.chainActive().Tip());
     CheckBlockIndex(chainparams.GetConsensus());
 
     // Write changes periodically to disk, after relay.
@@ -3257,17 +3304,17 @@ bool edcInvalidateBlock(
     setBlockIndexCandidates.erase(pindex);
 
 	EDCapp & theApp = EDCapp::singleton();
-    while (chainActive.Contains(pindex)) 
+    while (theApp.chainActive().Contains(pindex)) 
 	{
-        CBlockIndex *pindexWalk = chainActive.Tip();
+        CBlockIndex *pindexWalk = theApp.chainActive().Tip();
         pindexWalk->nStatus |= BLOCK_FAILED_CHILD;
         setDirtyBlockIndex.insert(pindexWalk);
         setBlockIndexCandidates.erase(pindexWalk);
-        // ActivateBestChain considers blocks already in chainActive
+        // ActivateBestChain considers blocks already in theApp.chainActive()
         // unconditionally valid already, so force disconnect away from it.
         if (!DisconnectTip(state, chainparams)) 
 		{
-            theApp.mempool().removeForReorg(edcPcoinsTip, chainActive.Tip()->nHeight + 1, STANDARD_LOCKTIME_VERIFY_FLAGS);
+            theApp.mempool().removeForReorg(theApp.coinsTip(), theApp.chainActive().Tip()->nHeight + 1, STANDARD_LOCKTIME_VERIFY_FLAGS);
             return false;
         }
     }
@@ -3278,10 +3325,10 @@ bool edcInvalidateBlock(
 
     // The resulting new best tip may not be in setBlockIndexCandidates anymore, so
     // add it again.
-    BlockMap::iterator it = edcMapBlockIndex.begin();
-    while (it != edcMapBlockIndex.end()) 
+    BlockMap::iterator it = theApp.mapBlockIndex().begin();
+    while (it != theApp.mapBlockIndex().end()) 
 	{
-        if (it->second->IsValid(BLOCK_VALID_TRANSACTIONS) && it->second->nChainTx && !setBlockIndexCandidates.value_comp()(it->second, chainActive.Tip())) 
+        if (it->second->IsValid(BLOCK_VALID_TRANSACTIONS) && it->second->nChainTx && !setBlockIndexCandidates.value_comp()(it->second, theApp.chainActive().Tip())) 
 		{
             setBlockIndexCandidates.insert(it->second);
         }
@@ -3289,7 +3336,7 @@ bool edcInvalidateBlock(
     }
 
     InvalidChainFound(pindex);
-    theApp.mempool().removeForReorg(edcPcoinsTip, chainActive.Tip()->nHeight + 1, STANDARD_LOCKTIME_VERIFY_FLAGS);
+    theApp.mempool().removeForReorg(theApp.coinsTip(), theApp.chainActive().Tip()->nHeight + 1, STANDARD_LOCKTIME_VERIFY_FLAGS);
     return true;
 }
 
@@ -3297,11 +3344,13 @@ bool edcResetBlockFailureFlags(CBlockIndex *pindex)
 {
     AssertLockHeld(EDC_cs_main);
 
+	EDCapp & theApp = EDCapp::singleton();
+
     int nHeight = pindex->nHeight;
 
     // Remove the invalidity flag from this block and all its descendants.
-    BlockMap::iterator it = edcMapBlockIndex.begin();
-    while (it != edcMapBlockIndex.end()) 
+    BlockMap::iterator it = theApp.mapBlockIndex().begin();
+    while (it != theApp.mapBlockIndex().end()) 
 	{
         if (!it->second->IsValid() && 
 		it->second->GetAncestor(nHeight) == pindex) 
@@ -3310,7 +3359,7 @@ bool edcResetBlockFailureFlags(CBlockIndex *pindex)
             setDirtyBlockIndex.insert(it->second);
             if (it->second->IsValid(BLOCK_VALID_TRANSACTIONS) && 
 				it->second->nChainTx && 
-				setBlockIndexCandidates.value_comp()(chainActive.Tip(), 
+				setBlockIndexCandidates.value_comp()(theApp.chainActive().Tip(), 
 					it->second)) 
 			{
                 setBlockIndexCandidates.insert(it->second);
@@ -3339,10 +3388,12 @@ bool edcResetBlockFailureFlags(CBlockIndex *pindex)
 
 CBlockIndex* edcAddToBlockIndex(const CBlockHeader& block)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     // Check for duplicate
     uint256 hash = block.GetHash();
-    BlockMap::iterator it = edcMapBlockIndex.find(hash);
-    if (it != edcMapBlockIndex.end())
+    BlockMap::iterator it = theApp.mapBlockIndex().find(hash);
+    if (it != theApp.mapBlockIndex().end())
         return it->second;
 
     // Construct new block index object
@@ -3352,10 +3403,10 @@ CBlockIndex* edcAddToBlockIndex(const CBlockHeader& block)
     // to avoid miners withholding blocks but broadcasting headers, to get a
     // competitive advantage.
     pindexNew->nSequenceId = 0;
-    BlockMap::iterator mi = edcMapBlockIndex.insert(make_pair(hash, pindexNew)).first;
+    BlockMap::iterator mi = theApp.mapBlockIndex().insert(make_pair(hash, pindexNew)).first;
     pindexNew->phashBlock = &((*mi).first);
-    BlockMap::iterator miPrev = edcMapBlockIndex.find(block.hashPrevBlock);
-    if (miPrev != edcMapBlockIndex.end())
+    BlockMap::iterator miPrev = theApp.mapBlockIndex().find(block.hashPrevBlock);
+    if (miPrev != theApp.mapBlockIndex().end())
     {
         pindexNew->pprev = (*miPrev).second;
         pindexNew->nHeight = pindexNew->pprev->nHeight + 1;
@@ -3363,8 +3414,8 @@ CBlockIndex* edcAddToBlockIndex(const CBlockHeader& block)
     }
     pindexNew->nChainWork = (pindexNew->pprev ? pindexNew->pprev->nChainWork : 0) + GetBlockProof(*pindexNew);
     pindexNew->RaiseValidity(BLOCK_VALID_TREE);
-    if (pEDCindexBestHeader == NULL || pEDCindexBestHeader->nChainWork < pindexNew->nChainWork)
-        pEDCindexBestHeader = pindexNew;
+    if (theApp.indexBestHeader() == NULL || theApp.indexBestHeader()->nChainWork < pindexNew->nChainWork)
+        theApp.indexBestHeader( pindexNew );
 
     setDirtyBlockIndex.insert(pindexNew);
 
@@ -3374,6 +3425,7 @@ CBlockIndex* edcAddToBlockIndex(const CBlockHeader& block)
 /** Mark a block as having its data received and checked (up to BLOCK_VALID_TRANSACTIONS). */
 bool ReceivedBlockTransactions(const CEDCBlock &block, CValidationState& state, CBlockIndex *pindexNew, const CDiskBlockPos& pos)
 {
+	EDCapp & theApp = EDCapp::singleton();
     pindexNew->nTx = block.vtx.size();
     pindexNew->nChainTx = 0;
     pindexNew->nFile = pos.nFile;
@@ -3399,8 +3451,8 @@ bool ReceivedBlockTransactions(const CEDCBlock &block, CValidationState& state, 
                 LOCK(cs_nBlockSequenceId);
                 pindex->nSequenceId = nBlockSequenceId++;
             }
-            if (chainActive.Tip() == NULL || 
-			!setBlockIndexCandidates.value_comp()(pindex, chainActive.Tip())) 
+            if (theApp.chainActive().Tip() == NULL || 
+			!setBlockIndexCandidates.value_comp()(pindex, theApp.chainActive().Tip())) 
 			{
                 setBlockIndexCandidates.insert(pindex);
             }
@@ -3618,13 +3670,16 @@ static bool AcceptBlockHeader(
 	         CBlockIndex ** ppindex=NULL)
 {
     AssertLockHeld(EDC_cs_main);
+
+	EDCapp & theApp = EDCapp::singleton();
+
     // Check for duplicate
     uint256 hash = block.GetHash();
-    BlockMap::iterator miSelf = edcMapBlockIndex.find(hash);
+    BlockMap::iterator miSelf = theApp.mapBlockIndex().find(hash);
     CBlockIndex *pindex = NULL;
     if (hash != chainparams.GetConsensus().hashGenesisBlock) 
 	{
-        if (miSelf != edcMapBlockIndex.end()) 
+        if (miSelf != theApp.mapBlockIndex().end()) 
 		{
             // Block header is already known.
             pindex = miSelf->second;
@@ -3640,8 +3695,8 @@ static bool AcceptBlockHeader(
 
         // Get prev block index
         CBlockIndex* pindexPrev = NULL;
-        BlockMap::iterator mi = edcMapBlockIndex.find(block.hashPrevBlock);
-        if (mi == edcMapBlockIndex.end())
+        BlockMap::iterator mi = theApp.mapBlockIndex().find(block.hashPrevBlock);
+        if (mi == theApp.mapBlockIndex().end())
             return state.DoS(10, edcError("%s: prev block not found", __func__), 0, "bad-prevblk");
         pindexPrev = (*mi).second;
         if (pindexPrev->nStatus & BLOCK_FAILED_MASK)
@@ -3675,6 +3730,8 @@ static bool AcceptBlock(
 {
     AssertLockHeld(EDC_cs_main);
 
+	EDCapp & theApp = EDCapp::singleton();
+
     CBlockIndex *&pindex = *ppindex;
 
     if (!AcceptBlockHeader(block, state, chainparams, &pindex))
@@ -3684,13 +3741,13 @@ static bool AcceptBlock(
     // process an unrequested block if it's new and has enough work to
     // advance our tip, and isn't too many blocks ahead.
     bool fAlreadyHave = pindex->nStatus & BLOCK_HAVE_DATA;
-    bool fHasMoreWork = (chainActive.Tip() ? pindex->nChainWork > chainActive.Tip()->nChainWork : true);
+    bool fHasMoreWork = (theApp.chainActive().Tip() ? pindex->nChainWork > theApp.chainActive().Tip()->nChainWork : true);
     // Blocks that are too out-of-order needlessly limit the effectiveness of
     // pruning, because pruning will not delete block files that contain any
     // blocks which are too close in height to the tip.  Apply this test
     // regardless of whether pruning is enabled; it should generally be safe to
     // not process unrequested blocks.
-    bool fTooFarAhead = (pindex->nHeight > int(chainActive.Height() + MIN_BLOCKS_TO_KEEP));
+    bool fTooFarAhead = (pindex->nHeight > int(theApp.chainActive().Height() + MIN_BLOCKS_TO_KEEP));
 
     // TODO: deal better with return value and error conditions for duplicate
     // and unrequested blocks.
@@ -3796,13 +3853,15 @@ bool TestBlockValidity(
 					   bool fCheckPOW, 
 					   bool fCheckMerkleRoot)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     AssertLockHeld(EDC_cs_main);
-    assert(pindexPrev && pindexPrev == chainActive.Tip());
+    assert(pindexPrev && pindexPrev == theApp.chainActive().Tip());
 	EDCparams & params = EDCparams::singleton();
     if (params.checkpoints && !CheckIndexAgainstCheckpoint(pindexPrev, state, chainparams, block.GetHash()))
         return edcError("%s: CheckIndexAgainstCheckpoint(): %s", __func__, state.GetRejectReason().c_str());
 
-    CEDCCoinsViewCache viewNew(edcPcoinsTip);
+    CEDCCoinsViewCache viewNew(theApp.coinsTip());
     CBlockIndex indexDummy(block);
     indexDummy.pprev = pindexPrev;
     indexDummy.nHeight = pindexPrev->nHeight + 1;
@@ -3828,7 +3887,9 @@ bool TestBlockValidity(
 /* Prune a block file (modify associated database entries)*/
 void edcPruneOneBlockFile(const int fileNumber)
 {
-    for (BlockMap::iterator it = edcMapBlockIndex.begin(); it != edcMapBlockIndex.end(); ++it) 
+	EDCapp & theApp = EDCapp::singleton();
+
+    for (BlockMap::iterator it = theApp.mapBlockIndex().begin(); it != theApp.mapBlockIndex().end(); ++it) 
 	{
         CBlockIndex* pindex = it->second;
         if (pindex->nFile == fileNumber) 
@@ -3880,16 +3941,16 @@ void edcFindFilesToPrune(std::set<int>& setFilesToPrune, uint64_t nPruneAfterHei
 {
     LOCK2(EDC_cs_main, cs_LastBlockFile);
 	EDCapp & theApp = EDCapp::singleton();
-    if (chainActive.Tip() == NULL || theApp.pruneTarget() == 0) 
+    if (theApp.chainActive().Tip() == NULL || theApp.pruneTarget() == 0) 
 	{
         return;
     }
-    if ((uint64_t)chainActive.Tip()->nHeight <= nPruneAfterHeight) 
+    if ((uint64_t)theApp.chainActive().Tip()->nHeight <= nPruneAfterHeight) 
 	{
         return;
     }
 
-    unsigned int nLastBlockWeCanPrune = chainActive.Tip()->nHeight - MIN_BLOCKS_TO_KEEP;
+    unsigned int nLastBlockWeCanPrune = theApp.chainActive().Tip()->nHeight - MIN_BLOCKS_TO_KEEP;
     uint64_t nCurrentUsage = CalculateCurrentUsage();
     // We don't check to prune until after we've allocated new space for files
     // So we should leave a buffer under our target to account for another allocation
@@ -3930,19 +3991,21 @@ void edcFindFilesToPrune(std::set<int>& setFilesToPrune, uint64_t nPruneAfterHei
 
 CBlockIndex * edcInsertBlockIndex(uint256 hash)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (hash.IsNull())
         return NULL;
 
     // Return existing
-    BlockMap::iterator mi = edcMapBlockIndex.find(hash);
-    if (mi != edcMapBlockIndex.end())
+    BlockMap::iterator mi = theApp.mapBlockIndex().find(hash);
+    if (mi != theApp.mapBlockIndex().end())
         return (*mi).second;
 
     // Create new
     CBlockIndex* pindexNew = new CBlockIndex();
     if (!pindexNew)
         throw runtime_error("edcLoadBlockIndex(): new CBlockIndex failed");
-    mi = edcMapBlockIndex.insert(make_pair(hash, pindexNew)).first;
+    mi = theApp.mapBlockIndex().insert(make_pair(hash, pindexNew)).first;
     pindexNew->phashBlock = &((*mi).first);
 
     return pindexNew;
@@ -3959,8 +4022,8 @@ bool static LoadBlockIndexDB()
 
     // Calculate nChainWork
     vector<pair<int, CBlockIndex*> > vSortedByHeight;
-    vSortedByHeight.reserve(edcMapBlockIndex.size());
-    BOOST_FOREACH(const PAIRTYPE(uint256, CBlockIndex*)& item, edcMapBlockIndex)
+    vSortedByHeight.reserve(theApp.mapBlockIndex().size());
+    BOOST_FOREACH(const PAIRTYPE(uint256, CBlockIndex*)& item, theApp.mapBlockIndex())
     {
         CBlockIndex* pindex = item.second;
         vSortedByHeight.push_back(make_pair(pindex->nHeight, pindex));
@@ -3997,8 +4060,8 @@ bool static LoadBlockIndexDB()
             pindexBestInvalid = pindex;
         if (pindex->pprev)
             pindex->BuildSkip();
-        if (pindex->IsValid(BLOCK_VALID_TREE) && (pEDCindexBestHeader == NULL || CBlockIndexWorkComparator()(pEDCindexBestHeader, pindex)))
-            pEDCindexBestHeader = pindex;
+        if (pindex->IsValid(BLOCK_VALID_TREE) && (theApp.indexBestHeader() == NULL || CBlockIndexWorkComparator()(theApp.indexBestHeader(), pindex)))
+            theApp.indexBestHeader( pindex );
     }
 
     // Load block file info
@@ -4026,7 +4089,7 @@ bool static LoadBlockIndexDB()
     // Check presence of blk files
     edcLogPrintf("Checking all blk files are present...\n");
     set<int> setBlkDataFiles;
-    BOOST_FOREACH(const PAIRTYPE(uint256, CBlockIndex*)& item, edcMapBlockIndex)
+    BOOST_FOREACH(const PAIRTYPE(uint256, CBlockIndex*)& item, theApp.mapBlockIndex())
     {
         CBlockIndex* pindex = item.second;
         if (pindex->nStatus & BLOCK_HAVE_DATA) 
@@ -4045,31 +4108,36 @@ bool static LoadBlockIndexDB()
     }
 
     // Check whether we have ever pruned block & undo files
-    theApp.blocktree()->ReadFlag("prunedblockfiles", fEDCHavePruned);
-    if (fEDCHavePruned)
+	bool flag = theApp.havePruned();
+    theApp.blocktree()->ReadFlag("prunedblockfiles", flag);
+	theApp.havePruned(flag);
+    if (theApp.havePruned() )
         edcLogPrintf("LoadBlockIndexDB(): Block files have previously been pruned\n");
 
     // Check whether we need to continue reindexing
     bool fReindexing = false;
     theApp.blocktree()->ReadReindexing(fReindexing);
-    fReindex |= fReindexing;
+    theApp.reindex( theApp.reindex() | fReindexing );
 
     // Check whether we have a transaction index
-    theApp.blocktree()->ReadFlag("txindex", edcfTxIndex);
-    edcLogPrintf("%s: transaction index %s\n", __func__, edcfTxIndex ? "enabled" : "disabled");
+	flag = theApp.txIndex();
+    theApp.blocktree()->ReadFlag("txindex", flag);
+	theApp.txIndex(flag);
+    edcLogPrintf("%s: transaction index %s\n", __func__, 
+		theApp.txIndex() ? "enabled" : "disabled");
 
     // Load pointer to end of best chain
-    BlockMap::iterator it = edcMapBlockIndex.find(edcPcoinsTip->GetBestBlock());
-    if (it == edcMapBlockIndex.end())
+    BlockMap::iterator it = theApp.mapBlockIndex().find(theApp.coinsTip()->GetBestBlock());
+    if (it == theApp.mapBlockIndex().end())
         return true;
-    chainActive.SetTip(it->second);
+    theApp.chainActive().SetTip(it->second);
 
     PruneBlockIndexCandidates();
 
     edcLogPrintf("%s: hashBestChain=%s height=%d date=%s progress=%f\n", __func__,
-        chainActive.Tip()->GetBlockHash().ToString(), chainActive.Height(),
-        DateTimeStrFormat("%Y-%m-%d %H:%M:%S", chainActive.Tip()->GetBlockTime()),
-        Checkpoints::GuessVerificationProgress(chainparams.Checkpoints(), chainActive.Tip()));
+        theApp.chainActive().Tip()->GetBlockHash().ToString(), theApp.chainActive().Height(),
+        DateTimeStrFormat("%Y-%m-%d %H:%M:%S", theApp.chainActive().Tip()->GetBlockTime()),
+        Checkpoints::GuessVerificationProgress(chainparams.Checkpoints(), theApp.chainActive().Tip()));
 
     return true;
 }
@@ -4090,27 +4158,28 @@ bool CEDCVerifyDB::VerifyDB(
 	       	          int nCheckLevel, 
 	       	          int nCheckDepth)
 {
+	EDCapp & theApp = EDCapp::singleton();
     LOCK(EDC_cs_main);
-    if (chainActive.Tip() == NULL || chainActive.Tip()->pprev == NULL)
+    if (theApp.chainActive().Tip() == NULL || theApp.chainActive().Tip()->pprev == NULL)
         return true;
 
     // Verify blocks in the best chain
     if (nCheckDepth <= 0)
         nCheckDepth = 1000000000; // suffices until the year 19000
-    if (nCheckDepth > chainActive.Height())
-        nCheckDepth = chainActive.Height();
+    if (nCheckDepth > theApp.chainActive().Height())
+        nCheckDepth = theApp.chainActive().Height();
     nCheckLevel = std::max(0, std::min(4, nCheckLevel));
     edcLogPrintf("Verifying last %i blocks at level %i\n", nCheckDepth, nCheckLevel);
     CEDCCoinsViewCache coins(coinsview);
-    CBlockIndex* pindexState = chainActive.Tip();
+    CBlockIndex* pindexState = theApp.chainActive().Tip();
     CBlockIndex* pindexFailure = NULL;
     int nGoodTransactions = 0;
     CValidationState state;
-    for (CBlockIndex* pindex = chainActive.Tip(); pindex && pindex->pprev; pindex = pindex->pprev)
+    for (CBlockIndex* pindex = theApp.chainActive().Tip(); pindex && pindex->pprev; pindex = pindex->pprev)
     {
         boost::this_thread::interruption_point();
-        edcUiInterface.ShowProgress(_("Verifying blocks..."), std::max(1, std::min(99, (int)(((double)(chainActive.Height() - pindex->nHeight)) / (double)nCheckDepth * (nCheckLevel >= 4 ? 50 : 100)))));
-        if (pindex->nHeight < chainActive.Height()-nCheckDepth)
+        edcUiInterface.ShowProgress(_("Verifying blocks..."), std::max(1, std::min(99, (int)(((double)(theApp.chainActive().Height() - pindex->nHeight)) / (double)nCheckDepth * (nCheckLevel >= 4 ? 50 : 100)))));
+        if (pindex->nHeight < theApp.chainActive().Height()-nCheckDepth)
             break;
         CEDCBlock block;
         // check level 0: read from disk
@@ -4135,7 +4204,7 @@ bool CEDCVerifyDB::VerifyDB(
 		EDCapp & theApp = EDCapp::singleton();
 
         // check level 3: check for inconsistencies during memory-only disconnect of tip blocks
-        if (nCheckLevel >= 3 && pindex == pindexState && (coins.DynamicMemoryUsage() + edcPcoinsTip->DynamicMemoryUsage()) <= theApp.coinCacheUsage() ) 
+        if (nCheckLevel >= 3 && pindex == pindexState && (coins.DynamicMemoryUsage() + theApp.coinsTip()->DynamicMemoryUsage()) <= theApp.coinCacheUsage() ) 
 		{
             bool fClean = true;
             if (!DisconnectBlock(block, state, pindex, coins, &fClean))
@@ -4152,17 +4221,17 @@ bool CEDCVerifyDB::VerifyDB(
             return true;
     }
     if (pindexFailure)
-        return edcError("VerifyDB(): *** coin database inconsistencies found (last %i blocks, %i good transactions before that)\n", chainActive.Height() - pindexFailure->nHeight + 1, nGoodTransactions);
+        return edcError("VerifyDB(): *** coin database inconsistencies found (last %i blocks, %i good transactions before that)\n", theApp.chainActive().Height() - pindexFailure->nHeight + 1, nGoodTransactions);
 
     // check level 4: try reconnecting blocks
     if (nCheckLevel >= 4) 
 	{
         CBlockIndex *pindex = pindexState;
-        while (pindex != chainActive.Tip()) 
+        while (pindex != theApp.chainActive().Tip()) 
 		{
             boost::this_thread::interruption_point();
-            edcUiInterface.ShowProgress(_("Verifying blocks..."), std::max(1, std::min(99, 100 - (int)(((double)(chainActive.Height() - pindex->nHeight)) / (double)nCheckDepth * 50))));
-            pindex = chainActive.Next(pindex);
+            edcUiInterface.ShowProgress(_("Verifying blocks..."), std::max(1, std::min(99, 100 - (int)(((double)(theApp.chainActive().Height() - pindex->nHeight)) / (double)nCheckDepth * 50))));
+            pindex = theApp.chainActive().Next(pindex);
             CEDCBlock block;
             if (!ReadBlockFromDisk(block, pindex, chainparams.GetConsensus()))
                 return edcError("VerifyDB(): *** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
@@ -4171,19 +4240,20 @@ bool CEDCVerifyDB::VerifyDB(
         }
     }
 
-    edcLogPrintf("No coin database inconsistencies in last %i blocks (%i transactions)\n", chainActive.Height() - pindexState->nHeight, nGoodTransactions);
+    edcLogPrintf("No coin database inconsistencies in last %i blocks (%i transactions)\n", theApp.chainActive().Height() - pindexState->nHeight, nGoodTransactions);
 
     return true;
 }
 
 void edcUnloadBlockIndex()
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     LOCK(EDC_cs_main);
     setBlockIndexCandidates.clear();
-    chainActive.SetTip(NULL);
+    theApp.chainActive().SetTip(NULL);
     pindexBestInvalid = NULL;
-    pEDCindexBestHeader = NULL;
-	EDCapp & theApp = EDCapp::singleton();
+    theApp.indexBestHeader( NULL );
     theApp.mempool().clear();
     edcMapOrphanTransactions.clear();
     edcMapOrphanTransactionsByPrev.clear();
@@ -4206,42 +4276,46 @@ void edcUnloadBlockIndex()
         warningcache[b].clear();
     }
 
-    BOOST_FOREACH(BlockMap::value_type& entry, edcMapBlockIndex) 
+    BOOST_FOREACH(BlockMap::value_type& entry, theApp.mapBlockIndex()) 
 	{
         delete entry.second;
     }
-    edcMapBlockIndex.clear();
-    fEDCHavePruned = false;
+    theApp.mapBlockIndex().clear();
+    theApp.havePruned( false );
 }
 
 bool edcLoadBlockIndex()
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     // Load block index from databases
-    if (!fReindex && !LoadBlockIndexDB())
+    if (!theApp.reindex() && !LoadBlockIndexDB())
         return false;
     return true;
 }
 
 bool edcInitBlockIndex( const CEDCChainParams & chainparams ) 
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     LOCK(EDC_cs_main);
 
     // Initialize global variables that cannot be constructed at startup.
     recentRejects.reset(new CRollingBloomFilter(120000, 0.000001));
 
     // Check whether we're already initialized
-    if (chainActive.Genesis() != NULL)
+    if (theApp.chainActive().Genesis() != NULL)
         return true;
 
     // Use the provided setting for -txindex in the new database
  	EDCparams & params = EDCparams::singleton();
-	EDCapp & theApp = EDCapp::singleton();
-    edcfTxIndex = params.txindex;
-    theApp.blocktree()->WriteFlag("txindex", edcfTxIndex);
+	
+    theApp.txIndex( params.txindex );
+    theApp.blocktree()->WriteFlag("txindex", theApp.txIndex());
     edcLogPrintf("Initializing databases...\n");
 
     // Only add the genesis block if not reindexing (in which case we reuse the one already on disk)
-    if (!fReindex) 
+    if (!theApp.reindex() ) 
 	{
         try 
 		{
@@ -4276,6 +4350,8 @@ bool edcLoadExternalBlockFile(
 					 FILE * fileIn, 
 			CDiskBlockPos * dbp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     // Map of disk positions for blocks with unknown parent (only used for reindex)
     static std::multimap<uint256, CDiskBlockPos> mapBlocksUnknownParent;
     int64_t nStart = GetTimeMillis();
@@ -4328,8 +4404,8 @@ bool edcLoadExternalBlockFile(
                 // detect out of order blocks, and store them for later
                 uint256 hash = block.GetHash();
                 if (hash != chainparams.GetConsensus().hashGenesisBlock && 
-				edcMapBlockIndex.find(block.hashPrevBlock) == 
-				    edcMapBlockIndex.end()) 
+				theApp.mapBlockIndex().find(block.hashPrevBlock) == 
+				    theApp.mapBlockIndex().end()) 
 				{
                     edcLogPrint("reindex", "%s: Out of order block %s, parent %s not known\n", __func__, hash.ToString(),
                             block.hashPrevBlock.ToString());
@@ -4339,8 +4415,8 @@ bool edcLoadExternalBlockFile(
                 }
 
                 // process in case the block isn't known yet
-                if (edcMapBlockIndex.count(hash) == 0 || 
-				(edcMapBlockIndex[hash]->nStatus & BLOCK_HAVE_DATA) == 0) 
+                if (theApp.mapBlockIndex().count(hash) == 0 || 
+				(theApp.mapBlockIndex()[hash]->nStatus & BLOCK_HAVE_DATA) == 0) 
 				{
                     CValidationState state;
                     if (ProcessNewBlock(state, chainparams, NULL, &block, true, dbp))
@@ -4349,9 +4425,9 @@ bool edcLoadExternalBlockFile(
                         break;
                 } 
 				else if (hash != chainparams.GetConsensus().hashGenesisBlock &&
-				edcMapBlockIndex[hash]->nHeight % 1000 == 0) 
+				theApp.mapBlockIndex()[hash]->nHeight % 1000 == 0) 
 				{
-                    edcLogPrintf("Block Import: already had block %s at height %d\n", hash.ToString(), edcMapBlockIndex[hash]->nHeight);
+                    edcLogPrintf("Block Import: already had block %s at height %d\n", hash.ToString(), theApp.mapBlockIndex()[hash]->nHeight);
                 }
 
                 // Recursively process earlier encountered successors of this block
@@ -4401,7 +4477,9 @@ bool edcLoadExternalBlockFile(
 
 void static CheckBlockIndex(const Consensus::Params& consensusParams)
 {
+	EDCapp &  theApp = EDCapp::singleton();
 	EDCparams & params = EDCparams::singleton();
+
     if (!params.checkblockindex) 
 	{
         return;
@@ -4410,22 +4488,22 @@ void static CheckBlockIndex(const Consensus::Params& consensusParams)
     LOCK(EDC_cs_main);
 
     // During a reindex, we read the genesis block and call CheckBlockIndex before ActivateBestChain,
-    // so we have the genesis block in edcMapBlockIndex but no active chain.  (A few of the tests when
-    // iterating the block tree require that chainActive has been initialized.)
-    if (chainActive.Height() < 0) 
+    // so we have the genesis block in theApp.mapBlockIndex() but no active chain.  (A few of the tests when
+    // iterating the block tree require that theApp.chainActive() has been initialized.)
+    if (theApp.chainActive().Height() < 0) 
 	{
-        assert(edcMapBlockIndex.size() <= 1);
+        assert(theApp.mapBlockIndex().size() <= 1);
         return;
     }
 
     // Build forward-pointing map of the entire block tree.
     std::multimap<CBlockIndex*,CBlockIndex*> forward;
-    for (BlockMap::iterator it = edcMapBlockIndex.begin(); it != edcMapBlockIndex.end(); it++) 
+    for (BlockMap::iterator it = theApp.mapBlockIndex().begin(); it != theApp.mapBlockIndex().end(); it++) 
 	{
         forward.insert(std::make_pair(it->second->pprev, it->second));
     }
 
-    assert(forward.size() == edcMapBlockIndex.size());
+    assert(forward.size() == theApp.mapBlockIndex().size());
 
     std::pair<std::multimap<CBlockIndex*,CBlockIndex*>::iterator,std::multimap<CBlockIndex*,CBlockIndex*>::iterator> rangeGenesis = forward.equal_range(NULL);
     CBlockIndex *pindex = rangeGenesis.first->second;
@@ -4461,12 +4539,12 @@ void static CheckBlockIndex(const Consensus::Params& consensusParams)
 		{
             // Genesis block checks.
             assert(pindex->GetBlockHash() == consensusParams.hashGenesisBlock); // Genesis block's hash must match.
-            assert(pindex == chainActive.Genesis()); // The current active chain's genesis block must be this block.
+            assert(pindex == theApp.chainActive().Genesis()); // The current active chain's genesis block must be this block.
         }
         if (pindex->nChainTx == 0) assert(pindex->nSequenceId == 0);  // nSequenceId can't be set for blocks that aren't linked
         // VALID_TRANSACTIONS is equivalent to nTx > 0 for all nodes (whether or not pruning has occurred).
         // HAVE_DATA is only equivalent to nTx > 0 (or VALID_TRANSACTIONS) if no pruning has occurred.
-        if (!fEDCHavePruned) 
+        if (!theApp.havePruned()) 
 		{
             // If we've never pruned, then HAVE_DATA should be equivalent to nTx > 0
             assert(!(pindex->nStatus & BLOCK_HAVE_DATA) == (pindex->nTx == 0));
@@ -4485,7 +4563,7 @@ void static CheckBlockIndex(const Consensus::Params& consensusParams)
         assert(pindex->nHeight == nHeight); // nHeight must be consistent.
         assert(pindex->pprev == NULL || pindex->nChainWork >= pindex->pprev->nChainWork); // For every block except the genesis block, the chainwork must be larger than the parent's.
         assert(nHeight < 2 || (pindex->pskip && (pindex->pskip->nHeight < nHeight))); // The pskip pointer must point back for all but the first 2 blocks.
-        assert(pindexFirstNotTreeValid == NULL); // All edcMapBlockIndex entries must at least be TREE valid
+        assert(pindexFirstNotTreeValid == NULL); // All theApp.mapBlockIndex() entries must at least be TREE valid
         if ((pindex->nStatus & BLOCK_VALID_MASK) >= BLOCK_VALID_TREE) assert(pindexFirstNotTreeValid == NULL); // TREE valid implies all parents are TREE valid
         if ((pindex->nStatus & BLOCK_VALID_MASK) >= BLOCK_VALID_CHAIN) assert(pindexFirstNotChainValid == NULL); // CHAIN valid implies all parents are CHAIN valid
         if ((pindex->nStatus & BLOCK_VALID_MASK) >= BLOCK_VALID_SCRIPTS) assert(pindexFirstNotScriptsValid == NULL); // SCRIPTS valid implies all parents are SCRIPTS valid
@@ -4494,15 +4572,15 @@ void static CheckBlockIndex(const Consensus::Params& consensusParams)
             // Checks for not-invalid blocks.
             assert((pindex->nStatus & BLOCK_FAILED_MASK) == 0); // The failed mask cannot be set for blocks without invalid parents.
         }
-        if (!CBlockIndexWorkComparator()(pindex, chainActive.Tip()) && pindexFirstNeverProcessed == NULL) 
+        if (!CBlockIndexWorkComparator()(pindex, theApp.chainActive().Tip()) && pindexFirstNeverProcessed == NULL) 
 		{
             if (pindexFirstInvalid == NULL) 
 			{
                 // If this block sorts at least as good as the current tip and
                 // is valid and we have all data for its parents, it must be in
-                // setBlockIndexCandidates.  chainActive.Tip() must also be there
+                // setBlockIndexCandidates.  theApp.chainActive().Tip() must also be there
                 // even if some data has been pruned.
-                if (pindexFirstMissing == NULL || pindex == chainActive.Tip()) 
+                if (pindexFirstMissing == NULL || pindex == theApp.chainActive().Tip()) 
 				{
                     assert(setBlockIndexCandidates.count(pindex));
                 }
@@ -4539,16 +4617,16 @@ void static CheckBlockIndex(const Consensus::Params& consensusParams)
         if (pindex->pprev && (pindex->nStatus & BLOCK_HAVE_DATA) && pindexFirstNeverProcessed == NULL && pindexFirstMissing != NULL) 
 		{
             // We HAVE_DATA for this block, have received data for all parents at some point, but we're currently missing data for some parent.
-            assert(fEDCHavePruned); // We must have pruned.
+            assert(theApp.havePruned() ); // We must have pruned.
             // This block may have entered mapBlocksUnlinked if:
             //  - it has a descendant that at some point had more work than the
             //    tip, and
             //  - we tried switching to that descendant but were missing
-            //    data for some intermediate block between chainActive and the
+            //    data for some intermediate block between theApp.chainActive() and the
             //    tip.
-            // So if this block is itself better than chainActive.Tip() and it wasn't in
+            // So if this block is itself better than theApp.chainActive().Tip() and it wasn't in
             // setBlockIndexCandidates, then it must be in mapBlocksUnlinked.
-            if (!CBlockIndexWorkComparator()(pindex, chainActive.Tip()) && setBlockIndexCandidates.count(pindex) == 0) 
+            if (!CBlockIndexWorkComparator()(pindex, theApp.chainActive().Tip()) && setBlockIndexCandidates.count(pindex) == 0) 
 			{
                 if (pindexFirstInvalid == NULL) 
 				{
@@ -4620,31 +4698,33 @@ void static CheckBlockIndex(const Consensus::Params& consensusParams)
 
 bool static AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(EDC_cs_main)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     switch (inv.type)
     {
     case MSG_TX:
     {
         assert(recentRejects);
-        if (chainActive.Tip()->GetBlockHash() != hashRecentRejectsChainTip)
+        if (theApp.chainActive().Tip()->GetBlockHash() != hashRecentRejectsChainTip)
         {
             // If the chain tip has changed previously rejected transactions
             // might be now valid, e.g. due to a nLockTime'd tx becoming valid,
             // or a double-spend. Reset the rejects filter and give those
             // txs a second chance.
-            hashRecentRejectsChainTip = chainActive.Tip()->GetBlockHash();
+            hashRecentRejectsChainTip = theApp.chainActive().Tip()->GetBlockHash();
             recentRejects->reset();
         }
 
-        // Use edcPcoinsTip->HaveCoinsInCache as a quick approximation to exclude
+        // Use coinsTip->HaveCoinsInCache as a quick approximation to exclude
         // requesting or processing some txs which have already been included in a block
 		EDCapp & theApp = EDCapp::singleton();
         return recentRejects->contains(inv.hash) ||
                theApp.mempool().exists(inv.hash) ||
                edcMapOrphanTransactions.count(inv.hash) ||
-               edcPcoinsTip->HaveCoinsInCache(inv.hash);
+               theApp.coinsTip()->HaveCoinsInCache(inv.hash);
     }
     case MSG_BLOCK:
-        return edcMapBlockIndex.count(inv.hash);
+        return theApp.mapBlockIndex().count(inv.hash);
     }
 
     // Don't know what it is, just say we already got one
@@ -4653,6 +4733,8 @@ bool static AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(EDC_cs_main)
 
 void static ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     std::deque<CInv>::iterator it = pfrom->vRecvGetData.begin();
 
     vector<CInv> vNotFound;
@@ -4673,10 +4755,10 @@ void static ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusPa
             if (inv.type == MSG_BLOCK || inv.type == MSG_FILTERED_BLOCK)
             {
                 bool send = false;
-                BlockMap::iterator mi = edcMapBlockIndex.find(inv.hash);
-                if (mi != edcMapBlockIndex.end())
+                BlockMap::iterator mi = theApp.mapBlockIndex().find(inv.hash);
+                if (mi != theApp.mapBlockIndex().end())
                 {
-                    if (chainActive.Contains(mi->second)) 
+                    if (theApp.chainActive().Contains(mi->second)) 
 					{
                         send = true;
                     } 
@@ -4686,9 +4768,9 @@ void static ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusPa
                         // To prevent fingerprinting attacks, only send blocks outside of the active
                         // chain if they are valid, and no more than a month older (both in time, and in
                         // best equivalent proof of work) than the best header chain we know about.
-                        send = mi->second->IsValid(BLOCK_VALID_SCRIPTS) && (pEDCindexBestHeader != NULL) &&
-                            (pEDCindexBestHeader->GetBlockTime() - mi->second->GetBlockTime() < nOneMonth) &&
-                            (GetBlockProofEquivalentTime(*pEDCindexBestHeader, *mi->second, *pEDCindexBestHeader, consensusParams) < nOneMonth);
+                        send = mi->second->IsValid(BLOCK_VALID_SCRIPTS) && (theApp.indexBestHeader() != NULL) &&
+                            (theApp.indexBestHeader()->GetBlockTime() - mi->second->GetBlockTime() < nOneMonth) &&
+                            (GetBlockProofEquivalentTime(*theApp.indexBestHeader(), *mi->second, *theApp.indexBestHeader(), consensusParams) < nOneMonth);
                         if (!send) 
 						{
                             edcLogPrintf("%s: ignoring request from peer=%i for old block that isn't in the main chain\n", __func__, pfrom->GetId());
@@ -4698,7 +4780,7 @@ void static ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusPa
                 // disconnect node in case we have reached the outbound limit for serving historical blocks
                 // never disconnect whitelisted nodes
                 static const int nOneWeek = 7 * 24 * 60 * 60; // assume > 1 week = historical
-                if (send && CEDCNode::OutboundTargetReached(true) && ( ((pEDCindexBestHeader != NULL) && (pEDCindexBestHeader->GetBlockTime() - mi->second->GetBlockTime() > nOneWeek)) || inv.type == MSG_FILTERED_BLOCK) && !pfrom->fWhitelisted)
+                if (send && CEDCNode::OutboundTargetReached(true) && ( ((theApp.indexBestHeader() != NULL) && (theApp.indexBestHeader()->GetBlockTime() - mi->second->GetBlockTime() > nOneWeek)) || inv.type == MSG_FILTERED_BLOCK) && !pfrom->fWhitelisted)
                 {
                     edcLogPrint("net", "historical block serving limit reached, disconnect peer=%d\n", pfrom->GetId());
 
@@ -4744,7 +4826,7 @@ void static ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusPa
                         // and we want it right after the last block so they don't
                         // wait for other stuff first.
                         vector<CInv> vInv;
-                        vInv.push_back(CInv(MSG_BLOCK, chainActive.Tip()->GetBlockHash()));
+                        vInv.push_back(CInv(MSG_BLOCK, theApp.chainActive().Tip()->GetBlockHash()));
                         pfrom->PushMessage(NetMsgType::INV, vInv);
                         pfrom->hashContinue.SetNull();
                     }
@@ -4755,9 +4837,10 @@ void static ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusPa
                 // Send stream from relay memory
                 bool pushed = false;
                 {
-                    LOCK(edccs_mapRelay);
-                    map<uint256, CEDCTransaction>::iterator mi = edcMapRelay.find(inv.hash);
-                    if (mi != edcMapRelay.end()) 
+                    LOCK(theApp.mapRelayCS());
+                    map<uint256, CEDCTransaction>::iterator mi = 
+						theApp.mapRelay().find(inv.hash);
+                    if (mi != theApp.mapRelay().end()) 
 					{
                         pfrom->PushMessage(inv.GetCommand(), (*mi).second);
                         pushed = true;
@@ -4803,6 +4886,7 @@ void static ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusPa
 }
 
 extern CAddress edcGetLocalAddress(const CNetAddr *paddrPeer);
+extern void edcAddTimeData(const CNetAddr& ip, int64_t nOffsetSample);
 
 bool static ProcessMessage(
 				 CEDCNode * pfrom, 
@@ -4933,19 +5017,19 @@ bool static ProcessMessage(
             }
 
             // Get recent addresses
-            if (pfrom->fOneShot || pfrom->nVersion >= CADDR_TIME_VERSION || edcaddrman.size() < 1000)
+            if (pfrom->fOneShot || pfrom->nVersion >= CADDR_TIME_VERSION || theApp.addrman().size() < 1000)
             {
                 pfrom->PushMessage(NetMsgType::GETADDR);
                 pfrom->fGetAddr = true;
             }
-            edcaddrman.Good(pfrom->addr);
+            theApp.addrman().Good(pfrom->addr);
         } 
 		else 
 		{
             if (((CNetAddr)pfrom->addr) == (CNetAddr)addrFrom)
             {
-                edcaddrman.Add(addrFrom, addrFrom);
-                edcaddrman.Good(addrFrom);
+                theApp.addrman().Add(addrFrom, addrFrom);
+                theApp.addrman().Good(addrFrom);
             }
         }
 
@@ -4963,7 +5047,7 @@ bool static ProcessMessage(
 
         int64_t nTimeOffset = nTime - GetTime();
         pfrom->nTimeOffset = nTimeOffset;
-        AddTimeData(pfrom->addr, nTimeOffset);
+        edcAddTimeData(pfrom->addr, nTimeOffset);
     }
     else if (pfrom->nVersion == 0)
     {
@@ -4997,7 +5081,7 @@ bool static ProcessMessage(
         vRecv >> vAddr;
 
         // Don't want addr from older versions unless seeding
-        if (pfrom->nVersion < CADDR_TIME_VERSION && edcaddrman.size() > 1000)
+        if (pfrom->nVersion < CADDR_TIME_VERSION && theApp.addrman().size() > 1000)
             return true;
         if (vAddr.size() > 1000)
         {
@@ -5007,7 +5091,7 @@ bool static ProcessMessage(
 
         // Store the new addresses
         vector<CAddress> vAddrOk;
-        int64_t nNow = GetAdjustedTime();
+        int64_t nNow = edcGetAdjustedTime();
         int64_t nSince = nNow - 10 * 60;
         BOOST_FOREACH(CAddress& addr, vAddr)
         {
@@ -5021,7 +5105,7 @@ bool static ProcessMessage(
             {
                 // Relay to a limited number of other nodes
                 {
-                    LOCK(edccs_vNodes);
+                    LOCK(theApp.vNodesCS());
                     // Use deterministic randomness to send to the same nodes for 24 hours
                     // at a time so the addrKnowns of the chosen nodes prevent repeats
                     static uint256 hashSalt;
@@ -5031,7 +5115,7 @@ bool static ProcessMessage(
                     uint256 hashRand = ArithToUint256(UintToArith256(hashSalt) ^ (hashAddr<<32) ^ ((GetTime()+hashAddr)/(24*60*60)));
                     hashRand = Hash(BEGIN(hashRand), END(hashRand));
                     multimap<uint256, CEDCNode*> mapMix;
-                    BOOST_FOREACH(CEDCNode* pnode, edcvNodes)
+                    BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
                     {
                         if (pnode->nVersion < CADDR_TIME_VERSION)
                             continue;
@@ -5050,7 +5134,7 @@ bool static ProcessMessage(
             if (fReachable)
                 vAddrOk.push_back(addr);
         }
-        edcaddrman.Add(vAddrOk, pfrom->addr, 2 * 60 * 60);
+        theApp.addrman().Add(vAddrOk, pfrom->addr, 2 * 60 * 60);
         if (vAddr.size() < 1000)
             pfrom->fGetAddr = false;
         if (pfrom->fOneShot)
@@ -5095,8 +5179,8 @@ bool static ProcessMessage(
 			{
                 UpdateBlockAvailability(pfrom->GetId(), inv.hash);
                 if (!fAlreadyHave && 
-					!fImporting && 
-					!fReindex && 
+					!theApp.importing() && 
+					!theApp.reindex() && 
 					!mapBlocksInFlight.count(inv.hash)) 
 				{
                     // First request the headers preceding the announced block. In the normal fully-synced
@@ -5107,7 +5191,7 @@ bool static ProcessMessage(
                     // time the block arrives, the header chain leading up to it is already validated. Not
                     // doing this will result in the received block being rejected as an orphan in case it is
                     // not a direct successor.
-                    pfrom->PushMessage(NetMsgType::GETHEADERS, chainActive.GetLocator(pEDCindexBestHeader), inv.hash);
+                    pfrom->PushMessage(NetMsgType::GETHEADERS, theApp.chainActive().GetLocator(theApp.indexBestHeader()), inv.hash);
                     CNodeState *nodestate = State(pfrom->GetId());
                     if (CanDirectFetch(chainparams.GetConsensus()) &&
                         nodestate->nBlocksInFlight < MAX_BLOCKS_IN_TRANSIT_PER_PEER) 
@@ -5117,14 +5201,14 @@ bool static ProcessMessage(
                         // later (within the same EDC_cs_main lock, though).
                         MarkBlockAsInFlight(pfrom->GetId(), inv.hash, chainparams.GetConsensus());
                     }
-                    LogPrint("net", "getheaders (%d) %s to peer=%d\n", pEDCindexBestHeader->nHeight, inv.hash.ToString(), pfrom->id);
+                    LogPrint("net", "getheaders (%d) %s to peer=%d\n", theApp.indexBestHeader()->nHeight, inv.hash.ToString(), pfrom->id);
                 }
             }
             else
             {
                 if (fBlocksOnly)
                     LogPrint("net", "transaction (%s) inv sent in violation of protocol peer=%d\n", inv.hash.ToString(), pfrom->id);
-                else if (!fAlreadyHave && !fImporting && !fReindex && !edcIsInitialBlockDownload())
+                else if (!fAlreadyHave && !theApp.importing() && !theApp.reindex() && !edcIsInitialBlockDownload())
                     pfrom->AskFor(inv);
             }
 
@@ -5151,10 +5235,10 @@ bool static ProcessMessage(
             return edcError("message getdata size() = %u", vInv.size());
         }
 
-        if (fDebug || (vInv.size() != 1))
+        if (params.debug.size() > 0 || (vInv.size() != 1))
             LogPrint("net", "received getdata (%u invsz) peer=%d\n", vInv.size(), pfrom->id);
 
-        if ((fDebug && vInv.size() > 0) || (vInv.size() == 1))
+        if ((params.debug.size() > 0 && vInv.size() > 0) || (vInv.size() == 1))
             LogPrint("net", "received getdata for: %s peer=%d\n", vInv[0].ToString(), pfrom->id);
 
         pfrom->vRecvGetData.insert(pfrom->vRecvGetData.end(), vInv.begin(), vInv.end());
@@ -5169,14 +5253,14 @@ bool static ProcessMessage(
         LOCK(EDC_cs_main);
 
         // Find the last block the caller has in the main chain
-        CBlockIndex* pindex = edcFindForkInGlobalIndex(chainActive, locator);
+        CBlockIndex* pindex = edcFindForkInGlobalIndex(theApp.chainActive(), locator);
 
         // Send the rest of the chain
         if (pindex)
-            pindex = chainActive.Next(pindex);
+            pindex = theApp.chainActive().Next(pindex);
         int nLimit = 500;
         LogPrint("net", "getblocks %d to %s limit %d from peer=%d\n", (pindex ? pindex->nHeight : -1), hashStop.IsNull() ? "end" : hashStop.ToString(), nLimit, pfrom->id);
-        for (; pindex; pindex = chainActive.Next(pindex))
+        for (; pindex; pindex = theApp.chainActive().Next(pindex))
         {
             if (pindex->GetBlockHash() == hashStop)
             {
@@ -5186,7 +5270,7 @@ bool static ProcessMessage(
             // If pruning, don't inv blocks unless we have on disk and are likely to still have
             // for some reasonable time window (1 hour) that block relay might require.
             const int nPrunedBlocksLikelyToHave = MIN_BLOCKS_TO_KEEP - 3600 / chainparams.GetConsensus().nPowTargetSpacing;
-            if (theApp.pruneMode() && (!(pindex->nStatus & BLOCK_HAVE_DATA) || pindex->nHeight <= chainActive.Tip()->nHeight - nPrunedBlocksLikelyToHave))
+            if (theApp.pruneMode() && (!(pindex->nStatus & BLOCK_HAVE_DATA) || pindex->nHeight <= theApp.chainActive().Tip()->nHeight - nPrunedBlocksLikelyToHave))
             {
                 LogPrint("net", " getblocks stopping, pruned or too old block at %d %s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
                 break;
@@ -5220,34 +5304,34 @@ bool static ProcessMessage(
         if (locator.IsNull())
         {
             // If locator is null, return the hashStop block
-            BlockMap::iterator mi = edcMapBlockIndex.find(hashStop);
-            if (mi == edcMapBlockIndex.end())
+            BlockMap::iterator mi = theApp.mapBlockIndex().find(hashStop);
+            if (mi == theApp.mapBlockIndex().end())
                 return true;
             pindex = (*mi).second;
         }
         else
         {
             // Find the last block the caller has in the main chain
-            pindex = edcFindForkInGlobalIndex(chainActive, locator);
+            pindex = edcFindForkInGlobalIndex(theApp.chainActive(), locator);
             if (pindex)
-                pindex = chainActive.Next(pindex);
+                pindex = theApp.chainActive().Next(pindex);
         }
 
         // we must use CBlocks, as CBlockHeaders won't include the 0x00 nTx count at the end
         vector<CBlock> vHeaders;
         int nLimit = MAX_HEADERS_RESULTS;
         LogPrint("net", "getheaders %d to %s from peer=%d\n", (pindex ? pindex->nHeight : -1), hashStop.ToString(), pfrom->id);
-        for (; pindex; pindex = chainActive.Next(pindex))
+        for (; pindex; pindex = theApp.chainActive().Next(pindex))
         {
             vHeaders.push_back(pindex->GetBlockHeader());
             if (--nLimit <= 0 || pindex->GetBlockHash() == hashStop)
                 break;
         }
-        // pindex can be NULL either if we sent chainActive.Tip() OR
-        // if our peer has chainActive.Tip() (and thus we are sending an empty
+        // pindex can be NULL either if we sent theApp.chainActive().Tip() OR
+        // if our peer has theApp.chainActive().Tip() (and thus we are sending an empty
         // headers message). In both cases it's safe to update
         // pindexBestHeaderSent to be our tip.
-        nodestate->pindexBestHeaderSent = pindex ? pindex : chainActive.Tip();
+        nodestate->pindexBestHeaderSent = pindex ? pindex : theApp.chainActive().Tip();
         pfrom->PushMessage(NetMsgType::HEADERS, vHeaders);
     }
     else if (strCommand == NetMsgType::TX)
@@ -5275,13 +5359,13 @@ bool static ProcessMessage(
         CValidationState state;
 
         pfrom->setAskFor.erase(inv.hash);
-        edcmapAlreadyAskedFor.erase(inv.hash);
+        theApp.mapAlreadyAskedFor().erase(inv.hash);
 
 		EDCapp & theApp = EDCapp::singleton();
         CFeeRate txFeeRate = CFeeRate(0);
         if (!AlreadyHave(inv) && AcceptToMemoryPool(theApp.mempool(), state, tx, true, &fMissingInputs, &txFeeRate)) 
 		{
-            theApp.mempool().check(edcPcoinsTip);
+            theApp.mempool().check(theApp.coinsTip());
             RelayTransaction(tx, txFeeRate);
             vWorkQueue.push_back(inv.hash);
 
@@ -5339,7 +5423,7 @@ bool static ProcessMessage(
                         assert(recentRejects);
                         recentRejects->insert(orphanHash);
                     }
-                    theApp.mempool().check(edcPcoinsTip);
+                    theApp.mempool().check(theApp.coinsTip());
                 }
             }
 
@@ -5398,7 +5482,7 @@ bool static ProcessMessage(
         }
         FlushStateToDisk(state, FLUSH_STATE_PERIODIC);
     }
-    else if (strCommand == NetMsgType::HEADERS && !fImporting && !fReindex) // Ignore headers received while importing
+    else if (strCommand == NetMsgType::HEADERS && !theApp.importing() && !theApp.reindex() ) // Ignore headers received while importing
     {
         std::vector<CBlockHeader> headers;
 
@@ -5452,15 +5536,15 @@ bool static ProcessMessage(
         if (nCount == MAX_HEADERS_RESULTS && pindexLast) 
 		{
             // Headers message had its maximum size; the peer may have more headers.
-            // TODO: optimize: if pindexLast is an ancestor of chainActive. Tip 
-			// or pEDCindexBestHeader, continue
+            // TODO: optimize: if pindexLast is an ancestor of theApp.chainActive(). Tip 
+			// or indexBestHeader, continue
             // from there instead.
             LogPrint("net", "more getheaders (%d) to end to peer=%d "
 				"(startheight:%d)\n", pindexLast->nHeight, pfrom->id, 
 				pfrom->nStartingHeight);
 
             pfrom->PushMessage(NetMsgType::GETHEADERS, 
-				chainActive.GetLocator(pindexLast), uint256());
+				theApp.chainActive().GetLocator(pindexLast), uint256());
         }
 
         bool fCanDirectFetch = CanDirectFetch(chainparams.GetConsensus());
@@ -5468,12 +5552,12 @@ bool static ProcessMessage(
         // If this set of headers is valid and ends in a block with at least as
         // much work as our tip, download as much as possible.
         if (fCanDirectFetch && pindexLast->IsValid(BLOCK_VALID_TREE) && 
-		chainActive.Tip()->nChainWork <= pindexLast->nChainWork) 
+		theApp.chainActive().Tip()->nChainWork <= pindexLast->nChainWork) 
 		{
             vector<CBlockIndex *> vToFetch;
             CBlockIndex *pindexWalk = pindexLast;
             // Calculate all the blocks we'd need to switch to pindexLast, up to a limit.
-            while (pindexWalk && !chainActive.Contains(pindexWalk) && 
+            while (pindexWalk && !theApp.chainActive().Contains(pindexWalk) && 
 			vToFetch.size() <= MAX_BLOCKS_IN_TRANSIT_PER_PEER) 
 			{
                 if (!(pindexWalk->nStatus & BLOCK_HAVE_DATA) &&
@@ -5488,7 +5572,7 @@ bool static ProcessMessage(
             // very large reorg at a time we think we're close to caught up to
             // the main chain -- this shouldn't really happen.  Bail out on the
             // direct fetch and rely on parallel download instead.
-            if (!chainActive.Contains(pindexWalk)) 
+            if (!theApp.chainActive().Contains(pindexWalk)) 
 			{
                 LogPrint("net", "Large reorg, won't direct fetch to %s (%d)\n",
                         pindexLast->GetBlockHash().ToString(),
@@ -5526,7 +5610,7 @@ bool static ProcessMessage(
         CheckBlockIndex(chainparams.GetConsensus());
     }
 
-    else if (strCommand == NetMsgType::BLOCK && !fImporting && !fReindex) // Ignore blocks received while importing
+    else if (strCommand == NetMsgType::BLOCK && !theApp.importing() && !theApp.reindex()) // Ignore blocks received while importing
     {
         CEDCBlock block;
         vRecv >> block;
@@ -5580,7 +5664,7 @@ bool static ProcessMessage(
         pfrom->fSentAddr = true;
 
         pfrom->vAddrToSend.clear();
-        vector<CAddress> vAddr = edcaddrman.GetAddr();
+        vector<CAddress> vAddr = theApp.addrman().GetAddr();
         BOOST_FOREACH(const CAddress &addr, vAddr)
             pfrom->PushAddress(addr);
     }
@@ -5733,7 +5817,7 @@ bool static ProcessMessage(
     }
     else if (strCommand == NetMsgType::REJECT)
     {
-        if (fDebug) 
+        if (params.debug.size() > 0 ) 
 		{
             try 
 			{
@@ -5786,7 +5870,7 @@ bool static ProcessMessage(
 bool ProcessEDCMessages(CEDCNode* pfrom)
 {
     const CEDCChainParams& chainparams = edcParams();
-    //if (fDebug)
+    //if (params.debug.size() > 0 )
     //    LogPrintf("%s(%u messages)\n", __func__, pfrom->vRecvMsg.size());
 
     //
@@ -5815,7 +5899,7 @@ bool ProcessEDCMessages(CEDCNode* pfrom)
         // get next message
         CNetMessage& msg = *it;
 
-        //if (fDebug)
+        //if (params.debug.size() > 0 )
         //    LogPrintf("%s(message %u msgsz, %u bytes, complete:%s)\n", __func__,
         //            msg.hdr.nMessageSize, msg.vRecv.size(),
         //            msg.complete() ? "Y" : "N");
@@ -5929,6 +6013,9 @@ public:
 
 bool SendEDCMessages(CEDCNode* pto)
 {
+	EDCapp & theApp = EDCapp::singleton();
+	EDCparams & params = EDCparams::singleton();
+
     const Consensus::Params& consensusParams = Params().GetConsensus();
     {
         // Don't send anything until we get its version message
@@ -6035,35 +6122,35 @@ bool SendEDCMessages(CEDCNode* pto)
         state.rejects.clear();
 
         // Start block sync
-        if (pEDCindexBestHeader == NULL)
-            pEDCindexBestHeader = chainActive.Tip();
+        if (theApp.indexBestHeader() == NULL)
+            theApp.indexBestHeader( theApp.chainActive().Tip() );
         bool fFetch = state.fPreferredDownload || (nPreferredDownload == 0 && !pto->fClient && !pto->fOneShot); // Download if this is a nice peer, or we have no nice peers and this one might do.
-        if (!state.fSyncStarted && !pto->fClient && !fImporting && !fReindex) 
+        if (!state.fSyncStarted && !pto->fClient && !theApp.importing() && !theApp.reindex() ) 
 		{
             // Only actively request headers from a single peer, unless we're close to today.
-            if ((nSyncStarted == 0 && fFetch) || pEDCindexBestHeader->GetBlockTime() > GetAdjustedTime() - 24 * 60 * 60) 
+            if ((nSyncStarted == 0 && fFetch) || theApp.indexBestHeader()->GetBlockTime() > edcGetAdjustedTime() - 24 * 60 * 60) 
 			{
                 state.fSyncStarted = true;
                 nSyncStarted++;
-                const CBlockIndex *pindexStart = pEDCindexBestHeader;
+                const CBlockIndex *pindexStart = theApp.indexBestHeader();
                 /* If possible, start at the block preceding the currently
                    best known header.  This ensures that we always get a
                    non-empty list of headers back as long as the peer
                    is up-to-date.  With a non-empty response, we can initialise
                    the peer's known best block.  This wouldn't be possible
-                   if we requested starting at pEDCindexBestHeader and
+                   if we requested starting at indexBestHeader and
                    got back an empty response.  */
                 if (pindexStart->pprev)
                     pindexStart = pindexStart->pprev;
                 LogPrint("net", "initial getheaders (%d) to peer=%d (startheight:%d)\n", pindexStart->nHeight, pto->id, pto->nStartingHeight);
-                pto->PushMessage(NetMsgType::GETHEADERS, chainActive.GetLocator(pindexStart), uint256());
+                pto->PushMessage(NetMsgType::GETHEADERS, theApp.chainActive().GetLocator(pindexStart), uint256());
             }
         }
 
         // Resend wallet transactions that haven't gotten in a block yet
         // Except during reindex, importing and IBD, when old wallet
         // transactions become unconfirmed and spams other nodes.
-        if (!fReindex && !fImporting && !edcIsInitialBlockDownload())
+        if (!theApp.reindex() && !theApp.importing() && !edcIsInitialBlockDownload())
         {
             GetEDCMainSignals().Broadcast(edcnTimeBestReceived);
         }
@@ -6090,13 +6177,13 @@ bool SendEDCMessages(CEDCNode* pto)
                 bool fFoundStartingHeader = false;
                 // Try to find first header that our peer doesn't have, and
                 // then send all headers past that one.  If we come across any
-                // headers that aren't on chainActive, give up.
+                // headers that aren't on theApp.chainActive(), give up.
                 BOOST_FOREACH(const uint256 &hash, pto->vBlockHashesToAnnounce)
 				{
-                    BlockMap::iterator mi = edcMapBlockIndex.find(hash);
-                    assert(mi != edcMapBlockIndex.end());
+                    BlockMap::iterator mi = theApp.mapBlockIndex().find(hash);
+                    assert(mi != theApp.mapBlockIndex().end());
                     CBlockIndex *pindex = mi->second;
-                    if (chainActive[pindex->nHeight] != pindex) 
+                    if (theApp.chainActive()[pindex->nHeight] != pindex) 
 					{
                         // Bail out if we reorged away from this block
                         fRevertToInv = true;
@@ -6153,17 +6240,17 @@ bool SendEDCMessages(CEDCNode* pto)
                 if (!pto->vBlockHashesToAnnounce.empty()) 
 				{
                     const uint256 &hashToAnnounce = pto->vBlockHashesToAnnounce.back();
-                    BlockMap::iterator mi = edcMapBlockIndex.find(hashToAnnounce);
-                    assert(mi != edcMapBlockIndex.end());
+                    BlockMap::iterator mi = theApp.mapBlockIndex().find(hashToAnnounce);
+                    assert(mi != theApp.mapBlockIndex().end());
                     CBlockIndex *pindex = mi->second;
 
                     // Warn if we're announcing a block that is not on the main chain.
                     // This should be very rare and could be optimized out.
                     // Just log for now.
-                    if (chainActive[pindex->nHeight] != pindex) 
+                    if (theApp.chainActive()[pindex->nHeight] != pindex) 
 					{
                         LogPrint("net", "Announcing block %s not on main chain (tip=%s)\n",
-                            hashToAnnounce.ToString(), chainActive.Tip()->GetBlockHash().ToString());
+                            hashToAnnounce.ToString(), theApp.chainActive().Tip()->GetBlockHash().ToString());
                     }
 
                     // If the peer announced this block to us, don't inv it back.
@@ -6392,7 +6479,7 @@ bool SendEDCMessages(CEDCNode* pto)
             const CInv& inv = (*pto->mapAskFor.begin()).second;
             if (!AlreadyHave(inv))
             {
-                if (fDebug)
+                if (params.debug.size() > 0 )
                     LogPrint("net", "Requesting %s peer=%d\n", inv.ToString(), pto->id);
                 vGetData.push_back(inv);
                 if (vGetData.size() >= 1000)
@@ -6446,8 +6533,10 @@ bool SendEDCMessages(CEDCNode* pto)
 
 ThresholdState EDCVersionBitsTipState(const Consensus::Params& params, Consensus::DeploymentPos pos)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     LOCK(EDC_cs_main);
-    return VersionBitsState(chainActive.Tip(), params, pos, versionbitscache);
+    return VersionBitsState(theApp.chainActive().Tip(), params, pos, versionbitscache);
 }
 
 class CMainCleanup
@@ -6456,11 +6545,13 @@ public:
     CMainCleanup() {}
     ~CMainCleanup() 
 	{
+		EDCapp & theApp = EDCapp::singleton();
+
         // block headers
-        BlockMap::iterator it1 = edcMapBlockIndex.begin();
-        for (; it1 != edcMapBlockIndex.end(); it1++)
+        BlockMap::iterator it1 = theApp.mapBlockIndex().begin();
+        for (; it1 != theApp.mapBlockIndex().end(); it1++)
             delete (*it1).second;
-        edcMapBlockIndex.clear();
+        theApp.mapBlockIndex().clear();
 
         // orphan transactions
         edcMapOrphanTransactions.clear();
@@ -6544,3 +6635,56 @@ bool edcFindBlockPos(
     setDirtyFileInfo.insert(nFile);
     return true;
 }
+
+namespace
+{
+bool fLargeWorkForkFound = false;
+bool fLargeWorkInvalidChainFound = false;
+}
+
+std::string edcGetWarnings(const std::string& strFor)
+{
+	EDCparams & params = EDCparams::singleton();
+
+    string strStatusBar;
+    string strRPC;
+    string strGUI;
+
+    if (!CLIENT_VERSION_IS_RELEASE) 
+	{
+        strStatusBar = "This is a pre-release test build - use at your own risk - do not use for mining or merchant applications";
+        strGUI = _("This is a pre-release test build - use at your own risk - do not use for mining or merchant applications");
+    }
+
+    if (params.testsafemode)
+        strStatusBar = strRPC = strGUI = "testsafemode enabled";
+
+    // Misc warnings like out of disk space and clock is wrong
+    if (edcstrMiscWarning != "")
+    {
+        strStatusBar = strGUI = edcstrMiscWarning;
+    }
+
+    if (fLargeWorkForkFound)
+    {
+        strStatusBar = strRPC = "Warning: The network does not appear to fully agree! Some miners appear to be experiencing issues.";
+        strGUI = _("Warning: The network does not appear to fully agree! Some miners appear to be experiencing issues.");
+    }
+    else if (fLargeWorkInvalidChainFound)
+    {
+        strStatusBar = strRPC = "Warning: We do not appear to fully agree with our peers! You may need to upgrade, or other nodes may need to upgrade.";
+        strGUI = _("Warning: We do not appear to fully agree with our peers! You may need to upgrade, or other nodes may need to upgrade.");
+    }
+
+    if (strFor == "gui")
+        return strGUI;
+    else if (strFor == "statusbar")
+        return strStatusBar;
+    else if (strFor == "rpc")
+        return strRPC;
+
+    assert(!"edcGetWarnings(): invalid parameter");
+
+    return "error";
+}
+

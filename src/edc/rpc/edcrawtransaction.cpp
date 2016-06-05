@@ -64,6 +64,8 @@ void ScriptPubKeyToJSON(const CScript& scriptPubKey, UniValue& out, bool fInclud
 
 void TxToJSON(const CEDCTransaction& tx, const uint256 hashBlock, UniValue& entry)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     entry.push_back(Pair("txid", tx.GetHash().GetHex()));
     entry.push_back(Pair("size", (int)::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION)));
     entry.push_back(Pair("version", tx.nVersion));
@@ -107,14 +109,14 @@ void TxToJSON(const CEDCTransaction& tx, const uint256 hashBlock, UniValue& entr
     if (!hashBlock.IsNull()) 
 	{
         entry.push_back(Pair("blockhash", hashBlock.GetHex()));
-        BlockMap::iterator mi = edcMapBlockIndex.find(hashBlock);
+        BlockMap::iterator mi = theApp.mapBlockIndex().find(hashBlock);
 
-        if (mi != edcMapBlockIndex.end() && (*mi).second) 
+        if (mi != theApp.mapBlockIndex().end() && (*mi).second) 
 		{
             CBlockIndex* pindex = (*mi).second;
-            if (chainActive.Contains(pindex)) 
+            if (theApp.chainActive().Contains(pindex)) 
 			{
-                entry.push_back(Pair("confirmations", 1 + chainActive.Height() - pindex->nHeight));
+                entry.push_back(Pair("confirmations", 1 + theApp.chainActive().Height() - pindex->nHeight));
                 entry.push_back(Pair("time", pindex->GetBlockTime()));
                 entry.push_back(Pair("blocktime", pindex->GetBlockTime()));
             }
@@ -217,6 +219,8 @@ UniValue getrawtransaction(const UniValue& params, bool fHelp)
 
 UniValue gettxoutproof(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (fHelp || (params.size() != 1 && params.size() != 2))
         throw runtime_error(
             "gettxoutproof [\"txid\",...] ( blockhash )\n"
@@ -261,15 +265,15 @@ UniValue gettxoutproof(const UniValue& params, bool fHelp)
     if (params.size() > 1)
     {
         hashBlock = uint256S(params[1].get_str());
-        if (!edcMapBlockIndex.count(hashBlock))
+        if (!theApp.mapBlockIndex().count(hashBlock))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
-        pblockindex = edcMapBlockIndex[hashBlock];
+        pblockindex = theApp.mapBlockIndex()[hashBlock];
     } 
 	else 
 	{
         CEDCCoins coins;
-        if (edcPcoinsTip->GetCoins(oneTxid, coins) && coins.nHeight > 0 && coins.nHeight <= chainActive.Height())
-            pblockindex = chainActive[coins.nHeight];
+        if (theApp.coinsTip()->GetCoins(oneTxid, coins) && coins.nHeight > 0 && coins.nHeight <= theApp.chainActive().Height())
+            pblockindex = theApp.chainActive()[coins.nHeight];
     }
 
     if (pblockindex == NULL)
@@ -277,9 +281,9 @@ UniValue gettxoutproof(const UniValue& params, bool fHelp)
         CEDCTransaction tx;
         if (!GetTransaction(oneTxid, tx, Params().GetConsensus(), hashBlock, false) || hashBlock.IsNull())
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Transaction not yet in block");
-        if (!edcMapBlockIndex.count(hashBlock))
+        if (!theApp.mapBlockIndex().count(hashBlock))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Transaction index corrupt");
-        pblockindex = edcMapBlockIndex[hashBlock];
+        pblockindex = theApp.mapBlockIndex()[hashBlock];
     }
 
     CEDCBlock block;
@@ -302,6 +306,8 @@ UniValue gettxoutproof(const UniValue& params, bool fHelp)
 
 UniValue verifytxoutproof(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (fHelp || params.size() != 1)
         throw runtime_error(
             "verifytxoutproof \"proof\"\n"
@@ -326,7 +332,7 @@ UniValue verifytxoutproof(const UniValue& params, bool fHelp)
 
     LOCK(EDC_cs_main);
 
-    if (!edcMapBlockIndex.count(merkleBlock.header.GetHash()) || !chainActive.Contains(edcMapBlockIndex[merkleBlock.header.GetHash()]))
+    if (!theApp.mapBlockIndex().count(merkleBlock.header.GetHash()) || !theApp.chainActive().Contains(theApp.mapBlockIndex()[merkleBlock.header.GetHash()]))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found in chain");
 
     BOOST_FOREACH(const uint256& hash, vMatch)
@@ -566,6 +572,8 @@ static void TxInErrorToJSON(const CEDCTxIn& txin, UniValue& vErrorsRet, const st
 
 UniValue signrawtransaction(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (fHelp || params.size() < 1 || params.size() > 4)
         throw runtime_error(
             "signrawtransaction \"hexstring\" ( [{\"txid\":\"id\",\"vout\":n,\"scriptPubKey\":\"hex\",\"redeemScript\":\"hex\"},...] [\"privatekey1\",...] sighashtype )\n"
@@ -625,7 +633,7 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
         );
 
 #ifdef ENABLE_WALLET
-    LOCK2(EDC_cs_main, edcPwalletMain ? &edcPwalletMain->cs_wallet : NULL);
+    LOCK2(EDC_cs_main, theApp.walletMain() ? &theApp.walletMain()->cs_wallet : NULL);
 #else
     LOCK(EDC_cs_main);
 #endif
@@ -662,7 +670,7 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
     {
 		EDCapp & theApp = EDCapp::singleton();
         LOCK(theApp.mempool().cs);
-        CEDCCoinsViewCache &viewChain = *edcPcoinsTip;
+        CEDCCoinsViewCache &viewChain = *theApp.coinsTip();
         CEDCCoinsViewMemPool viewMempool(&viewChain, theApp.mempool());
         view.SetBackend(viewMempool); // temporarily switch cache backend to db+mempool view
 
@@ -698,7 +706,7 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
         }
     }
 #ifdef ENABLE_WALLET
-    else if (edcPwalletMain)
+    else if (theApp.walletMain())
         EnsureWalletIsUnlocked();
 #endif
 
@@ -759,7 +767,7 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
     }
 
 #ifdef ENABLE_WALLET
-    const CKeyStore& keystore = ((fGivenKeys || !edcPwalletMain) ? tempKeystore : *edcPwalletMain);
+    const CKeyStore& keystore = ((fGivenKeys || !theApp.walletMain()) ? tempKeystore : *theApp.walletMain());
 #else
     const CKeyStore& keystore = tempKeystore;
 #endif
@@ -868,7 +876,7 @@ UniValue sendrawtransaction(const UniValue& params, bool fHelp)
     if (params.size() > 1 && params[1].get_bool())
         nMaxRawTxFee = 0;
 
-    CEDCCoinsViewCache &view = *edcPcoinsTip;
+    CEDCCoinsViewCache &view = *theApp.coinsTip();
     const CEDCCoins* existingCoins = view.AccessCoins(hashTx);
     bool fHaveMempool = theApp.mempool().exists(hashTx);
     bool fHaveChain = existingCoins && existingCoins->nHeight < 1000000000;

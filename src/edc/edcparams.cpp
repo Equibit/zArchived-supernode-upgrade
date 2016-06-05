@@ -78,8 +78,6 @@ const size_t       EDC_DEFAULT_MAXSENDBUFFER           = 1 * 1000;
 const unsigned int EDC_DEFAULT_MEMPOOL_EXPIRY          = 72;
 const unsigned int EDC_DEFAULT_MISBEHAVING_BANTIME     = 60 * 60 * 24;  // Default 24-hour ban
 
-const int          EDC_DEFAULT_NAME_LOOKUP             = true;
-
 const bool         EDC_DEFAULT_PEERBLOOMFILTERS        = true;
 const bool         EDC_DEFAULT_PERMIT_BAREMULTISIG     = true;
 const bool         EDC_DEFAULT_PRINTPRIORITY           = false;
@@ -187,7 +185,6 @@ EDCparams::EDCparams()
 	datacarrier         = GetBoolArg( "-ebdatacarrier", EDC_DEFAULT_ACCEPT_DATACARRIER );
 	disablesafemode     = GetBoolArg( "-ebdisablesafemode", EDC_DEFAULT_DISABLE_SAFEMODE );
 	discover            = GetBoolArg( "-ebdiscover", true );
-	dns                 = GetBoolArg( "-ebdns", EDC_DEFAULT_NAME_LOOKUP );
 	dnsseed             = GetBoolArg( "-ebdnsseed", true );
 	feefilter           = GetBoolArg( "-ebfeefilter", EDC_DEFAULT_FEEFILTER );
 	flushwallet         = GetBoolArg( "-ebflushwallet",EDC_DEFAULT_FLUSHWALLET);
@@ -213,8 +210,7 @@ EDCparams::EDCparams()
 	rest                = GetBoolArg( "-ebrest", EDC_DEFAULT_REST_ENABLE );
 	salvagewallet       = GetBoolArg( "-ebsalvagewallet", false );
 	sendfreetransactions= GetBoolArg( "-ebsendfreetransactions", EDC_DEFAULT_SEND_FREE_TRANSACTIONS );
-	server              = GetBoolArg( "-ebserver", true );
-	shrinkdebugfile     = GetBoolArg( "-ebshrinkdebugfile", !fDebug );
+	shrinkdebugfile     = GetBoolArg( "-ebshrinkdebugfile", debug.size() > 0 );
 	spendzeroconfchange = GetBoolArg( "-ebspendzeroconfchange", EDC_DEFAULT_SPEND_ZEROCONF_CHANGE );
 	stopafterblockimport= GetBoolArg( "-ebstopafterblockimport", EDC_DEFAULT_STOPAFTERBLOCKIMPORT );
 	testsafemode        = GetBoolArg( "-ebtestsafemode", EDC_DEFAULT_TESTSAFEMODE );
@@ -386,9 +382,6 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
 		_("Connect only to the specified node(s)"));
     strUsage += HelpMessageOpt("-ebdiscover", 
 		_("Discover own IP addresses (default: 1 when listening and no -externalip or -proxy)"));
-    strUsage += HelpMessageOpt("-ebdns", 
-		_("Allow DNS lookups for -addnode, -seednode and -connect") + " " + 
-		strprintf(_("(default: %u)"), EDC_DEFAULT_NAME_LOOKUP));
     strUsage += HelpMessageOpt("-ebdnsseed", 
 		_("Query for peer addresses via DNS lookup, if low on addresses (default: 1 unless -connect)"));
     strUsage += HelpMessageOpt("-ebexternalip=<ip>", 
@@ -557,8 +550,6 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
 	////////////////////////////////////////////////////////////////////////
     strUsage += HelpMessageGroup(_("Equibit RPC server options:"));
 
-    strUsage += HelpMessageOpt("-ebserver", 
-		_("Accept command line and JSON-RPC commands"));
     strUsage += HelpMessageOpt("-ebrest", 
 		strprintf(_("Accept public REST requests (default: %u)"), EDC_DEFAULT_REST_ENABLE));
     strUsage += HelpMessageOpt("-ebrpcbind=<addr>", 

@@ -39,10 +39,12 @@ using namespace std;
  */
 UniValue GetNetworkHashPS(int lookup, int height) 
 {
-    CBlockIndex *pb = chainActive.Tip();
+	EDCapp & theApp = EDCapp::singleton();
 
-    if (height >= 0 && height < chainActive.Height())
-        pb = chainActive[height];
+    CBlockIndex *pb = theApp.chainActive().Tip();
+
+    if (height >= 0 && height < theApp.chainActive().Height())
+        pb = theApp.chainActive()[height];
 
     if (pb == NULL || !pb->nHeight)
         return 0;
@@ -78,6 +80,8 @@ UniValue GetNetworkHashPS(int lookup, int height)
 
 UniValue getnetworkhashps(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (fHelp || params.size() > 2)
         throw runtime_error(
             "getnetworkhashps ( blocks height )\n"
@@ -100,6 +104,8 @@ UniValue getnetworkhashps(const UniValue& params, bool fHelp)
 
 UniValue generateBlocks(boost::shared_ptr<CReserveScript> coinbaseScript, int nGenerate, uint64_t nMaxTries, bool keepScript)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     static const int nInnerLoopCount = 0x10000;
     int nHeightStart = 0;
     int nHeightEnd = 0;
@@ -107,7 +113,7 @@ UniValue generateBlocks(boost::shared_ptr<CReserveScript> coinbaseScript, int nG
 
     {   // Don't keep EDC_cs_main locked
         LOCK(EDC_cs_main);
-        nHeightStart = chainActive.Height();
+        nHeightStart = theApp.chainActive().Height();
         nHeight = nHeightStart;
         nHeightEnd = nHeightStart+nGenerate;
     }
@@ -121,7 +127,7 @@ UniValue generateBlocks(boost::shared_ptr<CReserveScript> coinbaseScript, int nG
         CEDCBlock *pblock = &pblocktemplate->block;
         {
             LOCK(EDC_cs_main);
-            IncrementExtraNonce(pblock, chainActive.Tip(), nExtraNonce);
+            IncrementExtraNonce(pblock, theApp.chainActive().Tip(), nExtraNonce);
         }
 
         while (nMaxTries > 0 && pblock->nNonce < nInnerLoopCount && !CheckProofOfWork(pblock->GetHash(), pblock->nBits, Params().GetConsensus())) 
@@ -252,11 +258,11 @@ UniValue getmininginfo(const UniValue& params, bool fHelp)
     LOCK(EDC_cs_main);
 
     UniValue obj(UniValue::VOBJ);
-    obj.push_back(Pair("blocks",           (int)chainActive.Height()));
+    obj.push_back(Pair("blocks",           (int)theApp.chainActive().Height()));
     obj.push_back(Pair("currentblocksize", (uint64_t)theApp.lastBlockSize()));
     obj.push_back(Pair("currentblocktx",   (uint64_t)theApp.lastBlockTx() ));
     obj.push_back(Pair("difficulty",       (double)GetDifficulty()));
-    obj.push_back(Pair("errors",           GetWarnings("statusbar")));
+    obj.push_back(Pair("errors",           edcGetWarnings("statusbar")));
     obj.push_back(Pair("networkhashps",    getnetworkhashps(params, false)));
     obj.push_back(Pair("pooledtx",         (uint64_t)theApp.mempool().size()));
     obj.push_back(Pair("testnet",          Params().TestnetToBeDeprecatedFieldRPC()));
@@ -319,6 +325,8 @@ static UniValue BIP22ValidationResult(const CValidationState& state)
 
 UniValue getblocktemplate(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (fHelp || params.size() > 1)
         throw runtime_error(
             "getblocktemplate ( \"jsonrequestobject\" )\n"
@@ -408,9 +416,9 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
                 throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Block decode failed");
 
             uint256 hash = block.GetHash();
-            BlockMap::iterator mi = edcMapBlockIndex.find(hash);
+            BlockMap::iterator mi = theApp.mapBlockIndex().find(hash);
 
-            if (mi != edcMapBlockIndex.end()) 
+            if (mi != theApp.mapBlockIndex().end()) 
 			{
                 CBlockIndex *pindex = mi->second;
                 if (pindex->IsValid(BLOCK_VALID_SCRIPTS))
@@ -420,7 +428,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
                 return "duplicate-inconclusive";
             }
 
-            CBlockIndex* const pindexPrev = chainActive.Tip();
+            CBlockIndex* const pindexPrev = theApp.chainActive().Tip();
             // TestBlockValidity only supports blocks built on the current Tip
             if (block.hashPrevBlock != pindexPrev->GetBlockHash())
                 return "inconclusive-not-best-prevblk";
@@ -433,14 +441,13 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
     if (strMode != "template")
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid mode");
 
-    if (edcvNodes.empty())
+    if (theApp.vNodes().empty())
         throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, "Bitcoin is not connected!");
 
     if (edcIsInitialBlockDownload())
         throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "Bitcoin is downloading blocks...");
 
     static unsigned int nTransactionsUpdatedLast;
-	EDCapp & theApp = EDCapp::singleton();
 
     if (!lpval.isNull())
     {
@@ -460,7 +467,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
         else
         {
             // NOTE: Spec does not specify behaviour for non-string longpollid, but this makes testing easier
-            hashWatchedChain = chainActive.Tip()->GetBlockHash();
+            hashWatchedChain = theApp.chainActive().Tip()->GetBlockHash();
             nTransactionsUpdatedLastLP = nTransactionsUpdatedLast;
         }
 
@@ -470,9 +477,9 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
             checktxtime = boost::get_system_time() + boost::posix_time::minutes(1);
 
             boost::unique_lock<boost::mutex> lock(edccsBestBlock);
-            while (chainActive.Tip()->GetBlockHash() == hashWatchedChain && IsRPCRunning())
+            while (theApp.chainActive().Tip()->GetBlockHash() == hashWatchedChain && IsRPCRunning())
             {
-                if (!edccvBlockChange.timed_wait(lock, checktxtime))
+                if (!cvBlockChange.timed_wait(lock, checktxtime))
                 {
                     // Timeout: Check transactions for update
                     if (theApp.mempool().GetTransactionsUpdated() != nTransactionsUpdatedLastLP)
@@ -492,7 +499,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
     static CBlockIndex* pindexPrev;
     static int64_t nStart;
     static CEDCBlockTemplate* pblocktemplate;
-    if (pindexPrev != chainActive.Tip() ||
+    if (pindexPrev != theApp.chainActive().Tip() ||
         (theApp.mempool().GetTransactionsUpdated() != nTransactionsUpdatedLast && GetTime() - nStart > 5))
     {
         // Clear pindexPrev so future calls make a new block, despite any failures from here on
@@ -500,7 +507,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
 
         // Store the pindexBest used before CreateNewBlock, to avoid races
         nTransactionsUpdatedLast = theApp.mempool().GetTransactionsUpdated();
-        CBlockIndex* pindexPrevNew = chainActive.Tip();
+        CBlockIndex* pindexPrevNew = theApp.chainActive().Tip();
         nStart = GetTime();
 
         // Create new block
@@ -578,7 +585,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
     result.push_back(Pair("transactions", transactions));
     result.push_back(Pair("coinbaseaux", aux));
     result.push_back(Pair("coinbasevalue", (int64_t)pblock->vtx[0].vout[0].nValue));
-    result.push_back(Pair("longpollid", chainActive.Tip()->GetBlockHash().GetHex() + i64tostr(nTransactionsUpdatedLast)));
+    result.push_back(Pair("longpollid", theApp.chainActive().Tip()->GetBlockHash().GetHex() + i64tostr(nTransactionsUpdatedLast)));
     result.push_back(Pair("target", hashTarget.GetHex()));
     result.push_back(Pair("mintime", (int64_t)pindexPrev->GetMedianTimePast()+1));
     result.push_back(Pair("mutable", aMutable));
@@ -613,6 +620,8 @@ protected:
 
 UniValue submitblock(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
             "submitblock \"hexdata\" ( \"jsonparametersobject\" )\n"
@@ -640,9 +649,9 @@ UniValue submitblock(const UniValue& params, bool fHelp)
     bool fBlockPresent = false;
     {
         LOCK(EDC_cs_main);
-        BlockMap::iterator mi = edcMapBlockIndex.find(hash);
+        BlockMap::iterator mi = theApp.mapBlockIndex().find(hash);
 
-        if (mi != edcMapBlockIndex.end()) 
+        if (mi != theApp.mapBlockIndex().end()) 
 		{
             CBlockIndex *pindex = mi->second;
             if (pindex->IsValid(BLOCK_VALID_SCRIPTS))

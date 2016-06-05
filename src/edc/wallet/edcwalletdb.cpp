@@ -16,6 +16,7 @@
 #include "utiltime.h"
 #include "edc/wallet/edcwallet.h"
 #include "edc/edcparams.h"
+#include "edc/edcapp.h"
 
 #include <boost/version.hpp>
 #include <boost/filesystem.hpp>
@@ -33,7 +34,8 @@ static uint64_t nAccountingEntryNumber = 0;
 
 bool CEDCWalletDB::WriteName(const string& strAddress, const string& strName)
 {
-    nWalletDBUpdated++;
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
     return Write(make_pair(string("name"), strAddress), strName);
 }
 
@@ -41,37 +43,43 @@ bool CEDCWalletDB::EraseName(const string& strAddress)
 {
     // This should only be used for sending addresses, never for receiving addresses,
     // receiving addresses must always have an address book entry if they're not change return.
-    nWalletDBUpdated++;
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
     return Erase(make_pair(string("name"), strAddress));
 }
 
 bool CEDCWalletDB::WritePurpose(const string& strAddress, const string& strPurpose)
 {
-    nWalletDBUpdated++;
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
     return Write(make_pair(string("purpose"), strAddress), strPurpose);
 }
 
 bool CEDCWalletDB::ErasePurpose(const string& strPurpose)
 {
-    nWalletDBUpdated++;
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
     return Erase(make_pair(string("purpose"), strPurpose));
 }
 
 bool CEDCWalletDB::WriteTx(const CEDCWalletTx& wtx)
 {
-    nWalletDBUpdated++;
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
     return Write(std::make_pair(std::string("tx"), wtx.GetHash()), wtx);
 }
 
 bool CEDCWalletDB::EraseTx(uint256 hash)
 {
-    nWalletDBUpdated++;
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
     return Erase(std::make_pair(std::string("tx"), hash));
 }
 
 bool CEDCWalletDB::WriteKey(const CPubKey& vchPubKey, const CPrivKey& vchPrivKey, const CKeyMetadata& keyMeta)
 {
-    nWalletDBUpdated++;
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
 
     if (!Write(std::make_pair(std::string("keymeta"), vchPubKey),
                keyMeta, false))
@@ -91,7 +99,8 @@ bool CEDCWalletDB::WriteCryptedKey(const CPubKey& vchPubKey,
                                 const CKeyMetadata &keyMeta)
 {
     const bool fEraseUnencryptedKey = true;
-    nWalletDBUpdated++;
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
 
     if (!Write(std::make_pair(std::string("keymeta"), vchPubKey),
             keyMeta))
@@ -109,31 +118,36 @@ bool CEDCWalletDB::WriteCryptedKey(const CPubKey& vchPubKey,
 
 bool CEDCWalletDB::WriteMasterKey(unsigned int nID, const CMasterKey& kMasterKey)
 {
-    nWalletDBUpdated++;
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
     return Write(std::make_pair(std::string("mkey"), nID), kMasterKey, true);
 }
 
 bool CEDCWalletDB::WriteCScript(const uint160& hash, const CScript& redeemScript)
 {
-    nWalletDBUpdated++;
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
     return Write(std::make_pair(std::string("cscript"), hash), *(const CScriptBase*)(&redeemScript), false);
 }
 
 bool CEDCWalletDB::WriteWatchOnly(const CScript &dest)
 {
-    nWalletDBUpdated++;
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
     return Write(std::make_pair(std::string("watchs"), *(const CScriptBase*)(&dest)), '1');
 }
 
 bool CEDCWalletDB::EraseWatchOnly(const CScript &dest)
 {
-    nWalletDBUpdated++;
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
     return Erase(std::make_pair(std::string("watchs"), *(const CScriptBase*)(&dest)));
 }
 
 bool CEDCWalletDB::WriteBestBlock(const CBlockLocator& locator)
 {
-    nWalletDBUpdated++;
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
     Write(std::string("bestblock"), CBlockLocator()); // Write empty block locator so versions that require a merkle branch automatically rescan
     return Write(std::string("bestblock_nomerkle"), locator);
 }
@@ -146,13 +160,15 @@ bool CEDCWalletDB::ReadBestBlock(CBlockLocator& locator)
 
 bool CEDCWalletDB::WriteOrderPosNext(int64_t nOrderPosNext)
 {
-    nWalletDBUpdated++;
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
     return Write(std::string("orderposnext"), nOrderPosNext);
 }
 
 bool CEDCWalletDB::WriteDefaultKey(const CPubKey& vchPubKey)
 {
-    nWalletDBUpdated++;
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
     return Write(std::string("defaultkey"), vchPubKey);
 }
 
@@ -163,13 +179,15 @@ bool CEDCWalletDB::ReadPool(int64_t nPool, CKeyPool& keypool)
 
 bool CEDCWalletDB::WritePool(int64_t nPool, const CKeyPool& keypool)
 {
-    nWalletDBUpdated++;
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
     return Write(std::make_pair(std::string("pool"), nPool), keypool);
 }
 
 bool CEDCWalletDB::ErasePool(int64_t nPool)
 {
-    nWalletDBUpdated++;
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
     return Erase(std::make_pair(std::string("pool"), nPool));
 }
 
@@ -872,6 +890,8 @@ DBErrors CEDCWalletDB::ZapWalletTx(CEDCWallet* pwallet, vector<CEDCWalletTx>& vW
 
 void edcThreadFlushWalletDB(const string& strFile)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     // Make this thread recognisable as the wallet flushing thread
     RenameThread("bitcoin-wallet");
 
@@ -883,20 +903,20 @@ void edcThreadFlushWalletDB(const string& strFile)
     if (!params.flushwallet )
         return;
 
-    unsigned int nLastSeen = nWalletDBUpdated;
-    unsigned int nLastFlushed = nWalletDBUpdated;
+    unsigned int nLastSeen = theApp.walletDBUpdated();
+    unsigned int nLastFlushed = theApp.walletDBUpdated();
     int64_t nLastWalletUpdate = GetTime();
     while (true)
     {
         MilliSleep(500);
 
-        if (nLastSeen != nWalletDBUpdated)
+        if (nLastSeen != theApp.walletDBUpdated() )
         {
-            nLastSeen = nWalletDBUpdated;
+            nLastSeen = theApp.walletDBUpdated();
             nLastWalletUpdate = GetTime();
         }
 
-        if (nLastFlushed != nWalletDBUpdated && GetTime() - nLastWalletUpdate >= 2)
+        if (nLastFlushed != theApp.walletDBUpdated() && GetTime() - nLastWalletUpdate >= 2)
         {
             TRY_LOCK(bitdb.cs_db,lockDb);
             if (lockDb)
@@ -917,7 +937,7 @@ void edcThreadFlushWalletDB(const string& strFile)
                     if (mi != bitdb.mapFileUseCount.end())
                     {
                         edcLogPrint("db", "Flushing %s\n", strFile);
-                        nLastFlushed = nWalletDBUpdated;
+                        nLastFlushed = theApp.walletDBUpdated();
                         int64_t nStart = GetTimeMillis();
 
                         // Flush wallet file so it's self contained
@@ -1074,12 +1094,14 @@ bool CEDCWalletDB::Recover(CDBEnv& dbenv, const std::string& filename)
 
 bool CEDCWalletDB::WriteDestData(const std::string &address, const std::string &key, const std::string &value)
 {
-    nWalletDBUpdated++;
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
     return Write(std::make_pair(std::string("destdata"), std::make_pair(address, key)), value);
 }
 
 bool CEDCWalletDB::EraseDestData(const std::string &address, const std::string &key)
 {
-    nWalletDBUpdated++;
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
     return Erase(std::make_pair(std::string("destdata"), std::make_pair(address, key)));
 }

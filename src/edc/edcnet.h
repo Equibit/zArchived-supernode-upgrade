@@ -61,9 +61,7 @@ struct CEDCNodeSignals
     boost::signals2::signal<void (NodeId)> FinalizeNode;
 };
 
-
 CEDCNodeSignals& GetEDCNodeSignals();
-
 
 bool IsPeerAddrLocalGood(CEDCNode *pnode);
 void AdvertiseLocal(CEDCNode *pnode);
@@ -77,25 +75,6 @@ bool edcIsReachable(const CNetAddr &addr);
 bool edcAddLocal(const CService& addr, int nScore = LOCAL_NONE);
 bool edcAddLocal(const CNetAddr& addr, int nScore = LOCAL_NONE);
 
-
-
-extern CAddrMan edcaddrman;
-
-extern std::vector<CEDCNode*> edcvNodes;
-extern CCriticalSection edccs_vNodes;
-extern std::map<uint256, CEDCTransaction> edcMapRelay;
-extern std::deque<std::pair<int64_t, uint256> > edcvRelayExpiration;
-extern CCriticalSection edccs_mapRelay;
-extern limitedmap<uint256, int64_t> edcmapAlreadyAskedFor;
-
-extern std::vector<std::string> edcvAddedNodes;
-extern CCriticalSection edccs_vAddedNodes;
-
-/** Subversion as sent to the P2P network in `version` messages */
-extern std::string edcstrSubVersion;
-
-extern CCriticalSection edccs_mapLocalHost;
-extern std::map<CNetAddr, LocalServiceInfo> edcmapLocalHost;
 typedef std::map<std::string, uint64_t> mapMsgCmdSize; //command, total bytes
 
 typedef std::map<CSubNet, CBanEntry> banmap_t;

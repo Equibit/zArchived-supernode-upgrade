@@ -101,14 +101,11 @@ namespace boost
 
 using namespace std;
 
+string edcstrMiscWarning;
+
 #if 0
-
-bool fDebug = false;
-bool fPrintToDebugLog = true;
 bool fDaemon = false;
-string strMiscWarning;
 CTranslationInterface translationInterface;
-
 #endif
 
 /**
@@ -174,9 +171,11 @@ void edcOpenDebugLog()
 
 bool edcLogAcceptCategory(const char* category)
 {
+	EDCparams & params = EDCparams::singleton();
+
     if (category != NULL)
     {
-        if (!fDebug)
+        if (params.debug.size() == 0)
             return false;
 
         // Give each thread quick access to -debug settings.

@@ -28,7 +28,6 @@ public:
 	bool disablesafemode;
 	bool disablewallet;
 	bool discover;
-	bool dns;
 	bool dnsseed;
 	bool feefilter;
 	bool flushwallet;
@@ -54,7 +53,6 @@ public:
 	bool rest;
 	bool salvagewallet;
 	bool sendfreetransactions;
-	bool server;
 	bool shrinkdebugfile;
 	bool spendzeroconfchange;
 	bool stopafterblockimport;
@@ -94,7 +92,10 @@ public:
 	int64_t maxsendbuffer;
 	int64_t maxsigcachesize;
 	int64_t maxtimeadjustment;
+
+	/** If the tip is older than this (in seconds), the node is considered to be in initial block download. */
 	int64_t maxtipage;
+
 	int64_t maxtxfee;
 	int64_t maxuploadtarget;
 	int64_t mempoolexpiry;
