@@ -95,7 +95,7 @@ public:
     boost::signals2::signal<void (void)> BannedListChanged;
 };
 
-extern CEDCClientUIInterface edcUiInterface;
+extern CEDCClientUIInterface uiInterface;
 
 bool edcInitError(const std::string& str);
 void edcInitWarning(const std::string& str);

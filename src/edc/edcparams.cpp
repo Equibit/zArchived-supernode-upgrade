@@ -20,10 +20,8 @@ namespace
 {
 
 const int64_t      EDC_DEFAULT_DB_CACHE               = 100;
-const int64_t      EDC_MAX_DB_CACHE                   = sizeof(void*)>4?16384:1024;
 const unsigned int EDC_MAX_OP_RETURN_RELAY            = 83;
 const unsigned int EDC_MIN_BLOCKS_TO_KEEP             = 288;
-const int64_t      EDC_MIN_DB_CACHE                   = 4;
 const uint64_t     EDC_MIN_DISK_SPACE_FOR_BLOCK_FILES = 550 * 1024 * 1024;
 
 
@@ -72,7 +70,7 @@ const unsigned int EDC_DEFAULT_MAX_PEER_CONNECTIONS    = 125;
 const unsigned int EDC_DEFAULT_MAX_SIG_CACHE_SIZE      = 40;
 const int64_t      EDC_DEFAULT_MAX_TIME_ADJUSTMENT     = 70 * 60;
 const int64_t      EDC_DEFAULT_MAX_TIP_AGE             = 24 * 60 * 60;
-const uint64_t     EDC_DEFAULT_MAX_UPLOAD_TARGET       = 0;
+const uint64_t     EDC_DEFAULT_MAX_UPLOAD_TARGET= 0;
 const size_t       EDC_DEFAULT_MAXRECEIVEBUFFER        = 5 * 1000;
 const size_t       EDC_DEFAULT_MAXSENDBUFFER           = 1 * 1000;
 const unsigned int EDC_DEFAULT_MEMPOOL_EXPIRY          = 72;
@@ -100,8 +98,6 @@ const bool         EDC_DEFAULT_TXINDEX                 = false;
 const bool         EDC_DEFAULT_UPNP                    = false;
 
 const char *       EDC_DEFAULT_WALLET_DAT              = "wallet.dat";
-const unsigned int EDC_DEFAULT_WALLET_DBLOGSIZE        = 100;
-const bool         EDC_DEFAULT_WALLET_PRIVDB           = true;
 const bool         EDC_DEFAULT_WHITELISTFORCERELAY     = true;
 const bool         EDC_DEFAULT_WHITELISTRELAY          = true;
 
@@ -698,7 +694,7 @@ bool EDCparams::validate()
     {
 #ifdef ENABLE_WALLET
         if (!disablewallet)
-            return edcInitError("-sysperms is not allowed in combination "
+            return InitError("-sysperms is not allowed in combination "
                 "with enabled wallet functionality");
 #endif
     }
@@ -711,11 +707,11 @@ bool EDCparams::validate()
     if ( prune ) 
 	{
         if (txindex)
-            return edcInitError(_("Prune mode is incompatible with -txindex."));
+            return InitError(_("Prune mode is incompatible with -txindex."));
 #ifdef ENABLE_WALLET
         if (rescan) 
 		{
-            return edcInitError(_("Rescans are not possible in pruned mode. "
+            return InitError(_("Rescans are not possible in pruned mode. "
 				"You will need to use -reindex which will download the whole "
 				"blockchain again."));
         }
@@ -726,14 +722,14 @@ bool EDCparams::validate()
     int64_t nMempoolSizeMax = maxmempool * 1000000;
     int64_t nMempoolSizeMin = limitdescendantsize * 1000 * 40;
     if (nMempoolSizeMax < 0 || nMempoolSizeMax < nMempoolSizeMin)
-        return edcInitError(strprintf(_("-ebmaxmempool must be at least %d MB"), std::ceil(nMempoolSizeMin / 1000000.0)));
+        return InitError(strprintf(_("-ebmaxmempool must be at least %d MB"), std::ceil(nMempoolSizeMin / 1000000.0)));
 
     // block pruning; get the amount of disk space (in MiB) to allot for 
 	// block & undo files
     int64_t nSignedPruneTarget = prune * 1024 * 1024;
     if (nSignedPruneTarget < 0) 
 	{
-        return edcInitError(_("Prune cannot be configured with a negative "
+        return InitError(_("Prune cannot be configured with a negative "
 			"value."));
     }
 
@@ -744,7 +740,7 @@ bool EDCparams::validate()
     {
         if ( theApp.pruneTarget() < EDC_MIN_DISK_SPACE_FOR_BLOCK_FILES)
         {
-            return edcInitError(strprintf(_("Prune configured below the "
+            return InitError(strprintf(_("Prune configured below the "
 				"minimum of %d MiB.  Please use a higher number."), 
 				EDC_MIN_DISK_SPACE_FOR_BLOCK_FILES / 1024 / 1024));
         }

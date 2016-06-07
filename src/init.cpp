@@ -170,6 +170,10 @@ void Interrupt(boost::thread_group& threadGroup)
     threadGroup.interrupt_all();
 }
 
+// EDC BEGIN
+extern void	edcShutdown();
+// EDC END
+
 void Shutdown()
 {
     LogPrintf("%s: In progress...\n", __func__);
@@ -250,6 +254,9 @@ void Shutdown()
     globalVerifyHandle.reset();
     ECC_Stop();
     LogPrintf("%s: done\n", __func__);
+// EDC BEGIN
+	edcShutdown();
+// EDC END
 }
 
 /**
@@ -277,10 +284,17 @@ bool static Bind(const CService &addr, unsigned int flags) {
     return true;
 }
 
+// EDC BEGIN
+extern void OnEDCRPCStopped();
+// EDC END
+
 void OnRPCStopped()
 {
     cvBlockChange.notify_all();
     LogPrint("rpc", "RPC stopped.\n");
+// EDC BEGIN
+	OnEDCRPCStopped();
+// EDC END
 }
 
 void OnRPCPreCommand(const CRPCCommand& cmd)

@@ -30,7 +30,7 @@
 #include "tinyformat.h"
 #include "txdb.h"
 #include "edctxmempool.h"
-#include "edcui_interface.h"
+#include "ui_interface.h"
 #include "edcundo.h"
 #include "edcutil.h"
 #include "utilmoneystr.h"
@@ -1538,7 +1538,7 @@ FILE* edcOpenDiskFile(const CDiskBlockPos &pos, const char *prefix, bool fReadOn
     return file;
 }
 
-FILE* edcOpenBlockFile(const CDiskBlockPos &pos, bool fReadOnly = false ) 
+FILE* edcOpenBlockFile(const CDiskBlockPos &pos, bool fReadOnly ) 
 {
     return edcOpenDiskFile(pos, "blk", fReadOnly);
 }
@@ -1728,7 +1728,7 @@ CBlockIndex *edcPindexBestForkTip = NULL, *edcpindexBestForkBase = NULL;
 
 static void AlertNotify(const std::string& strMessage)
 {
-    edcUiInterface.NotifyAlertChanged();
+    uiInterface.NotifyAlertChanged();
  	EDCparams & params = EDCparams::singleton();
     std::string strCmd = params.alertnotify;
     if (strCmd.empty()) return;
@@ -2121,9 +2121,9 @@ bool AbortNode(const std::string& strMessage, const std::string& userMessage="")
 {
     edcstrMiscWarning = strMessage;
     edcLogPrintf("*** %s\n", strMessage);
-    edcUiInterface.ThreadSafeMessageBox(
+    uiInterface.ThreadSafeMessageBox(
         userMessage.empty() ? _("Error: A fatal internal error occurred, see debug.log for details") : userMessage,
-        "", CEDCClientUIInterface::MSG_ERROR);
+        "", CClientUIInterface::MSG_ERROR);
     StartShutdown();
     return false;
 }
@@ -2819,7 +2819,7 @@ void static UpdateTip(
       DateTimeStrFormat("%Y-%m-%d %H:%M:%S", theApp.chainActive().Tip()->GetBlockTime()),
       Checkpoints::GuessVerificationProgress(chainParams.Checkpoints(), theApp.chainActive().Tip()), theApp.coinsTip()->DynamicMemoryUsage() * (1.0 / (1<<20)), theApp.coinsTip()->GetCacheSize());
 
-    cvBlockChange.notify_all();
+    theApp.blockChange().notify_all();
 
     // Check the version of the last 100 blocks to see if we need to upgrade:
     static bool fWarned = false;
@@ -3236,7 +3236,7 @@ bool ActivateBestChain(
         // Always notify the UI if a new block tip was connected
         if (pindexFork != pindexNewTip) 
 		{
-            edcUiInterface.NotifyBlockTip(fInitialDownload, pindexNewTip);
+            uiInterface.NotifyBlockTip(fInitialDownload, pindexNewTip);
 
             if (!fInitialDownload) 
 			{
@@ -3989,6 +3989,11 @@ void edcFindFilesToPrune(std::set<int>& setFilesToPrune, uint64_t nPruneAfterHei
            nLastBlockWeCanPrune, count);
 }
 
+boost::filesystem::path edcGetBlockPosFilename(const CDiskBlockPos &pos, const char *prefix)
+{
+    return edcGetDataDir() / "blocks" / strprintf("%s%05u.dat", prefix, pos.nFile);
+}
+
 CBlockIndex * edcInsertBlockIndex(uint256 hash)
 {
 	EDCapp & theApp = EDCapp::singleton();
@@ -4144,12 +4149,12 @@ bool static LoadBlockIndexDB()
 
 CEDCVerifyDB::CEDCVerifyDB()
 {
-    edcUiInterface.ShowProgress(_("Verifying blocks..."), 0);
+    uiInterface.ShowProgress(_("Verifying blocks..."), 0);
 }
 
 CEDCVerifyDB::~CEDCVerifyDB()
 {
-    edcUiInterface.ShowProgress("", 100);
+    uiInterface.ShowProgress("", 100);
 }
 
 bool CEDCVerifyDB::VerifyDB(
@@ -4178,7 +4183,7 @@ bool CEDCVerifyDB::VerifyDB(
     for (CBlockIndex* pindex = theApp.chainActive().Tip(); pindex && pindex->pprev; pindex = pindex->pprev)
     {
         boost::this_thread::interruption_point();
-        edcUiInterface.ShowProgress(_("Verifying blocks..."), std::max(1, std::min(99, (int)(((double)(theApp.chainActive().Height() - pindex->nHeight)) / (double)nCheckDepth * (nCheckLevel >= 4 ? 50 : 100)))));
+        uiInterface.ShowProgress(_("Verifying blocks..."), std::max(1, std::min(99, (int)(((double)(theApp.chainActive().Height() - pindex->nHeight)) / (double)nCheckDepth * (nCheckLevel >= 4 ? 50 : 100)))));
         if (pindex->nHeight < theApp.chainActive().Height()-nCheckDepth)
             break;
         CEDCBlock block;
@@ -4230,7 +4235,7 @@ bool CEDCVerifyDB::VerifyDB(
         while (pindex != theApp.chainActive().Tip()) 
 		{
             boost::this_thread::interruption_point();
-            edcUiInterface.ShowProgress(_("Verifying blocks..."), std::max(1, std::min(99, 100 - (int)(((double)(theApp.chainActive().Height() - pindex->nHeight)) / (double)nCheckDepth * 50))));
+            uiInterface.ShowProgress(_("Verifying blocks..."), std::max(1, std::min(99, 100 - (int)(((double)(theApp.chainActive().Height() - pindex->nHeight)) / (double)nCheckDepth * 50))));
             pindex = theApp.chainActive().Next(pindex);
             CEDCBlock block;
             if (!ReadBlockFromDisk(block, pindex, chainparams.GetConsensus()))
@@ -5173,7 +5178,7 @@ bool static ProcessMessage(
             pfrom->AddInventoryKnown(inv);
 
             bool fAlreadyHave = AlreadyHave(inv);
-            LogPrint("net", "got inv: %s  %s peer=%d\n", inv.ToString(), fAlreadyHave ? "have" : "new", pfrom->id);
+            edcLogPrint("net", "got inv: %s  %s peer=%d\n", inv.ToString(), fAlreadyHave ? "have" : "new", pfrom->id);
 
             if (inv.type == MSG_BLOCK) 
 			{
@@ -5201,13 +5206,13 @@ bool static ProcessMessage(
                         // later (within the same EDC_cs_main lock, though).
                         MarkBlockAsInFlight(pfrom->GetId(), inv.hash, chainparams.GetConsensus());
                     }
-                    LogPrint("net", "getheaders (%d) %s to peer=%d\n", theApp.indexBestHeader()->nHeight, inv.hash.ToString(), pfrom->id);
+                    edcLogPrint("net", "getheaders (%d) %s to peer=%d\n", theApp.indexBestHeader()->nHeight, inv.hash.ToString(), pfrom->id);
                 }
             }
             else
             {
                 if (fBlocksOnly)
-                    LogPrint("net", "transaction (%s) inv sent in violation of protocol peer=%d\n", inv.hash.ToString(), pfrom->id);
+                    edcLogPrint("net", "transaction (%s) inv sent in violation of protocol peer=%d\n", inv.hash.ToString(), pfrom->id);
                 else if (!fAlreadyHave && !theApp.importing() && !theApp.reindex() && !edcIsInitialBlockDownload())
                     pfrom->AskFor(inv);
             }
@@ -5236,10 +5241,10 @@ bool static ProcessMessage(
         }
 
         if (params.debug.size() > 0 || (vInv.size() != 1))
-            LogPrint("net", "received getdata (%u invsz) peer=%d\n", vInv.size(), pfrom->id);
+            edcLogPrint("net", "received getdata (%u invsz) peer=%d\n", vInv.size(), pfrom->id);
 
         if ((params.debug.size() > 0 && vInv.size() > 0) || (vInv.size() == 1))
-            LogPrint("net", "received getdata for: %s peer=%d\n", vInv[0].ToString(), pfrom->id);
+            edcLogPrint("net", "received getdata for: %s peer=%d\n", vInv[0].ToString(), pfrom->id);
 
         pfrom->vRecvGetData.insert(pfrom->vRecvGetData.end(), vInv.begin(), vInv.end());
         ProcessGetData(pfrom, chainparams.GetConsensus());
@@ -5259,12 +5264,12 @@ bool static ProcessMessage(
         if (pindex)
             pindex = theApp.chainActive().Next(pindex);
         int nLimit = 500;
-        LogPrint("net", "getblocks %d to %s limit %d from peer=%d\n", (pindex ? pindex->nHeight : -1), hashStop.IsNull() ? "end" : hashStop.ToString(), nLimit, pfrom->id);
+        edcLogPrint("net", "getblocks %d to %s limit %d from peer=%d\n", (pindex ? pindex->nHeight : -1), hashStop.IsNull() ? "end" : hashStop.ToString(), nLimit, pfrom->id);
         for (; pindex; pindex = theApp.chainActive().Next(pindex))
         {
             if (pindex->GetBlockHash() == hashStop)
             {
-                LogPrint("net", "  getblocks stopping at %d %s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
+                edcLogPrint("net", "  getblocks stopping at %d %s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
                 break;
             }
             // If pruning, don't inv blocks unless we have on disk and are likely to still have
@@ -5272,7 +5277,7 @@ bool static ProcessMessage(
             const int nPrunedBlocksLikelyToHave = MIN_BLOCKS_TO_KEEP - 3600 / chainparams.GetConsensus().nPowTargetSpacing;
             if (theApp.pruneMode() && (!(pindex->nStatus & BLOCK_HAVE_DATA) || pindex->nHeight <= theApp.chainActive().Tip()->nHeight - nPrunedBlocksLikelyToHave))
             {
-                LogPrint("net", " getblocks stopping, pruned or too old block at %d %s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
+                edcLogPrint("net", " getblocks stopping, pruned or too old block at %d %s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
                 break;
             }
             pfrom->PushInventory(CInv(MSG_BLOCK, pindex->GetBlockHash()));
@@ -5280,7 +5285,7 @@ bool static ProcessMessage(
             {
                 // When this block is requested, we'll send an inv that'll
                 // trigger the peer to getblocks the next batch of inventory.
-                LogPrint("net", "  getblocks stopping at limit %d %s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
+                edcLogPrint("net", "  getblocks stopping at limit %d %s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
                 pfrom->hashContinue = pindex->GetBlockHash();
                 break;
             }
@@ -5295,7 +5300,7 @@ bool static ProcessMessage(
         LOCK(EDC_cs_main);
         if (edcIsInitialBlockDownload() && !pfrom->fWhitelisted) 
 		{
-            LogPrint("net", "Ignoring getheaders from peer=%d because node is in initial block download\n", pfrom->id);
+            edcLogPrint("net", "Ignoring getheaders from peer=%d because node is in initial block download\n", pfrom->id);
             return true;
         }
 
@@ -5320,7 +5325,7 @@ bool static ProcessMessage(
         // we must use CBlocks, as CBlockHeaders won't include the 0x00 nTx count at the end
         vector<CBlock> vHeaders;
         int nLimit = MAX_HEADERS_RESULTS;
-        LogPrint("net", "getheaders %d to %s from peer=%d\n", (pindex ? pindex->nHeight : -1), hashStop.ToString(), pfrom->id);
+        edcLogPrint("net", "getheaders %d to %s from peer=%d\n", (pindex ? pindex->nHeight : -1), hashStop.ToString(), pfrom->id);
         for (; pindex; pindex = theApp.chainActive().Next(pindex))
         {
             vHeaders.push_back(pindex->GetBlockHeader());
@@ -5341,7 +5346,7 @@ bool static ProcessMessage(
         if (params.blocksonly && 
 			(!pfrom->fWhitelisted || !params.whitelistrelay))
         {
-            LogPrint("net", "transaction sent in violation of protocol peer=%d\n", pfrom->id);
+            edcLogPrint("net", "transaction sent in violation of protocol peer=%d\n", pfrom->id);
             return true;
         }
 
@@ -5369,7 +5374,7 @@ bool static ProcessMessage(
             RelayTransaction(tx, txFeeRate);
             vWorkQueue.push_back(inv.hash);
 
-            LogPrint("mempool", "AcceptToMemoryPool: peer=%d: accepted %s (poolsz %u txn, %u kB)\n",
+            edcLogPrint("mempool", "AcceptToMemoryPool: peer=%d: accepted %s (poolsz %u txn, %u kB)\n",
                 pfrom->id,
                 tx.GetHash().ToString(),
                 theApp.mempool().size(), theApp.mempool().DynamicMemoryUsage() / 1000);
@@ -5401,7 +5406,7 @@ bool static ProcessMessage(
                     if (AcceptToMemoryPool(theApp.mempool(), stateDummy, orphanTx, 
 					true, &fMissingInputs2, &orphanFeeRate)) 
 					{
-                        LogPrint("mempool", "   accepted orphan tx %s\n", orphanHash.ToString());
+                        edcLogPrint("mempool", "   accepted orphan tx %s\n", orphanHash.ToString());
                         RelayTransaction(orphanTx, orphanFeeRate);
                         vWorkQueue.push_back(orphanHash);
                         vEraseQueue.push_back(orphanHash);
@@ -5414,11 +5419,11 @@ bool static ProcessMessage(
                             // Punish peer that gave us an invalid orphan tx
                             edcMisbehaving(fromPeer, nDos);
                             setMisbehaving.insert(fromPeer);
-                            LogPrint("mempool", "   invalid orphan tx %s\n", orphanHash.ToString());
+                            edcLogPrint("mempool", "   invalid orphan tx %s\n", orphanHash.ToString());
                         }
                         // Has inputs but not accepted to mempool
                         // Probably non-standard or insufficient fee/priority
-                        LogPrint("mempool", "   removed orphan tx %s\n", orphanHash.ToString());
+                        edcLogPrint("mempool", "   removed orphan tx %s\n", orphanHash.ToString());
                         vEraseQueue.push_back(orphanHash);
                         assert(recentRejects);
                         recentRejects->insert(orphanHash);
@@ -5439,7 +5444,7 @@ bool static ProcessMessage(
 				params.maxorphantx );
             unsigned int nEvicted = edcLimitOrphanTxSize(nMaxOrphanTx);
             if (nEvicted > 0)
-                LogPrint("mempool", "mapOrphan overflow, removed %u tx\n", nEvicted);
+                edcLogPrint("mempool", "mapOrphan overflow, removed %u tx\n", nEvicted);
         } 
 		else 
 		{
@@ -5459,19 +5464,19 @@ bool static ProcessMessage(
                 int nDoS = 0;
                 if (!state.IsInvalid(nDoS) || nDoS == 0) 
 				{
-                    LogPrintf("Force relaying tx %s from whitelisted peer=%d\n", tx.GetHash().ToString(), pfrom->id);
+                    edcLogPrintf("Force relaying tx %s from whitelisted peer=%d\n", tx.GetHash().ToString(), pfrom->id);
                     RelayTransaction(tx, txFeeRate);
                 } 
 				else 
 				{
-                    LogPrintf("Not relaying invalid transaction %s from whitelisted peer=%d (%s)\n", tx.GetHash().ToString(), pfrom->id, FormatStateMessage(state));
+                    edcLogPrintf("Not relaying invalid transaction %s from whitelisted peer=%d (%s)\n", tx.GetHash().ToString(), pfrom->id, FormatStateMessage(state));
                 }
             }
         }
         int nDoS = 0;
         if (state.IsInvalid(nDoS))
         {
-            LogPrint("mempoolrej", "%s from peer=%d was not accepted: %s\n", tx.GetHash().ToString(),
+            edcLogPrint("mempoolrej", "%s from peer=%d was not accepted: %s\n", tx.GetHash().ToString(),
                 pfrom->id,
                 FormatStateMessage(state));
             if (state.GetRejectCode() < REJECT_INTERNAL) // Never send AcceptToMemoryPool's internal codes over P2P
@@ -5539,7 +5544,7 @@ bool static ProcessMessage(
             // TODO: optimize: if pindexLast is an ancestor of theApp.chainActive(). Tip 
 			// or indexBestHeader, continue
             // from there instead.
-            LogPrint("net", "more getheaders (%d) to end to peer=%d "
+            edcLogPrint("net", "more getheaders (%d) to end to peer=%d "
 				"(startheight:%d)\n", pindexLast->nHeight, pfrom->id, 
 				pfrom->nStartingHeight);
 
@@ -5574,7 +5579,7 @@ bool static ProcessMessage(
             // direct fetch and rely on parallel download instead.
             if (!theApp.chainActive().Contains(pindexWalk)) 
 			{
-                LogPrint("net", "Large reorg, won't direct fetch to %s (%d)\n",
+                edcLogPrint("net", "Large reorg, won't direct fetch to %s (%d)\n",
                         pindexLast->GetBlockHash().ToString(),
                         pindexLast->nHeight);
             } 
@@ -5592,12 +5597,12 @@ bool static ProcessMessage(
                     }
                     vGetData.push_back(CInv(MSG_BLOCK, pindex->GetBlockHash()));
                     MarkBlockAsInFlight(pfrom->GetId(), pindex->GetBlockHash(), chainparams.GetConsensus(), pindex);
-                    LogPrint("net", "Requesting block %s from  peer=%d\n",
+                    edcLogPrint("net", "Requesting block %s from  peer=%d\n",
                             pindex->GetBlockHash().ToString(), pfrom->id);
                 }
                 if (vGetData.size() > 1) 
 				{
-                    LogPrint("net", "Downloading blocks toward %s (%d) via headers direct fetch\n",
+                    edcLogPrint("net", "Downloading blocks toward %s (%d) via headers direct fetch\n",
                             pindexLast->GetBlockHash().ToString(), pindexLast->nHeight);
                 }
                 if (vGetData.size() > 0) 
@@ -5616,7 +5621,7 @@ bool static ProcessMessage(
         vRecv >> block;
 
         CInv inv(MSG_BLOCK, block.GetHash());
-        LogPrint("net", "received block %s peer=%d\n", inv.hash.ToString(), pfrom->id);
+        edcLogPrint("net", "received block %s peer=%d\n", inv.hash.ToString(), pfrom->id);
 
         pfrom->AddInventoryKnown(inv);
 
@@ -5650,7 +5655,7 @@ bool static ProcessMessage(
         // the getaddr message mitigates the attack.
         if (!pfrom->fInbound) 
 		{
-            LogPrint("net", "Ignoring \"getaddr\" from outbound connection. peer=%d\n", pfrom->id);
+            edcLogPrint("net", "Ignoring \"getaddr\" from outbound connection. peer=%d\n", pfrom->id);
             return true;
         }
 
@@ -5658,7 +5663,7 @@ bool static ProcessMessage(
         //  and discourage addr stamping of INV announcements.
         if (pfrom->fSentAddr) 
 		{
-            LogPrint("net", "Ignoring repeated \"getaddr\". peer=%d\n", pfrom->id);
+            edcLogPrint("net", "Ignoring repeated \"getaddr\". peer=%d\n", pfrom->id);
             return true;
         }
         pfrom->fSentAddr = true;
@@ -5672,7 +5677,7 @@ bool static ProcessMessage(
     {
         if (CEDCNode::OutboundTargetReached(false) && !pfrom->fWhitelisted)
         {
-            LogPrint("net", "mempool request with bandwidth limit reached, disconnect peer=%d\n", pfrom->GetId());
+            edcLogPrint("net", "mempool request with bandwidth limit reached, disconnect peer=%d\n", pfrom->GetId());
             pfrom->fDisconnect = true;
             return true;
         }
@@ -5758,7 +5763,7 @@ bool static ProcessMessage(
 
         if (!(sProblem.empty())) 
 		{
-            LogPrint("net", "pong peer=%d: %s, %x expected, %x received, %u bytes\n",
+            edcLogPrint("net", "pong peer=%d: %s, %x expected, %x received, %u bytes\n",
                 pfrom->id,
                 sProblem,
                 pfrom->nPingNonceSent,
@@ -5833,12 +5838,12 @@ bool static ProcessMessage(
                     vRecv >> hash;
                     ss << ": hash " << hash.ToString();
                 }
-                LogPrint("net", "Reject %s\n", SanitizeString(ss.str()));
+                edcLogPrint("net", "Reject %s\n", SanitizeString(ss.str()));
             } 
 			catch (const std::ios_base::failure&) 
 			{
                 // Avoid feedback loops by preventing reject messages from triggering a new reject message.
-                LogPrint("net", "Unparseable reject message received\n");
+                edcLogPrint("net", "Unparseable reject message received\n");
             }
         }
     }
@@ -5852,13 +5857,13 @@ bool static ProcessMessage(
                 LOCK(pfrom->cs_feeFilter);
                 pfrom->minFeeFilter = newFeeFilter;
             }
-            LogPrint("net", "received: feefilter of %s from peer=%d\n", CFeeRate(newFeeFilter).ToString(), pfrom->id);
+            edcLogPrint("net", "received: feefilter of %s from peer=%d\n", CFeeRate(newFeeFilter).ToString(), pfrom->id);
         }
     }
     else 
 	{
         // Ignore unknown commands for extensibility
-        LogPrint("net", "Unknown command \"%s\" from peer=%d\n", SanitizeString(strCommand), pfrom->id);
+        edcLogPrint("net", "Unknown command \"%s\" from peer=%d\n", SanitizeString(strCommand), pfrom->id);
     }
 
 
@@ -5871,7 +5876,7 @@ bool ProcessEDCMessages(CEDCNode* pfrom)
 {
     const CEDCChainParams& chainparams = edcParams();
     //if (params.debug.size() > 0 )
-    //    LogPrintf("%s(%u messages)\n", __func__, pfrom->vRecvMsg.size());
+    //    edcLogPrintf("%s(%u messages)\n", __func__, pfrom->vRecvMsg.size());
 
     //
     // Message format
@@ -5900,7 +5905,7 @@ bool ProcessEDCMessages(CEDCNode* pfrom)
         CNetMessage& msg = *it;
 
         //if (params.debug.size() > 0 )
-        //    LogPrintf("%s(message %u msgsz, %u bytes, complete:%s)\n", __func__,
+        //    edcLogPrintf("%s(message %u msgsz, %u bytes, complete:%s)\n", __func__,
         //            msg.hdr.nMessageSize, msg.vRecv.size(),
         //            msg.complete() ? "Y" : "N");
 
@@ -5915,7 +5920,7 @@ bool ProcessEDCMessages(CEDCNode* pfrom)
         if (memcmp(msg.hdr.pchMessageStart, chainparams.MessageStart(), 
 		MESSAGE_START_SIZE) != 0) 
 		{
-            LogPrintf("PROCESSMESSAGE: INVALID MESSAGESTART %s peer=%d\n", SanitizeString(msg.hdr.GetCommand()), pfrom->id);
+            edcLogPrintf("PROCESSMESSAGE: INVALID MESSAGESTART %s peer=%d\n", SanitizeString(msg.hdr.GetCommand()), pfrom->id);
             fOk = false;
             break;
         }
@@ -5924,7 +5929,7 @@ bool ProcessEDCMessages(CEDCNode* pfrom)
         CMessageHeader& hdr = msg.hdr;
         if (!hdr.IsValid(chainparams.MessageStart()))
         {
-            LogPrintf("PROCESSMESSAGE: ERRORS IN HEADER %s peer=%d\n", SanitizeString(hdr.GetCommand()), pfrom->id);
+            edcLogPrintf("PROCESSMESSAGE: ERRORS IN HEADER %s peer=%d\n", SanitizeString(hdr.GetCommand()), pfrom->id);
             continue;
         }
         string strCommand = hdr.GetCommand();
@@ -5938,7 +5943,7 @@ bool ProcessEDCMessages(CEDCNode* pfrom)
         unsigned int nChecksum = ReadLE32((unsigned char*)&hash);
         if (nChecksum != hdr.nChecksum)
         {
-            LogPrintf("%s(%s, %u bytes): CHECKSUM ERROR nChecksum=%08x hdr.nChecksum=%08x\n", __func__,
+            edcLogPrintf("%s(%s, %u bytes): CHECKSUM ERROR nChecksum=%08x hdr.nChecksum=%08x\n", __func__,
                SanitizeString(strCommand), nMessageSize, nChecksum, hdr.nChecksum);
             continue;
         }
@@ -5956,12 +5961,12 @@ bool ProcessEDCMessages(CEDCNode* pfrom)
             if (strstr(e.what(), "end of data"))
             {
                 // Allow exceptions from under-length message on vRecv
-                LogPrintf("%s(%s, %u bytes): Exception '%s' caught, normally caused by a message being shorter than its stated length\n", __func__, SanitizeString(strCommand), nMessageSize, e.what());
+                edcLogPrintf("%s(%s, %u bytes): Exception '%s' caught, normally caused by a message being shorter than its stated length\n", __func__, SanitizeString(strCommand), nMessageSize, e.what());
             }
             else if (strstr(e.what(), "size too large"))
             {
                 // Allow exceptions from over-long size
-                LogPrintf("%s(%s, %u bytes): Exception '%s' caught\n", __func__, SanitizeString(strCommand), nMessageSize, e.what());
+                edcLogPrintf("%s(%s, %u bytes): Exception '%s' caught\n", __func__, SanitizeString(strCommand), nMessageSize, e.what());
             }
             else
             {
@@ -5982,7 +5987,7 @@ bool ProcessEDCMessages(CEDCNode* pfrom)
         }
 
         if (!fRet)
-            LogPrintf("%s(%s, %u bytes) FAILED peer=%d\n", __func__, SanitizeString(strCommand), nMessageSize, pfrom->id);
+            edcLogPrintf("%s(%s, %u bytes) FAILED peer=%d\n", __func__, SanitizeString(strCommand), nMessageSize, pfrom->id);
 
         break;
     }
@@ -6102,13 +6107,13 @@ bool SendEDCMessages(CEDCNode* pto)
         if (state.fShouldBan) 
 		{
             if (pto->fWhitelisted)
-                LogPrintf("Warning: not punishing whitelisted peer %s!\n", 
+                edcLogPrintf("Warning: not punishing whitelisted peer %s!\n", 
 					pto->addr.ToString());
             else 
 			{
                 pto->fDisconnect = true;
                 if (pto->addr.IsLocal())
-                    LogPrintf("Warning: not banning local peer %s!\n", pto->addr.ToString());
+                    edcLogPrintf("Warning: not banning local peer %s!\n", pto->addr.ToString());
                 else
                 {
                     CEDCNode::Ban(pto->addr, BanReasonNodeMisbehaving);
@@ -6142,7 +6147,7 @@ bool SendEDCMessages(CEDCNode* pto)
                    got back an empty response.  */
                 if (pindexStart->pprev)
                     pindexStart = pindexStart->pprev;
-                LogPrint("net", "initial getheaders (%d) to peer=%d (startheight:%d)\n", pindexStart->nHeight, pto->id, pto->nStartingHeight);
+                edcLogPrint("net", "initial getheaders (%d) to peer=%d (startheight:%d)\n", pindexStart->nHeight, pto->id, pto->nStartingHeight);
                 pto->PushMessage(NetMsgType::GETHEADERS, theApp.chainActive().GetLocator(pindexStart), uint256());
             }
         }
@@ -6249,7 +6254,7 @@ bool SendEDCMessages(CEDCNode* pto)
                     // Just log for now.
                     if (theApp.chainActive()[pindex->nHeight] != pindex) 
 					{
-                        LogPrint("net", "Announcing block %s not on main chain (tip=%s)\n",
+                        edcLogPrint("net", "Announcing block %s not on main chain (tip=%s)\n",
                             hashToAnnounce.ToString(), theApp.chainActive().Tip()->GetBlockHash().ToString());
                     }
 
@@ -6259,7 +6264,7 @@ bool SendEDCMessages(CEDCNode* pto)
                     if (!PeerHasHeader(&state, pindex)) 
 					{
                         pto->PushInventory(CInv(MSG_BLOCK, hashToAnnounce));
-                        LogPrint("net", "%s: sending inv peer=%d hash=%s\n", __func__,
+                        edcLogPrint("net", "%s: sending inv peer=%d hash=%s\n", __func__,
                             pto->id, hashToAnnounce.ToString());
                     }
                 }
@@ -6268,14 +6273,14 @@ bool SendEDCMessages(CEDCNode* pto)
 			{
                 if (vHeaders.size() > 1) 
 				{
-                    LogPrint("net", "%s: %u headers, range (%s, %s), to peer=%d\n", __func__,
+                    edcLogPrint("net", "%s: %u headers, range (%s, %s), to peer=%d\n", __func__,
                             vHeaders.size(),
                             vHeaders.front().GetHash().ToString(),
                             vHeaders.back().GetHash().ToString(), pto->id);
                 } 
 				else 
 				{
-                    LogPrint("net", "%s: sending header %s to peer=%d\n", __func__,
+                    edcLogPrint("net", "%s: sending header %s to peer=%d\n", __func__,
                             vHeaders.front().GetHash().ToString(), pto->id);
                 }
                 pto->PushMessage(NetMsgType::HEADERS, vHeaders);
@@ -6322,7 +6327,7 @@ bool SendEDCMessages(CEDCNode* pto)
             // Respond to BIP35 mempool requests
             if (fSendTrickle && pto->fSendMempool) {
                 std::vector<uint256> vtxid;
-                mempool.queryHashes(vtxid);
+                theApp.mempool().queryHashes(vtxid);
                 pto->fSendMempool = false;
                 CAmount filterrate = 0;
                 {
@@ -6336,7 +6341,7 @@ bool SendEDCMessages(CEDCNode* pto)
                     pto->setInventoryTxToSend.erase(hash);
                     if (filterrate) {
                         CFeeRate feeRate;
-                        mempool.lookupFeeRate(hash, feeRate);
+                        theApp.mempool().lookupFeeRate(hash, feeRate);
                         if (feeRate.GetFeePerK() < filterrate)
                             continue;
                     }
@@ -6392,7 +6397,7 @@ bool SendEDCMessages(CEDCNode* pto)
                     }
                     // Not in the mempool anymore? don't bother sending it.
                     CFeeRate feeRate;
-                    if (!mempool.lookupFeeRate(hash, feeRate)) {
+                    if (!theApp.mempool().lookupFeeRate(hash, feeRate)) {
                         continue;
                     }
                     if (filterrate && feeRate.GetFeePerK() < filterrate) {
@@ -6426,7 +6431,7 @@ bool SendEDCMessages(CEDCNode* pto)
             // Stalling only triggers when the block download window cannot move. During normal steady state,
             // the download window should be much larger than the to-be-downloaded set of blocks, so disconnection
             // should only happen during initial block download.
-            LogPrintf("Peer=%d is stalling block download, disconnecting\n", pto->id);
+            edcLogPrintf("Peer=%d is stalling block download, disconnecting\n", pto->id);
             pto->fDisconnect = true;
         }
         // In case there is a block that has been in flight from this peer for 2 + 0.5 * N times the block interval
@@ -6440,7 +6445,7 @@ bool SendEDCMessages(CEDCNode* pto)
             int nOtherPeersWithValidatedDownloads = nPeersWithValidatedDownloads - (state.nBlocksInFlightValidHeaders > 0);
             if (nNow > state.nDownloadingSince + consensusParams.nPowTargetSpacing * (BLOCK_DOWNLOAD_TIMEOUT_BASE + BLOCK_DOWNLOAD_TIMEOUT_PER_PEER * nOtherPeersWithValidatedDownloads)) 
 			{
-                LogPrintf("Timeout downloading block %s from peer=%d, disconnecting\n", queuedBlock.hash.ToString(), pto->id);
+                edcLogPrintf("Timeout downloading block %s from peer=%d, disconnecting\n", queuedBlock.hash.ToString(), pto->id);
                 pto->fDisconnect = true;
             }
         }
@@ -6458,7 +6463,7 @@ bool SendEDCMessages(CEDCNode* pto)
 			{
                 vGetData.push_back(CInv(MSG_BLOCK, pindex->GetBlockHash()));
                 MarkBlockAsInFlight(pto->GetId(), pindex->GetBlockHash(), consensusParams, pindex);
-                LogPrint("net", "Requesting block %s (%d) peer=%d\n", pindex->GetBlockHash().ToString(),
+                edcLogPrint("net", "Requesting block %s (%d) peer=%d\n", pindex->GetBlockHash().ToString(),
                     pindex->nHeight, pto->id);
             }
             if (state.nBlocksInFlight == 0 && staller != -1) 
@@ -6466,7 +6471,7 @@ bool SendEDCMessages(CEDCNode* pto)
                 if (State(staller)->nStallingSince == 0) 
 				{
                     State(staller)->nStallingSince = nNow;
-                    LogPrint("net", "Stall started peer=%d\n", staller);
+                    edcLogPrint("net", "Stall started peer=%d\n", staller);
                 }
             }
         }
@@ -6480,7 +6485,7 @@ bool SendEDCMessages(CEDCNode* pto)
             if (!AlreadyHave(inv))
             {
                 if (params.debug.size() > 0 )
-                    LogPrint("net", "Requesting %s peer=%d\n", inv.ToString(), pto->id);
+                    edcLogPrint("net", "Requesting %s peer=%d\n", inv.ToString(), pto->id);
                 vGetData.push_back(inv);
                 if (vGetData.size() >= 1000)
                 {
@@ -6594,7 +6599,7 @@ bool edcFindBlockPos(
 	{
         if (!fKnown) 
 		{
-            LogPrintf("Leaving block file %i: %s\n", nLastBlockFile, vinfoBlockFile[nLastBlockFile].ToString());
+            edcLogPrintf("Leaving block file %i: %s\n", nLastBlockFile, vinfoBlockFile[nLastBlockFile].ToString());
         }
         FlushBlockFile(!fKnown);
         nLastBlockFile = nFile;
@@ -6622,7 +6627,7 @@ bool edcFindBlockPos(
                 FILE *file = OpenBlockFile(pos);
                 if (file) 
 				{
-                    LogPrintf("Pre-allocating up to position 0x%x in blk%05u.dat\n", nNewChunks * BLOCKFILE_CHUNK_SIZE, pos.nFile);
+                    edcLogPrintf("Pre-allocating up to position 0x%x in blk%05u.dat\n", nNewChunks * BLOCKFILE_CHUNK_SIZE, pos.nFile);
                     AllocateFileRange(file, pos.nPos, nNewChunks * BLOCKFILE_CHUNK_SIZE - pos.nPos);
                     fclose(file);
                 }
@@ -6687,4 +6692,16 @@ std::string edcGetWarnings(const std::string& strFor)
 
     return "error";
 }
+
+bool edcCheckDiskSpace(uint64_t nAdditionalBytes)
+{
+    uint64_t nFreeBytesAvailable = boost::filesystem::space(edcGetDataDir()).available;
+
+    // Check for nMinDiskSpace bytes (currently 50MB)
+    if (nFreeBytesAvailable < nMinDiskSpace + nAdditionalBytes)
+        return AbortNode("Disk space is low!", _("Error: Disk space is low!"));
+
+    return true;
+}
+
 

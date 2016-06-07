@@ -12,7 +12,7 @@
 #include "protocol.h"
 #include "sync.h"
 #include "timedata.h"
-#include "edc/edcui_interface.h"
+#include "ui_interface.h"
 #include "edc/edcutil.h"
 #include "utilstrencodings.h"
 #include "version.h"

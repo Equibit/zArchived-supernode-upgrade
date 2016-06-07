@@ -9,7 +9,7 @@
 
 #include "wallet/walletdb.h"
 #include "amount.h"
-#include "wallet/db.h"
+#include "edc/wallet/edcdb.h"
 #include "key.h"
 
 #include <list>
@@ -30,10 +30,10 @@ class uint160;
 class uint256;
 
 /** Access to the wallet database */
-class CEDCWalletDB : public CDB
+class CEDCWalletDB : public CEDCDB
 {
 public:
-    CEDCWalletDB(const std::string& strFilename, const char* pszMode = "r+", bool fFlushOnClose = true) : CDB(strFilename, pszMode, fFlushOnClose)
+    CEDCWalletDB(const std::string& strFilename, const char* pszMode = "r+", bool fFlushOnClose = true) : CEDCDB(strFilename, pszMode, fFlushOnClose)
     {
     }
 
@@ -87,8 +87,8 @@ public:
     DBErrors FindWalletTx(CEDCWallet* pwallet, std::vector<uint256>& vTxHash, std::vector<CEDCWalletTx>& vWtx);
     DBErrors ZapWalletTx(CEDCWallet* pwallet, std::vector<CEDCWalletTx>& vWtx);
     DBErrors ZapSelectTx(CEDCWallet* pwallet, std::vector<uint256>& vHashIn, std::vector<uint256>& vHashOut);
-    static bool Recover(CDBEnv& dbenv, const std::string& filename, bool fOnlyKeys);
-    static bool Recover(CDBEnv& dbenv, const std::string& filename);
+    static bool Recover(CEDCDBEnv& dbenv, const std::string& filename, bool fOnlyKeys);
+    static bool Recover(CEDCDBEnv& dbenv, const std::string& filename);
 
 private:
     CEDCWalletDB(const CEDCWalletDB&);

@@ -125,6 +125,7 @@ BITCOIN_CORE_H = \
   edc/edccompressor.h \
   edc/edccore_io.h \
   edc/edccore_memusage.h \
+  edc/wallet/edcdb.h \
   edc/edcinit.h \
   edc/edcmain.h \
   edc/edcmerkleblock.h \
@@ -147,7 +148,7 @@ BITCOIN_CORE_H = \
   edc/script/edcsigcache.h \
   edc/script/edcsign.h \
   edc/script/edcinterpreter.h \
-  edc/edcui_interface.h \
+  edc/edctxdb.h \
   edc/edcutil.h \
   rpc/register.h \
   scheduler.h \
@@ -230,6 +231,7 @@ libbitcoin_server_a_SOURCES = \
   edc/edccore_write.cpp \
   edc/edcnet.cpp \
   edc/edccore_read.cpp \
+  edc/wallet/edcdb.cpp \
   edc/wallet/edcrpcwallet.cpp \
   edc/wallet/edcwallet.cpp \
   edc/wallet/edcwalletdb.cpp \
@@ -255,10 +257,10 @@ libbitcoin_server_a_SOURCES = \
   edc/script/edcinterpreter.cpp \
   edc/edctxmempool.cpp \
   edc/edcrest.cpp \
-  edc/edcui_interface.cpp \
   edc/edcparams.cpp \
-  edc/edcutil.cpp \
   edc/edctimedata.cpp \
+  edc/edctxdb.cpp \
+  edc/edcutil.cpp \
   script/sigcache.cpp \
   script/ismine.cpp \
   timedata.cpp \

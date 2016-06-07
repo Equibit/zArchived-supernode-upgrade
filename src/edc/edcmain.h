@@ -296,25 +296,34 @@ public:
 };
 
 /** Find the last common block between the parameter chain and a locator. */
-CBlockIndex* edcFindForkInGlobalIndex(const CChain& chain, const CBlockLocator& locator);
+extern CBlockIndex* edcFindForkInGlobalIndex(const CChain& chain, const CBlockLocator& locator);
 
 /** Mark a block as invalid. */
-bool edcInvalidateBlock(CValidationState& state, const CEDCChainParams& chainparams, CBlockIndex *pindex);
+extern bool edcInvalidateBlock(CValidationState& state, const CEDCChainParams& chainparams, CBlockIndex *pindex);
 
 /** Remove invalidity status from a block and its descendants. */
-bool edcResetBlockFailureFlags(CBlockIndex *pindex);
+extern bool edcResetBlockFailureFlags(CBlockIndex *pindex);
 
 /**
  * Return the spend height, which is one more than the inputs.GetBestBlock().
  * While checking, GetBestBlock() refers to the parent block. (protected by mainCS)
  * This is also true for mempool checks.
  */
-int GetSpendHeight(const CEDCCoinsViewCache& inputs);
+extern int GetSpendHeight(const CEDCCoinsViewCache& inputs);
 
 /**
  * Determine what nVersion a new block should use.
  */
-int32_t edcComputeBlockVersion(const CBlockIndex* pindexPrev, const Consensus::Params& params);
+extern int32_t edcComputeBlockVersion(const CBlockIndex* pindexPrev, const Consensus::Params& params);
 
-bool edcTestLockPointValidity(const LockPoints* lp);
+extern bool edcTestLockPointValidity(const LockPoints* lp);
+
+extern boost::filesystem::path edcGetBlockPosFilename(const CDiskBlockPos &pos, const char *prefix);
+
+extern bool edcLoadExternalBlockFile( const CEDCChainParams & chainparams, FILE * fileIn, CDiskBlockPos * dbp = NULL );
+
+extern FILE* edcOpenBlockFile(const CDiskBlockPos &pos, bool fReadOnly = false );
+
+extern bool edcCheckDiskSpace(uint64_t nAdditionalBytes = 0);
+
 #endif // EDC_EDCMAIN_H

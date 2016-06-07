@@ -479,7 +479,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
             boost::unique_lock<boost::mutex> lock(edccsBestBlock);
             while (theApp.chainActive().Tip()->GetBlockHash() == hashWatchedChain && IsRPCRunning())
             {
-                if (!cvBlockChange.timed_wait(lock, checktxtime))
+                if (!theApp.blockChange().timed_wait(lock, checktxtime))
                 {
                     // Timeout: Check transactions for update
                     if (theApp.mempool().GetTransactionsUpdated() != nTransactionsUpdatedLastLP)

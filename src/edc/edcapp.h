@@ -5,6 +5,7 @@
 #include "addrman.h"
 #include "main.h"
 #include "net.h"
+#include "edc/wallet/edcdb.h"
 
 
 class CBlockTreeDB;
@@ -122,6 +123,10 @@ public:
 	unsigned int walletDBUpdated() const	{ return walletDBUpdated_; }
 	void incWalletDBUpdated()				{ ++walletDBUpdated_; }
 
+	CEDCDBEnv & bitdb()	{ return bitdb_; }
+
+	CConditionVariable & blockChange() { return blockChange_; }
+
 private:
 	EDCapp();
 
@@ -220,4 +225,8 @@ private:
 	CFeeRate	payTxFee_;
 
 	unsigned int walletDBUpdated_;
+
+	CEDCDBEnv bitdb_;
+
+	CConditionVariable blockChange_;
 };

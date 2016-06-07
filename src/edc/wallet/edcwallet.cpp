@@ -24,7 +24,7 @@
 #include "timedata.h"
 #include "edc/edctxmempool.h"
 #include "edc/edcutil.h"
-#include "edc/edcui_interface.h"
+#include "ui_interface.h"
 #include "utilmoneystr.h"
 #include "edc/edcapp.h"
 #include "edc/edcparams.h"
@@ -360,27 +360,28 @@ set<uint256> CEDCWallet::GetConflicts(const uint256& txid) const
 
 void CEDCWallet::Flush(bool shutdown)
 {
-    bitdb.Flush(shutdown);
-}
+	EDCapp & theApp = EDCapp::singleton();
 
-extern bool edcInitError(const std::string& str);
-extern void edcInitWarning(const std::string& str);
+    theApp.bitdb().Flush(shutdown);
+}
 
 bool CEDCWallet::Verify()
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     edcLogPrintf("Using BerkeleyDB version %s\n", DbEnv::version(0, 0, 0));
 	EDCparams & params = EDCparams::singleton();
     std::string walletFile = params.wallet;
 
     edcLogPrintf("Using wallet %s\n", walletFile);
-    edcUiInterface.InitMessage(_("Verifying wallet..."));
+    uiInterface.InitMessage(_("Verifying wallet..."));
 
     // Wallet file must be a plain filename without a directory
     if (walletFile != boost::filesystem::basename(walletFile) + boost::filesystem::extension(walletFile))
-        return edcInitError(strprintf(_("Wallet %s resides outside data "
+        return InitError(strprintf(_("Wallet %s resides outside data "
 			"directory %s"), walletFile, edcGetDataDir().string()));
 
-    if (!bitdb.Open(edcGetDataDir()))
+    if (!theApp.bitdb().Open(edcGetDataDir()))
     {
         // try moving the database env out of the way
         boost::filesystem::path pathDatabase = edcGetDataDir() / "database";
@@ -400,11 +401,11 @@ bool CEDCWallet::Verify()
         }
         
         // try again
-        if (!bitdb.Open(edcGetDataDir())) 
+        if (!theApp.bitdb().Open(edcGetDataDir())) 
 		{
             // if it still fails, it probably means we can't even create the 
 			// database env
-            return edcInitError(strprintf(_("Error initializing wallet "
+            return InitError(strprintf(_("Error initializing wallet "
 				"database environment %s!"), edcGetDataDir()));
         }
     }
@@ -412,16 +413,16 @@ bool CEDCWallet::Verify()
     if (params.salvagewallet )
     {
         // Recover readable keypairs:
-        if (!CEDCWalletDB::Recover(bitdb, walletFile, true))
+        if (!CEDCWalletDB::Recover(theApp.bitdb(), walletFile, true))
             return false;
     }
     
     if (boost::filesystem::exists(edcGetDataDir() / walletFile))
     {
-        CDBEnv::VerifyResult r = bitdb.Verify(walletFile,CEDCWalletDB::Recover);
+        CEDCDBEnv::VerifyResult r = theApp.bitdb().Verify(walletFile,CEDCWalletDB::Recover);
         if (r == CDBEnv::RECOVER_OK)
         {
-            edcInitWarning(strprintf(
+            InitWarning(strprintf(
 				_("Warning: Wallet file corrupt, data salvaged!"
                   " Original %s saved as %s in %s; if"
                   " your balance or transactions are incorrect you should"
@@ -429,7 +430,7 @@ bool CEDCWallet::Verify()
                 walletFile, "wallet.{timestamp}.bak", edcGetDataDir()));
         }
         if (r == CDBEnv::RECOVER_FAIL)
-            return edcInitError(strprintf(_("%s corrupt, salvage failed"), 
+            return InitError(strprintf(_("%s corrupt, salvage failed"), 
 				walletFile));
     }
     
@@ -2454,7 +2455,8 @@ DBErrors CEDCWallet::LoadWallet(bool& fFirstRunRet)
         return nLoadWalletRet;
     fFirstRunRet = !vchDefaultKey.IsValid();
 
-    edcUiInterface.LoadWallet(this);
+// TODO:
+//    uiInterface.LoadWallet(this);
 
     return DB_LOAD_OK;
 }
@@ -3164,20 +3166,20 @@ bool CEDCWallet::InitLoadWallet()
 
     if ( params.zapwallettxes ) 
 	{
-        edcUiInterface.InitMessage(_("Zapping all transactions from wallet..."));
+        uiInterface.InitMessage(_("Zapping all transactions from wallet..."));
 
         CEDCWallet *tempWallet = new CEDCWallet(walletFile);
         DBErrors nZapWalletRet = tempWallet->ZapWalletTx(vWtx);
         if (nZapWalletRet != DB_LOAD_OK) 
 		{
-            return edcInitError(strprintf(_("Error loading %s: Wallet corrupted"), walletFile));
+            return InitError(strprintf(_("Error loading %s: Wallet corrupted"), walletFile));
         }
 
         delete tempWallet;
         tempWallet = NULL;
     }
 
-    edcUiInterface.InitMessage(_("Loading wallet..."));
+    uiInterface.InitMessage(_("Loading wallet..."));
 
     int64_t nStart = GetTimeMillis();
     bool fFirstRun = true;
@@ -3186,22 +3188,22 @@ bool CEDCWallet::InitLoadWallet()
     if (nLoadWalletRet != DB_LOAD_OK)
     {
         if (nLoadWalletRet == DB_CORRUPT)
-            return edcInitError(strprintf(_("Error loading %s: Wallet corrupted"), walletFile));
+            return InitError(strprintf(_("Error loading %s: Wallet corrupted"), walletFile));
         else if (nLoadWalletRet == DB_NONCRITICAL_ERROR)
         {
-            edcInitWarning(strprintf(_("Error reading %s! All keys read correctly, but transaction data"
+            InitWarning(strprintf(_("Error reading %s! All keys read correctly, but transaction data"
                                          " or address book entries might be missing or incorrect."),
                 walletFile));
         }
         else if (nLoadWalletRet == DB_TOO_NEW)
-            return edcInitError(strprintf(_("Error loading %s: Wallet requires newer version of %s"),
+            return InitError(strprintf(_("Error loading %s: Wallet requires newer version of %s"),
                                walletFile, _(PACKAGE_NAME)));
         else if (nLoadWalletRet == DB_NEED_REWRITE)
         {
-            return edcInitError(strprintf(_("Wallet needed to be rewritten: restart %s to complete"), _(PACKAGE_NAME)));
+            return InitError(strprintf(_("Wallet needed to be rewritten: restart %s to complete"), _(PACKAGE_NAME)));
         }
         else
-            return edcInitError(strprintf(_("Error loading %s"), walletFile));
+            return InitError(strprintf(_("Error loading %s"), walletFile));
     }
 
     if ( params.upgradewallet > 0 )
@@ -3217,7 +3219,7 @@ bool CEDCWallet::InitLoadWallet()
             edcLogPrintf("Allowing wallet upgrade up to %i\n", nMaxVersion);
         if (nMaxVersion < walletInstance->GetVersion())
         {
-            return edcInitError(_("Cannot downgrade wallet"));
+            return InitError(_("Cannot downgrade wallet"));
         }
         walletInstance->SetMaxVersion(nMaxVersion);
     }
@@ -3232,7 +3234,7 @@ bool CEDCWallet::InitLoadWallet()
 		{
             walletInstance->SetDefaultKey(newDefaultKey);
             if (!walletInstance->SetAddressBook(walletInstance->vchDefaultKey.GetID(), "", "receive"))
-                return edcInitError(_("Cannot write default address") += "\n");
+                return InitError(_("Cannot write default address") += "\n");
         }
 
         walletInstance->SetBestChain(theApp.chainActive().GetLocator());
@@ -3267,10 +3269,10 @@ bool CEDCWallet::InitLoadWallet()
                 block = block->pprev;
 
             if (pindexRescan != block)
-                return edcInitError(_("Prune: last wallet synchronisation goes beyond pruned data. You need to -reindex (download the whole blockchain again in case of pruned node)"));
+                return InitError(_("Prune: last wallet synchronisation goes beyond pruned data. You need to -reindex (download the whole blockchain again in case of pruned node)"));
         }
 
-        edcUiInterface.InitMessage(_("Rescanning..."));
+        uiInterface.InitMessage(_("Rescanning..."));
         edcLogPrintf("Rescanning last %i blocks (from block %i)...\n", theApp.chainActive().Height() - pindexRescan->nHeight, pindexRescan->nHeight);
         nStart = GetTimeMillis();
         walletInstance->ScanForWalletTransactions(pindexRescan, true);
@@ -3319,17 +3321,17 @@ bool CEDCWallet::ParameterInteraction()
         if (ParseMoney( params.mintxfee, n) && n > 0)
             CEDCWallet::minTxFee = CFeeRate(n);
         else
-            return edcInitError(AmountErrMsg("mintxfee", params.mintxfee));
+            return InitError(AmountErrMsg("mintxfee", params.mintxfee));
     }
     if ( params.fallbackfee.size() > 0 )
     {
         CAmount nFeePerK = 0;
         if (!ParseMoney( params.fallbackfee, nFeePerK))
-            return edcInitError(strprintf(
+            return InitError(strprintf(
 				_("Invalid amount for -ebfallbackfee=<amount>: '%s'"), 
 				params.fallbackfee ));
         if (nFeePerK > HIGH_TX_FEE_PER_KB)
-            edcInitWarning(_("-ebfallbackfee is set very high! This is the transaction fee you may pay when fee estimates are not available."));
+            InitWarning(_("-ebfallbackfee is set very high! This is the transaction fee you may pay when fee estimates are not available."));
         CEDCWallet::fallbackFee = CFeeRate(nFeePerK);
     }		
 
@@ -3338,16 +3340,16 @@ bool CEDCWallet::ParameterInteraction()
     {
         CAmount nFeePerK = 0;
         if (!ParseMoney( params.paytxfee, nFeePerK))
-            return edcInitError(AmountErrMsg("paytxfee", params.paytxfee));
+            return InitError(AmountErrMsg("paytxfee", params.paytxfee));
 
         if (nFeePerK > HIGH_TX_FEE_PER_KB)
-            edcInitWarning(_("-ebpaytxfee is set very high! This is the transaction fee you will pay if you send a transaction."));
+            InitWarning(_("-ebpaytxfee is set very high! This is the transaction fee you will pay if you send a transaction."));
 
         theApp.payTxFee( CFeeRate(nFeePerK, 1000) );
 
         if (theApp.payTxFee() < theApp.minRelayTxFee())
         {
-            return edcInitError(strprintf(_(
+            return InitError(strprintf(_(
 				"Invalid amount for -paytxfee=<amount>: '%s' (must be at "
 				"least %s)"), params.paytxfee, 
 				theApp.minRelayTxFee().ToString()));
@@ -3357,12 +3359,12 @@ bool CEDCWallet::ParameterInteraction()
     if ( params.maxtxfee > 0 )
     {
         if (params.maxtxfee > HIGH_MAX_TX_FEE)
-            edcInitWarning(_("-ebmaxtxfee is set very high! Fees this large could be paid on a single transaction."));
+            InitWarning(_("-ebmaxtxfee is set very high! Fees this large could be paid on a single transaction."));
         theApp.maxTxFee( params.maxtxfee);
 
         if (CFeeRate(theApp.maxTxFee(), 1000) < theApp.minRelayTxFee())
         {
-            return edcInitError(strprintf(_("Invalid amount for "
+            return InitError(strprintf(_("Invalid amount for "
 				"-ebmaxtxfee=<amount>: '%s' (must be at least the minrelay "
 				"fee of %s to prevent stuck transactions)"),
                 params.maxtxfee, theApp.minRelayTxFee().ToString()));

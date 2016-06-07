@@ -21,7 +21,7 @@
 #include "hash.h"
 #include "edc/primitives/edctransaction.h"
 #include "scheduler.h"
-#include "edcui_interface.h"
+#include "ui_interface.h"
 #include "utilstrencodings.h"
 
 #ifdef WIN32
@@ -1080,7 +1080,7 @@ void edcThreadSocketHandler()
         if(theApp.vNodes().size() != nPrevNodeCount) 
 		{
             nPrevNodeCount = theApp.vNodes().size();
-            edcUiInterface.NotifyNumConnectionsChanged(nPrevNodeCount);
+            uiInterface.NotifyNumConnectionsChanged(nPrevNodeCount);
         }
 
         //
@@ -1654,7 +1654,6 @@ void edcThreadOpenAddedConnections()
         BOOST_FOREACH(const std::string& strAddNode, lAddresses) 
 		{
             vector<CService> vservNode(0);
-			EDCparams & params = EDCparams::singleton();
             if(Lookup(strAddNode.c_str(), vservNode, Params().GetDefaultPort(),				fNameLookup, 0))
             {
                 lservAddressesToAdd.push_back(vservNode);
@@ -1950,7 +1949,7 @@ bool edcAddLocal(const CService& addr, int nScore)
     if (IsLimited(addr))
         return false;
 
-    LogPrintf("edcAddLocal(%s,%i)\n", addr.ToString(), nScore);
+    edcLogPrintf("edcAddLocal(%s,%i)\n", addr.ToString(), nScore);
 
     {
         LOCK(cs_mapLocalHost);
@@ -1974,7 +1973,7 @@ void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
-    edcUiInterface.InitMessage(_("Loading addresses..."));
+    uiInterface.InitMessage(_("Loading addresses..."));
     // Load addresses from peers.dat
     int64_t nStart = GetTimeMillis();
     {
@@ -1988,7 +1987,7 @@ void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
         }
     }
 
-    edcUiInterface.InitMessage(_("Loading banlist..."));
+    uiInterface.InitMessage(_("Loading banlist..."));
     // Load addresses from banlist.dat
     nStart = GetTimeMillis();
     CBanDB bandb;
@@ -2394,7 +2393,7 @@ void CEDCNode::AskFor(const CInv& inv)
         nRequestTime = it->second;
     else
         nRequestTime = 0;
-    LogPrint("net", "askfor %s  %d (%s) peer=%d\n", inv.ToString(), nRequestTime, DateTimeStrFormat("%H:%M:%S", nRequestTime/1000000), id);
+    edcLogPrint("net", "askfor %s  %d (%s) peer=%d\n", inv.ToString(), nRequestTime, DateTimeStrFormat("%H:%M:%S", nRequestTime/1000000), id);
 
     // Make sure not to reuse time indexes to keep things in the same order
     int64_t nNow = GetTimeMicros() - 1000000;
@@ -2417,7 +2416,7 @@ void CEDCNode::BeginMessage(const char* pszCommand) EXCLUSIVE_LOCK_FUNCTION(cs_v
     ENTER_CRITICAL_SECTION(cs_vSend);
     assert(ssSend.size() == 0);
     ssSend << CMessageHeader(Params().MessageStart(), pszCommand, 0);
-    LogPrint("net", "sending: %s ", SanitizeString(pszCommand));
+    edcLogPrint("net", "sending: %s ", SanitizeString(pszCommand));
 }
 
 void CEDCNode::AbortMessage() UNLOCK_FUNCTION(cs_vSend)
@@ -2426,7 +2425,7 @@ void CEDCNode::AbortMessage() UNLOCK_FUNCTION(cs_vSend)
 
     LEAVE_CRITICAL_SECTION(cs_vSend);
 
-    LogPrint("net", "(aborted)\n");
+    edcLogPrint("net", "(aborted)\n");
 }
 
 void CEDCNode::EndMessage(const char* pszCommand) UNLOCK_FUNCTION(cs_vSend)
@@ -2437,7 +2436,7 @@ void CEDCNode::EndMessage(const char* pszCommand) UNLOCK_FUNCTION(cs_vSend)
 	EDCparams & params = EDCparams::singleton();
     if (GetRand(params.dropmessagestest) == 0)
     {
-        LogPrint("net", "dropmessages DROPPING SEND MESSAGE\n");
+        edcLogPrint("net", "dropmessages DROPPING SEND MESSAGE\n");
         AbortMessage();
         return;
     }
@@ -2463,7 +2462,7 @@ void CEDCNode::EndMessage(const char* pszCommand) UNLOCK_FUNCTION(cs_vSend)
     assert(ssSend.size () >= CMessageHeader::CHECKSUM_OFFSET + sizeof(nChecksum));
     memcpy((char*)&ssSend[CMessageHeader::CHECKSUM_OFFSET], &nChecksum, sizeof(nChecksum));
 
-    LogPrint("net", "(%d bytes) peer=%d\n", nSize, id);
+    edcLogPrint("net", "(%d bytes) peer=%d\n", nSize, id);
 
     std::deque<CSerializeData>::iterator it = vSendMsg.insert(vSendMsg.end(), CSerializeData());
     ssSend.GetAndClear(*it);
@@ -2492,7 +2491,7 @@ void edcDumpBanlist()
     if (!bandb.Write(banmap))
         CEDCNode::SetBannedSetDirty(true);
 
-    LogPrint("net", "Flushed %d banned node ips/subnets to banlist.dat  %dms\n",
+    edcLogPrint("net", "Flushed %d banned node ips/subnets to banlist.dat  %dms\n",
         banmap.size(), GetTimeMillis() - nStart);
 }
 

@@ -918,13 +918,13 @@ void edcThreadFlushWalletDB(const string& strFile)
 
         if (nLastFlushed != theApp.walletDBUpdated() && GetTime() - nLastWalletUpdate >= 2)
         {
-            TRY_LOCK(bitdb.cs_db,lockDb);
+            TRY_LOCK(theApp.bitdb().cs_db,lockDb);
             if (lockDb)
             {
                 // Don't do this if any databases are in use
                 int nRefCount = 0;
-                map<string, int>::iterator mi = bitdb.mapFileUseCount.begin();
-                while (mi != bitdb.mapFileUseCount.end())
+                map<string, int>::iterator mi = theApp.bitdb().mapFileUseCount.begin();
+                while (mi != theApp.bitdb().mapFileUseCount.end())
                 {
                     nRefCount += (*mi).second;
                     mi++;
@@ -933,18 +933,18 @@ void edcThreadFlushWalletDB(const string& strFile)
                 if (nRefCount == 0)
                 {
                     boost::this_thread::interruption_point();
-                    map<string, int>::iterator mi = bitdb.mapFileUseCount.find(strFile);
-                    if (mi != bitdb.mapFileUseCount.end())
+                    map<string, int>::iterator mi = theApp.bitdb().mapFileUseCount.find(strFile);
+                    if (mi != theApp.bitdb().mapFileUseCount.end())
                     {
                         edcLogPrint("db", "Flushing %s\n", strFile);
                         nLastFlushed = theApp.walletDBUpdated();
                         int64_t nStart = GetTimeMillis();
 
                         // Flush wallet file so it's self contained
-                        bitdb.CloseDb(strFile);
-                        bitdb.CheckpointLSN(strFile);
+                        theApp.bitdb().CloseDb(strFile);
+                        theApp.bitdb().CheckpointLSN(strFile);
 
-                        bitdb.mapFileUseCount.erase(mi++);
+                        theApp.bitdb().mapFileUseCount.erase(mi++);
                         edcLogPrint("db", "Flushed %s %dms\n", strFile, GetTimeMillis() - nStart);
                     }
                 }
@@ -955,18 +955,21 @@ void edcThreadFlushWalletDB(const string& strFile)
 
 bool BackupWallet(const CEDCWallet& wallet, const string& strDest)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!wallet.fFileBacked)
         return false;
     while (true)
     {
         {
-            LOCK(bitdb.cs_db);
-            if (!bitdb.mapFileUseCount.count(wallet.strWalletFile) || bitdb.mapFileUseCount[wallet.strWalletFile] == 0)
+            LOCK(theApp.bitdb().cs_db);
+            if (!theApp.bitdb().mapFileUseCount.count(wallet.strWalletFile) || 
+				 theApp.bitdb().mapFileUseCount[wallet.strWalletFile] == 0)
             {
                 // Flush log data to the dat file
-                bitdb.CloseDb(wallet.strWalletFile);
-                bitdb.CheckpointLSN(wallet.strWalletFile);
-                bitdb.mapFileUseCount.erase(wallet.strWalletFile);
+                theApp.bitdb().CloseDb(wallet.strWalletFile);
+                theApp.bitdb().CheckpointLSN(wallet.strWalletFile);
+                theApp.bitdb().mapFileUseCount.erase(wallet.strWalletFile);
 
                 // Copy wallet file
                 boost::filesystem::path pathSrc = edcGetDataDir() / wallet.strWalletFile;
@@ -1000,9 +1003,9 @@ bool BackupWallet(const CEDCWallet& wallet, const string& strDest)
 // Try to (very carefully!) recover wallet file if there is a problem.
 //
 bool CEDCWalletDB::Recover(
-	           CDBEnv & dbenv, 
-	const std::string & filename, 
-	               bool fOnlyKeys )
+	           CEDCDBEnv & dbenv, 
+       const std::string & filename, 
+	                  bool fOnlyKeys )
 {
     // Recovery procedure:
     // move wallet file to wallet.timestamp.bak
@@ -1087,7 +1090,7 @@ bool CEDCWalletDB::Recover(
     return fSuccess;
 }
 
-bool CEDCWalletDB::Recover(CDBEnv& dbenv, const std::string& filename)
+bool CEDCWalletDB::Recover(CEDCDBEnv& dbenv, const std::string& filename)
 {
     return CEDCWalletDB::Recover(dbenv, filename, false);
 }
