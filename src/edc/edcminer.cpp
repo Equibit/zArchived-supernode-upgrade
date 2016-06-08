@@ -11,7 +11,7 @@
 #include "edcchainparams.h"
 #include "edc/edccoins.h"
 #include "consensus/consensus.h"
-#include "consensus/merkle.h"
+#include "edc/consensus/edcmerkle.h"
 #include "consensus/validation.h"
 #include "hash.h"
 #include "edc/edcmain.h"
@@ -322,5 +322,5 @@ void IncrementExtraNonce(CEDCBlock* pblock, const CBlockIndex* pindexPrev, unsig
     assert(txCoinbase.vin[0].scriptSig.size() <= 100);
 
     pblock->vtx[0] = txCoinbase;
-    pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);
+    pblock->hashMerkleRoot = edcBlockMerkleRoot(*pblock);
 }

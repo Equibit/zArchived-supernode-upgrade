@@ -98,5 +98,6 @@ const boost::filesystem::path & edcGetDataDir( bool = true );
 boost::filesystem::path edcGetDefaultDataDir();
 boost::filesystem::path edcGetPidFile();
 boost::filesystem::path edcGetConfigFile();
+void edcClearDatadirCache();
 
 #endif // EDC_EDCUTIL_H

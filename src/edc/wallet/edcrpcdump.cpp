@@ -298,7 +298,7 @@ UniValue importprunedfunds(const UniValue& params, bool fHelp)
     CEDCWalletTx wtx(theApp.walletMain(),tx);
 
     CDataStream ssMB(ParseHexV(params[1], "proof"), SER_NETWORK, PROTOCOL_VERSION);
-    CMerkleBlock merkleBlock;
+    CEDCMerkleBlock merkleBlock;
     ssMB >> merkleBlock;
 
     string strLabel = "";

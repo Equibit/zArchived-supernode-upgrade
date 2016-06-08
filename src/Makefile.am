@@ -116,6 +116,7 @@ BITCOIN_CORE_H = \
   rpc/client.h \
   rpc/protocol.h \
   rpc/server.h \
+  edc/consensus/edcmerkle.h \
   edc/edcapp.h \
   edc/bitmessage.h \
   edc/edcchainparams.h \
@@ -218,6 +219,7 @@ libbitcoin_server_a_SOURCES = \
   rpc/net.cpp \
   rpc/rawtransaction.cpp \
   rpc/server.cpp \
+  edc/consensus/edcmerkle.cpp \
   edc/edcapp.cpp \
   edc/bitmessage.cpp \
   edc/rpcedc.cpp \

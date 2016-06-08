@@ -298,7 +298,7 @@ UniValue gettxoutproof(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "(Not all) transactions not found in specified block");
 
     CDataStream ssMB(SER_NETWORK, PROTOCOL_VERSION);
-    CMerkleBlock mb(block, setTxids);
+    CEDCMerkleBlock mb(block, setTxids);
     ssMB << mb;
     std::string strHex = HexStr(ssMB.begin(), ssMB.end());
     return strHex;
@@ -320,7 +320,7 @@ UniValue verifytxoutproof(const UniValue& params, bool fHelp)
         );
 
     CDataStream ssMB(ParseHexV(params[0], "proof"), SER_NETWORK, PROTOCOL_VERSION);
-    CMerkleBlock merkleBlock;
+    CEDCMerkleBlock merkleBlock;
     ssMB >> merkleBlock;
 
     UniValue res(UniValue::VARR);
@@ -677,7 +677,7 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
         BOOST_FOREACH(const CEDCTxIn& txin, mergedTx.vin) 
 		{
             const uint256& prevHash = txin.prevout.hash;
-            CCoins coins;
+            CEDCCoins coins;
             view.AccessCoins(prevHash); // this is certainly allowed to fail
         }
 

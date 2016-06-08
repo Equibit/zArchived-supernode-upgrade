@@ -559,4 +559,9 @@ void edcDumpBanlist();
 /** Return a timestamp in the future (in microseconds) for exponentially distributed events. */
 int64_t edcPoissonNextSend(int64_t nNow, int average_interval_seconds);
 
+CEDCNode * edcFindNode(const CNetAddr& ip);
+CEDCNode * edcFindNode(const CSubNet& subNet);
+CEDCNode * edcFindNode(const std::string& addrName);
+CEDCNode * edcFindNode(const CService& ip);
+
 #endif // BITCOIN_NET_H

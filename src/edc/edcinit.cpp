@@ -170,7 +170,7 @@ void edcThreadImport(std::vector<boost::filesystem::path> vImportFiles)
         edcLogPrintf("Reindexing finished\n");
 
         // To avoid ending up in a situation without genesis block, re-try 
-		// initializing (no-op if reindexing worked):
+		// initializing (no-op if reindexing worked);
         edcInitBlockIndex(chainparams);
     }
 
@@ -274,6 +274,19 @@ void edcCleanupBlockRevFiles()
     }
 }
 
+std::string edcChainNameFromCommandLine()
+{
+	EDCparams & params = EDCparams::singleton();
+
+    if (params.regtest && params.testnet)
+        throw std::runtime_error("Invalid combination of -eb_regtest and -eb_testnet.");
+    if (params.regtest)
+        return CBaseChainParams::REGTEST;
+    if (params.testnet)
+        return CBaseChainParams::TESTNET;
+    return CBaseChainParams::MAIN;
+}
+
 bool EdcAppInit(
 	boost::thread_group & threadGroup, 
 		 	 CScheduler & scheduler)
@@ -283,6 +296,18 @@ bool EdcAppInit(
 
 	if( !rc )
 		return rc;
+
+    // Check for -testnet or -regtest parameter (Params() calls are only valid 
+	// after this clause)
+    try 
+	{
+        edcSelectParams(edcChainNameFromCommandLine());
+    } 
+	catch (const std::exception& e) 
+	{
+        fprintf(stderr, "Error: %s\n", e.what());
+        return false;
+    }
 
 	try
 	{
@@ -364,7 +389,7 @@ bool EdcAppInit(
         	theApp.connectTimeout( EDC_DEFAULT_CONNECT_TIMEOUT );
 
     	// Fee-per-kilobyte amount considered the same as "free"
-	    // If you are mining, be careful setting this:
+	    // If you are mining, be careful setting this;
    	 	// if you set it to zero then
     	// a transaction spammer can cheaply fill blocks using
     	// 1-satoshi-fee transactions. It should be set above the real
@@ -506,7 +531,7 @@ bool EdcAppInit(
             	if (!subnet.IsValid())
                 	return InitError(strprintf(_("Invalid netmask specified "
 						"in -whitelist: '%s'"), net));
-            	CNode::AddWhitelistedRange(subnet);
+            	CEDCNode::AddWhitelistedRange(subnet);
         	}
     	}
 
@@ -692,7 +717,7 @@ bool EdcAppInit(
 	                delete pcoinscatcher;
 	                delete theApp.blocktree();
 	
-	                theApp.blocktree( new CBlockTreeDB(nBlockTreeDBCache, false, theApp.reindex() ) );
+	                theApp.blocktree( new CEDCBlockTreeDB(nBlockTreeDBCache, false, theApp.reindex() ) );
 	                pcoinsdbview = new CEDCCoinsViewDB(nCoinDBCache, false, theApp.reindex() );
 	                pcoinscatcher = new CEDCCoinsViewErrorCatcher(pcoinsdbview);
 	                theApp.coinsTip( new CEDCCoinsViewCache(pcoinscatcher) );

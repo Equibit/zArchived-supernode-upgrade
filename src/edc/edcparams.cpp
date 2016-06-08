@@ -123,13 +123,27 @@ void InterpretNegativeSetting(
     }
 }
 
+boost::filesystem::path GetConfigFile( 
+	const std::string & dataDir, 
+	const std::string & confFile )
+{
+    boost::filesystem::path pathConfigFile( confFile );
+
+    if (!pathConfigFile.is_complete())
+        pathConfigFile = dataDir / pathConfigFile;
+
+    return pathConfigFile;
+}
+
 void ReadEquibitConfigFile(
+                                   const std::string & dataDir,
+                                   const std::string & confFile,
 	              std::map<std::string, std::string> & mapSettingsRet,
     std::map<std::string, std::vector<std::string> > & mapMultiSettingsRet )
 {
-    boost::filesystem::ifstream streamConfig(edcGetConfigFile());
+    boost::filesystem::ifstream streamConfig(GetConfigFile(dataDir, confFile));
     if (!streamConfig.good())
-        return; // No bitcoin.conf file is OK
+        return; // No equibit.conf file is OK
 
     std::set<std::string> setOptions;
     setOptions.insert("*");
@@ -150,14 +164,14 @@ void ReadEquibitConfigFile(
         mapMultiSettingsRet[strKey].push_back(strValue);
     }
     // If datadir is changed in .conf file:
-    ClearDatadirCache();
+    edcClearDatadirCache();
 }
 
 }
 
 EDCparams::EDCparams()
 {
-	datadir = GetArg( "-ebdatadir", edcGetDataDir(true).string() );
+	datadir = GetArg( "-ebdatadir", edcGetDefaultDataDir().string() );
 
 	// First load the config file, which may contain more settings
 	//
@@ -165,14 +179,14 @@ EDCparams::EDCparams()
 
 	try
 	{
-		ReadEquibitConfigFile( mapArgs, mapMultiArgs );
+		ReadEquibitConfigFile( datadir, conf, mapArgs, mapMultiArgs );
 	}
 	catch(const std::exception& e) 
 	{
         fprintf(stderr,"Error reading configuration file: %s\n", e.what());
         configFileReadFailed = true;
     }
-    configFileReadFailed = true;
+    configFileReadFailed = false;
 
 	// Bool parameters
 	acceptnonstdtxn     = GetBoolArg( "-ebacceptnonstdtxn", false );
@@ -261,7 +275,6 @@ EDCparams::EDCparams()
 	rpcworkqueue        = GetArg( "-ebrpcworkqueue", EDC_DEFAULT_HTTP_WORKQUEUE );
 	timeout             = GetArg( "-ebtimeout", EDC_DEFAULT_CONNECT_TIMEOUT );
 	txconfirmtarget     = GetArg( "-ebtxconfirmtarget", EDC_DEFAULT_TX_CONFIRM_TARGET );
-
 
 	// String parameters
 	alertnotify         = GetArg( "-ebalertnotify", "" );

@@ -8,7 +8,7 @@
 #include "edc/wallet/edcdb.h"
 
 
-class CBlockTreeDB;
+class CEDCBlockTreeDB;
 class CEDCNode;
 class CEDCCoinsViewCache;
 class CEDCWallet;
@@ -52,8 +52,8 @@ public:
 	uint64_t localHostNonce() const	{ return localHostNonce_; }
 	void localHostNonce( uint64_t l){ localHostNonce_ = l; }
 
-	CBlockTreeDB * blocktree() const	{ return blocktree_; }
-	void blocktree( CBlockTreeDB * bt ) { blocktree_ = bt; }
+	CEDCBlockTreeDB * blocktree() const		{ return blocktree_; }
+	void blocktree( CEDCBlockTreeDB * bt )	{ blocktree_ = bt; }
 
 	uint64_t lastBlockSize() const		{ return lastBlockSize_; }
 	void lastBlockSize( uint64_t l )	{ lastBlockSize_ = l; }
@@ -185,7 +185,7 @@ private:
 	CEDCTxMemPool mempool_;
 
 	/* points to the active block tree (protected by EDC_cs_main) */
-	CBlockTreeDB * blocktree_;
+	CEDCBlockTreeDB * blocktree_;
 
 	/* Constant stuff for coinbase transactions we create: */
 	CScript COINBASE_FLAGS_;

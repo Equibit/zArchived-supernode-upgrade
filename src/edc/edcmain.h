@@ -32,7 +32,7 @@
 #include <boost/unordered_map.hpp>
 
 class CBlockIndex;
-class CBlockTreeDB;
+class CEDCBlockTreeDB;
 class CEDCBloomFilter;
 class CEDCChainParams;
 class CInv;

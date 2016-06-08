@@ -302,7 +302,7 @@ uint64_t CEDCNode::nMaxOutboundTotalBytesSentInCycle = 0;
 uint64_t CEDCNode::nMaxOutboundTimeframe = 60*60*24; //1 day
 uint64_t CEDCNode::nMaxOutboundCycleStartTime = 0;
 
-CEDCNode* EDCFindNode(const CNetAddr& ip)
+CEDCNode* edcFindNode(const CNetAddr& ip)
 {
 	EDCapp & theApp = EDCapp::singleton();
     LOCK(theApp.vNodesCS());
@@ -312,7 +312,7 @@ CEDCNode* EDCFindNode(const CNetAddr& ip)
     return NULL;
 }
 
-CEDCNode* EDCFindNode(const CSubNet& subNet)
+CEDCNode* edcFindNode(const CSubNet& subNet)
 {
 	EDCapp & theApp = EDCapp::singleton();
     LOCK(theApp.vNodesCS());
@@ -322,7 +322,7 @@ CEDCNode* EDCFindNode(const CSubNet& subNet)
     return NULL;
 }
 
-CEDCNode* EDCFindNode(const std::string& addrName)
+CEDCNode* edcFindNode(const std::string& addrName)
 {	
 	EDCapp & theApp = EDCapp::singleton();
     LOCK(theApp.vNodesCS());
@@ -332,7 +332,7 @@ CEDCNode* EDCFindNode(const std::string& addrName)
     return NULL;
 }
 
-CEDCNode* EDCFindNode(const CService& addr)
+CEDCNode* edcFindNode(const CService& addr)
 {
 	EDCapp & theApp = EDCapp::singleton();
     LOCK(theApp.vNodesCS());
@@ -350,7 +350,7 @@ CEDCNode* ConnectEDCNode(CAddress addrConnect, const char *pszDest)
             return NULL;
 
         // Look for an existing connection
-        CEDCNode* pnode = EDCFindNode((CService)addrConnect);
+        CEDCNode* pnode = edcFindNode((CService)addrConnect);
         if (pnode)
         {
             pnode->AddRef();
@@ -1698,10 +1698,10 @@ bool edcOpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *gran
     if (!pszDest) 
 	{
         if (edcIsLocal(addrConnect) ||
-            EDCFindNode((CNetAddr)addrConnect) || CEDCNode::IsBanned(addrConnect) ||
-            EDCFindNode(addrConnect.ToStringIPPort()))
+            edcFindNode((CNetAddr)addrConnect) || CEDCNode::IsBanned(addrConnect) ||
+            edcFindNode(addrConnect.ToStringIPPort()))
             return false;
-    } else if (EDCFindNode(std::string(pszDest)))
+    } else if (edcFindNode(std::string(pszDest)))
         return false;
 
     CEDCNode* pnode = ConnectEDCNode(addrConnect, pszDest);
@@ -2486,7 +2486,7 @@ void edcDumpBanlist()
 
     CBanDB bandb;
     banmap_t banmap;
-    CNode::SetBannedSetDirty(false);
+    CEDCNode::SetBannedSetDirty(false);
     CEDCNode::GetBanned(banmap);
     if (!bandb.Write(banmap))
         CEDCNode::SetBannedSetDirty(true);

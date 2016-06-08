@@ -367,7 +367,7 @@ static boost::filesystem::path pathCached;
 static boost::filesystem::path pathCachedNetSpecific;
 static CCriticalSection csPathCached;
 
-void ClearEquibitDatadirCache()
+void edcClearDatadirCache()
 {
     pathCached = boost::filesystem::path();
     pathCachedNetSpecific = boost::filesystem::path();
@@ -390,6 +390,9 @@ const boost::filesystem::path & edcGetDataDir(bool fNetSpecific)
     if (params.datadir.size() > 0 )
     {
         path = fs::system_complete( params.datadir );
+
+    	fs::create_directories(path);
+
         if (!fs::is_directory(path))
         {
             path = "";

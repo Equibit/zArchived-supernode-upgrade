@@ -1027,7 +1027,7 @@ bool CEDCWalletDB::Recover(
         return false;
     }
 
-    std::vector<CDBEnv::KeyValPair> salvagedData;
+    std::vector<CEDCDBEnv::KeyValPair> salvagedData;
     bool fSuccess = dbenv.Salvage(newFilename, true, salvagedData);
     if (salvagedData.empty())
     {
@@ -1053,7 +1053,7 @@ bool CEDCWalletDB::Recover(
     CWalletScanState wss;
 
     DbTxn* ptxn = dbenv.TxnBegin();
-    BOOST_FOREACH(CDBEnv::KeyValPair& row, salvagedData)
+    BOOST_FOREACH(CEDCDBEnv::KeyValPair& row, salvagedData)
     {
         if (fOnlyKeys)
         {

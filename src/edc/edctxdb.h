@@ -64,7 +64,7 @@ protected:
 public:
     CEDCCoinsViewDB(size_t nCacheSize, bool fMemory = false, bool fWipe = false);
 
-    bool GetCoins(const uint256 &txid, CCoins &coins) const;
+    bool GetCoins(const uint256 &txid, CEDCCoins &coins) const;
     bool HaveCoins(const uint256 &txid) const;
     uint256 GetBestBlock() const;
     bool BatchWrite(CEDCCoinsMap &mapCoins, const uint256 &hashBlock);
@@ -93,15 +93,14 @@ private:
     friend class CEDCCoinsViewDB;
 };
 
-#if 0
 /** Access to the block database (blocks/index/) */
-class CBlockTreeDB : public CDBWrapper
+class CEDCBlockTreeDB : public CDBWrapper
 {
 public:
-    CBlockTreeDB(size_t nCacheSize, bool fMemory = false, bool fWipe = false);
+    CEDCBlockTreeDB(size_t nCacheSize, bool fMemory = false, bool fWipe = false);
 private:
-    CBlockTreeDB(const CBlockTreeDB&);
-    void operator=(const CBlockTreeDB&);
+    CEDCBlockTreeDB(const CEDCBlockTreeDB&);
+    void operator=(const CEDCBlockTreeDB&);
 public:
     bool WriteBatchSync(const std::vector<std::pair<int, const CBlockFileInfo*> >& fileInfo, int nLastFile, const std::vector<const CBlockIndex*>& blockinfo);
     bool ReadBlockFileInfo(int nFile, CBlockFileInfo &fileinfo);
@@ -114,6 +113,5 @@ public:
     bool ReadFlag(const std::string &name, bool &fValue);
     bool LoadBlockIndexGuts(boost::function<CBlockIndex*(const uint256&)> insertBlockIndex);
 };
-#endif
 
 #endif

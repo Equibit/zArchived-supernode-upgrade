@@ -12,7 +12,7 @@
 #include "checkpoints.h"
 #include "checkqueue.h"
 #include "consensus/consensus.h"
-#include "consensus/merkle.h"
+#include "edc/consensus/edcmerkle.h"
 #include "consensus/validation.h"
 #include "hash.h"
 #include "edcinit.h"
@@ -28,7 +28,7 @@
 #include "edc/script/edcsigcache.h"
 #include "script/standard.h"
 #include "tinyformat.h"
-#include "txdb.h"
+#include "edctxdb.h"
 #include "edctxmempool.h"
 #include "ui_interface.h"
 #include "edcundo.h"
@@ -3538,7 +3538,7 @@ bool CheckBlock(
     if (fCheckMerkleRoot) 
 	{
         bool mutated;
-        uint256 hashMerkleRoot2 = BlockMerkleRoot(block, &mutated);
+        uint256 hashMerkleRoot2 = edcBlockMerkleRoot(block, &mutated);
         if (block.hashMerkleRoot != hashMerkleRoot2)
             return state.DoS(100, false, REJECT_INVALID, "bad-txnmrklroot", true, "hashMerkleRoot mismatch");
 
@@ -3721,7 +3721,7 @@ static bool AcceptBlockHeader(
 
 /** Store block on disk. If dbp is non-NULL, the file is known to already reside on disk */
 static bool AcceptBlock(
-	         const CBlock & block, 
+          const CEDCBlock & block, 
 	     CValidationState & state, 
 	const CEDCChainParams & chainparams, 
 	         CBlockIndex ** ppindex, 
@@ -5323,7 +5323,7 @@ bool static ProcessMessage(
         }
 
         // we must use CBlocks, as CBlockHeaders won't include the 0x00 nTx count at the end
-        vector<CBlock> vHeaders;
+        vector<CEDCBlock> vHeaders;
         int nLimit = MAX_HEADERS_RESULTS;
         edcLogPrint("net", "getheaders %d to %s from peer=%d\n", (pindex ? pindex->nHeight : -1), hashStop.ToString(), pfrom->id);
         for (; pindex; pindex = theApp.chainActive().Next(pindex))
@@ -6172,7 +6172,7 @@ bool SendEDCMessages(CEDCNode* pto)
             // blocks, or if the peer doesn't want headers, just
             // add all to the inv queue.
             LOCK(pto->cs_inventory);
-            vector<CBlock> vHeaders;
+            vector<CEDCBlock> vHeaders;
             bool fRevertToInv = (!state.fPreferHeaders || pto->vBlockHashesToAnnounce.size() > MAX_BLOCKS_TO_ANNOUNCE);
             CBlockIndex *pBestIndex = NULL; // last header queued for delivery
             ProcessBlockAvailability(pto->id); // ensure pindexBestKnownBlock is up-to-date

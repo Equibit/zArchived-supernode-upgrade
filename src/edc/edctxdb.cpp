@@ -36,7 +36,7 @@ CEDCCoinsViewDB::CEDCCoinsViewDB(
 {
 }
 
-bool CEDCCoinsViewDB::GetCoins(const uint256 &txid, CCoins &coins) const 
+bool CEDCCoinsViewDB::GetCoins(const uint256 &txid, CEDCCoins &coins) const 
 {
     return db.Read(make_pair(DB_COINS, txid), coins);
 }
@@ -82,20 +82,20 @@ bool CEDCCoinsViewDB::BatchWrite( CEDCCoinsMap &mapCoins, const uint256 &hashBlo
     return db.WriteBatch(batch);
 }
 
-#if 0
-CBlockTreeDB::CBlockTreeDB(
+CEDCBlockTreeDB::CEDCBlockTreeDB(
 	size_t nCacheSize, 
 	bool fMemory, 
-	bool fWipe) : CDBWrapper(GetDataDir() / "blocks" / "index", nCacheSize, fMemory, fWipe) 
+	bool fWipe) : 
+	CDBWrapper(edcGetDataDir() / "blocks" / "index", nCacheSize, fMemory, fWipe)
 {
 }
 
-bool CBlockTreeDB::ReadBlockFileInfo(int nFile, CBlockFileInfo &info) 
+bool CEDCBlockTreeDB::ReadBlockFileInfo(int nFile, CBlockFileInfo &info) 
 {
     return Read(make_pair(DB_BLOCK_FILES, nFile), info);
 }
 
-bool CBlockTreeDB::WriteReindexing(bool fReindexing) 
+bool CEDCBlockTreeDB::WriteReindexing(bool fReindexing) 
 {
     if (fReindexing)
         return Write(DB_REINDEX_FLAG, '1');
@@ -103,17 +103,16 @@ bool CBlockTreeDB::WriteReindexing(bool fReindexing)
         return Erase(DB_REINDEX_FLAG);
 }
 
-bool CBlockTreeDB::ReadReindexing(bool &fReindexing) 
+bool CEDCBlockTreeDB::ReadReindexing(bool &fReindexing) 
 {
     fReindexing = Exists(DB_REINDEX_FLAG);
     return true;
 }
 
-bool CBlockTreeDB::ReadLastBlockFile(int &nFile) 
+bool CEDCBlockTreeDB::ReadLastBlockFile(int &nFile) 
 {
     return Read(DB_LAST_BLOCK, nFile);
 }
-#endif
 
 CEDCCoinsViewCursor *CEDCCoinsViewDB::Cursor() const
 {
@@ -163,43 +162,48 @@ void CEDCCoinsViewDBCursor::Next()
         keyTmp.first = 0; // Invalidate cached key after last record so that Valid() and GetKey() return false
 }
 
-#if 0
-bool CBlockTreeDB::WriteBatchSync(const std::vector<std::pair<int, const CBlockFileInfo*> >& fileInfo, int nLastFile, const std::vector<const CBlockIndex*>& blockinfo) 
+bool CEDCBlockTreeDB::WriteBatchSync(
+	const std::vector<std::pair<int, const CBlockFileInfo*> >& fileInfo, 
+	int nLastFile, 
+	const std::vector<const CBlockIndex*>& blockinfo) 
 {
     CDBBatch batch(*this);
-    for (std::vector<std::pair<int, const CBlockFileInfo*> >::const_iterator it=fileInfo.begin(); it != fileInfo.end(); it++)
+    for (std::vector<std::pair<int, const CBlockFileInfo*> >::const_iterator 
+		it=fileInfo.begin(); it != fileInfo.end(); it++)
 	{
         batch.Write(make_pair(DB_BLOCK_FILES, it->first), *it->second);
     }
 
     batch.Write(DB_LAST_BLOCK, nLastFile);
 
-    for (std::vector<const CBlockIndex*>::const_iterator it=blockinfo.begin(); it != blockinfo.end(); it++) 
+    for (std::vector<const CBlockIndex*>::const_iterator it=blockinfo.begin(); 
+	it != blockinfo.end(); it++) 
 	{
         batch.Write(make_pair(DB_BLOCK_INDEX, (*it)->GetBlockHash()), CDiskBlockIndex(*it));
     }
     return WriteBatch(batch, true);
 }
 
-bool CBlockTreeDB::ReadTxIndex(const uint256 &txid, CDiskTxPos &pos) 
+bool CEDCBlockTreeDB::ReadTxIndex(const uint256 &txid, CDiskTxPos &pos) 
 {
     return Read(make_pair(DB_TXINDEX, txid), pos);
 }
 
-bool CBlockTreeDB::WriteTxIndex(const std::vector<std::pair<uint256, CDiskTxPos> >&vect) 
+bool CEDCBlockTreeDB::WriteTxIndex(const std::vector<std::pair<uint256, CDiskTxPos> >&vect) 
 {
     CDBBatch batch(*this);
-    for (std::vector<std::pair<uint256,CDiskTxPos> >::const_iterator it=vect.begin(); it!=vect.end(); it++)
+    for (std::vector<std::pair<uint256,CDiskTxPos> >::const_iterator 
+		it=vect.begin(); it!=vect.end(); it++)
         batch.Write(make_pair(DB_TXINDEX, it->first), it->second);
     return WriteBatch(batch);
 }
 
-bool CBlockTreeDB::WriteFlag(const std::string &name, bool fValue) 
+bool CEDCBlockTreeDB::WriteFlag(const std::string &name, bool fValue) 
 {
     return Write(std::make_pair(DB_FLAG, name), fValue ? '1' : '0');
 }
 
-bool CBlockTreeDB::ReadFlag(const std::string &name, bool &fValue) 
+bool CEDCBlockTreeDB::ReadFlag(const std::string &name, bool &fValue) 
 {
     char ch;
     if (!Read(std::make_pair(DB_FLAG, name), ch))
@@ -208,7 +212,8 @@ bool CBlockTreeDB::ReadFlag(const std::string &name, bool &fValue)
     return true;
 }
 
-bool CBlockTreeDB::LoadBlockIndexGuts(boost::function<CBlockIndex*(const uint256&)> insertBlockIndex)
+bool CEDCBlockTreeDB::LoadBlockIndexGuts(
+	boost::function<CBlockIndex*(const uint256&)> insertBlockIndex)
 {
     boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
 
@@ -257,4 +262,3 @@ bool CBlockTreeDB::LoadBlockIndexGuts(boost::function<CBlockIndex*(const uint256
 
     return true;
 }
-#endif

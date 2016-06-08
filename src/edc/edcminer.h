@@ -13,7 +13,7 @@
 #include <stdint.h>
 
 class CBlockIndex;
-class CChainParams;
+class CEDCChainParams;
 class CEDCReserveKey;
 class CScript;
 class CEDCWallet;

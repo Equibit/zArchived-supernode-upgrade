@@ -120,7 +120,7 @@ public:
     unsigned int GetSigOpCountWithAncestors() const { return nSigOpCountWithAncestors; }
 };
 
-/** \class CompareTxMemPoolEntryByScore
+/** \class EDCCompareTxMemPoolEntryByScore
  *
  *  Sort by score of entry ((fee+delta)/size) in descending order
  */
@@ -200,7 +200,7 @@ struct EDC_mempoolentry_txid
     }
 };
 
-/** \class CompareTxMemPoolEntryByDescendantScore
+/** \class CompareEDCTxMemPoolEntryByDescendantScore
  *
  *  Sort an entry by max(score/size of entry's tx, score/size with all descendants).
  */
@@ -237,7 +237,7 @@ public:
     }
 };
 
-/** \class CompareTxMemPoolEntryByScore
+/** \class CompareEDCTxMemPoolEntryByScore
  *
  *  Sort by score of entry ((fee+delta)/size) in descending order
  */

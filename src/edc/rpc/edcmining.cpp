@@ -80,8 +80,6 @@ UniValue GetNetworkHashPS(int lookup, int height)
 
 UniValue getnetworkhashps(const UniValue& params, bool fHelp)
 {
-	EDCapp & theApp = EDCapp::singleton();
-
     if (fHelp || params.size() > 2)
         throw runtime_error(
             "getnetworkhashps ( blocks height )\n"

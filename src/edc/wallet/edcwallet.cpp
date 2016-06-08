@@ -28,6 +28,7 @@
 #include "utilmoneystr.h"
 #include "edc/edcapp.h"
 #include "edc/edcparams.h"
+#include "edc/edcchainparams.h"
 
 #include <assert.h>
 
@@ -420,7 +421,7 @@ bool CEDCWallet::Verify()
     if (boost::filesystem::exists(edcGetDataDir() / walletFile))
     {
         CEDCDBEnv::VerifyResult r = theApp.bitdb().Verify(walletFile,CEDCWalletDB::Recover);
-        if (r == CDBEnv::RECOVER_OK)
+        if (r == CEDCDBEnv::RECOVER_OK)
         {
             InitWarning(strprintf(
 				_("Warning: Wallet file corrupt, data salvaged!"
@@ -429,7 +430,7 @@ bool CEDCWallet::Verify()
                   " restore from a backup."),
                 walletFile, "wallet.{timestamp}.bak", edcGetDataDir()));
         }
-        if (r == CDBEnv::RECOVER_FAIL)
+        if (r == CEDCDBEnv::RECOVER_FAIL)
             return InitError(strprintf(_("%s corrupt, salvage failed"), 
 				walletFile));
     }
@@ -608,7 +609,7 @@ bool CEDCWallet::EncryptWallet(const SecureString& strWalletPassphrase)
 
         // Need to completely rewrite the wallet file; if we don't, bdb might keep
         // bits of the unencrypted private key in slack space in the database file.
-        CDB::Rewrite(strWalletFile);
+        CEDCDB::Rewrite(strWalletFile);
 
     }
     NotifyStatusChanged(this);
@@ -1253,7 +1254,7 @@ int CEDCWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate
 
     int ret = 0;
     int64_t nNow = GetTime();
-    const CChainParams& chainParams = Params();
+    const CEDCChainParams& chainParams = edcParams();
 
     CBlockIndex* pindex = pindexStart;
     {
@@ -2441,7 +2442,7 @@ DBErrors CEDCWallet::LoadWallet(bool& fFirstRunRet)
     DBErrors nLoadWalletRet = CEDCWalletDB(strWalletFile,"cr+").LoadWallet(this);
     if (nLoadWalletRet == DB_NEED_REWRITE)
     {
-        if (CDB::Rewrite(strWalletFile, "\x04pool"))
+        if (CEDCDB::Rewrite(strWalletFile, "\x04pool"))
         {
             LOCK(cs_wallet);
             setKeyPool.clear();
@@ -2468,7 +2469,7 @@ DBErrors CEDCWallet::ZapSelectTx(vector<uint256>& vHashIn, vector<uint256>& vHas
     DBErrors nZapSelectTxRet = CEDCWalletDB(strWalletFile,"cr+").ZapSelectTx(this, vHashIn, vHashOut);
     if (nZapSelectTxRet == DB_NEED_REWRITE)
     {
-        if (CDB::Rewrite(strWalletFile, "\x04pool"))
+        if (CEDCDB::Rewrite(strWalletFile, "\x04pool"))
         {
             LOCK(cs_wallet);
             setKeyPool.clear();
@@ -2494,7 +2495,7 @@ DBErrors CEDCWallet::ZapWalletTx(std::vector<CEDCWalletTx>& vWtx)
     DBErrors nZapWalletTxRet = CEDCWalletDB(strWalletFile,"cr+").ZapWalletTx(this, vWtx);
     if (nZapWalletTxRet == DB_NEED_REWRITE)
     {
-        if (CDB::Rewrite(strWalletFile, "\x04pool"))
+        if (CEDCDB::Rewrite(strWalletFile, "\x04pool"))
         {
             LOCK(cs_wallet);
             setKeyPool.clear();
