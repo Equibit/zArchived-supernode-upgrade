@@ -171,11 +171,11 @@ void ReadEquibitConfigFile(
 
 EDCparams::EDCparams()
 {
-	datadir = GetArg( "-ebdatadir", edcGetDefaultDataDir().string() );
+	datadir = GetArg( "-eb_datadir", edcGetDefaultDataDir().string() );
 
 	// First load the config file, which may contain more settings
 	//
-	conf = GetArg( "-ebconf", EDC_DEFAULT_CONF_FILENAME );
+	conf = GetArg( "-eb_conf", EDC_DEFAULT_CONF_FILENAME );
 
 	try
 	{
@@ -189,139 +189,139 @@ EDCparams::EDCparams()
     configFileReadFailed = false;
 
 	// Bool parameters
-	acceptnonstdtxn     = GetBoolArg( "-ebacceptnonstdtxn", false );
-	blocksonly          = GetBoolArg( "-ebblocksonly", EDC_DEFAULT_BLOCKSONLY );
-	checkpoints         = GetBoolArg( "-ebcheckpoints", EDC_DEFAULT_CHECKPOINTS_ENABLED );
-	datacarrier         = GetBoolArg( "-ebdatacarrier", EDC_DEFAULT_ACCEPT_DATACARRIER );
-	disablesafemode     = GetBoolArg( "-ebdisablesafemode", EDC_DEFAULT_DISABLE_SAFEMODE );
-	discover            = GetBoolArg( "-ebdiscover", true );
-	dnsseed             = GetBoolArg( "-ebdnsseed", true );
-	feefilter           = GetBoolArg( "-ebfeefilter", EDC_DEFAULT_FEEFILTER );
-	flushwallet         = GetBoolArg( "-ebflushwallet",EDC_DEFAULT_FLUSHWALLET);
-	forcednsseed        = GetBoolArg( "-ebforcednsseed", EDC_DEFAULT_FORCEDNSSEED );
-	listen              = GetBoolArg( "-eblisten", EDC_DEFAULT_LISTEN );
-	listenonion         = GetBoolArg( "-eblistenonion",EDC_DEFAULT_LISTEN_ONION);
-	logips              = GetBoolArg( "-eblogips", EDC_DEFAULT_LOGIPS );
-	logtimemicros       = GetBoolArg( "-eblogtimemicros", EDC_DEFAULT_LOGTIMEMICROS );
-	logtimestamps       = GetBoolArg( "-eblogtimestamps", EDC_DEFAULT_LOGTIMESTAMPS );
-	mempoolreplacement  = GetBoolArg( "-ebmempoolreplacement", EDC_DEFAULT_ENABLE_REPLACEMENT );
-	nodebug             = GetBoolArg( "-ebnodebug", false );
-	regtest             = GetBoolArg( "-ebregtest", false );
-	checkblockindex     = GetBoolArg( "-ebcheckblockindex", regtest );
-	checkmempool        = GetBoolArg( "-ebcheckmempool", regtest );
-	testnet             = GetBoolArg( "-ebtestnet", false );
-	reindex             = GetBoolArg( "-ebreindex", false );
-	printpriority       = GetBoolArg( "-ebprintpriority", EDC_DEFAULT_PRINTPRIORITY );
-	printtoconsole      = GetBoolArg( "-ebprinttoconsole", false );
-	privdb              = GetBoolArg( "-ebprivdb", EDC_DEFAULT_WALLET_PRIVDB );
-	proxyrandomize      = GetBoolArg( "-ebproxyrandomize", EDC_DEFAULT_PROXYRANDOMIZE );
-	relaypriority       = GetBoolArg( "-ebrelaypriority", EDC_DEFAULT_RELAYPRIORITY );
-	rescan              = GetBoolArg( "-ebrescan", false );
-	rest                = GetBoolArg( "-ebrest", EDC_DEFAULT_REST_ENABLE );
-	salvagewallet       = GetBoolArg( "-ebsalvagewallet", false );
-	sendfreetransactions= GetBoolArg( "-ebsendfreetransactions", EDC_DEFAULT_SEND_FREE_TRANSACTIONS );
-	shrinkdebugfile     = GetBoolArg( "-ebshrinkdebugfile", debug.size() > 0 );
-	spendzeroconfchange = GetBoolArg( "-ebspendzeroconfchange", EDC_DEFAULT_SPEND_ZEROCONF_CHANGE );
-	stopafterblockimport= GetBoolArg( "-ebstopafterblockimport", EDC_DEFAULT_STOPAFTERBLOCKIMPORT );
-	testsafemode        = GetBoolArg( "-ebtestsafemode", EDC_DEFAULT_TESTSAFEMODE );
-	txindex             = GetBoolArg( "-ebtxindex", EDC_DEFAULT_TXINDEX );
-	upgradewallet       = GetBoolArg( "-ebupgradewallet", false );
-	upnp                = GetBoolArg( "-ebupnp", EDC_DEFAULT_UPNP );
-	walletbroadcast     = GetBoolArg( "-ebwalletbroadcast", false );
-	whitelistrelay      = GetBoolArg( "-ebwhitelistrelay", EDC_DEFAULT_WHITELISTRELAY );
-	whitelistforcerelay = GetBoolArg( "-ebwhitelistforcerelay", EDC_DEFAULT_WHITELISTFORCERELAY );
-	zapwallettxes       = GetBoolArg( "-ebzapwallettxes", false );
+	acceptnonstdtxn     = GetBoolArg( "-eb_acceptnonstdtxn", false );
+	blocksonly          = GetBoolArg( "-eb_blocksonly", EDC_DEFAULT_BLOCKSONLY );
+	checkpoints         = GetBoolArg( "-eb_checkpoints", EDC_DEFAULT_CHECKPOINTS_ENABLED );
+	datacarrier         = GetBoolArg( "-eb_datacarrier", EDC_DEFAULT_ACCEPT_DATACARRIER );
+	disablesafemode     = GetBoolArg( "-eb_disablesafemode", EDC_DEFAULT_DISABLE_SAFEMODE );
+	discover            = GetBoolArg( "-eb_discover", true );
+	dnsseed             = GetBoolArg( "-eb_dnsseed", true );
+	feefilter           = GetBoolArg( "-eb_feefilter", EDC_DEFAULT_FEEFILTER );
+	flushwallet         = GetBoolArg( "-eb_flushwallet",EDC_DEFAULT_FLUSHWALLET);
+	forcednsseed        = GetBoolArg( "-eb_forcednsseed", EDC_DEFAULT_FORCEDNSSEED );
+	listen              = GetBoolArg( "-eb_listen", EDC_DEFAULT_LISTEN );
+	listenonion         = GetBoolArg( "-eb_listenonion",EDC_DEFAULT_LISTEN_ONION);
+	logips              = GetBoolArg( "-eb_logips", EDC_DEFAULT_LOGIPS );
+	logtimemicros       = GetBoolArg( "-eb_logtimemicros", EDC_DEFAULT_LOGTIMEMICROS );
+	logtimestamps       = GetBoolArg( "-eb_logtimestamps", EDC_DEFAULT_LOGTIMESTAMPS );
+	mempoolreplacement  = GetBoolArg( "-eb_mempoolreplacement", EDC_DEFAULT_ENABLE_REPLACEMENT );
+	nodebug             = GetBoolArg( "-eb_nodebug", false );
+	regtest             = GetBoolArg( "-eb_regtest", false );
+	checkblockindex     = GetBoolArg( "-eb_checkblockindex", regtest );
+	checkmempool        = GetBoolArg( "-eb_checkmempool", regtest );
+	testnet             = GetBoolArg( "-eb_testnet", false );
+	reindex             = GetBoolArg( "-eb_reindex", false );
+	printpriority       = GetBoolArg( "-eb_printpriority", EDC_DEFAULT_PRINTPRIORITY );
+	printtoconsole      = GetBoolArg( "-eb_printtoconsole", false );
+	privdb              = GetBoolArg( "-eb_privdb", EDC_DEFAULT_WALLET_PRIVDB );
+	proxyrandomize      = GetBoolArg( "-eb_proxyrandomize", EDC_DEFAULT_PROXYRANDOMIZE );
+	relaypriority       = GetBoolArg( "-eb_relaypriority", EDC_DEFAULT_RELAYPRIORITY );
+	rescan              = GetBoolArg( "-eb_rescan", false );
+	rest                = GetBoolArg( "-eb_rest", EDC_DEFAULT_REST_ENABLE );
+	salvagewallet       = GetBoolArg( "-eb_salvagewallet", false );
+	sendfreetransactions= GetBoolArg( "-eb_sendfreetransactions", EDC_DEFAULT_SEND_FREE_TRANSACTIONS );
+	shrinkdebugfile     = GetBoolArg( "-eb_shrinkdebugfile", debug.size() > 0 );
+	spendzeroconfchange = GetBoolArg( "-eb_spendzeroconfchange", EDC_DEFAULT_SPEND_ZEROCONF_CHANGE );
+	stopafterblockimport= GetBoolArg( "-eb_stopafterblockimport", EDC_DEFAULT_STOPAFTERBLOCKIMPORT );
+	testsafemode        = GetBoolArg( "-eb_testsafemode", EDC_DEFAULT_TESTSAFEMODE );
+	txindex             = GetBoolArg( "-eb_txindex", EDC_DEFAULT_TXINDEX );
+	upgradewallet       = GetBoolArg( "-eb_upgradewallet", false );
+	upnp                = GetBoolArg( "-eb_upnp", EDC_DEFAULT_UPNP );
+	walletbroadcast     = GetBoolArg( "-eb_walletbroadcast", false );
+	whitelistrelay      = GetBoolArg( "-eb_whitelistrelay", EDC_DEFAULT_WHITELISTRELAY );
+	whitelistforcerelay = GetBoolArg( "-eb_whitelistforcerelay", EDC_DEFAULT_WHITELISTFORCERELAY );
+	zapwallettxes       = GetBoolArg( "-eb_zapwallettxes", false );
 
 	// Int parameters
-	banscore            = GetArg( "-ebbanscore", EDC_DEFAULT_BANSCORE_THRESHOLD );
-	bantime             = GetArg( "-ebbantime", EDC_DEFAULT_MISBEHAVING_BANTIME );
-	blockmaxsize        = GetArg( "-ebblockmaxsize", EDC_DEFAULT_BLOCK_MAX_SIZE );
-	blockminsize        = GetArg( "-ebblockminsize", EDC_DEFAULT_BLOCK_MIN_SIZE );
-	blockprioritysize   = GetArg( "-ebblockprioritysize", EDC_DEFAULT_BLOCK_PRIORITY_SIZE );
-	blockversion        = GetArg( "-ebblockversion", 0 );
-	bytespersigop       = GetArg( "-ebbytespersigop", EDC_DEFAULT_BYTES_PER_SIGOP );
-	checkblocks         = GetArg( "-ebcheckblocks", EDC_DEFAULT_CHECKBLOCKS );
-	checklevel          = GetArg( "-ebchecklevel", EDC_DEFAULT_CHECKLEVEL );
-	datacarriersize     = GetArg( "-ebdatacarriersize", EDC_MAX_OP_RETURN_RELAY );
-	dbcache             = GetArg( "-ebdbcache", EDC_DEFAULT_DB_CACHE );
-	dblogsize           = GetArg( "-ebdblogsize", EDC_DEFAULT_WALLET_DBLOGSIZE );
-	dropmessagestest    = GetArg( "-ebdropmessagestest", 0 );
-	fuzzmessagetest     = GetArg( "-ebfuzzmessagetest", 10 );
-	keypool             = GetArg( "-ebkeypool", EDC_DEFAULT_KEYPOOL_SIZE );
-	limitancestorcount  = GetArg( "-eblimitancestorcount", EDC_DEFAULT_ANCESTOR_LIMIT );
-	limitancestorsize   = GetArg( "-eblimitancestorsize", EDC_DEFAULT_ANCESTOR_SIZE_LIMIT );
-	limitdescendantcount= GetArg( "-eblimitdescendantcount", EDC_DEFAULT_DESCENDANT_LIMIT );
-	limitdescendantsize = GetArg( "-eblimitdescendantsize", EDC_DEFAULT_DESCENDANT_SIZE_LIMIT );
-	limitfreerelay      = GetArg( "-eblimitfreerelay", EDC_DEFAULT_LIMITFREERELAY );
-	maxconnections      = GetArg( "-ebmaxconnections", EDC_DEFAULT_MAX_PEER_CONNECTIONS );
-	maxmempool          = GetArg( "-ebmaxmempool", EDC_DEFAULT_MAX_MEMPOOL_SIZE );
-	maxorphantx         = GetArg( "-ebmaxorphantx", EDC_DEFAULT_MAX_ORPHAN_TRANSACTIONS );
-	maxreceivebuffer    = GetArg( "-ebmaxreceivebuffer", EDC_DEFAULT_MAXRECEIVEBUFFER );
-	maxsendbuffer       = GetArg( "-ebmaxsendbuffer", EDC_DEFAULT_MAXSENDBUFFER );
-	maxsigcachesize     = GetArg( "-ebmaxsigcachesize", EDC_DEFAULT_MAX_SIG_CACHE_SIZE );
-	maxtimeadjustment   = GetArg( "-ebmaxtimeadjustment", EDC_DEFAULT_MAX_TIME_ADJUSTMENT );
-	maxtipage           = GetArg( "-ebmaxtipage", EDC_DEFAULT_MAX_TIP_AGE );
-	maxtxfee            = GetArg( "-ebmaxtxfee", 0 );
-	maxuploadtarget     = GetArg( "-ebmaxuploadtarget", EDC_DEFAULT_MAX_UPLOAD_TARGET );
-	mempoolexpiry       = GetArg( "-ebmempoolexpiry", EDC_DEFAULT_MEMPOOL_EXPIRY );
-	par                 = GetArg( "-ebpar", EDC_DEFAULT_SCRIPTCHECK_THREADS );
-	peerbloomfilters    = GetArg( "-ebpeerbloomfilters", EDC_DEFAULT_PEERBLOOMFILTERS );
-	permitbaremultisig  = GetArg( "-ebpermitbaremultisig", EDC_DEFAULT_PERMIT_BAREMULTISIG );
-	port                = GetArg( "-ebport", regtest?18445:(testnet?18334:8334) );
-	prune               = GetArg( "-ebprune", 0 );
-	rpcport             = GetArg( "-ebrpcport", regtest?18331:(testnet?18331:8331) );
-	rpcservertimeout    = GetArg( "-ebrpcservertimeout", EDC_DEFAULT_HTTP_SERVER_TIMEOUT );
-	rpcthreads          = GetArg( "-ebrpcthreads", EDC_DEFAULT_HTTP_THREADS );
-	rpcworkqueue        = GetArg( "-ebrpcworkqueue", EDC_DEFAULT_HTTP_WORKQUEUE );
-	timeout             = GetArg( "-ebtimeout", EDC_DEFAULT_CONNECT_TIMEOUT );
-	txconfirmtarget     = GetArg( "-ebtxconfirmtarget", EDC_DEFAULT_TX_CONFIRM_TARGET );
+	banscore            = GetArg( "-eb_banscore", EDC_DEFAULT_BANSCORE_THRESHOLD );
+	bantime             = GetArg( "-eb_bantime", EDC_DEFAULT_MISBEHAVING_BANTIME );
+	blockmaxsize        = GetArg( "-eb_blockmaxsize", EDC_DEFAULT_BLOCK_MAX_SIZE );
+	blockminsize        = GetArg( "-eb_blockminsize", EDC_DEFAULT_BLOCK_MIN_SIZE );
+	blockprioritysize   = GetArg( "-eb_blockprioritysize", EDC_DEFAULT_BLOCK_PRIORITY_SIZE );
+	blockversion        = GetArg( "-eb_blockversion", 0 );
+	bytespersigop       = GetArg( "-eb_bytespersigop", EDC_DEFAULT_BYTES_PER_SIGOP );
+	checkblocks         = GetArg( "-eb_checkblocks", EDC_DEFAULT_CHECKBLOCKS );
+	checklevel          = GetArg( "-eb_checklevel", EDC_DEFAULT_CHECKLEVEL );
+	datacarriersize     = GetArg( "-eb_datacarriersize", EDC_MAX_OP_RETURN_RELAY );
+	dbcache             = GetArg( "-eb_dbcache", EDC_DEFAULT_DB_CACHE );
+	dblogsize           = GetArg( "-eb_dblogsize", EDC_DEFAULT_WALLET_DBLOGSIZE );
+	dropmessagestest    = GetArg( "-eb_dropmessagestest", 0 );
+	fuzzmessagetest     = GetArg( "-eb_fuzzmessagetest", 10 );
+	keypool             = GetArg( "-eb_keypool", EDC_DEFAULT_KEYPOOL_SIZE );
+	limitancestorcount  = GetArg( "-eb_limitancestorcount", EDC_DEFAULT_ANCESTOR_LIMIT );
+	limitancestorsize   = GetArg( "-eb_limitancestorsize", EDC_DEFAULT_ANCESTOR_SIZE_LIMIT );
+	limitdescendantcount= GetArg( "-eb_limitdescendantcount", EDC_DEFAULT_DESCENDANT_LIMIT );
+	limitdescendantsize = GetArg( "-eb_limitdescendantsize", EDC_DEFAULT_DESCENDANT_SIZE_LIMIT );
+	limitfreerelay      = GetArg( "-eb_limitfreerelay", EDC_DEFAULT_LIMITFREERELAY );
+	maxconnections      = GetArg( "-eb_maxconnections", EDC_DEFAULT_MAX_PEER_CONNECTIONS );
+	maxmempool          = GetArg( "-eb_maxmempool", EDC_DEFAULT_MAX_MEMPOOL_SIZE );
+	maxorphantx         = GetArg( "-eb_maxorphantx", EDC_DEFAULT_MAX_ORPHAN_TRANSACTIONS );
+	maxreceivebuffer    = GetArg( "-eb_maxreceivebuffer", EDC_DEFAULT_MAXRECEIVEBUFFER );
+	maxsendbuffer       = GetArg( "-eb_maxsendbuffer", EDC_DEFAULT_MAXSENDBUFFER );
+	maxsigcachesize     = GetArg( "-eb_maxsigcachesize", EDC_DEFAULT_MAX_SIG_CACHE_SIZE );
+	maxtimeadjustment   = GetArg( "-eb_maxtimeadjustment", EDC_DEFAULT_MAX_TIME_ADJUSTMENT );
+	maxtipage           = GetArg( "-eb_maxtipage", EDC_DEFAULT_MAX_TIP_AGE );
+	maxtxfee            = GetArg( "-eb_maxtxfee", 0 );
+	maxuploadtarget     = GetArg( "-eb_maxuploadtarget", EDC_DEFAULT_MAX_UPLOAD_TARGET );
+	mempoolexpiry       = GetArg( "-eb_mempoolexpiry", EDC_DEFAULT_MEMPOOL_EXPIRY );
+	par                 = GetArg( "-eb_par", EDC_DEFAULT_SCRIPTCHECK_THREADS );
+	peerbloomfilters    = GetArg( "-eb_peerbloomfilters", EDC_DEFAULT_PEERBLOOMFILTERS );
+	permitbaremultisig  = GetArg( "-eb_permitbaremultisig", EDC_DEFAULT_PERMIT_BAREMULTISIG );
+	port                = GetArg( "-eb_port", regtest?18445:(testnet?18334:8334) );
+	prune               = GetArg( "-eb_prune", 0 );
+	rpcport             = GetArg( "-eb_rpcport", regtest?18331:(testnet?18331:8331) );
+	rpcservertimeout    = GetArg( "-eb_rpcservertimeout", EDC_DEFAULT_HTTP_SERVER_TIMEOUT );
+	rpcthreads          = GetArg( "-eb_rpcthreads", EDC_DEFAULT_HTTP_THREADS );
+	rpcworkqueue        = GetArg( "-eb_rpcworkqueue", EDC_DEFAULT_HTTP_WORKQUEUE );
+	timeout             = GetArg( "-eb_timeout", EDC_DEFAULT_CONNECT_TIMEOUT );
+	txconfirmtarget     = GetArg( "-eb_txconfirmtarget", EDC_DEFAULT_TX_CONFIRM_TARGET );
 
 	// String parameters
-	alertnotify         = GetArg( "-ebalertnotify", "" );
-	blocknotify         = GetArg( "-ebblocknotify", "" );
-	fallbackfee         = GetArg( "-ebfallbackfee", "" );
-	minrelaytxfee       = GetArg( "-ebminrelaytxfee", "" );
-	mintxfee            = GetArg( "-ebmintxfee", "" );
-	onion               = GetArg( "-ebonion", "" );
-	pid                 = GetArg( "-ebpid", EQUIBIT_PID_FILENAME );
-	paytxfee            = GetArg( "-ebpaytxfee", "" );
-	proxy               = GetArg( "-ebproxy", "" );
-	rpccookiefile       = GetArg( "-ebrpccookiefile", COOKIEAUTH_FILE );
-	rpcpassword         = GetArg( "-ebrpcpassword", "" );
-	rpcuser             = GetArg( "-ebrpcuser", "" );
-	torcontrol          = GetArg( "-ebtorcontrol", EDC_DEFAULT_TOR_CONTROL );
-	torpassword         = GetArg( "-ebtorpassword", "" );
-	wallet              = GetArg( "-ebwallet", EDC_DEFAULT_WALLET_DAT );
-	walletnotify        = GetArg( "-ebwalletnotify", "" );
+	alertnotify         = GetArg( "-eb_alertnotify", "" );
+	blocknotify         = GetArg( "-eb_blocknotify", "" );
+	fallbackfee         = GetArg( "-eb_fallbackfee", "" );
+	minrelaytxfee       = GetArg( "-eb_minrelaytxfee", "" );
+	mintxfee            = GetArg( "-eb_mintxfee", "" );
+	onion               = GetArg( "-eb_onion", "" );
+	pid                 = GetArg( "-eb_pid", EQUIBIT_PID_FILENAME );
+	paytxfee            = GetArg( "-eb_paytxfee", "" );
+	proxy               = GetArg( "-eb_proxy", "" );
+	rpccookiefile       = GetArg( "-eb_rpccookiefile", COOKIEAUTH_FILE );
+	rpcpassword         = GetArg( "-eb_rpcpassword", "" );
+	rpcuser             = GetArg( "-eb_rpcuser", "" );
+	torcontrol          = GetArg( "-eb_torcontrol", EDC_DEFAULT_TOR_CONTROL );
+	torpassword         = GetArg( "-eb_torpassword", "" );
+	wallet              = GetArg( "-eb_wallet", EDC_DEFAULT_WALLET_DAT );
+	walletnotify        = GetArg( "-eb_walletnotify", "" );
 
 	// Vector of strings
-    BOOST_FOREACH(const std::string& e, mapMultiArgs["-ebaddnode"])
+    BOOST_FOREACH(const std::string& e, mapMultiArgs["-eb_addnode"])
 		addnode.push_back(e);
-    BOOST_FOREACH(const std::string& e, mapMultiArgs["-ebbind"])
+    BOOST_FOREACH(const std::string& e, mapMultiArgs["-eb_bind"])
 		bind.push_back(e);
-    BOOST_FOREACH(const std::string& e, mapMultiArgs["-ebconnect"])
+    BOOST_FOREACH(const std::string& e, mapMultiArgs["-eb_connect"])
 		connect.push_back(e);
-    BOOST_FOREACH(const std::string& e, mapMultiArgs["-ebdebug"])
+    BOOST_FOREACH(const std::string& e, mapMultiArgs["-eb_debug"])
 		debug.push_back(e);
-    BOOST_FOREACH(const std::string& e, mapMultiArgs["-ebexternalip"])
+    BOOST_FOREACH(const std::string& e, mapMultiArgs["-eb_externalip"])
 		externalip.push_back(e);
-    BOOST_FOREACH(const std::string& e, mapMultiArgs["-ebloadblock"])
+    BOOST_FOREACH(const std::string& e, mapMultiArgs["-eb_loadblock"])
 		loadblock.push_back(e);
-    BOOST_FOREACH(const std::string& e, mapMultiArgs["-ebonlynet"])
+    BOOST_FOREACH(const std::string& e, mapMultiArgs["-eb_onlynet"])
 		onlynet.push_back(e);
-    BOOST_FOREACH(const std::string& e, mapMultiArgs["-ebrpcallowip"])
+    BOOST_FOREACH(const std::string& e, mapMultiArgs["-eb_rpcallowip"])
 		rpcallowip.push_back(e);
-    BOOST_FOREACH(const std::string& e, mapMultiArgs["-ebrpcauth"])
+    BOOST_FOREACH(const std::string& e, mapMultiArgs["-eb_rpcauth"])
 		rpcauth.push_back(e);
-    BOOST_FOREACH(const std::string& e, mapMultiArgs["-ebrpcbind"])
+    BOOST_FOREACH(const std::string& e, mapMultiArgs["-eb_rpcbind"])
 		rpcbind.push_back(e);
-    BOOST_FOREACH(const std::string& e, mapMultiArgs["-ebseednode"])
+    BOOST_FOREACH(const std::string& e, mapMultiArgs["-eb_seednode"])
 		seednode.push_back(e);
-    BOOST_FOREACH(const std::string& e, mapMultiArgs["-ebuacomment"])
+    BOOST_FOREACH(const std::string& e, mapMultiArgs["-eb_uacomment"])
 		uacomment.push_back(e);
-    BOOST_FOREACH(const std::string& e, mapMultiArgs["-ebwhitebind"])
+    BOOST_FOREACH(const std::string& e, mapMultiArgs["-eb_whitebind"])
 		whitebind.push_back(e);
-    BOOST_FOREACH(const std::string& e, mapMultiArgs["-ebwhitelist"])
+    BOOST_FOREACH(const std::string& e, mapMultiArgs["-eb_whitelist"])
 		whitelist.push_back(e);
 }
 
@@ -332,124 +332,124 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
 	////////////////////////////////////////////////////////////////////////
     std::string strUsage = HelpMessageGroup(_("Equibit Options:"));
 
-    strUsage += HelpMessageOpt("-ebalertnotify=<cmd>", 
+    strUsage += HelpMessageOpt("-eb_alertnotify=<cmd>", 
 		_("Execute command when a relevant alert is received or we see a really long fork (%s in cmd is replaced by message)"));
-    strUsage += HelpMessageOpt("-ebblocknotify=<cmd>", 
+    strUsage += HelpMessageOpt("-eb_blocknotify=<cmd>", 
 		_("Execute command when the best block changes (%s in cmd is replaced by block hash)"));
 
     if (showDebug)
-        strUsage += HelpMessageOpt("-ebblocksonly", 
+        strUsage += HelpMessageOpt("-eb_blocksonly", 
 			strprintf(_("Whether to operate in a blocks only mode (default: %u)"), EDC_DEFAULT_BLOCKSONLY));
-    strUsage += HelpMessageOpt("-ebcheckblocks=<n>", 
+    strUsage += HelpMessageOpt("-eb_checkblocks=<n>", 
 		strprintf(_("How many blocks to check at startup (default: %u, 0 = all)"), EDC_DEFAULT_CHECKBLOCKS));
-    strUsage += HelpMessageOpt("-ebchecklevel=<n>", 
+    strUsage += HelpMessageOpt("-eb_checklevel=<n>", 
 		strprintf(_("How thorough the block verification of -checkblocks is (0-4, default: %u)"), EDC_DEFAULT_CHECKLEVEL));
-    strUsage += HelpMessageOpt("-ebconf=<file>", 
+    strUsage += HelpMessageOpt("-eb_conf=<file>", 
 		strprintf(_("Specify configuration file (default: %s)"), BITCOIN_CONF_FILENAME));
-    strUsage += HelpMessageOpt("-ebdatadir=<dir>", 
+    strUsage += HelpMessageOpt("-eb_datadir=<dir>", 
 		_("Specify data directory"));
-    strUsage += HelpMessageOpt("-ebdbcache=<n>", 
+    strUsage += HelpMessageOpt("-eb_dbcache=<n>", 
 		strprintf(_("Set database cache size in megabytes (%d to %d, default: %d)"), EDC_MIN_DB_CACHE, EDC_MAX_DB_CACHE, EDC_DEFAULT_DB_CACHE));
-    strUsage += HelpMessageOpt("-ebfeefilter", 
+    strUsage += HelpMessageOpt("-eb_feefilter", 
 		strprintf(_("Tell other nodes to filter invs to us by our mempool min fee (default: %u)"), EDC_DEFAULT_FEEFILTER));
-    strUsage += HelpMessageOpt("-ebloadblock=<file>", 
+    strUsage += HelpMessageOpt("-eb_loadblock=<file>", 
 		_("Imports blocks from external blk000??.dat file on startup"));
-    strUsage += HelpMessageOpt("-ebmaxorphantx=<n>", 
+    strUsage += HelpMessageOpt("-eb_maxorphantx=<n>", 
 		strprintf(_("Keep at most <n> unconnectable transactions in memory (default: %u)"), EDC_DEFAULT_MAX_ORPHAN_TRANSACTIONS));
-    strUsage += HelpMessageOpt("-ebmaxmempool=<n>", 
+    strUsage += HelpMessageOpt("-eb_maxmempool=<n>", 
 		strprintf(_("Keep the transaction memory pool below <n> megabytes (default: %u)"), EDC_DEFAULT_MAX_MEMPOOL_SIZE));
-    strUsage += HelpMessageOpt("-ebmempoolexpiry=<n>", 
+    strUsage += HelpMessageOpt("-eb_mempoolexpiry=<n>", 
 		strprintf(_("Do not keep transactions in the mempool longer than <n> hours (default: %u)"), EDC_DEFAULT_MEMPOOL_EXPIRY));
-    strUsage += HelpMessageOpt("-ebpar=<n>", 
+    strUsage += HelpMessageOpt("-eb_par=<n>", 
 		strprintf(_("Set the number of script verification threads (%u to %d, 0 = auto, <0 = leave that many cores free, default: %d)"),
         -GetNumCores(), EDC_MAX_SCRIPTCHECK_THREADS, EDC_DEFAULT_SCRIPTCHECK_THREADS));
 #ifndef WIN32
-    strUsage += HelpMessageOpt("-ebpid=<file>", 
+    strUsage += HelpMessageOpt("-eb_pid=<file>", 
 		strprintf(_("Specify pid file (default: %s)"), BITCOIN_PID_FILENAME));
 #endif
-    strUsage += HelpMessageOpt("-ebprune=<n>", 
+    strUsage += HelpMessageOpt("-eb_prune=<n>", 
 		strprintf(_("Reduce storage requirements by pruning (deleting) old blocks. This mode is incompatible with -txindex and -rescan. "
             "Warning: Reverting this setting requires re-downloading the entire blockchain. "
             "(default: 0 = disable pruning blocks, >%u = target size in MiB to use for block files)"), EDC_MIN_DISK_SPACE_FOR_BLOCK_FILES / 1024 / 1024));
-    strUsage += HelpMessageOpt("-ebreindex", 
+    strUsage += HelpMessageOpt("-eb_reindex", 
 		_("Rebuild block chain index from current blk000??.dat files on startup"));
-    strUsage += HelpMessageOpt("-ebtxindex", 
+    strUsage += HelpMessageOpt("-eb_txindex", 
 		strprintf(_("Maintain a full transaction index, used by the getrawtransaction rpc call (default: %u)"), EDC_DEFAULT_TXINDEX));
 
 	////////////////////////////////////////////////////////////////////////
     strUsage += HelpMessageGroup(_("Equibit Connection options:"));
 
-    strUsage += HelpMessageOpt("-ebaddnode=<ip>", 
+    strUsage += HelpMessageOpt("-eb_addnode=<ip>", 
 		_("Add a node to connect to and attempt to keep the connection open"));
-    strUsage += HelpMessageOpt("-ebbanscore=<n>", 
+    strUsage += HelpMessageOpt("-eb_banscore=<n>", 
 		strprintf(_("Threshold for disconnecting misbehaving peers (default: %u)"), EDC_DEFAULT_BANSCORE_THRESHOLD));
-    strUsage += HelpMessageOpt("-ebbantime=<n>", 
+    strUsage += HelpMessageOpt("-eb_bantime=<n>", 
 		strprintf(_("Number of seconds to keep misbehaving peers from reconnecting (default: %u)"), EDC_DEFAULT_MISBEHAVING_BANTIME));
-    strUsage += HelpMessageOpt("-ebbind=<addr>", 
+    strUsage += HelpMessageOpt("-eb_bind=<addr>", 
 		_("Bind to given address and always listen on it. Use [host]:port notation for IPv6"));
-    strUsage += HelpMessageOpt("-ebconnect=<ip>", 
+    strUsage += HelpMessageOpt("-eb_connect=<ip>", 
 		_("Connect only to the specified node(s)"));
-    strUsage += HelpMessageOpt("-ebdiscover", 
+    strUsage += HelpMessageOpt("-eb_discover", 
 		_("Discover own IP addresses (default: 1 when listening and no -externalip or -proxy)"));
-    strUsage += HelpMessageOpt("-ebdnsseed", 
+    strUsage += HelpMessageOpt("-eb_dnsseed", 
 		_("Query for peer addresses via DNS lookup, if low on addresses (default: 1 unless -connect)"));
-    strUsage += HelpMessageOpt("-ebexternalip=<ip>", 
+    strUsage += HelpMessageOpt("-eb_externalip=<ip>", 
 		_("Specify your own public address"));
-    strUsage += HelpMessageOpt("-ebforcednsseed", 
+    strUsage += HelpMessageOpt("-eb_forcednsseed", 
 		strprintf(_("Always query for peer addresses via DNS lookup (default: %u)"), EDC_DEFAULT_FORCEDNSSEED));
-    strUsage += HelpMessageOpt("-eblisten", 
+    strUsage += HelpMessageOpt("-eb_listen", 
 		_("Accept connections from outside (default: 1 if no -proxy or -connect)"));
-    strUsage += HelpMessageOpt("-eblistenonion", 
+    strUsage += HelpMessageOpt("-eb_listenonion", 
 		strprintf(_("Automatically create Tor hidden service (default: %d)"), EDC_DEFAULT_LISTEN_ONION));
-    strUsage += HelpMessageOpt("-ebmaxconnections=<n>", 
+    strUsage += HelpMessageOpt("-eb_maxconnections=<n>", 
 		strprintf(_("Maintain at most <n> connections to peers (default: %u)"), EDC_DEFAULT_MAX_PEER_CONNECTIONS));
-    strUsage += HelpMessageOpt("-ebmaxreceivebuffer=<n>", 
+    strUsage += HelpMessageOpt("-eb_maxreceivebuffer=<n>", 
 		strprintf(_("Maximum per-connection receive buffer, <n>*1000 bytes (default: %u)"), EDC_DEFAULT_MAXRECEIVEBUFFER));
-    strUsage += HelpMessageOpt("-ebmaxsendbuffer=<n>", 
+    strUsage += HelpMessageOpt("-eb_maxsendbuffer=<n>", 
 		strprintf(_("Maximum per-connection send buffer, <n>*1000 bytes (default: %u)"), EDC_DEFAULT_MAXSENDBUFFER));
-    strUsage += HelpMessageOpt("-ebmaxtimeadjustment", 
+    strUsage += HelpMessageOpt("-eb_maxtimeadjustment", 
 		strprintf(_("Maximum allowed median peer time offset adjustment. Local perspective of time may be influenced by peers forward or backward by this amount. (default: %u seconds)"), EDC_DEFAULT_MAX_TIME_ADJUSTMENT));
-    strUsage += HelpMessageOpt("-ebonion=<ip:port>", 
+    strUsage += HelpMessageOpt("-eb_onion=<ip:port>", 
 		strprintf(_("Use separate SOCKS5 proxy to reach peers via Tor hidden services (default: %s)"), "-proxy"));
-    strUsage += HelpMessageOpt("-ebonlynet=<net>", 
+    strUsage += HelpMessageOpt("-eb_onlynet=<net>", 
 		_("Only connect to nodes in network <net> (ipv4, ipv6 or onion)"));
-    strUsage += HelpMessageOpt("-ebpermitbaremultisig", 
+    strUsage += HelpMessageOpt("-eb_permitbaremultisig", 
 		strprintf(_("Relay non-P2SH multisig (default: %u)"), EDC_DEFAULT_PERMIT_BAREMULTISIG));
-    strUsage += HelpMessageOpt("-ebpeerbloomfilters", 
+    strUsage += HelpMessageOpt("-eb_peerbloomfilters", 
 		strprintf(_("Support filtering of blocks and transaction with bloom filters (default: %u)"), EDC_DEFAULT_PEERBLOOMFILTERS));
-    strUsage += HelpMessageOpt("-ebport=<port>", 
+    strUsage += HelpMessageOpt("-eb_port=<port>", 
 		strprintf(_("Listen for connections on <port> (default: %u or testnet: %u)"), Params(CBaseChainParams::MAIN).GetDefaultPort(), Params(CBaseChainParams::TESTNET).GetDefaultPort()));
-    strUsage += HelpMessageOpt("-ebproxy=<ip:port>", 
+    strUsage += HelpMessageOpt("-eb_proxy=<ip:port>", 
 		_("Connect through SOCKS5 proxy"));
-    strUsage += HelpMessageOpt("-ebproxyrandomize", 
+    strUsage += HelpMessageOpt("-eb_proxyrandomize", 
 		strprintf(_("Randomize credentials for every proxy connection. This enables Tor stream isolation (default: %u)"), EDC_DEFAULT_PROXYRANDOMIZE));
-    strUsage += HelpMessageOpt("-ebseednode=<ip>", 
+    strUsage += HelpMessageOpt("-eb_seednode=<ip>", 
 		_("Connect to a node to retrieve peer addresses, and disconnect"));
-    strUsage += HelpMessageOpt("-ebtimeout=<n>", 
+    strUsage += HelpMessageOpt("-eb_timeout=<n>", 
 		strprintf(_("Specify connection timeout in milliseconds (minimum: 1, default: %d)"), EDC_DEFAULT_CONNECT_TIMEOUT));
-    strUsage += HelpMessageOpt("-ebtorcontrol=<ip>:<port>", 
+    strUsage += HelpMessageOpt("-eb_torcontrol=<ip>:<port>", 
 		strprintf(_("Tor control port to use if onion listening enabled (default: %s)"), EDC_DEFAULT_TOR_CONTROL));
-    strUsage += HelpMessageOpt("-ebtorpassword=<pass>", 
+    strUsage += HelpMessageOpt("-eb_torpassword=<pass>", 
 		_("Tor control port password (default: empty)"));
 #ifdef USE_UPNP
 #if USE_UPNP
-    strUsage += HelpMessageOpt("-ebupnp", 
+    strUsage += HelpMessageOpt("-eb_upnp", 
 		_("Use UPnP to map the listening port (default: 1 when listening and no -proxy)"));
 #else
-    strUsage += HelpMessageOpt("-ebupnp", 
+    strUsage += HelpMessageOpt("-eb_upnp", 
 		strprintf(_("Use UPnP to map the listening port (default: %u)"), 0));
 #endif
 #endif
-    strUsage += HelpMessageOpt("-ebwhitebind=<addr>", 
+    strUsage += HelpMessageOpt("-eb_whitebind=<addr>", 
 		_("Bind to given address and whitelist peers connecting to it. Use [host]:port notation for IPv6"));
-    strUsage += HelpMessageOpt("-ebwhitelist=<netmask>", 
+    strUsage += HelpMessageOpt("-eb_whitelist=<netmask>", 
 		_("Whitelist peers connecting from the given netmask or IP address. Can be specified multiple times.") +
         " " + _("Whitelisted peers cannot be DoS banned and their transactions are always relayed, even if they are already in the mempool, useful e.g. for a gateway"));
-    strUsage += HelpMessageOpt("-ebwhitelistrelay", 
+    strUsage += HelpMessageOpt("-eb_whitelistrelay", 
 		strprintf(_("Accept relayed transactions received from whitelisted peers even when not relaying transactions (default: %d)"), EDC_DEFAULT_WHITELISTRELAY));
-    strUsage += HelpMessageOpt("-ebwhitelistforcerelay", 
+    strUsage += HelpMessageOpt("-eb_whitelistforcerelay", 
 		strprintf(_("Force relay of transactions from whitelisted peers even they violate local relay policy (default: %d)"), EDC_DEFAULT_WHITELISTFORCERELAY));
-    strUsage += HelpMessageOpt("-ebmaxuploadtarget=<n>", 
+    strUsage += HelpMessageOpt("-eb_maxuploadtarget=<n>", 
 		strprintf(_("Tries to keep outbound traffic under the given target (in MiB per 24h), 0 = no limit (default: %d)"), EDC_DEFAULT_MAX_UPLOAD_TARGET));
 
 #ifdef ENABLE_WALLET
@@ -459,129 +459,129 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
 	////////////////////////////////////////////////////////////////////////
     strUsage += HelpMessageGroup(_("Equibit Debugging/Testing options:"));
 
-    strUsage += HelpMessageOpt("-ebuacomment=<cmt>", 
+    strUsage += HelpMessageOpt("-eb_uacomment=<cmt>", 
 		_("Append comment to the user agent string"));
     if (showDebug)
     {
-        strUsage += HelpMessageOpt("-ebcheckblockindex", 
+        strUsage += HelpMessageOpt("-eb_checkblockindex", 
 			strprintf("Do a full consistency check for mapBlockIndex, setBlockIndexCandidates, chainActive and mapBlocksUnlinked occasionally. Also sets -checkmempool (default: %u)", Params(CBaseChainParams::MAIN).DefaultConsistencyChecks()));
-        strUsage += HelpMessageOpt("-ebcheckmempool=<n>", 
+        strUsage += HelpMessageOpt("-eb_checkmempool=<n>", 
 			strprintf("Run checks every <n> transactions (default: %u)", Params(CBaseChainParams::MAIN).DefaultConsistencyChecks()));
-        strUsage += HelpMessageOpt("-ebcheckpoints", 
+        strUsage += HelpMessageOpt("-eb_checkpoints", 
 			strprintf("Disable expensive verification for known chain history (default: %u)", EDC_DEFAULT_CHECKPOINTS_ENABLED));
-        strUsage += HelpMessageOpt("-ebdisablesafemode", 
+        strUsage += HelpMessageOpt("-eb_disablesafemode", 
 			strprintf("Disable safemode, override a real safe mode event (default: %u)", EDC_DEFAULT_DISABLE_SAFEMODE));
-        strUsage += HelpMessageOpt("-ebtestsafemode", 
+        strUsage += HelpMessageOpt("-eb_testsafemode", 
 			strprintf("Force safe mode (default: %u)", EDC_DEFAULT_TESTSAFEMODE));
-        strUsage += HelpMessageOpt("-ebdropmessagestest=<n>", "Randomly drop 1 of every <n> network messages");
-        strUsage += HelpMessageOpt("-ebfuzzmessagestest=<n>", "Randomly fuzz 1 of every <n> network messages");
-        strUsage += HelpMessageOpt("-ebstopafterblockimport", 
+        strUsage += HelpMessageOpt("-eb_dropmessagestest=<n>", "Randomly drop 1 of every <n> network messages");
+        strUsage += HelpMessageOpt("-eb_fuzzmessagestest=<n>", "Randomly fuzz 1 of every <n> network messages");
+        strUsage += HelpMessageOpt("-eb_stopafterblockimport", 
 			strprintf("Stop running after importing blocks from disk (default: %u)", EDC_DEFAULT_STOPAFTERBLOCKIMPORT));
-        strUsage += HelpMessageOpt("-eblimitancestorcount=<n>", 
+        strUsage += HelpMessageOpt("-eb_limitancestorcount=<n>", 
 			strprintf("Do not accept transactions if number of in-mempool ancestors is <n> or more (default: %u)", EDC_DEFAULT_ANCESTOR_LIMIT));
-        strUsage += HelpMessageOpt("-eblimitancestorsize=<n>", 
+        strUsage += HelpMessageOpt("-eb_limitancestorsize=<n>", 
 			strprintf("Do not accept transactions whose size with all in-mempool ancestors exceeds <n> kilobytes (default: %u)", EDC_DEFAULT_ANCESTOR_SIZE_LIMIT));
-        strUsage += HelpMessageOpt("-eblimitdescendantcount=<n>", 
+        strUsage += HelpMessageOpt("-eb_limitdescendantcount=<n>", 
 			strprintf("Do not accept transactions if any ancestor would have <n> or more in-mempool descendants (default: %u)", EDC_DEFAULT_DESCENDANT_LIMIT));
-        strUsage += HelpMessageOpt("-eblimitdescendantsize=<n>", 
+        strUsage += HelpMessageOpt("-eb_limitdescendantsize=<n>", 
 			strprintf("Do not accept transactions if any ancestor would have more than <n> kilobytes of in-mempool descendants (default: %u).", EDC_DEFAULT_DESCENDANT_SIZE_LIMIT));
     }
     std::string debugCategories = "addrman, alert, bench, coindb, db, lock, rand, rpc, selectcoins, mempool, mempoolrej, net, proxy, prune, http, libevent, tor, zmq"; // Don't translate these and qt below
     if (mode == HMM_BITCOIN_QT)
         debugCategories += ", qt";
-    strUsage += HelpMessageOpt("-ebdebug=<category>", 
+    strUsage += HelpMessageOpt("-eb_debug=<category>", 
 		strprintf(_("Output debugging information (default: %u, supplying <category> is optional)"), 0) + ". " +
         _("If <category> is not supplied or if <category> = 1, output all debugging information.") + _("<category> can be:") + " " + debugCategories + ".");
     if (showDebug)
-        strUsage += HelpMessageOpt("-ebnodebug", "Turn off debugging messages, same as -debug=0");
-	strUsage += HelpMessageOpt("-eblogips", 
+        strUsage += HelpMessageOpt("-eb_nodebug", "Turn off debugging messages, same as -debug=0");
+	strUsage += HelpMessageOpt("-eb_logips", 
 		strprintf(_("Include IP addresses in debug output (default: %u)"), EDC_DEFAULT_LOGIPS));
-    strUsage += HelpMessageOpt("-eblogtimestamps", 
+    strUsage += HelpMessageOpt("-eb_logtimestamps", 
 		strprintf(_("Prepend debug output with timestamp (default: %u)"), EDC_DEFAULT_LOGTIMESTAMPS));
     if (showDebug)
     {
-        strUsage += HelpMessageOpt("-eblogtimemicros", 
+        strUsage += HelpMessageOpt("-eb_logtimemicros", 
 			strprintf("Add microsecond precision to debug timestamps (default: %u)", EDC_DEFAULT_LOGTIMEMICROS));
-        strUsage += HelpMessageOpt("-eblimitfreerelay=<n>", 
+        strUsage += HelpMessageOpt("-eb_limitfreerelay=<n>", 
 			strprintf("Continuously rate-limit free transactions to <n>*1000 bytes per minute (default: %u)", EDC_DEFAULT_LIMITFREERELAY));
-        strUsage += HelpMessageOpt("-ebrelaypriority", 
+        strUsage += HelpMessageOpt("-eb_relaypriority", 
 			strprintf("Require high priority for relaying free or low-fee transactions (default: %u)", EDC_DEFAULT_RELAYPRIORITY));
-        strUsage += HelpMessageOpt("-ebmaxsigcachesize=<n>", 
+        strUsage += HelpMessageOpt("-eb_maxsigcachesize=<n>", 
 			strprintf("Limit size of signature cache to <n> MiB (default: %u)", EDC_DEFAULT_MAX_SIG_CACHE_SIZE));
-        strUsage += HelpMessageOpt("-ebmaxtipage=<n>", 
+        strUsage += HelpMessageOpt("-eb_maxtipage=<n>", 
 			strprintf("Maximum tip age in seconds to consider node in initial block download (default: %u)", EDC_DEFAULT_MAX_TIP_AGE));
     }
-    strUsage += HelpMessageOpt("-ebminrelaytxfee=<amt>", 
+    strUsage += HelpMessageOpt("-eb_minrelaytxfee=<amt>", 
 		strprintf(_("Fees (in %s/kB) smaller than this are considered zero fee for relaying, mining and transaction creation (default: %s)"),
         CURRENCY_UNIT, FormatMoney(EDC_DEFAULT_MIN_RELAY_TX_FEE)));
-    strUsage += HelpMessageOpt("-ebmaxtxfee=<amt>", 
+    strUsage += HelpMessageOpt("-eb_maxtxfee=<amt>", 
 		strprintf(_("Maximum total fees (in %s) to use in a single wallet transaction or raw transaction; setting this too low may abort large transactions (default: %s)"),
         CURRENCY_UNIT, FormatMoney(EDC_DEFAULT_TRANSACTION_MAXFEE)));
-    strUsage += HelpMessageOpt("-ebprinttoconsole", _("Send trace/debug info to console instead of debug.log file"));
+    strUsage += HelpMessageOpt("-eb_printtoconsole", _("Send trace/debug info to console instead of debug.log file"));
     if (showDebug)
     {
-        strUsage += HelpMessageOpt("-ebprintpriority", 
+        strUsage += HelpMessageOpt("-eb_printpriority", 
 			strprintf("Log transaction priority and fee per kB when mining blocks (default: %u)", EDC_DEFAULT_PRINTPRIORITY));
     }
-    strUsage += HelpMessageOpt("-ebshrinkdebugfile", _("Shrink debug.log file on client startup (default: 1 when no -debug)"));
+    strUsage += HelpMessageOpt("-eb_shrinkdebugfile", _("Shrink debug.log file on client startup (default: 1 when no -debug)"));
 
 	////////////////////////////////////////////////////////////////////////
     strUsage += HelpMessageGroup(_("Equibit Chain selection options:"));
-    strUsage += HelpMessageOpt("-ebregtest", "Enter regression test mode, which uses a special chain in which blocks can be solved instantly. "
+    strUsage += HelpMessageOpt("-eb_regtest", "Enter regression test mode, which uses a special chain in which blocks can be solved instantly. "
                                "This is intended for regression testing tools and app development.");
-    strUsage += HelpMessageOpt("-ebtestnet", _("Use the test chain"));
+    strUsage += HelpMessageOpt("-eb_testnet", _("Use the test chain"));
 
 	////////////////////////////////////////////////////////////////////////
     strUsage += HelpMessageGroup(_("Equibit Node relay options:"));
     if (showDebug)
-        strUsage += HelpMessageOpt("-ebacceptnonstdtxn", 
+        strUsage += HelpMessageOpt("-eb_acceptnonstdtxn", 
 			strprintf("Relay and mine \"non-standard\" transactions (%sdefault: %u)", "testnet/regtest only; ", !Params(CBaseChainParams::TESTNET).RequireStandard()));
-    strUsage += HelpMessageOpt("-ebbytespersigop", 
+    strUsage += HelpMessageOpt("-eb_bytespersigop", 
 		strprintf(_("Minimum bytes per sigop in transactions we relay and mine (default: %u)"), EDC_DEFAULT_BYTES_PER_SIGOP));
-    strUsage += HelpMessageOpt("-ebdatacarrier", 
+    strUsage += HelpMessageOpt("-eb_datacarrier", 
 		strprintf(_("Relay and mine data carrier transactions (default: %u)"), EDC_DEFAULT_ACCEPT_DATACARRIER));
-    strUsage += HelpMessageOpt("-ebdatacarriersize", 
+    strUsage += HelpMessageOpt("-eb_datacarriersize", 
 		strprintf(_("Maximum size of data in data carrier transactions we relay and mine (default: %u)"), EDC_MAX_OP_RETURN_RELAY));
-    strUsage += HelpMessageOpt("-ebmempoolreplacement", 
+    strUsage += HelpMessageOpt("-eb_mempoolreplacement", 
 		strprintf(_("Enable transaction replacement in the memory pool (default: %u)"), EDC_DEFAULT_ENABLE_REPLACEMENT));
 
 	////////////////////////////////////////////////////////////////////////
     strUsage += HelpMessageGroup(_("Equibit Block creation options:"));
-    strUsage += HelpMessageOpt("-ebblockminsize=<n>", 
+    strUsage += HelpMessageOpt("-eb_blockminsize=<n>", 
 		strprintf(_("Set minimum block size in bytes (default: %u)"), EDC_DEFAULT_BLOCK_MIN_SIZE));
-    strUsage += HelpMessageOpt("-ebblockmaxsize=<n>", 
+    strUsage += HelpMessageOpt("-eb_blockmaxsize=<n>", 
 		strprintf(_("Set maximum block size in bytes (default: %d)"), EDC_DEFAULT_BLOCK_MAX_SIZE));
-    strUsage += HelpMessageOpt("-ebblockprioritysize=<n>", 
+    strUsage += HelpMessageOpt("-eb_blockprioritysize=<n>", 
 		strprintf(_("Set maximum size of high-priority/low-fee transactions in bytes (default: %d)"), EDC_DEFAULT_BLOCK_PRIORITY_SIZE));
     if (showDebug)
-        strUsage += HelpMessageOpt("-ebblockversion=<n>", "Override block version to test forking scenarios");
+        strUsage += HelpMessageOpt("-eb_blockversion=<n>", "Override block version to test forking scenarios");
 
 	////////////////////////////////////////////////////////////////////////
     strUsage += HelpMessageGroup(_("Equibit RPC server options:"));
 
-    strUsage += HelpMessageOpt("-ebrest", 
+    strUsage += HelpMessageOpt("-eb_rest", 
 		strprintf(_("Accept public REST requests (default: %u)"), EDC_DEFAULT_REST_ENABLE));
-    strUsage += HelpMessageOpt("-ebrpcbind=<addr>", 
+    strUsage += HelpMessageOpt("-eb_rpcbind=<addr>", 
 		_("Bind to given address to listen for JSON-RPC connections. Use [host]:port notation for IPv6. This option can be specified multiple times (default: bind to all interfaces)"));
-    strUsage += HelpMessageOpt("-ebrpccookiefile=<loc>", 
+    strUsage += HelpMessageOpt("-eb_rpccookiefile=<loc>", 
 		_("Location of the auth cookie (default: data dir)"));
-    strUsage += HelpMessageOpt("-ebrpcuser=<user>", 
+    strUsage += HelpMessageOpt("-eb_rpcuser=<user>", 
 		_("Username for JSON-RPC connections"));
-    strUsage += HelpMessageOpt("-ebrpcpassword=<pw>", 
+    strUsage += HelpMessageOpt("-eb_rpcpassword=<pw>", 
 		_("Password for JSON-RPC connections"));
-    strUsage += HelpMessageOpt("-ebrpcauth=<userpw>", 
+    strUsage += HelpMessageOpt("-eb_rpcauth=<userpw>", 
 		_("Username and hashed password for JSON-RPC connections. The field <userpw> comes in the format: <USERNAME>:<SALT>$<HASH>. A canonical python script is included in share/rpcuser. This option can be specified multiple times"));
-    strUsage += HelpMessageOpt("-ebrpcport=<port>", 
+    strUsage += HelpMessageOpt("-eb_rpcport=<port>", 
 		strprintf(_("Listen for JSON-RPC connections on <port> (default: %u or testnet: %u)"), BaseParams(CBaseChainParams::MAIN).RPCPort(), BaseParams(CBaseChainParams::TESTNET).RPCPort()));
-    strUsage += HelpMessageOpt("-ebrpcallowip=<ip>", 
+    strUsage += HelpMessageOpt("-eb_rpcallowip=<ip>", 
 		_("Allow JSON-RPC connections from specified source. Valid for <ip> are a single IP (e.g. 1.2.3.4), a network/netmask (e.g. 1.2.3.4/255.255.255.0) or a network/CIDR (e.g. 1.2.3.4/24). This option can be specified multiple times"));
-    strUsage += HelpMessageOpt("-ebrpcthreads=<n>", 
+    strUsage += HelpMessageOpt("-eb_rpcthreads=<n>", 
 		strprintf(_("Set the number of threads to service RPC calls (default: %d)"), EDC_DEFAULT_HTTP_THREADS));
     if (showDebug) 
 	{
-        strUsage += HelpMessageOpt("-ebrpcworkqueue=<n>", 
+        strUsage += HelpMessageOpt("-eb_rpcworkqueue=<n>", 
 			strprintf("Set the depth of the work queue to service RPC calls (default: %d)", EDC_DEFAULT_HTTP_WORKQUEUE));
-        strUsage += HelpMessageOpt("-ebrpcservertimeout=<n>", 
+        strUsage += HelpMessageOpt("-eb_rpcservertimeout=<n>", 
 			strprintf("Timeout during HTTP requests (default: %d)", EDC_DEFAULT_HTTP_SERVER_TIMEOUT));
     }
 
@@ -735,7 +735,7 @@ bool EDCparams::validate()
     int64_t nMempoolSizeMax = maxmempool * 1000000;
     int64_t nMempoolSizeMin = limitdescendantsize * 1000 * 40;
     if (nMempoolSizeMax < 0 || nMempoolSizeMax < nMempoolSizeMin)
-        return InitError(strprintf(_("-ebmaxmempool must be at least %d MB"), std::ceil(nMempoolSizeMin / 1000000.0)));
+        return InitError(strprintf(_("-eb_maxmempool must be at least %d MB"), std::ceil(nMempoolSizeMin / 1000000.0)));
 
     // block pruning; get the amount of disk space (in MiB) to allot for 
 	// block & undo files

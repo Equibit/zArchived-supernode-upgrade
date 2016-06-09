@@ -3123,34 +3123,34 @@ std::string CEDCWallet::GetWalletHelpString(bool showDebug)
 	EDCapp & theApp = EDCapp::singleton();
 
     std::string strUsage = HelpMessageGroup(_("Equibit Wallet options:"));
-    strUsage += HelpMessageOpt("-ebdisablewallet", _("Do not load the wallet and disable wallet RPC calls"));
-    strUsage += HelpMessageOpt("-ebkeypool=<n>", strprintf(_("Set key pool size to <n> (default: %u)"), DEFAULT_KEYPOOL_SIZE));
-    strUsage += HelpMessageOpt("-ebfallbackfee=<amt>", strprintf(_("A fee rate (in %s/kB) that will be used when fee estimation has insufficient data (default: %s)"),
+    strUsage += HelpMessageOpt("-eb_disablewallet", _("Do not load the wallet and disable wallet RPC calls"));
+    strUsage += HelpMessageOpt("-eb_keypool=<n>", strprintf(_("Set key pool size to <n> (default: %u)"), DEFAULT_KEYPOOL_SIZE));
+    strUsage += HelpMessageOpt("-eb_fallbackfee=<amt>", strprintf(_("A fee rate (in %s/kB) that will be used when fee estimation has insufficient data (default: %s)"),
                                                                CURRENCY_UNIT, FormatMoney(DEFAULT_FALLBACK_FEE)));
-    strUsage += HelpMessageOpt("-ebmintxfee=<amt>", strprintf(_("Fees (in %s/kB) smaller than this are considered zero fee for transaction creation (default: %s)"),
+    strUsage += HelpMessageOpt("-eb_mintxfee=<amt>", strprintf(_("Fees (in %s/kB) smaller than this are considered zero fee for transaction creation (default: %s)"),
                                                             CURRENCY_UNIT, FormatMoney(DEFAULT_TRANSACTION_MINFEE)));
-    strUsage += HelpMessageOpt("-ebpaytxfee=<amt>", strprintf(_("Fee (in %s/kB) to add to transactions you send (default: %s)"),
+    strUsage += HelpMessageOpt("-eb_paytxfee=<amt>", strprintf(_("Fee (in %s/kB) to add to transactions you send (default: %s)"),
                                                             CURRENCY_UNIT, FormatMoney(theApp.payTxFee().GetFeePerK())));
-    strUsage += HelpMessageOpt("-ebrescan", _("Rescan the block chain for missing wallet transactions on startup"));
-    strUsage += HelpMessageOpt("-ebsalvagewallet", _("Attempt to recover private keys from a corrupt wallet on startup"));
+    strUsage += HelpMessageOpt("-eb_rescan", _("Rescan the block chain for missing wallet transactions on startup"));
+    strUsage += HelpMessageOpt("-eb_salvagewallet", _("Attempt to recover private keys from a corrupt wallet on startup"));
     if (showDebug)
-        strUsage += HelpMessageOpt("-ebsendfreetransactions", strprintf(_("Send transactions as zero-fee transactions if possible (default: %u)"), DEFAULT_SEND_FREE_TRANSACTIONS));
-    strUsage += HelpMessageOpt("-ebspendzeroconfchange", strprintf(_("Spend unconfirmed change when sending transactions (default: %u)"), DEFAULT_SPEND_ZEROCONF_CHANGE));
-    strUsage += HelpMessageOpt("-ebtxconfirmtarget=<n>", strprintf(_("If paytxfee is not set, include enough fee so transactions begin confirmation on average within n blocks (default: %u)"), DEFAULT_TX_CONFIRM_TARGET));
-    strUsage += HelpMessageOpt("-ebupgradewallet", _("Upgrade wallet to latest format on startup"));
-    strUsage += HelpMessageOpt("-ebwallet=<file>", _("Specify wallet file (within data directory)") + " " + strprintf(_("(default: %s)"), edcDEFAULT_WALLET_DAT));
-    strUsage += HelpMessageOpt("-ebwalletbroadcast", _("Make the wallet broadcast transactions") + " " + strprintf(_("(default: %u)"), DEFAULT_WALLETBROADCAST));
-    strUsage += HelpMessageOpt("-ebwalletnotify=<cmd>", _("Execute command when a wallet transaction changes (%s in cmd is replaced by TxID)"));
-    strUsage += HelpMessageOpt("-ebzapwallettxes=<mode>", _("Delete all wallet transactions and only recover those parts of the blockchain through -rescan on startup") +
+        strUsage += HelpMessageOpt("-eb_sendfreetransactions", strprintf(_("Send transactions as zero-fee transactions if possible (default: %u)"), DEFAULT_SEND_FREE_TRANSACTIONS));
+    strUsage += HelpMessageOpt("-eb_spendzeroconfchange", strprintf(_("Spend unconfirmed change when sending transactions (default: %u)"), DEFAULT_SPEND_ZEROCONF_CHANGE));
+    strUsage += HelpMessageOpt("-eb_txconfirmtarget=<n>", strprintf(_("If paytxfee is not set, include enough fee so transactions begin confirmation on average within n blocks (default: %u)"), DEFAULT_TX_CONFIRM_TARGET));
+    strUsage += HelpMessageOpt("-eb_upgradewallet", _("Upgrade wallet to latest format on startup"));
+    strUsage += HelpMessageOpt("-eb_wallet=<file>", _("Specify wallet file (within data directory)") + " " + strprintf(_("(default: %s)"), edcDEFAULT_WALLET_DAT));
+    strUsage += HelpMessageOpt("-eb_walletbroadcast", _("Make the wallet broadcast transactions") + " " + strprintf(_("(default: %u)"), DEFAULT_WALLETBROADCAST));
+    strUsage += HelpMessageOpt("-eb_walletnotify=<cmd>", _("Execute command when a wallet transaction changes (%s in cmd is replaced by TxID)"));
+    strUsage += HelpMessageOpt("-eb_zapwallettxes=<mode>", _("Delete all wallet transactions and only recover those parts of the blockchain through -rescan on startup") +
                                " " + _("(1 = keep tx meta data e.g. account owner and payment request information, 2 = drop tx meta data)"));
 
     if (showDebug)
     {
         strUsage += HelpMessageGroup(_("Wallet debugging/testing options:"));
 
-        strUsage += HelpMessageOpt("-ebdblogsize=<n>", strprintf("Flush wallet database activity from memory to disk log every <n> megabytes (default: %u)", DEFAULT_WALLET_DBLOGSIZE));
-        strUsage += HelpMessageOpt("-ebflushwallet", strprintf("Run a thread to flush wallet periodically (default: %u)", DEFAULT_FLUSHWALLET));
-        strUsage += HelpMessageOpt("-ebprivdb", strprintf("Sets the DB_PRIVATE flag in the wallet db environment (default: %u)", DEFAULT_WALLET_PRIVDB));
+        strUsage += HelpMessageOpt("-eb_dblogsize=<n>", strprintf("Flush wallet database activity from memory to disk log every <n> megabytes (default: %u)", DEFAULT_WALLET_DBLOGSIZE));
+        strUsage += HelpMessageOpt("-eb_flushwallet", strprintf("Run a thread to flush wallet periodically (default: %u)", DEFAULT_FLUSHWALLET));
+        strUsage += HelpMessageOpt("-eb_privdb", strprintf("Sets the DB_PRIVATE flag in the wallet db environment (default: %u)", DEFAULT_WALLET_PRIVDB));
     }
 
     return strUsage;
@@ -3332,7 +3332,7 @@ bool CEDCWallet::ParameterInteraction()
 				_("Invalid amount for -ebfallbackfee=<amount>: '%s'"), 
 				params.fallbackfee ));
         if (nFeePerK > HIGH_TX_FEE_PER_KB)
-            InitWarning(_("-ebfallbackfee is set very high! This is the transaction fee you may pay when fee estimates are not available."));
+            InitWarning(_("-eb_fallbackfee is set very high! This is the transaction fee you may pay when fee estimates are not available."));
         CEDCWallet::fallbackFee = CFeeRate(nFeePerK);
     }		
 
@@ -3344,7 +3344,7 @@ bool CEDCWallet::ParameterInteraction()
             return InitError(AmountErrMsg("paytxfee", params.paytxfee));
 
         if (nFeePerK > HIGH_TX_FEE_PER_KB)
-            InitWarning(_("-ebpaytxfee is set very high! This is the transaction fee you will pay if you send a transaction."));
+            InitWarning(_("-eb_paytxfee is set very high! This is the transaction fee you will pay if you send a transaction."));
 
         theApp.payTxFee( CFeeRate(nFeePerK, 1000) );
 
@@ -3360,13 +3360,13 @@ bool CEDCWallet::ParameterInteraction()
     if ( params.maxtxfee > 0 )
     {
         if (params.maxtxfee > HIGH_MAX_TX_FEE)
-            InitWarning(_("-ebmaxtxfee is set very high! Fees this large could be paid on a single transaction."));
+            InitWarning(_("-eb_maxtxfee is set very high! Fees this large could be paid on a single transaction."));
         theApp.maxTxFee( params.maxtxfee);
 
         if (CFeeRate(theApp.maxTxFee(), 1000) < theApp.minRelayTxFee())
         {
             return InitError(strprintf(_("Invalid amount for "
-				"-ebmaxtxfee=<amount>: '%s' (must be at least the minrelay "
+				"-eb_maxtxfee=<amount>: '%s' (must be at least the minrelay "
 				"fee of %s to prevent stuck transactions)"),
                 params.maxtxfee, theApp.minRelayTxFee().ToString()));
         }

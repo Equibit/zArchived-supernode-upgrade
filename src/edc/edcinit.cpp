@@ -345,7 +345,7 @@ bool EdcAppInit(
     	// ******************************** Step 3: parameter-to-internal-flags
     	theApp.debug( !params.debug.empty() );
 
-    	// Special-case: if -ebdebug=0/-ebnodebug is set, turn off debugging 
+    	// Special-case: if -eb_debug=0/-eb_nodebug is set, turn off debugging 
 		// messages
     	const std::vector<std::string>& categories = params.debug;
 
@@ -367,7 +367,7 @@ bool EdcAppInit(
     	}
     	params.checkblockindex = chainparams.DefaultConsistencyChecks();
 
-    	// -ebpar=0 means autodetect, but scriptCheckThreads==0 means no 
+    	// -eb_par=0 means autodetect, but scriptCheckThreads==0 means no 
 		// concurrency
     	theApp.scriptCheckThreads( params.par );
     	if ( theApp.scriptCheckThreads() <= 0)
@@ -537,8 +537,8 @@ bool EdcAppInit(
 
     	bool proxyRandomize = params.proxyrandomize;
 
-    	// -ebproxy sets a proxy for all outgoing network traffic
-    	// -ebnoproxy (or -proxy=0) as well as the empty string can be used to 
+    	// -eb_proxy sets a proxy for all outgoing network traffic
+    	// -eb_noproxy (or -proxy=0) as well as the empty string can be used to 
 		// not set a proxy, this is the default
     	std::string proxyArg = params.proxy;
     	SetLimited(NET_TOR);
@@ -559,9 +559,9 @@ bool EdcAppInit(
 										// reachable, unless -noonion later
     	}
 
-	    // -ebonion can be used to set only a proxy for .onion, or override 
+	    // -eb_onion can be used to set only a proxy for .onion, or override 
 		// normal proxy for .onion addresses
-		// -ebnoonion (or -onion=0) disables connecting to .onion entirely
+		// -eb_noonion (or -onion=0) disables connecting to .onion entirely
 	    // An empty string is used to not override the onion proxy (in which 
 		// case it defaults to -proxy set above, or none)
 	    std::string onionArg = params.onion;
@@ -616,7 +616,7 @@ bool EdcAppInit(
 	            fBound |= Bind(CService(inaddr_any, edcGetListenPort()), !fBound ? BF_REPORT_ERROR : BF_NONE);
 	        }
 	        if (!fBound)
-	            return InitError(_("Failed to listen on any port. Use -eblisten=0 if you want this."));
+	            return InitError(_("Failed to listen on any port. Use -eb_listen=0 if you want this."));
 	    }
 	
     	if (params.externalip.size() > 0 ) 
