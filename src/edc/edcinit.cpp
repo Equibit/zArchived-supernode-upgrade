@@ -950,7 +950,8 @@ bool EdcAppInit(
     
 		// *************************************************** Step 12: finished
 
-		SetRPCWarmupFinished();
+// TODO: Cannot call this twice. Already called by bitcoin init		
+//		SetRPCWarmupFinished();
 
     	uiInterface.InitMessage(_("Done loading"));
 

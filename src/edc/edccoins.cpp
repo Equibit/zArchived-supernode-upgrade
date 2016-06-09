@@ -47,22 +47,70 @@ bool CEDCCoins::Spend(uint32_t nPos)
     return true;
 }
 
-bool CEDCCoinsView::GetCoins(const uint256 &txid, CEDCCoins &coins) const { return false; }
-bool CEDCCoinsView::HaveCoins(const uint256 &txid) const { return false; }
-uint256 CEDCCoinsView::GetBestBlock() const { return uint256(); }
-bool CEDCCoinsView::BatchWrite(CEDCCoinsMap &mapCoins, const uint256 &hashBlock) { return false; }
-CEDCCoinsViewCursor *CEDCCoinsView::Cursor() const { return 0; }
+bool CEDCCoinsView::GetCoins(const uint256 &txid, CEDCCoins &coins) const 
+{ 
+	return false; 
+}
+
+bool CEDCCoinsView::HaveCoins(const uint256 &txid) const 
+{ 
+	return false; 
+}
+
+uint256 CEDCCoinsView::GetBestBlock() const 
+{ 
+	return uint256(); 
+}
+
+bool CEDCCoinsView::BatchWrite(CEDCCoinsMap &mapCoins, const uint256 &hashBlock)
+{ 
+	return false; 
+}
+
+CEDCCoinsViewCursor *CEDCCoinsView::Cursor() const 
+{ 
+	return 0; 
+}
 
 
-CEDCCoinsViewBacked::CEDCCoinsViewBacked(CEDCCoinsView *viewIn) : base(viewIn) { }
-bool CEDCCoinsViewBacked::GetCoins(const uint256 &txid, CEDCCoins &coins) const { return base->GetCoins(txid, coins); }
-bool CEDCCoinsViewBacked::HaveCoins(const uint256 &txid) const { return base->HaveCoins(txid); }
-uint256 CEDCCoinsViewBacked::GetBestBlock() const { return base->GetBestBlock(); }
-void CEDCCoinsViewBacked::SetBackend(CEDCCoinsView &viewIn) { base = &viewIn; }
-bool CEDCCoinsViewBacked::BatchWrite(CEDCCoinsMap &mapCoins, const uint256 &hashBlock) { return base->BatchWrite(mapCoins, hashBlock); }
-CEDCCoinsViewCursor *CEDCCoinsViewBacked::Cursor() const { return base->Cursor(); }
+CEDCCoinsViewBacked::CEDCCoinsViewBacked(CEDCCoinsView *viewIn) : base(viewIn) 
+{ }
 
-CEDCCoinsViewCache::CEDCCoinsViewCache(CEDCCoinsView *baseIn) : CEDCCoinsViewBacked(baseIn), hasModifier(false), cachedCoinsUsage(0) { }
+bool CEDCCoinsViewBacked::GetCoins(const uint256 &txid, CEDCCoins &coins) const
+{
+	return base->GetCoins(txid, coins); 
+}
+
+bool CEDCCoinsViewBacked::HaveCoins(const uint256 &txid) const 
+{ 
+	return base->HaveCoins(txid); 
+}
+
+uint256 CEDCCoinsViewBacked::GetBestBlock() const 
+{ 
+	return base->GetBestBlock(); 
+}
+
+void CEDCCoinsViewBacked::SetBackend(CEDCCoinsView &viewIn) 
+{ 
+	base = &viewIn; 
+}
+
+bool CEDCCoinsViewBacked::BatchWrite(
+	CEDCCoinsMap & mapCoins, 
+	const uint256 & hashBlock) 
+{ 
+	return base->BatchWrite(mapCoins, hashBlock); 
+}
+
+CEDCCoinsViewCursor *CEDCCoinsViewBacked::Cursor() const 
+{ 
+	return base->Cursor(); 
+}
+
+CEDCCoinsViewCache::CEDCCoinsViewCache(CEDCCoinsView *baseIn) : 
+	CEDCCoinsViewBacked(baseIn), hasModifier(false), cachedCoinsUsage(0) 
+{ }
 
 CEDCCoinsViewCache::~CEDCCoinsViewCache()
 {
@@ -82,8 +130,11 @@ CEDCCoinsMap::const_iterator CEDCCoinsViewCache::FetchCoins(const uint256 &txid)
     CEDCCoins tmp;
     if (!base->GetCoins(txid, tmp))
         return cacheCoins.end();
-    CEDCCoinsMap::iterator ret = cacheCoins.insert(std::make_pair(txid, CEDCCoinsCacheEntry())).first;
+
+    CEDCCoinsMap::iterator ret = cacheCoins.
+		insert(std::make_pair(txid, CEDCCoinsCacheEntry())).first;
     tmp.swap(ret->second.coins);
+
     if (ret->second.coins.IsPruned()) 
 	{
         // The parent only has an empty entry for this txid; we can consider our
@@ -91,6 +142,7 @@ CEDCCoinsMap::const_iterator CEDCCoinsViewCache::FetchCoins(const uint256 &txid)
         ret->second.flags = CEDCCoinsCacheEntry::FRESH;
     }
     cachedCoinsUsage += ret->second.coins.DynamicMemoryUsage();
+
     return ret;
 }
 
@@ -108,8 +160,10 @@ bool CEDCCoinsViewCache::GetCoins(const uint256 &txid, CEDCCoins &coins) const
 CEDCCoinsModifier CEDCCoinsViewCache::ModifyCoins(const uint256 &txid) 
 {
     assert(!hasModifier);
-    std::pair<CEDCCoinsMap::iterator, bool> ret = cacheCoins.insert(std::make_pair(txid, CEDCCoinsCacheEntry()));
+    std::pair<CEDCCoinsMap::iterator, bool> ret = 
+		cacheCoins.insert(std::make_pair(txid, CEDCCoinsCacheEntry()));
     size_t cachedCoinUsage = 0;
+
     if (ret.second) 
 	{
         if (!base->GetCoins(txid, ret.first->second.coins)) 
@@ -128,8 +182,10 @@ CEDCCoinsModifier CEDCCoinsViewCache::ModifyCoins(const uint256 &txid)
 	{
         cachedCoinUsage = ret.first->second.coins.DynamicMemoryUsage();
     }
+
     // Assume that whenever ModifyCoins is called, the entry will be modified.
     ret.first->second.flags |= CEDCCoinsCacheEntry::DIRTY;
+
     return CEDCCoinsModifier(*this, ret.first, cachedCoinUsage);
 }
 
@@ -140,19 +196,23 @@ CEDCCoinsModifier CEDCCoinsViewCache::ModifyCoins(const uint256 &txid)
 CEDCCoinsModifier CEDCCoinsViewCache::ModifyNewCoins(const uint256 &txid, bool coinbase) 
 {
     assert(!hasModifier);
-    std::pair<CEDCCoinsMap::iterator, bool> ret = cacheCoins.insert(std::make_pair(txid, CEDCCoinsCacheEntry()));
+    std::pair<CEDCCoinsMap::iterator, bool> ret = 
+		cacheCoins.insert(std::make_pair(txid, CEDCCoinsCacheEntry()));
     ret.first->second.coins.Clear();
+
     if (!coinbase) 
 	{
         ret.first->second.flags = CEDCCoinsCacheEntry::FRESH;
     }
     ret.first->second.flags |= CEDCCoinsCacheEntry::DIRTY;
+
     return CEDCCoinsModifier(*this, ret.first, 0);
 }
 
 const CEDCCoins* CEDCCoinsViewCache::AccessCoins(const uint256 &txid) const 
 {
     CEDCCoinsMap::const_iterator it = FetchCoins(txid);
+
     if (it == cacheCoins.end()) 
 	{
         return NULL;

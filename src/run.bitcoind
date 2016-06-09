@@ -1,1 +1,1 @@
-./bitcoind -regtest -server -debug -daemon
+./bitcoind -regtest -server -debug -daemon -ebregtest

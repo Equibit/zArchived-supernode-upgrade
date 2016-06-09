@@ -4020,7 +4020,7 @@ bool static LoadBlockIndexDB()
 {
     const CEDCChainParams& chainparams = edcParams();
 	EDCapp & theApp = EDCapp::singleton();
-    if (!theApp.blocktree()->LoadBlockIndexGuts(InsertBlockIndex))
+    if (!theApp.blocktree()->LoadBlockIndexGuts(edcInsertBlockIndex))
         return false;
 
     boost::this_thread::interruption_point();

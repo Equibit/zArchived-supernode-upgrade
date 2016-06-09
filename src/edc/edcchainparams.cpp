@@ -79,10 +79,10 @@ static CEDCBlock CreateGenesisBlock(
  * + Contains no strange transactions
  */
 
-class CMainParams : public CEDCChainParams 
+class CEDCMainParams : public CEDCChainParams 
 {
 public:
-    CMainParams() 
+    CEDCMainParams() 
 	{
         strNetworkID = "main";
         consensus.nSubsidyHalvingInterval = 210000;
@@ -169,15 +169,15 @@ public:
         };
     }
 };
-static CMainParams mainParams;
+static CEDCMainParams edcMainParams;
 
 /**
  * Testnet (v3)
  */
-class CTestNetParams : public CEDCChainParams 
+class CEDCTestNetParams : public CEDCChainParams 
 {
 public:
-    CTestNetParams() 
+    CEDCTestNetParams() 
 	{
         strNetworkID = "test";
         consensus.nSubsidyHalvingInterval = 210000;
@@ -244,15 +244,15 @@ public:
 
     }
 };
-static CTestNetParams testNetParams;
+static CEDCTestNetParams edcTestNetParams;
 
 /**
  * Regression test
  */
-class CRegTestParams : public CEDCChainParams 
+class CEDCRegTestParams : public CEDCChainParams 
 {
 public:
-    CRegTestParams() 
+    CEDCRegTestParams() 
 	{
         strNetworkID = "regtest";
         consensus.nSubsidyHalvingInterval = 150;
@@ -310,24 +310,24 @@ public:
         base58Prefixes[EXT_SECRET_KEY] = boost::assign::list_of(0x04)(0x35)(0x83)(0x94).convert_to_container<std::vector<unsigned char> >();
     }
 };
-static CRegTestParams regTestParams;
+static CEDCRegTestParams edcRegTestParams;
 
-static CEDCChainParams *pCurrentParams = 0;
+static CEDCChainParams *edcpCurrentParams = 0;
 
 const CEDCChainParams & edcParams() 
 {
-    assert(pCurrentParams);
-    return *pCurrentParams;
+    assert(edcpCurrentParams);
+    return *edcpCurrentParams;
 }
 
 CEDCChainParams & edcParams(const std::string& chain)
 {
     if (chain == CBaseChainParams::MAIN)
-        return mainParams;
+        return edcMainParams;
     else if (chain == CBaseChainParams::TESTNET)
-        return testNetParams;
+        return edcTestNetParams;
     else if (chain == CBaseChainParams::REGTEST)
-        return regTestParams;
+        return edcRegTestParams;
     else
         throw std::runtime_error(strprintf("%s: Unknown chain %s.", __func__, chain));
 }
@@ -335,5 +335,5 @@ CEDCChainParams & edcParams(const std::string& chain)
 void edcSelectParams(const std::string& network)
 {
     SelectBaseParams(network);
-    pCurrentParams = & edcParams(network);
+    edcpCurrentParams = & edcParams(network);
 }
