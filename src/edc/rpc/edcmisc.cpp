@@ -42,7 +42,7 @@ extern int64_t edcGetTimeOffset();
  *
  * Or alternatively, create a specific query method for the information.
  **/
-UniValue getinfo(const UniValue& params, bool fHelp)
+UniValue edcgetinfo(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -156,7 +156,7 @@ public:
 };
 #endif
 
-UniValue validateaddress(const UniValue& params, bool fHelp)
+UniValue edcvalidateaddress(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -219,7 +219,7 @@ UniValue validateaddress(const UniValue& params, bool fHelp)
 /**
  * Used by addmultisigaddress / createmultisig:
  */
-CScript _createmultisig_redeemScript(const UniValue& params)
+CScript edc_createmultisig_redeemScript(const UniValue& params)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -282,7 +282,7 @@ CScript _createmultisig_redeemScript(const UniValue& params)
     return result;
 }
 
-UniValue createmultisig(const UniValue& params, bool fHelp)
+UniValue edccreatemultisig(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 2)
     {
@@ -314,7 +314,7 @@ UniValue createmultisig(const UniValue& params, bool fHelp)
     }
 
     // Construct using pay-to-script-hash:
-    CScript inner = _createmultisig_redeemScript(params);
+    CScript inner = edc_createmultisig_redeemScript(params);
     CScriptID innerID(inner);
     CBitcoinAddress address(innerID);
 
@@ -325,7 +325,7 @@ UniValue createmultisig(const UniValue& params, bool fHelp)
     return result;
 }
 
-UniValue verifymessage(const UniValue& params, bool fHelp)
+UniValue edcverifymessage(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 3)
         throw runtime_error(
@@ -379,7 +379,7 @@ UniValue verifymessage(const UniValue& params, bool fHelp)
     return (pubkey.GetID() == keyID);
 }
 
-UniValue signmessagewithprivkey(const UniValue& params, bool fHelp)
+UniValue edcsignmessagewithprivkey(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 2)
         throw runtime_error(
@@ -421,7 +421,7 @@ UniValue signmessagewithprivkey(const UniValue& params, bool fHelp)
     return EncodeBase64(&vchSig[0], vchSig.size());
 }
 
-UniValue setmocktime(const UniValue& params, bool fHelp)
+UniValue edcsetmocktime(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -455,21 +455,21 @@ UniValue setmocktime(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
-static const CRPCCommand commands[] =
+static const CRPCCommand edcCommands[] =
 { //  category              name                      actor (function)         okSafeMode
   //  --------------------- ------------------------  -----------------------  ----------
-    { "control",            "getinfo",                &getinfo,                true  }, /* uses wallet if enabled */
-    { "util",               "validateaddress",        &validateaddress,        true  }, /* uses wallet if enabled */
-    { "util",               "createmultisig",         &createmultisig,         true  },
-    { "util",               "verifymessage",          &verifymessage,          true  },
-    { "util",               "signmessagewithprivkey", &signmessagewithprivkey, true  },
+    { "control",            "eb_getinfo",                &edcgetinfo,                true  }, /* uses wallet if enabled */
+    { "util",               "eb_validateaddress",        &edcvalidateaddress,        true  }, /* uses wallet if enabled */
+    { "util",               "eb_createmultisig",         &edccreatemultisig,         true  },
+    { "util",               "eb_verifymessage",          &edcverifymessage,          true  },
+    { "util",               "eb_signmessagewithprivkey", &edcsignmessagewithprivkey, true  },
 
     /* Not shown in help */
-    { "hidden",             "setmocktime",            &setmocktime,            true  },
+    { "hidden",             "eb_setmocktime",            &edcsetmocktime,            true  },
 };
 
-void RegisterMiscRPCCommands(CRPCTable &tableRPC)
+void edcRegisterMiscRPCCommands(CRPCTable &tableRPC)
 {
-    for (unsigned int vcidx = 0; vcidx < ARRAYLEN(commands); vcidx++)
-        tableRPC.appendCommand(commands[vcidx].name, &commands[vcidx]);
+    for (unsigned int vcidx = 0; vcidx < ARRAYLEN(edcCommands); vcidx++)
+        tableRPC.appendCommand(edcCommands[vcidx].name, &edcCommands[vcidx]);
 }

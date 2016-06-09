@@ -25,7 +25,7 @@
 
 using namespace std;
 
-UniValue getconnectioncount(const UniValue& params, bool fHelp)
+UniValue edcgetconnectioncount(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
     if (fHelp || params.size() != 0)
@@ -44,7 +44,7 @@ UniValue getconnectioncount(const UniValue& params, bool fHelp)
     return (int)theApp.vNodes().size();
 }
 
-UniValue ping(const UniValue& params, bool fHelp)
+UniValue edcping(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
     if (fHelp || params.size() != 0)
@@ -82,7 +82,7 @@ static void CopyNodeStats(std::vector<CNodeStats>& vstats)
     }
 }
 
-UniValue getpeerinfo(const UniValue& params, bool fHelp)
+UniValue edcgetpeerinfo(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
@@ -200,7 +200,7 @@ UniValue getpeerinfo(const UniValue& params, bool fHelp)
     return ret;
 }
 
-UniValue addnode(const UniValue& params, bool fHelp)
+UniValue edcaddnode(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -252,7 +252,7 @@ UniValue addnode(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
-UniValue disconnectnode(const UniValue& params, bool fHelp)
+UniValue edcdisconnectnode(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
@@ -274,7 +274,7 @@ UniValue disconnectnode(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
-UniValue getaddednodeinfo(const UniValue& params, bool fHelp)
+UniValue edcgetaddednodeinfo(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -394,7 +394,7 @@ UniValue getaddednodeinfo(const UniValue& params, bool fHelp)
     return ret;
 }
 
-UniValue getnettotals(const UniValue& params, bool fHelp)
+UniValue edcgetnettotals(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() > 0)
         throw runtime_error(
@@ -460,7 +460,7 @@ static UniValue GetNetworksInfo()
 
 extern int64_t edcGetTimeOffset();
 
-UniValue getnetworkinfo(const UniValue& params, bool fHelp)
+UniValue edcgetnetworkinfo(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
@@ -529,7 +529,7 @@ UniValue getnetworkinfo(const UniValue& params, bool fHelp)
     return obj;
 }
 
-UniValue setban(const UniValue& params, bool fHelp)
+UniValue edcsetban(const UniValue& params, bool fHelp)
 {
     string strCommand;
     if (params.size() >= 2)
@@ -596,7 +596,7 @@ UniValue setban(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
-UniValue listbanned(const UniValue& params, bool fHelp)
+UniValue edclistbanned(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
@@ -626,7 +626,7 @@ UniValue listbanned(const UniValue& params, bool fHelp)
     return bannedAddresses;
 }
 
-UniValue clearbanned(const UniValue& params, bool fHelp)
+UniValue edcclearbanned(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
@@ -644,24 +644,24 @@ UniValue clearbanned(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
-static const CRPCCommand commands[] =
+static const CRPCCommand edcCommands[] =
 { //  category              name                      actor (function)         okSafeMode
   //  --------------------- ------------------------  -----------------------  ----------
-    { "network",            "getconnectioncount",     &getconnectioncount,     true  },
-    { "network",            "ping",                   &ping,                   true  },
-    { "network",            "getpeerinfo",            &getpeerinfo,            true  },
-    { "network",            "addnode",                &addnode,                true  },
-    { "network",            "disconnectnode",         &disconnectnode,         true  },
-    { "network",            "getaddednodeinfo",       &getaddednodeinfo,       true  },
-    { "network",            "getnettotals",           &getnettotals,           true  },
-    { "network",            "getnetworkinfo",         &getnetworkinfo,         true  },
-    { "network",            "setban",                 &setban,                 true  },
-    { "network",            "listbanned",             &listbanned,             true  },
-    { "network",            "clearbanned",            &clearbanned,            true  },
+    { "network",            "eb_getconnectioncount",     &edcgetconnectioncount,     true  },
+    { "network",            "eb_ping",                   &edcping,                   true  },
+    { "network",            "eb_getpeerinfo",            &edcgetpeerinfo,            true  },
+    { "network",            "eb_addnode",                &edcaddnode,                true  },
+    { "network",            "eb_disconnectnode",         &edcdisconnectnode,         true  },
+    { "network",            "eb_getaddednodeinfo",       &edcgetaddednodeinfo,       true  },
+    { "network",            "eb_getnettotals",           &edcgetnettotals,           true  },
+    { "network",            "eb_getnetworkinfo",         &edcgetnetworkinfo,         true  },
+    { "network",            "eb_setban",                 &edcsetban,                 true  },
+    { "network",            "eb_listbanned",             &edclistbanned,             true  },
+    { "network",            "eb_clearbanned",            &edcclearbanned,            true  },
 };
 
-void RegisterNetRPCCommands(CRPCTable &tableRPC)
+void edcRegisterNetRPCCommands(CRPCTable &tableRPC)
 {
-    for (unsigned int vcidx = 0; vcidx < ARRAYLEN(commands); vcidx++)
-        tableRPC.appendCommand(commands[vcidx].name, &commands[vcidx]);
+    for (unsigned int vcidx = 0; vcidx < ARRAYLEN(edcCommands); vcidx++)
+        tableRPC.appendCommand(edcCommands[vcidx].name, &edcCommands[vcidx]);
 }

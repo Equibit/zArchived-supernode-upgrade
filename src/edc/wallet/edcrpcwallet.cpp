@@ -1179,7 +1179,7 @@ struct tallyitem
     }
 };
 
-UniValue ListReceived(const UniValue& params, bool fByAccounts)
+UniValue edcListReceived(const UniValue& params, bool fByAccounts)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -1340,7 +1340,7 @@ UniValue edclistreceivedbyaddress(const UniValue& params, bool fHelp)
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-    return ListReceived(params, false);
+    return edcListReceived(params, false);
 }
 
 UniValue edclistreceivedbyaccount(const UniValue& params, bool fHelp)
@@ -1379,7 +1379,7 @@ UniValue edclistreceivedbyaccount(const UniValue& params, bool fHelp)
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-    return ListReceived(params, true);
+    return edcListReceived(params, true);
 }
 
 static void MaybePushAddress(UniValue & entry, const CTxDestination &dest)
@@ -2684,14 +2684,14 @@ UniValue edcfundrawtransaction(const UniValue& params, bool fHelp)
     return result;
 }
 
-extern UniValue dumpprivkey(const UniValue& params, bool fHelp); // in rpcdump.cpp
-extern UniValue importprivkey(const UniValue& params, bool fHelp);
-extern UniValue importaddress(const UniValue& params, bool fHelp);
-extern UniValue importpubkey(const UniValue& params, bool fHelp);
-extern UniValue dumpwallet(const UniValue& params, bool fHelp);
-extern UniValue importwallet(const UniValue& params, bool fHelp);
-extern UniValue importprunedfunds(const UniValue& params, bool fHelp);
-extern UniValue removeprunedfunds(const UniValue& params, bool fHelp);
+extern UniValue edcdumpprivkey(const UniValue& params, bool fHelp); // in rpcdump.cpp
+extern UniValue edcimportprivkey(const UniValue& params, bool fHelp);
+extern UniValue edcimportaddress(const UniValue& params, bool fHelp);
+extern UniValue edcimportpubkey(const UniValue& params, bool fHelp);
+extern UniValue edcdumpwallet(const UniValue& params, bool fHelp);
+extern UniValue edcimportwallet(const UniValue& params, bool fHelp);
+extern UniValue edcimportprunedfunds(const UniValue& params, bool fHelp);
+extern UniValue edcremoveprunedfunds(const UniValue& params, bool fHelp);
 
 static const CRPCCommand commands[] =
 { //  category              name                        actor (function)           okSafeMode
@@ -2701,8 +2701,8 @@ static const CRPCCommand commands[] =
     { "wallet",             "eb_abandontransaction",       &edcabandontransaction,       false },
     { "wallet",             "eb_addmultisigaddress",       &edcaddmultisigaddress,       true  },
     { "wallet",             "eb_backupwallet",             &edcbackupwallet,             true  },
-    { "wallet",             "eb_dumpprivkey",              &dumpprivkey,              true  },
-    { "wallet",             "eb_dumpwallet",               &dumpwallet,               true  },
+    { "wallet",             "eb_dumpprivkey",              &edcdumpprivkey,              true  },
+    { "wallet",             "eb_dumpwallet",               &edcdumpwallet,               true  },
     { "wallet",             "eb_encryptwallet",            &edcencryptwallet,            true  },
     { "wallet",             "eb_getaccountaddress",        &edcgetaccountaddress,        true  },
     { "wallet",             "eb_getaccount",               &edcgetaccount,               true  },
@@ -2715,11 +2715,11 @@ static const CRPCCommand commands[] =
     { "wallet",             "eb_gettransaction",           &edcgettransaction,           false },
     { "wallet",             "eb_getunconfirmedbalance",    &edcgetunconfirmedbalance,    false },
     { "wallet",             "eb_getwalletinfo",            &edcgetwalletinfo,            false },
-    { "wallet",             "eb_importprivkey",            &importprivkey,            true  },
-    { "wallet",             "eb_importwallet",             &importwallet,             true  },
-    { "wallet",             "eb_importaddress",            &importaddress,            true  },
-    { "wallet",             "eb_importprunedfunds",        &importprunedfunds,        true  },
-    { "wallet",             "eb_importpubkey",             &importpubkey,             true  },
+    { "wallet",             "eb_importprivkey",            &edcimportprivkey,            true  },
+    { "wallet",             "eb_importwallet",             &edcimportwallet,             true  },
+    { "wallet",             "eb_importaddress",            &edcimportaddress,            true  },
+    { "wallet",             "eb_importprunedfunds",        &edcimportprunedfunds,        true  },
+    { "wallet",             "eb_importpubkey",             &edcimportpubkey,             true  },
     { "wallet",             "eb_keypoolrefill",            &edckeypoolrefill,            true  },
     { "wallet",             "eb_listaccounts",             &edclistaccounts,             false },
     { "wallet",             "eb_listaddressgroupings",     &edclistaddressgroupings,     false },
@@ -2740,7 +2740,7 @@ static const CRPCCommand commands[] =
     { "wallet",             "eb_walletlock",               &edcwalletlock,               true  },
     { "wallet",             "eb_walletpassphrasechange",   &edcwalletpassphrasechange,   true  },
     { "wallet",             "eb_walletpassphrase",         &edcwalletpassphrase,         true  },
-    { "wallet",             "eb_removeprunedfunds",        &removeprunedfunds,        true  },
+    { "wallet",             "eb_removeprunedfunds",        &edcremoveprunedfunds,        true  },
 };
 
 void edcRegisterWalletRPCCommands(CRPCTable &tableRPC)

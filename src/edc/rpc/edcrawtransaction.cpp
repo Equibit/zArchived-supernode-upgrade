@@ -37,7 +37,7 @@
 
 using namespace std;
 
-void ScriptPubKeyToJSON(const CScript& scriptPubKey, UniValue& out, bool fIncludeHex)
+void edcScriptPubKeyToJSON(const CScript& scriptPubKey, UniValue& out, bool fIncludeHex)
 {
     txnouttype type;
     vector<CTxDestination> addresses;
@@ -100,7 +100,7 @@ void TxToJSON(const CEDCTransaction& tx, const uint256 hashBlock, UniValue& entr
         out.push_back(Pair("value", ValueFromAmount(txout.nValue)));
         out.push_back(Pair("n", (int64_t)i));
         UniValue o(UniValue::VOBJ);
-        ScriptPubKeyToJSON(txout.scriptPubKey, o, true);
+        edcScriptPubKeyToJSON(txout.scriptPubKey, o, true);
         out.push_back(Pair("scriptPubKey", o));
         vout.push_back(out);
     }
@@ -126,7 +126,7 @@ void TxToJSON(const CEDCTransaction& tx, const uint256 hashBlock, UniValue& entr
     }
 }
 
-UniValue getrawtransaction(const UniValue& params, bool fHelp)
+UniValue edcgetrawtransaction(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
@@ -217,7 +217,7 @@ UniValue getrawtransaction(const UniValue& params, bool fHelp)
     return result;
 }
 
-UniValue gettxoutproof(const UniValue& params, bool fHelp)
+UniValue edcgettxoutproof(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -304,7 +304,7 @@ UniValue gettxoutproof(const UniValue& params, bool fHelp)
     return strHex;
 }
 
-UniValue verifytxoutproof(const UniValue& params, bool fHelp)
+UniValue edcverifytxoutproof(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -340,7 +340,7 @@ UniValue verifytxoutproof(const UniValue& params, bool fHelp)
     return res;
 }
 
-UniValue createrawtransaction(const UniValue& params, bool fHelp)
+UniValue edccreaterawtransaction(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 3)
         throw runtime_error(
@@ -447,7 +447,7 @@ UniValue createrawtransaction(const UniValue& params, bool fHelp)
     return EncodeHexTx(rawTx);
 }
 
-UniValue decoderawtransaction(const UniValue& params, bool fHelp)
+UniValue edcdecoderawtransaction(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
@@ -513,7 +513,7 @@ UniValue decoderawtransaction(const UniValue& params, bool fHelp)
     return result;
 }
 
-UniValue decodescript(const UniValue& params, bool fHelp)
+UniValue edcdecodescript(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
@@ -552,7 +552,7 @@ UniValue decodescript(const UniValue& params, bool fHelp)
 	{
         // Empty scripts are valid
     }
-    ScriptPubKeyToJSON(script, r, false);
+    edcScriptPubKeyToJSON(script, r, false);
 
     r.push_back(Pair("p2sh", CBitcoinAddress(CScriptID(script)).ToString()));
     return r;
@@ -570,7 +570,7 @@ static void TxInErrorToJSON(const CEDCTxIn& txin, UniValue& vErrorsRet, const st
     vErrorsRet.push_back(entry);
 }
 
-UniValue signrawtransaction(const UniValue& params, bool fHelp)
+UniValue edcsignrawtransaction(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -839,7 +839,7 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
     return result;
 }
 
-UniValue sendrawtransaction(const UniValue& params, bool fHelp)
+UniValue edcsendrawtransaction(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
@@ -913,22 +913,22 @@ UniValue sendrawtransaction(const UniValue& params, bool fHelp)
     return hashTx.GetHex();
 }
 
-static const CRPCCommand commands[] =
+static const CRPCCommand edcCommands[] =
 { //  category              name                      actor (function)         okSafeMode
   //  --------------------- ------------------------  -----------------------  ----------
-    { "rawtransactions",    "getrawtransaction",      &getrawtransaction,      true  },
-    { "rawtransactions",    "createrawtransaction",   &createrawtransaction,   true  },
-    { "rawtransactions",    "decoderawtransaction",   &decoderawtransaction,   true  },
-    { "rawtransactions",    "decodescript",           &decodescript,           true  },
-    { "rawtransactions",    "sendrawtransaction",     &sendrawtransaction,     false },
-    { "rawtransactions",    "signrawtransaction",     &signrawtransaction,     false }, /* uses wallet if enabled */
+    { "rawtransactions",    "eb_getrawtransaction",      &edcgetrawtransaction,      true  },
+    { "rawtransactions",    "eb_createrawtransaction",   &edccreaterawtransaction,   true  },
+    { "rawtransactions",    "eb_decoderawtransaction",   &edcdecoderawtransaction,   true  },
+    { "rawtransactions",    "eb_decodescript",           &edcdecodescript,           true  },
+    { "rawtransactions",    "eb_sendrawtransaction",     &edcsendrawtransaction,     false },
+    { "rawtransactions",    "eb_signrawtransaction",     &edcsignrawtransaction,     false }, /* uses wallet if enabled */
 
-    { "blockchain",         "gettxoutproof",          &gettxoutproof,          true  },
-    { "blockchain",         "verifytxoutproof",       &verifytxoutproof,       true  },
+    { "blockchain",         "eb_gettxoutproof",          &edcgettxoutproof,          true  },
+    { "blockchain",         "eb_verifytxoutproof",       &edcverifytxoutproof,       true  },
 };
 
-void RegisterRawTransactionRPCCommands(CRPCTable &tableRPC)
+void edcRegisterRawTransactionRPCCommands(CRPCTable &tableRPC)
 {
-    for (unsigned int vcidx = 0; vcidx < ARRAYLEN(commands); vcidx++)
-        tableRPC.appendCommand(commands[vcidx].name, &commands[vcidx]);
+    for (unsigned int vcidx = 0; vcidx < ARRAYLEN(edcCommands); vcidx++)
+        tableRPC.appendCommand(edcCommands[vcidx].name, &edcCommands[vcidx]);
 }

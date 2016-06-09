@@ -94,6 +94,13 @@ CEDCTxOut::CEDCTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn)
     scriptPubKey = scriptPubKeyIn;
 }
 
+CEDCTxIn::CEDCTxIn(COutPoint prevoutIn, CScript scriptSigIn, uint32_t nSequenceIn)
+{
+    prevout = prevoutIn;
+    scriptSig = scriptSigIn;
+    nSequence = nSequenceIn;
+}
+
 CEDCTxIn::CEDCTxIn(uint256 hashPrevTx, uint32_t nOut, CScript scriptSigIn, uint32_t nSequenceIn)
 {
     prevout = COutPoint(hashPrevTx, nOut);

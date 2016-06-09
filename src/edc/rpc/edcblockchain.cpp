@@ -34,7 +34,7 @@ using namespace std;
 extern void TxToJSON(const CEDCTransaction& tx, const uint256 hashBlock, UniValue& entry);
 void ScriptPubKeyToJSON(const CScript& scriptPubKey, UniValue& out, bool fIncludeHex);
 
-double GetDifficulty(const CBlockIndex* blockindex)
+double edcGetDifficulty(const CBlockIndex* blockindex)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -67,7 +67,7 @@ double GetDifficulty(const CBlockIndex* blockindex)
     return dDiff;
 }
 
-UniValue blockheaderToJSON(const CBlockIndex* blockindex)
+UniValue edcblockheaderToJSON(const CBlockIndex* blockindex)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -86,7 +86,7 @@ UniValue blockheaderToJSON(const CBlockIndex* blockindex)
     result.push_back(Pair("mediantime", (int64_t)blockindex->GetMedianTimePast()));
     result.push_back(Pair("nonce", (uint64_t)blockindex->nNonce));
     result.push_back(Pair("bits", strprintf("%08x", blockindex->nBits)));
-    result.push_back(Pair("difficulty", GetDifficulty(blockindex)));
+    result.push_back(Pair("difficulty", edcGetDifficulty(blockindex)));
     result.push_back(Pair("chainwork", blockindex->nChainWork.GetHex()));
 
     if (blockindex->pprev)
@@ -130,7 +130,7 @@ UniValue blockToJSON(const CEDCBlock& block, const CBlockIndex* blockindex, bool
     result.push_back(Pair("mediantime", (int64_t)blockindex->GetMedianTimePast()));
     result.push_back(Pair("nonce", (uint64_t)block.nNonce));
     result.push_back(Pair("bits", strprintf("%08x", block.nBits)));
-    result.push_back(Pair("difficulty", GetDifficulty(blockindex)));
+    result.push_back(Pair("difficulty", edcGetDifficulty(blockindex)));
     result.push_back(Pair("chainwork", blockindex->nChainWork.GetHex()));
 
     if (blockindex->pprev)
@@ -141,7 +141,7 @@ UniValue blockToJSON(const CEDCBlock& block, const CBlockIndex* blockindex, bool
     return result;
 }
 
-UniValue getblockcount(const UniValue& params, bool fHelp)
+UniValue edcgetblockcount(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -160,7 +160,7 @@ UniValue getblockcount(const UniValue& params, bool fHelp)
     return theApp.chainActive().Height();
 }
 
-UniValue getbestblockhash(const UniValue& params, bool fHelp)
+UniValue edcgetbestblockhash(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -179,7 +179,7 @@ UniValue getbestblockhash(const UniValue& params, bool fHelp)
     return theApp.chainActive().Tip()->GetBlockHash().GetHex();
 }
 
-UniValue getdifficulty(const UniValue& params, bool fHelp)
+UniValue edcgetdifficulty(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
@@ -193,10 +193,10 @@ UniValue getdifficulty(const UniValue& params, bool fHelp)
         );
 
     LOCK(EDC_cs_main);
-    return GetDifficulty();
+    return edcGetDifficulty(NULL);
 }
 
-UniValue mempoolToJSON(bool fVerbose = false)
+UniValue edcmempoolToJSON(bool fVerbose = false)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -250,7 +250,7 @@ UniValue mempoolToJSON(bool fVerbose = false)
     }
 }
 
-UniValue getrawmempool(const UniValue& params, bool fHelp)
+UniValue edcgetrawmempool(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
         throw runtime_error(
@@ -292,10 +292,10 @@ UniValue getrawmempool(const UniValue& params, bool fHelp)
     if (params.size() > 0)
         fVerbose = params[0].get_bool();
 
-    return mempoolToJSON(fVerbose);
+    return edcmempoolToJSON(fVerbose);
 }
 
-UniValue getblockhash(const UniValue& params, bool fHelp)
+UniValue edcgetblockhash(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -322,7 +322,7 @@ UniValue getblockhash(const UniValue& params, bool fHelp)
     return pblockindex->GetBlockHash().GetHex();
 }
 
-UniValue getblockheader(const UniValue& params, bool fHelp)
+UniValue edcgetblockheader(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -380,10 +380,10 @@ UniValue getblockheader(const UniValue& params, bool fHelp)
         return strHex;
     }
 
-    return blockheaderToJSON(pblockindex);
+    return edcblockheaderToJSON(pblockindex);
 }
 
-UniValue getblock(const UniValue& params, bool fHelp)
+UniValue edcgetblock(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
     if (fHelp || params.size() < 1 || params.size() > 2)
@@ -516,7 +516,7 @@ static bool GetUTXOStats(CEDCCoinsView *view, CCoinsStats &stats)
     return true;
 }
 
-UniValue gettxoutsetinfo(const UniValue& params, bool fHelp)
+UniValue edcgettxoutsetinfo(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -557,7 +557,7 @@ UniValue gettxoutsetinfo(const UniValue& params, bool fHelp)
     return ret;
 }
 
-UniValue gettxout(const UniValue& params, bool fHelp)
+UniValue edcgettxout(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 3)
         throw runtime_error(
@@ -642,7 +642,7 @@ UniValue gettxout(const UniValue& params, bool fHelp)
     return ret;
 }
 
-UniValue verifychain(const UniValue& param, bool fHelp)
+UniValue edcverifychain(const UniValue& param, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 	EDCparams & params = EDCparams::singleton();
@@ -727,7 +727,7 @@ static UniValue BIP9SoftForkDesc(const Consensus::Params& consensusParams, Conse
     return rv;
 }
 
-UniValue getblockchaininfo(const UniValue& params, bool fHelp)
+UniValue edcgetblockchaininfo(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -781,7 +781,7 @@ UniValue getblockchaininfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("blocks",                (int)theApp.chainActive().Height()));
     obj.push_back(Pair("headers",               theApp.indexBestHeader() ? theApp.indexBestHeader()->nHeight : -1));
     obj.push_back(Pair("bestblockhash",         theApp.chainActive().Tip()->GetBlockHash().GetHex()));
-    obj.push_back(Pair("difficulty",            (double)GetDifficulty()));
+    obj.push_back(Pair("difficulty",            (double)edcGetDifficulty(NULL)));
     obj.push_back(Pair("mediantime",            (int64_t)theApp.chainActive().Tip()->GetMedianTimePast()));
     obj.push_back(Pair("verificationprogress",  Checkpoints::GuessVerificationProgress(Params().Checkpoints(), theApp.chainActive().Tip())));
     obj.push_back(Pair("chainwork",             theApp.chainActive().Tip()->nChainWork.GetHex()));
@@ -824,7 +824,7 @@ struct CompareBlocksByHeight
     }
 };
 
-UniValue getchaintips(const UniValue& params, bool fHelp)
+UniValue edcgetchaintips(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
     if (fHelp || params.size() != 0)
@@ -941,7 +941,7 @@ UniValue getchaintips(const UniValue& params, bool fHelp)
     return res;
 }
 
-UniValue mempoolInfoToJSON()
+UniValue edcmempoolInfoToJSON()
 {
     UniValue ret(UniValue::VOBJ);
 	EDCapp & theApp = EDCapp::singleton();
@@ -956,7 +956,7 @@ UniValue mempoolInfoToJSON()
     return ret;
 }
 
-UniValue getmempoolinfo(const UniValue& params, bool fHelp)
+UniValue edcgetmempoolinfo(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
@@ -975,10 +975,10 @@ UniValue getmempoolinfo(const UniValue& params, bool fHelp)
             + HelpExampleRpc("getmempoolinfo", "")
         );
 
-    return mempoolInfoToJSON();
+    return edcmempoolInfoToJSON();
 }
 
-UniValue invalidateblock(const UniValue& params, bool fHelp)
+UniValue edcinvalidateblock(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
     if (fHelp || params.size() != 1)
@@ -1019,12 +1019,12 @@ UniValue invalidateblock(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
-UniValue reconsiderblock(const UniValue& params, bool fHelp)
+UniValue edcreconsiderblock(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "reconsiderblock \"hash\"\n"
+            "eb_reconsiderblock \"hash\"\n"
             "\nRemoves invalidity status of a block and its descendants, reconsider them for activation.\n"
             "This can be used to undo the effects of invalidateblock.\n"
             "\nArguments:\n"
@@ -1058,30 +1058,30 @@ UniValue reconsiderblock(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
-static const CRPCCommand commands[] =
+static const CRPCCommand edcCommands[] =
 { //  category              name                      actor (function)         okSafeMode
   //  --------------------- ------------------------  -----------------------  ----------
-    { "blockchain",         "getblockchaininfo",      &getblockchaininfo,      true  },
-    { "blockchain",         "getbestblockhash",       &getbestblockhash,       true  },
-    { "blockchain",         "getblockcount",          &getblockcount,          true  },
-    { "blockchain",         "getblock",               &getblock,               true  },
-    { "blockchain",         "getblockhash",           &getblockhash,           true  },
-    { "blockchain",         "getblockheader",         &getblockheader,         true  },
-    { "blockchain",         "getchaintips",           &getchaintips,           true  },
-    { "blockchain",         "getdifficulty",          &getdifficulty,          true  },
-    { "blockchain",         "getmempoolinfo",         &getmempoolinfo,         true  },
-    { "blockchain",         "getrawmempool",          &getrawmempool,          true  },
-    { "blockchain",         "gettxout",               &gettxout,               true  },
-    { "blockchain",         "gettxoutsetinfo",        &gettxoutsetinfo,        true  },
-    { "blockchain",         "verifychain",            &verifychain,            true  },
+    { "blockchain",         "eb_getblockchaininfo",      &edcgetblockchaininfo,      true  },
+    { "blockchain",         "eb_getbestblockhash",       &edcgetbestblockhash,       true  },
+    { "blockchain",         "eb_getblockcount",          &edcgetblockcount,          true  },
+    { "blockchain",         "eb_getblock",               &edcgetblock,               true  },
+    { "blockchain",         "eb_getblockhash",           &edcgetblockhash,           true  },
+    { "blockchain",         "eb_getblockheader",         &edcgetblockheader,         true  },
+    { "blockchain",         "eb_getchaintips",           &edcgetchaintips,           true  },
+    { "blockchain",         "eb_getdifficulty",          &edcgetdifficulty,          true  },
+    { "blockchain",         "eb_getmempoolinfo",         &edcgetmempoolinfo,         true  },
+    { "blockchain",         "eb_getrawmempool",          &edcgetrawmempool,          true  },
+    { "blockchain",         "eb_gettxout",               &edcgettxout,               true  },
+    { "blockchain",         "eb_gettxoutsetinfo",        &edcgettxoutsetinfo,        true  },
+    { "blockchain",         "eb_verifychain",            &edcverifychain,            true  },
 
     /* Not shown in help */
-    { "hidden",             "invalidateblock",        &invalidateblock,        true  },
-    { "hidden",             "reconsiderblock",        &reconsiderblock,        true  },
+    { "hidden",             "eb_invalidateblock",        &edcinvalidateblock,        true  },
+    { "hidden",             "eb_reconsiderblock",        &edcreconsiderblock,        true  },
 };
 
-void RegisterBlockchainRPCCommands(CRPCTable &tableRPC)
+void edcRegisterBlockchainRPCCommands(CRPCTable &tableRPC)
 {
-    for (unsigned int vcidx = 0; vcidx < ARRAYLEN(commands); vcidx++)
-        tableRPC.appendCommand(commands[vcidx].name, &commands[vcidx]);
+    for (unsigned int vcidx = 0; vcidx < ARRAYLEN(edcCommands); vcidx++)
+        tableRPC.appendCommand(edcCommands[vcidx].name, &edcCommands[vcidx]);
 }

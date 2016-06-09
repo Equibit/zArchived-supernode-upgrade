@@ -72,7 +72,7 @@ std::string static EncodeDumpString(const std::string &str)
     return ret.str();
 }
 
-std::string DecodeDumpString(const std::string &str) 
+std::string edcDecodeDumpString(const std::string &str) 
 {
     std::stringstream ret;
     for (unsigned int pos = 0; pos < str.length(); pos++) 
@@ -89,7 +89,7 @@ std::string DecodeDumpString(const std::string &str)
     return ret.str();
 }
 
-UniValue importprivkey(const UniValue& params, bool fHelp)
+UniValue edcimportprivkey(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -170,8 +170,8 @@ UniValue importprivkey(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
-void ImportAddress(const CBitcoinAddress& address, const string& strLabel);
-void ImportScript(const CScript& script, const string& strLabel, bool isRedeemScript)
+void edcImportAddress(const CBitcoinAddress& address, const string& strLabel);
+void edcImportScript(const CScript& script, const string& strLabel, bool isRedeemScript)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -187,22 +187,22 @@ void ImportScript(const CScript& script, const string& strLabel, bool isRedeemSc
 	{
         if (!theApp.walletMain()->HaveCScript(script) && !theApp.walletMain()->AddCScript(script))
             throw JSONRPCError(RPC_WALLET_ERROR, "Error adding p2sh redeemScript to wallet");
-        ImportAddress(CBitcoinAddress(CScriptID(script)), strLabel);
+        edcImportAddress(CBitcoinAddress(CScriptID(script)), strLabel);
     }
 }
 
-void ImportAddress(const CBitcoinAddress& address, const string& strLabel)
+void edcImportAddress(const CBitcoinAddress& address, const string& strLabel)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
     CScript script = GetScriptForDestination(address.Get());
-    ImportScript(script, strLabel, false);
+    edcImportScript(script, strLabel, false);
     // add to address book or update label
     if (address.IsValid())
         theApp.walletMain()->SetAddressBook(address.Get(), strLabel, "receive");
 }
 
-UniValue importaddress(const UniValue& params, bool fHelp)
+UniValue edcimportaddress(const UniValue& params, bool fHelp)
 {
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
@@ -253,12 +253,12 @@ UniValue importaddress(const UniValue& params, bool fHelp)
 	{
         if (fP2SH)
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Cannot use the p2sh flag with an address - use a script instead");
-        ImportAddress(address, strLabel);
+        edcImportAddress(address, strLabel);
     } 
 	else if (IsHex(params[0].get_str())) 
 	{
         std::vector<unsigned char> data(ParseHex(params[0].get_str()));
-        ImportScript(CScript(data.begin(), data.end()), strLabel, fP2SH);
+        edcImportScript(CScript(data.begin(), data.end()), strLabel, fP2SH);
     } 
 	else 
 	{
@@ -274,7 +274,7 @@ UniValue importaddress(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
-UniValue importprunedfunds(const UniValue& params, bool fHelp)
+UniValue edcimportprunedfunds(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -344,7 +344,7 @@ UniValue importprunedfunds(const UniValue& params, bool fHelp)
     throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No addresses in wallet correspond to included transaction");
 }
 
-UniValue removeprunedfunds(const UniValue& params, bool fHelp)
+UniValue edcremoveprunedfunds(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -386,7 +386,7 @@ UniValue removeprunedfunds(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
-UniValue importpubkey(const UniValue& params, bool fHelp)
+UniValue edcimportpubkey(const UniValue& params, bool fHelp)
 {
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
@@ -432,8 +432,8 @@ UniValue importpubkey(const UniValue& params, bool fHelp)
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-    ImportAddress(CBitcoinAddress(pubKey.GetID()), strLabel);
-    ImportScript(GetScriptForRawPubKey(pubKey), strLabel, false);
+    edcImportAddress(CBitcoinAddress(pubKey.GetID()), strLabel);
+    edcImportScript(GetScriptForRawPubKey(pubKey), strLabel, false);
 
     if (fRescan)
     {
@@ -445,7 +445,7 @@ UniValue importpubkey(const UniValue& params, bool fHelp)
 }
 
 
-UniValue importwallet(const UniValue& params, bool fHelp)
+UniValue edcimportwallet(const UniValue& params, bool fHelp)
 {
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
@@ -530,7 +530,7 @@ UniValue importwallet(const UniValue& params, bool fHelp)
                 fLabel = false;
             if (boost::algorithm::starts_with(vstr[nStr], "label=")) 
 			{
-                strLabel = DecodeDumpString(vstr[nStr].substr(6));
+                strLabel = edcDecodeDumpString(vstr[nStr].substr(6));
                 fLabel = true;
             }
         }
@@ -567,7 +567,7 @@ UniValue importwallet(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
-UniValue dumpprivkey(const UniValue& params, bool fHelp)
+UniValue edcdumpprivkey(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -607,7 +607,7 @@ UniValue dumpprivkey(const UniValue& params, bool fHelp)
 }
 
 
-UniValue dumpwallet(const UniValue& params, bool fHelp)
+UniValue edcdumpwallet(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 

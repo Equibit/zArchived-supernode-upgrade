@@ -37,7 +37,7 @@ using namespace std;
  * or from the last difficulty change if 'lookup' is nonpositive.
  * If 'height' is nonnegative, compute the estimate at the time when a given block was found.
  */
-UniValue GetNetworkHashPS(int lookup, int height) 
+UniValue edcGetNetworkHashPS(int lookup, int height) 
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -78,11 +78,11 @@ UniValue GetNetworkHashPS(int lookup, int height)
     return workDiff.getdouble() / timeDiff;
 }
 
-UniValue getnetworkhashps(const UniValue& params, bool fHelp)
+UniValue edcgetnetworkhashps(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() > 2)
         throw runtime_error(
-            "getnetworkhashps ( blocks height )\n"
+            "eb_getnetworkhashps ( blocks height )\n"
             "\nReturns the estimated network hashes per second based on the last n blocks.\n"
             "Pass in [blocks] to override # of blocks, -1 specifies since last difficulty change.\n"
             "Pass in [height] to estimate the network speed at the time when a certain block was found.\n"
@@ -92,15 +92,19 @@ UniValue getnetworkhashps(const UniValue& params, bool fHelp)
             "\nResult:\n"
             "x             (numeric) Hashes per second estimated\n"
             "\nExamples:\n"
-            + HelpExampleCli("getnetworkhashps", "")
-            + HelpExampleRpc("getnetworkhashps", "")
+            + HelpExampleCli("eb_getnetworkhashps", "")
+            + HelpExampleRpc("eb_getnetworkhashps", "")
        );
 
     LOCK(EDC_cs_main);
-    return GetNetworkHashPS(params.size() > 0 ? params[0].get_int() : 120, params.size() > 1 ? params[1].get_int() : -1);
+    return edcGetNetworkHashPS(params.size() > 0 ? params[0].get_int() : 120, params.size() > 1 ? params[1].get_int() : -1);
 }
 
-UniValue generateBlocks(boost::shared_ptr<CReserveScript> coinbaseScript, int nGenerate, uint64_t nMaxTries, bool keepScript)
+UniValue edcgenerateBlocks(
+	boost::shared_ptr<CReserveScript> coinbaseScript, 
+	int nGenerate, 
+	uint64_t nMaxTries, 
+	bool keepScript)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -156,7 +160,7 @@ UniValue generateBlocks(boost::shared_ptr<CReserveScript> coinbaseScript, int nG
     return blockHashes;
 }
 
-UniValue generate(const UniValue& params, bool fHelp)
+UniValue edcgenerate(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
@@ -191,10 +195,10 @@ UniValue generate(const UniValue& params, bool fHelp)
     if (coinbaseScript->reserveScript.empty())
         throw JSONRPCError(RPC_INTERNAL_ERROR, "No coinbase script available (mining requires a wallet)");
 
-    return generateBlocks(coinbaseScript, nGenerate, nMaxTries, true);
+    return edcgenerateBlocks(coinbaseScript, nGenerate, nMaxTries, true);
 }
 
-UniValue generatetoaddress(const UniValue& params, bool fHelp)
+UniValue edcgeneratetoaddress(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 3)
         throw runtime_error(
@@ -226,10 +230,10 @@ UniValue generatetoaddress(const UniValue& params, bool fHelp)
     boost::shared_ptr<CReserveScript> coinbaseScript(new CReserveScript());
     coinbaseScript->reserveScript = GetScriptForDestination(address.Get());
 
-    return generateBlocks(coinbaseScript, nGenerate, nMaxTries, false);
+    return edcgenerateBlocks(coinbaseScript, nGenerate, nMaxTries, false);
 }
 
-UniValue getmininginfo(const UniValue& params, bool fHelp)
+UniValue edcgetmininginfo(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
@@ -261,7 +265,7 @@ UniValue getmininginfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("currentblocktx",   (uint64_t)theApp.lastBlockTx() ));
     obj.push_back(Pair("difficulty",       (double)GetDifficulty()));
     obj.push_back(Pair("errors",           edcGetWarnings("statusbar")));
-    obj.push_back(Pair("networkhashps",    getnetworkhashps(params, false)));
+    obj.push_back(Pair("networkhashps",    edcgetnetworkhashps(params, false)));
     obj.push_back(Pair("pooledtx",         (uint64_t)theApp.mempool().size()));
     obj.push_back(Pair("testnet",          Params().TestnetToBeDeprecatedFieldRPC()));
     obj.push_back(Pair("chain",            Params().NetworkIDString()));
@@ -270,7 +274,7 @@ UniValue getmininginfo(const UniValue& params, bool fHelp)
 
 
 // NOTE: Unlike wallet RPC (which use BTC values), mining RPCs follow GBT (BIP 22) in using satoshi amounts
-UniValue prioritisetransaction(const UniValue& params, bool fHelp)
+UniValue edcprioritisetransaction(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 3)
         throw runtime_error(
@@ -321,7 +325,7 @@ static UniValue BIP22ValidationResult(const CValidationState& state)
     return "valid?";
 }
 
-UniValue getblocktemplate(const UniValue& params, bool fHelp)
+UniValue edcgetblocktemplate(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -616,7 +620,7 @@ protected:
     };
 };
 
-UniValue submitblock(const UniValue& params, bool fHelp)
+UniValue edcsubmitblock(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -682,7 +686,7 @@ UniValue submitblock(const UniValue& params, bool fHelp)
     return BIP22ValidationResult(state);
 }
 
-UniValue estimatefee(const UniValue& params, bool fHelp)
+UniValue edcestimatefee(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
@@ -714,7 +718,7 @@ UniValue estimatefee(const UniValue& params, bool fHelp)
     return ValueFromAmount(feeRate.GetFeePerK());
 }
 
-UniValue estimatepriority(const UniValue& params, bool fHelp)
+UniValue edcestimatepriority(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
@@ -742,7 +746,7 @@ UniValue estimatepriority(const UniValue& params, bool fHelp)
     return theApp.mempool().estimatePriority(nBlocks);
 }
 
-UniValue estimatesmartfee(const UniValue& params, bool fHelp)
+UniValue edcestimatesmartfee(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
@@ -779,7 +783,7 @@ UniValue estimatesmartfee(const UniValue& params, bool fHelp)
     return result;
 }
 
-UniValue estimatesmartpriority(const UniValue& params, bool fHelp)
+UniValue edcestimatesmartpriority(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
@@ -816,26 +820,26 @@ UniValue estimatesmartpriority(const UniValue& params, bool fHelp)
     return result;
 }
 
-static const CRPCCommand commands[] =
+static const CRPCCommand edcCommands[] =
 { //  category              name                      actor (function)         okSafeMode
   //  --------------------- ------------------------  -----------------------  ----------
-    { "mining",             "getnetworkhashps",       &getnetworkhashps,       true  },
-    { "mining",             "getmininginfo",          &getmininginfo,          true  },
-    { "mining",             "prioritisetransaction",  &prioritisetransaction,  true  },
-    { "mining",             "getblocktemplate",       &getblocktemplate,       true  },
-    { "mining",             "submitblock",            &submitblock,            true  },
+    { "mining",             "eb_getnetworkhashps",       &edcgetnetworkhashps,       true  },
+    { "mining",             "eb_getmininginfo",          &edcgetmininginfo,          true  },
+    { "mining",             "eb_prioritisetransaction",  &edcprioritisetransaction,  true  },
+    { "mining",             "eb_getblocktemplate",       &edcgetblocktemplate,       true  },
+    { "mining",             "eb_submitblock",            &edcsubmitblock,            true  },
 
-    { "generating",         "generate",               &generate,               true  },
-    { "generating",         "generatetoaddress",      &generatetoaddress,      true  },
+    { "generating",         "eb_generate",               &edcgenerate,               true  },
+    { "generating",         "eb_generatetoaddress",      &edcgeneratetoaddress,      true  },
 
-    { "util",               "estimatefee",            &estimatefee,            true  },
-    { "util",               "estimatepriority",       &estimatepriority,       true  },
-    { "util",               "estimatesmartfee",       &estimatesmartfee,       true  },
-    { "util",               "estimatesmartpriority",  &estimatesmartpriority,  true  },
+    { "util",               "eb_estimatefee",            &edcestimatefee,            true  },
+    { "util",               "eb_estimatepriority",       &edcestimatepriority,       true  },
+    { "util",               "eb_estimatesmartfee",       &edcestimatesmartfee,       true  },
+    { "util",               "eb_estimatesmartpriority",  &edcestimatesmartpriority,  true  },
 };
 
-void RegisterMiningRPCCommands(CRPCTable &tableRPC)
+void edcRegisterMiningRPCCommands(CRPCTable &tableRPC)
 {
-    for (unsigned int vcidx = 0; vcidx < ARRAYLEN(commands); vcidx++)
-        tableRPC.appendCommand(commands[vcidx].name, &commands[vcidx]);
+    for (unsigned int vcidx = 0; vcidx < ARRAYLEN(edcCommands); vcidx++)
+        tableRPC.appendCommand(edcCommands[vcidx].name, &edcCommands[vcidx]);
 }

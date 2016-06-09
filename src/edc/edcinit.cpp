@@ -14,12 +14,13 @@
 #include "utilmoneystr.h"
 #include "edc/wallet/edcwallet.h"
 #include "edctxdb.h"
+#include "edc/rpc/edcregister.h"
 #include "consensus/validation.h"
 #include <boost/interprocess/sync/file_lock.hpp>
 
 
-extern void RegisterEquibitRPCCommands( CRPCTable & tableRPC );
-extern void RegisterEquibitWalletRPCCommands(CRPCTable & tableRPC );
+extern void edcRegisterAllCoreRPCCommands( CRPCTable & tableRPC );
+extern void edcRegisterWalletRPCCommands(CRPCTable & tableRPC );
 extern int64_t edcGetAdjustedTime();
 extern volatile sig_atomic_t fRequestShutdown;
 
@@ -377,12 +378,12 @@ bool EdcAppInit(
     	else if ( theApp.scriptCheckThreads() > EDC_MAX_SCRIPTCHECK_THREADS)
         	theApp.scriptCheckThreads( EDC_MAX_SCRIPTCHECK_THREADS );
 
-    	RegisterEquibitRPCCommands(tableRPC);
+    	edcRegisterAllCoreRPCCommands(tableRPC);
 
 #ifdef ENABLE_WALLET
     	bool fDisableWallet = params.disablewallet;
     	if (!fDisableWallet)
-        	RegisterEquibitWalletRPCCommands(tableRPC);
+        	edcRegisterWalletRPCCommands(tableRPC);
 #endif
 	    theApp.connectTimeout( params.timeout );
    	 	if ( theApp.connectTimeout() <= 0)
