@@ -84,11 +84,15 @@ bool AppInit(int argc, char* argv[])
     ParseParameters(argc, argv);
 
     // Process help and version before taking care about datadir
-    if (mapArgs.count("-?") || mapArgs.count("-h") ||  mapArgs.count("-help") || mapArgs.count("-version"))
+// EDC BEGIN
+    if (mapArgs.count("-?") || mapArgs.count("-h") ||  mapArgs.count("-help") || mapArgs.count("-version") || mapArgs.count("-eb_help") || mapArgs.count("-eb_version"))
+// EDC END
     {
         std::string strUsage = strprintf(_("%s Daemon"), _(PACKAGE_NAME)) + " " + _("version") + " " + FormatFullVersion() + "\n";
 
-        if (mapArgs.count("-version"))
+// EDC BEGIN
+        if (mapArgs.count("-version") || mapArgs.count("-eb_version"))
+// EDC END
         {
             strUsage += FormatParagraph(LicenseInfo());
         }

@@ -1,1 +1,1 @@
-./bitcoind -darmon -regtest -eb_regtest -server -eb_server -debug -eb_debug 
+./bitcoind -daemon -logtimestamps -eb_logtimestamps -logtimemicros -eb_logtimemicros -regtest -eb_regtest -server -eb_server -debug -eb_debug $*

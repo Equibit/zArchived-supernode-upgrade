@@ -225,7 +225,7 @@ UniValue edchelp(const UniValue& params, bool fHelp)
     if (params.size() > 0)
         strCommand = params[0].get_str();
 
-    return tableRPC.help(strCommand);
+    return edcTableRPC.help(strCommand);
 }
 
 extern void StartShutdown();

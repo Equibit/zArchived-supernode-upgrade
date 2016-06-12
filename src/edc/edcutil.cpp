@@ -211,7 +211,7 @@ static std::string LogTimestampStr(const std::string &str, bool *fStartedNewLine
     string strStamped;
 
 	EDCparams & params = EDCparams::singleton();
-    if (params.logtimestamps)
+    if (!params.logtimestamps)
         return str;
 
     if (*fStartedNewLine) 
