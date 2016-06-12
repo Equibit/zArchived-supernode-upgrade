@@ -1,19 +1,19 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
-// Copyright (c) 2016 Equibit Development Corporation
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "chain.h"
 #include "edcchainparams.h"
-#include "edc/primitives/edcblock.h"
-#include "edc/primitives/edctransaction.h"
-#include "edc/edcmain.h"
-#include "httpserver.h"
-#include "rpc/server.h"
+#include "primitives/edcblock.h"
+#include "primitives/edctransaction.h"
+#include "edcmain.h"
+#include "edchttpserver.h"
+#include "edc/rpc/edcserver.h"
+#warning "REPLACE server.h with edcserver.h"
 #include "streams.h"
 #include "sync.h"
-#include "edc/edctxmempool.h"
+#include "edctxmempool.h"
 #include "utilstrencodings.h"
 #include "version.h"
 #include "edcapp.h"
@@ -25,7 +25,20 @@
 
 using namespace std;
 
-static const size_t MAX_GETUTXOS_OUTPOINTS = 15; //allow a max of 15 outpoints to be queried at once
+extern void TxToJSON(const CEDCTransaction& tx, const uint256 hashBlock, UniValue& entry);
+extern UniValue blockToJSON(const CEDCBlock& block, const CBlockIndex* blockindex, bool txDetails = false);
+extern UniValue edcmempoolInfoToJSON();
+extern UniValue edcmempoolToJSON(bool fVerbose = false);
+extern void ScriptPubKeyToJSON(const CScript& scriptPubKey, UniValue& out, bool fIncludeHex);
+extern UniValue blockheaderToJSON(const CBlockIndex* blockindex);
+
+// A bit of a hack - dependency on a function defined in rpc/blockchain.cpp
+extern UniValue getblockchaininfo(const UniValue& params, bool fHelp);
+
+
+namespace
+{
+const size_t MAX_GETUTXOS_OUTPOINTS = 15; //allow a max of 15 outpoints to be queried at once
 
 enum RetFormat 
 {
@@ -35,12 +48,12 @@ enum RetFormat
     RF_JSON,
 };
 
-static const struct 
+const struct 
 {
     enum RetFormat rf;
     const char* name;
 } rf_names[] = 
-	{
+{
       {RF_UNDEF, ""},
       {RF_BINARY, "bin"},
       {RF_HEX, "hex"},
@@ -64,21 +77,15 @@ struct CCoin
     }
 };
 
-extern void TxToJSON(const CEDCTransaction& tx, const uint256 hashBlock, UniValue& entry);
-extern UniValue blockToJSON(const CEDCBlock& block, const CBlockIndex* blockindex, bool txDetails = false);
-extern UniValue mempoolInfoToJSON();
-extern UniValue mempoolToJSON(bool fVerbose = false);
-extern void ScriptPubKeyToJSON(const CScript& scriptPubKey, UniValue& out, bool fIncludeHex);
-extern UniValue blockheaderToJSON(const CBlockIndex* blockindex);
 
-static bool RESTERR(HTTPRequest* req, enum HTTPStatusCode status, string message)
+bool RESTERR(EDCHTTPRequest* req, enum HTTPStatusCode status, string message)
 {
     req->WriteHeader("Content-Type", "text/plain");
     req->WriteReply(status, message + "\r\n");
     return false;
 }
 
-static enum RetFormat ParseDataFormat(std::string& param, const std::string& strReq)
+enum RetFormat ParseDataFormat(std::string& param, const std::string& strReq)
 {
     const std::string::size_type pos = strReq.rfind('.');
     if (pos == std::string::npos)
@@ -99,7 +106,7 @@ static enum RetFormat ParseDataFormat(std::string& param, const std::string& str
     return rf_names[0].rf;
 }
 
-static string AvailableDataFormatsString()
+string AvailableDataFormatsString()
 {
     string formats = "";
     for (unsigned int i = 0; i < ARRAYLEN(rf_names); i++)
@@ -116,7 +123,7 @@ static string AvailableDataFormatsString()
     return formats;
 }
 
-static bool edcParseHashStr(const string& strReq, uint256& v)
+bool ParseHashStr(const string& strReq, uint256& v)
 {
     if (!IsHex(strReq) || (strReq.size() != 64))
         return false;
@@ -125,19 +132,18 @@ static bool edcParseHashStr(const string& strReq, uint256& v)
     return true;
 }
 
-static bool CheckWarmup(HTTPRequest* req)
+bool CheckWarmup(EDCHTTPRequest* req)
 {
     std::string statusmessage;
-    if (RPCIsInWarmup(&statusmessage))
+
+    if (edcRPCIsInWarmup(&statusmessage))
          return RESTERR(req, HTTP_SERVICE_UNAVAILABLE, "Service temporarily unavailable: " + statusmessage);
     return true;
 }
 
-static bool rest_headers(HTTPRequest* req,
-                         const std::string& strURIPart)
+bool rest_headers(EDCHTTPRequest* req,
+                  const std::string& strURIPart)
 {
-	EDCapp & theApp = EDCapp::singleton();
-
     if (!CheckWarmup(req))
         return false;
     std::string param;
@@ -154,21 +160,21 @@ static bool rest_headers(HTTPRequest* req,
 
     string hashStr = path[1];
     uint256 hash;
-    if (!edcParseHashStr(hashStr, hash))
+    if (!ParseHashStr(hashStr, hash))
         return RESTERR(req, HTTP_BAD_REQUEST, "Invalid hash: " + hashStr);
 
     std::vector<const CBlockIndex *> headers;
     headers.reserve(count);
     {
         LOCK(EDC_cs_main);
-        BlockMap::const_iterator it = theApp.mapBlockIndex().find(hash);
-        const CBlockIndex *pindex = (it != theApp.mapBlockIndex().end()) ? it->second : NULL;
-        while (pindex != NULL && theApp.chainActive().Contains(pindex)) 
+        BlockMap::const_iterator it = mapBlockIndex.find(hash);
+        const CBlockIndex *pindex = (it != mapBlockIndex.end()) ? it->second : NULL;
+        while (pindex != NULL && chainActive.Contains(pindex)) 
 		{
             headers.push_back(pindex);
             if (headers.size() == (unsigned long)count)
                 break;
-            pindex = theApp.chainActive().Next(pindex);
+            pindex = chainActive.Next(pindex);
         }
     }
 
@@ -187,6 +193,7 @@ static bool rest_headers(HTTPRequest* req,
         req->WriteReply(HTTP_OK, binaryHeader);
         return true;
     }
+
     case RF_HEX: 
 	{
         string strHex = HexStr(ssHeader.begin(), ssHeader.end()) + "\n";
@@ -216,30 +223,28 @@ static bool rest_headers(HTTPRequest* req,
     return true; // continue to process further HTTP reqs on this cxn
 }
 
-static bool rest_block(HTTPRequest* req,
+bool rest_block(EDCHTTPRequest* req,
                        const std::string& strURIPart,
                        bool showTxDetails)
 {
-	EDCapp & theApp = EDCapp::singleton();
-
     if (!CheckWarmup(req))
         return false;
     std::string hashStr;
     const RetFormat rf = ParseDataFormat(hashStr, strURIPart);
 
     uint256 hash;
-    if (!edcParseHashStr(hashStr, hash))
+    if (!ParseHashStr(hashStr, hash))
         return RESTERR(req, HTTP_BAD_REQUEST, "Invalid hash: " + hashStr);
 
     CEDCBlock block;
     CBlockIndex* pblockindex = NULL;
     {
         LOCK(EDC_cs_main);
-        if (theApp.mapBlockIndex().count(hash) == 0)
+        if (mapBlockIndex.count(hash) == 0)
             return RESTERR(req, HTTP_NOT_FOUND, hashStr + " not found");
 
-        pblockindex = theApp.mapBlockIndex()[hash];
-        if (theApp.havePruned() && !(pblockindex->nStatus & BLOCK_HAVE_DATA) && pblockindex->nTx > 0)
+        pblockindex = mapBlockIndex[hash];
+        if (fHavePruned && !(pblockindex->nStatus & BLOCK_HAVE_DATA) && pblockindex->nTx > 0)
             return RESTERR(req, HTTP_NOT_FOUND, hashStr + " not available (pruned data)");
 
         if (!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))
@@ -258,6 +263,7 @@ static bool rest_block(HTTPRequest* req,
         req->WriteReply(HTTP_OK, binaryBlock);
         return true;
     }
+
     case RF_HEX: 
 	{
         string strHex = HexStr(ssBlock.begin(), ssBlock.end()) + "\n";
@@ -265,6 +271,7 @@ static bool rest_block(HTTPRequest* req,
         req->WriteReply(HTTP_OK, strHex);
         return true;
     }
+
     case RF_JSON: 
 	{
         UniValue objBlock = blockToJSON(block, pblockindex, showTxDetails);
@@ -273,6 +280,7 @@ static bool rest_block(HTTPRequest* req,
         req->WriteReply(HTTP_OK, strJSON);
         return true;
     }
+
     default: 
 	{
         return RESTERR(req, HTTP_NOT_FOUND, "output format not found (available: " + AvailableDataFormatsString() + ")");
@@ -283,20 +291,17 @@ static bool rest_block(HTTPRequest* req,
     return true; // continue to process further HTTP reqs on this cxn
 }
 
-static bool rest_block_extended(HTTPRequest* req, const std::string& strURIPart)
+bool rest_block_extended(EDCHTTPRequest* req, const std::string& strURIPart)
 {
     return rest_block(req, strURIPart, true);
 }
 
-static bool rest_block_notxdetails(HTTPRequest* req, const std::string& strURIPart)
+bool rest_block_notxdetails(EDCHTTPRequest* req, const std::string& strURIPart)
 {
     return rest_block(req, strURIPart, false);
 }
 
-// A bit of a hack - dependency on a function defined in rpc/blockchain.cpp
-UniValue getblockchaininfo(const UniValue& params, bool fHelp);
-
-static bool rest_chaininfo(HTTPRequest* req, const std::string& strURIPart)
+bool rest_chaininfo(EDCHTTPRequest* req, const std::string& strURIPart)
 {
     if (!CheckWarmup(req))
         return false;
@@ -324,7 +329,7 @@ static bool rest_chaininfo(HTTPRequest* req, const std::string& strURIPart)
     return true; // continue to process further HTTP reqs on this cxn
 }
 
-static bool rest_mempool_info(HTTPRequest* req, const std::string& strURIPart)
+bool rest_mempool_info(EDCHTTPRequest* req, const std::string& strURIPart)
 {
     if (!CheckWarmup(req))
         return false;
@@ -335,7 +340,7 @@ static bool rest_mempool_info(HTTPRequest* req, const std::string& strURIPart)
 	{
     case RF_JSON: 
 	{
-        UniValue mempoolInfoObject = mempoolInfoToJSON();
+        UniValue mempoolInfoObject = edcmempoolInfoToJSON();
 
         string strJSON = mempoolInfoObject.write() + "\n";
         req->WriteHeader("Content-Type", "application/json");
@@ -352,7 +357,7 @@ static bool rest_mempool_info(HTTPRequest* req, const std::string& strURIPart)
     return true; // continue to process further HTTP reqs on this cxn
 }
 
-static bool rest_mempool_contents(HTTPRequest* req, const std::string& strURIPart)
+bool rest_mempool_contents(EDCHTTPRequest* req, const std::string& strURIPart)
 {
     if (!CheckWarmup(req))
         return false;
@@ -363,7 +368,7 @@ static bool rest_mempool_contents(HTTPRequest* req, const std::string& strURIPar
 	{
     case RF_JSON: 
 	{
-        UniValue mempoolObject = mempoolToJSON(true);
+        UniValue mempoolObject = edcmempoolToJSON(true);
 
         string strJSON = mempoolObject.write() + "\n";
         req->WriteHeader("Content-Type", "application/json");
@@ -380,7 +385,7 @@ static bool rest_mempool_contents(HTTPRequest* req, const std::string& strURIPar
     return true; // continue to process further HTTP reqs on this cxn
 }
 
-static bool rest_tx(HTTPRequest* req, const std::string& strURIPart)
+bool rest_tx(EDCHTTPRequest* req, const std::string& strURIPart)
 {
     if (!CheckWarmup(req))
         return false;
@@ -388,7 +393,7 @@ static bool rest_tx(HTTPRequest* req, const std::string& strURIPart)
     const RetFormat rf = ParseDataFormat(hashStr, strURIPart);
 
     uint256 hash;
-    if (!edcParseHashStr(hashStr, hash))
+    if (!ParseHashStr(hashStr, hash))
         return RESTERR(req, HTTP_BAD_REQUEST, "Invalid hash: " + hashStr);
 
     CEDCTransaction tx;
@@ -408,6 +413,7 @@ static bool rest_tx(HTTPRequest* req, const std::string& strURIPart)
         req->WriteReply(HTTP_OK, binaryTx);
         return true;
     }
+
     case RF_HEX: 
 	{
         string strHex = HexStr(ssTx.begin(), ssTx.end()) + "\n";
@@ -415,6 +421,7 @@ static bool rest_tx(HTTPRequest* req, const std::string& strURIPart)
         req->WriteReply(HTTP_OK, strHex);
         return true;
     }
+
     case RF_JSON: 
 	{
         UniValue objTx(UniValue::VOBJ);
@@ -424,6 +431,7 @@ static bool rest_tx(HTTPRequest* req, const std::string& strURIPart)
         req->WriteReply(HTTP_OK, strJSON);
         return true;
     }
+
     default: 
 	{
         return RESTERR(req, HTTP_NOT_FOUND, "output format not found (available: " + AvailableDataFormatsString() + ")");
@@ -434,7 +442,7 @@ static bool rest_tx(HTTPRequest* req, const std::string& strURIPart)
     return true; // continue to process further HTTP reqs on this cxn
 }
 
-static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
+bool rest_getutxos(EDCHTTPRequest* req, const std::string& strURIPart)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -497,6 +505,7 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
         std::vector<unsigned char> strRequestV = ParseHex(strRequestMutable);
         strRequestMutable.assign(strRequestV.begin(), strRequestV.end());
     }
+
     case RF_BINARY: 
 	{
         try 
@@ -520,6 +529,7 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
         }
         break;
     }
+
     case RF_JSON: 
 	{
         if (!fInputParsed)
@@ -542,14 +552,13 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
     std::string bitmapStringRepresentation;
     boost::dynamic_bitset<unsigned char> hits(vOutPoints.size());
     {
-		EDCapp & theApp = EDCapp::singleton();
         LOCK2(EDC_cs_main, theApp.mempool().cs);
 
         CEDCCoinsView viewDummy;
         CEDCCoinsViewCache view(&viewDummy);
 
         CEDCCoinsViewCache& viewChain = *theApp.coinsTip();
-        CEDCCoinsViewMemPool viewMempool(&viewChain, theApp.mempool() );
+        CEDCCoinsViewMemPool viewMempool(&viewChain, theApp.mempool());
 
         if (fCheckMemPool)
             view.SetBackend(viewMempool); // switch cache backend to db+mempool in case user likes to query mempool
@@ -587,7 +596,7 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
         // serialize data
         // use exact same output as mentioned in Bip64
         CDataStream ssGetUTXOResponse(SER_NETWORK, PROTOCOL_VERSION);
-        ssGetUTXOResponse << theApp.chainActive().Height() << theApp.chainActive().Tip()->GetBlockHash() << bitmap << outs;
+        ssGetUTXOResponse << chainActive.Height() << chainActive.Tip()->GetBlockHash() << bitmap << outs;
         string ssGetUTXOResponseString = ssGetUTXOResponse.str();
 
         req->WriteHeader("Content-Type", "application/octet-stream");
@@ -598,7 +607,7 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
     case RF_HEX: 
 	{
         CDataStream ssGetUTXOResponse(SER_NETWORK, PROTOCOL_VERSION);
-        ssGetUTXOResponse << theApp.chainActive().Height() << theApp.chainActive().Tip()->GetBlockHash() << bitmap << outs;
+        ssGetUTXOResponse << chainActive.Height() << chainActive.Tip()->GetBlockHash() << bitmap << outs;
         string strHex = HexStr(ssGetUTXOResponse.begin(), ssGetUTXOResponse.end()) + "\n";
 
         req->WriteHeader("Content-Type", "text/plain");
@@ -612,8 +621,8 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
 
         // pack in some essentials
         // use more or less the same output as mentioned in Bip64
-        objGetUTXOResponse.push_back(Pair("chainHeight", theApp.chainActive().Height()));
-        objGetUTXOResponse.push_back(Pair("chaintipHash", theApp.chainActive().Tip()->GetBlockHash().GetHex()));
+        objGetUTXOResponse.push_back(Pair("chainHeight", chainActive.Height()));
+        objGetUTXOResponse.push_back(Pair("chaintipHash", chainActive.Tip()->GetBlockHash().GetHex()));
         objGetUTXOResponse.push_back(Pair("bitmap", bitmapStringRepresentation));
 
         UniValue utxos(UniValue::VARR);
@@ -648,10 +657,10 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
     return true; // continue to process further HTTP reqs on this cxn
 }
 
-static const struct 
+const struct 
 {
     const char* prefix;
-    bool (*handler)(HTTPRequest* req, const std::string& strReq);
+    bool (*handler)(EDCHTTPRequest* req, const std::string& strReq);
 } uri_prefixes[] = 
 {
       {"/rest/tx/", rest_tx},
@@ -663,20 +672,21 @@ static const struct
       {"/rest/headers/", rest_headers},
       {"/rest/getutxos", rest_getutxos},
 };
+}
 
-bool StartREST()
+bool edcStartREST()
 {
     for (unsigned int i = 0; i < ARRAYLEN(uri_prefixes); i++)
-        RegisterHTTPHandler(uri_prefixes[i].prefix, false, uri_prefixes[i].handler);
+        edcRegisterHTTPHandler(uri_prefixes[i].prefix, false, uri_prefixes[i].handler);
     return true;
 }
 
-void InterruptREST()
+void edcInterruptREST()
 {
 }
 
-void StopREST()
+void edcStopREST()
 {
     for (unsigned int i = 0; i < ARRAYLEN(uri_prefixes); i++)
-        UnregisterHTTPHandler(uri_prefixes[i].prefix, false);
+        edcUnregisterHTTPHandler(uri_prefixes[i].prefix, false);
 }

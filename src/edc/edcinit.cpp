@@ -9,18 +9,20 @@
 #include "edcmain.h"
 #include "edcchainparams.h"
 #include "clientversion.h"
-#include "rpc/server.h"
+#include "edc/rpc/edcserver.h"
 #include "ui_interface.h"
 #include "utilmoneystr.h"
 #include "edc/wallet/edcwallet.h"
 #include "edctxdb.h"
 #include "edc/rpc/edcregister.h"
+#include "edchttpserver.h"
+#include "edchttprpc.h"
 #include "consensus/validation.h"
 #include <boost/interprocess/sync/file_lock.hpp>
 
 
-extern void edcRegisterAllCoreRPCCommands( CRPCTable & tableRPC );
-extern void edcRegisterWalletRPCCommands(CRPCTable & tableRPC );
+extern void edcRegisterAllCoreRPCCommands( CEDCRPCTable & edcTableRPC );
+extern void edcRegisterWalletRPCCommands(CEDCRPCTable & edcTableRPC );
 extern int64_t edcGetAdjustedTime();
 extern volatile sig_atomic_t fRequestShutdown;
 
@@ -228,6 +230,16 @@ void OnEDCRPCStopped()
     edcLogPrint("rpc", "EB RPC stopped.\n");
 }
 
+void OnEDCRPCPreCommand(const CRPCCommand& cmd)
+{
+	EDCparams & params = EDCparams::singleton();
+
+    // Observe safe mode
+    std::string strWarning = edcGetWarnings("rpc");
+    if (strWarning != "" && !params.disablesafemode && !cmd.okSafeMode)
+        throw JSONRPCError(RPC_FORBIDDEN_BY_SAFE_MODE, std::string("Safe mode: ") + strWarning);
+}
+
 // If we're using -prune with -reindex, then delete block files that will be 
 // ignored by the reindex.  Since reindexing works by starting at block file 0 
 // and looping until a blockfile is missing, do the same here to delete any 
@@ -286,6 +298,31 @@ std::string edcChainNameFromCommandLine()
     if (params.testnet)
         return CBaseChainParams::TESTNET;
     return CBaseChainParams::MAIN;
+}
+
+bool edcAppInitServers(boost::thread_group& threadGroup)
+{
+	EDCparams & params = EDCparams::singleton();
+
+    EDCRPCServer::OnStopped(&OnEDCRPCStopped);
+    EDCRPCServer::OnPreCommand(&OnEDCRPCPreCommand);
+
+    if (!edcInitHTTPServer())
+        return false;
+
+    if (!edcStartRPC())
+        return false;
+
+    if (!edcStartHTTPRPC())
+        return false;
+
+    if (params.rest && !edcStartREST())
+        return false;
+
+    if (!edcStartHTTPServer())
+        return false;
+
+    return true;
 }
 
 bool EdcAppInit(
@@ -378,12 +415,12 @@ bool EdcAppInit(
     	else if ( theApp.scriptCheckThreads() > EDC_MAX_SCRIPTCHECK_THREADS)
         	theApp.scriptCheckThreads( EDC_MAX_SCRIPTCHECK_THREADS );
 
-    	edcRegisterAllCoreRPCCommands(tableRPC);
+    	edcRegisterAllCoreRPCCommands(edcTableRPC);
 
 #ifdef ENABLE_WALLET
     	bool fDisableWallet = params.disablewallet;
     	if (!fDisableWallet)
-        	edcRegisterWalletRPCCommands(tableRPC);
+        	edcRegisterWalletRPCCommands(edcTableRPC);
 #endif
 	    theApp.connectTimeout( params.timeout );
    	 	if ( theApp.connectTimeout() <= 0)
@@ -474,6 +511,18 @@ bool EdcAppInit(
 			boost::bind(&CScheduler::serviceQueue, &scheduler);
 	    threadGroup.create_thread(boost::bind(
 			&edcTraceThread<CScheduler::Function>, "scheduler", serviceLoop));
+
+        /* Start the RPC server already.  It will be started in "warmup" mode
+         * and not really process calls already (but it will signify connections
+         * that the server is there and will be ready later).  Warmup mode will
+         * be disabled when initialisation is finished.
+         */
+        if (params.server)
+        {
+            uiInterface.InitMessage.connect(edcSetRPCWarmupStatus);
+            if (!edcAppInitServers(threadGroup))
+                return InitError(_("Unable to start HTTP server. See debug log for details."));
+        }
 
     	// **************************** Step 5: verify wallet database integrity
 #ifdef ENABLE_WALLET
@@ -950,9 +999,7 @@ bool EdcAppInit(
     	scheduler.scheduleEvery(f, nPowTargetSpacing);
     
 		// *************************************************** Step 12: finished
-
-// TODO: Cannot call this twice. Already called by bitcoin init		
-//		SetRPCWarmupFinished();
+		edcSetRPCWarmupFinished();
 
     	uiInterface.InitMessage(_("Done loading"));
 
@@ -984,6 +1031,16 @@ bool EdcAppInit(
 	return rc;
 }
 
+void edcInterrupt(boost::thread_group& threadGroup)
+{
+    edcInterruptHTTPServer();
+    edcInterruptHTTPRPC();
+    edcInterruptRPC();
+    edcInterruptREST();
+    // TODO edcInterruptTorControl();
+    threadGroup.interrupt_all();
+}
+
 void edcShutdown()
 {
 	EDCapp & theApp = EDCapp::singleton();
@@ -1005,10 +1062,10 @@ void edcShutdown()
 
     theApp.mempool().AddTransactionsUpdated(1);
 
-//    StopHTTPRPC();
-//    StopREST();
-//    StopRPC();
-//    StopHTTPServer();
+    edcStopHTTPRPC();
+    edcStopREST();
+    edcStopRPC();
+    edcStopHTTPServer();
 
 #ifdef ENABLE_WALLET
     if (theApp.walletMain())

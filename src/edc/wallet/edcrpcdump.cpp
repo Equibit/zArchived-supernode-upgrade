@@ -5,7 +5,7 @@
 
 #include "base58.h"
 #include "chain.h"
-#include "rpc/server.h"
+#include "edc/rpc/edcserver.h"
 #include "init.h"
 #include "edc/edcmain.h"
 #include "script/script.h"
@@ -30,8 +30,8 @@
 
 using namespace std;
 
-void EnsureWalletIsUnlocked();
-bool EnsureWalletIsAvailable(bool avoidException);
+void edcEnsureWalletIsUnlocked();
+bool edcEnsureWalletIsAvailable(bool avoidException);
 
 std::string static EncodeDumpTime(int64_t nTime) 
 {
@@ -93,12 +93,12 @@ UniValue edcimportprivkey(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
     
     if (fHelp || params.size() < 1 || params.size() > 3)
         throw runtime_error(
-            "importprivkey \"bitcoinprivkey\" ( \"label\" rescan )\n"
+            "eb_importprivkey \"bitcoinprivkey\" ( \"label\" rescan )\n"
             "\nAdds a private key (as returned by dumpprivkey) to your wallet.\n"
             "\nArguments:\n"
             "1. \"bitcoinprivkey\"   (string, required) The private key (see dumpprivkey)\n"
@@ -109,17 +109,17 @@ UniValue edcimportprivkey(const UniValue& params, bool fHelp)
             "\nDump a private key\n"
             + HelpExampleCli("dumpprivkey", "\"myaddress\"") +
             "\nImport the private key with rescan\n"
-            + HelpExampleCli("importprivkey", "\"mykey\"") +
+            + HelpExampleCli("eb_importprivkey", "\"mykey\"") +
             "\nImport using a label and without rescan\n"
-            + HelpExampleCli("importprivkey", "\"mykey\" \"testing\" false") +
+            + HelpExampleCli("eb_importprivkey", "\"mykey\" \"testing\" false") +
             "\nAs a JSON-RPC call\n"
-            + HelpExampleRpc("importprivkey", "\"mykey\", \"testing\", false")
+            + HelpExampleRpc("eb_importprivkey", "\"mykey\", \"testing\", false")
         );
 
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-    EnsureWalletIsUnlocked();
+    edcEnsureWalletIsUnlocked();
 
     string strSecret = params[0].get_str();
     string strLabel = "";
@@ -204,12 +204,12 @@ void edcImportAddress(const CBitcoinAddress& address, const string& strLabel)
 
 UniValue edcimportaddress(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
     
     if (fHelp || params.size() < 1 || params.size() > 4)
         throw runtime_error(
-            "importaddress \"address\" ( \"label\" rescan p2sh )\n"
+            "eb_importaddress \"address\" ( \"label\" rescan p2sh )\n"
             "\nAdds a script (in hex) or address that can be watched as if it were in your wallet but cannot be used to spend.\n"
             "\nArguments:\n"
             "1. \"script\"           (string, required) The hex-encoded script (or address)\n"
@@ -217,14 +217,14 @@ UniValue edcimportaddress(const UniValue& params, bool fHelp)
             "3. rescan               (boolean, optional, default=true) Rescan the wallet for transactions\n"
             "4. p2sh                 (boolean, optional, default=false) Add the P2SH version of the script as well\n"
             "\nNote: This call can take minutes to complete if rescan is true.\n"
-            "If you have the full public key, you should call importpubkey instead of this.\n"
+            "If you have the full public key, you should call eb_importpubkey instead of this.\n"
             "\nExamples:\n"
             "\nImport a script with rescan\n"
-            + HelpExampleCli("importaddress", "\"myscript\"") +
+            + HelpExampleCli("eb_importaddress", "\"myscript\"") +
             "\nImport using a label without rescan\n"
-            + HelpExampleCli("importaddress", "\"myscript\" \"testing\" false") +
+            + HelpExampleCli("eb_importaddress", "\"myscript\" \"testing\" false") +
             "\nAs a JSON-RPC call\n"
-            + HelpExampleRpc("importaddress", "\"myscript\", \"testing\", false")
+            + HelpExampleRpc("eb_importaddress", "\"myscript\", \"testing\", false")
         );
 
 
@@ -278,12 +278,12 @@ UniValue edcimportprunedfunds(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() < 2 || params.size() > 3)
         throw runtime_error(
-            "importprunedfunds\n"
+            "eb_importprunedfunds\n"
             "\nImports funds without rescan. Corresponding address or script must previously be included in wallet. Aimed towards pruned wallets. The end-user is responsible to import additional transactions that subsequently spend the imported outputs or rescan after the point in the blockchain the transaction is included.\n"
             "\nArguments:\n"
             "1. \"rawtransaction\" (string, required) A raw transaction in hex funding an already-existing address in wallet\n"
@@ -348,19 +348,19 @@ UniValue edcremoveprunedfunds(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "removeprunedfunds \"txid\"\n"
+            "eb_removeprunedfunds \"txid\"\n"
             "\nDeletes the specified transaction from the wallet. Meant for use with pruned wallets and as a companion to importprunedfunds. This will effect wallet balances.\n"
             "\nArguments:\n"
             "1. \"txid\"           (string, required) The hex-encoded id of the transaction you are deleting\n"
             "\nExamples:\n"
-            + HelpExampleCli("removeprunedfunds", "\"a8d0c0184dde994a09ec054286f1ce581bebf46446a512166eae7628734ea0a5\"") +
+            + HelpExampleCli("eb_removeprunedfunds", "\"a8d0c0184dde994a09ec054286f1ce581bebf46446a512166eae7628734ea0a5\"") +
             "\nAs a JSON-RPC call\n"
-            + HelpExampleRpc("removprunedfunds", "\"a8d0c0184dde994a09ec054286f1ce581bebf46446a512166eae7628734ea0a5\"")
+            + HelpExampleRpc("eb_removprunedfunds", "\"a8d0c0184dde994a09ec054286f1ce581bebf46446a512166eae7628734ea0a5\"")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -388,12 +388,12 @@ UniValue edcremoveprunedfunds(const UniValue& params, bool fHelp)
 
 UniValue edcimportpubkey(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() < 1 || params.size() > 4)
         throw runtime_error(
-            "importpubkey \"pubkey\" ( \"label\" rescan )\n"
+            "eb_importpubkey \"pubkey\" ( \"label\" rescan )\n"
             "\nAdds a public key (in hex) that can be watched as if it were in your wallet but cannot be used to spend.\n"
             "\nArguments:\n"
             "1. \"pubkey\"           (string, required) The hex-encoded public key\n"
@@ -402,11 +402,11 @@ UniValue edcimportpubkey(const UniValue& params, bool fHelp)
             "\nNote: This call can take minutes to complete if rescan is true.\n"
             "\nExamples:\n"
             "\nImport a public key with rescan\n"
-            + HelpExampleCli("importpubkey", "\"mypubkey\"") +
+            + HelpExampleCli("eb_importpubkey", "\"mypubkey\"") +
             "\nImport using a label without rescan\n"
-            + HelpExampleCli("importpubkey", "\"mypubkey\" \"testing\" false") +
+            + HelpExampleCli("eb_importpubkey", "\"mypubkey\" \"testing\" false") +
             "\nAs a JSON-RPC call\n"
-            + HelpExampleRpc("importpubkey", "\"mypubkey\", \"testing\", false")
+            + HelpExampleRpc("eb_importpubkey", "\"mypubkey\", \"testing\", false")
         );
 
 
@@ -447,12 +447,12 @@ UniValue edcimportpubkey(const UniValue& params, bool fHelp)
 
 UniValue edcimportwallet(const UniValue& params, bool fHelp)
 {
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
     
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "importwallet \"filename\"\n"
+            "eb_importwallet \"filename\"\n"
             "\nImports keys from a wallet dump file (see dumpwallet).\n"
             "\nArguments:\n"
             "1. \"filename\"    (string, required) The wallet file\n"
@@ -471,7 +471,7 @@ UniValue edcimportwallet(const UniValue& params, bool fHelp)
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-    EnsureWalletIsUnlocked();
+    edcEnsureWalletIsUnlocked();
 
     ifstream file;
     file.open(params[0].get_str().c_str(), std::ios::in | std::ios::ate);
@@ -571,27 +571,27 @@ UniValue edcdumpprivkey(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
     
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "dumpprivkey \"bitcoinaddress\"\n"
+            "eb_dumpprivkey \"bitcoinaddress\"\n"
             "\nReveals the private key corresponding to 'bitcoinaddress'.\n"
-            "Then the importprivkey can be used with this output\n"
+            "Then the eb_importprivkey can be used with this output\n"
             "\nArguments:\n"
             "1. \"bitcoinaddress\"   (string, required) The bitcoin address for the private key\n"
             "\nResult:\n"
             "\"key\"                (string) The private key\n"
             "\nExamples:\n"
-            + HelpExampleCli("dumpprivkey", "\"myaddress\"")
-            + HelpExampleCli("importprivkey", "\"mykey\"")
-            + HelpExampleRpc("dumpprivkey", "\"myaddress\"")
+            + HelpExampleCli("eb_dumpprivkey", "\"myaddress\"")
+            + HelpExampleCli("eb_importprivkey", "\"mykey\"")
+            + HelpExampleRpc("eb_dumpprivkey", "\"myaddress\"")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-    EnsureWalletIsUnlocked();
+    edcEnsureWalletIsUnlocked();
 
     string strAddress = params[0].get_str();
     CBitcoinAddress address;
@@ -611,23 +611,23 @@ UniValue edcdumpwallet(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
-    if (!EnsureWalletIsAvailable(fHelp))
+    if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
     
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "dumpwallet \"filename\"\n"
+            "eb_dumpwallet \"filename\"\n"
             "\nDumps all wallet keys in a human-readable format.\n"
             "\nArguments:\n"
             "1. \"filename\"    (string, required) The filename\n"
             "\nExamples:\n"
-            + HelpExampleCli("dumpwallet", "\"test\"")
-            + HelpExampleRpc("dumpwallet", "\"test\"")
+            + HelpExampleCli("eb_dumpwallet", "\"test\"")
+            + HelpExampleRpc("eb_dumpwallet", "\"test\"")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-    EnsureWalletIsUnlocked();
+    edcEnsureWalletIsUnlocked();
 
     ofstream file;
     file.open(params[0].get_str().c_str());

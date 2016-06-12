@@ -1,8 +1,9 @@
 // Copyright (c) 2009-2015 The Bitcoin Core developers
+// Copyright (c) 2016 Equibit Development Corporation
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "rpc/server.h"
+#include "edc/rpc/edcserver.h"
 
 #include "edc/edcchainparams.h"
 #include "clientversion.h"
@@ -30,13 +31,13 @@ UniValue edcgetconnectioncount(const UniValue& params, bool fHelp)
 	EDCapp & theApp = EDCapp::singleton();
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "getconnectioncount\n"
+            "eb_getconnectioncount\n"
             "\nReturns the number of connections to other nodes.\n"
             "\nResult:\n"
             "n          (numeric) The connection count\n"
             "\nExamples:\n"
-            + HelpExampleCli("getconnectioncount", "")
-            + HelpExampleRpc("getconnectioncount", "")
+            + HelpExampleCli("eb_getconnectioncount", "")
+            + HelpExampleRpc("eb_getconnectioncount", "")
         );
 
     LOCK2(cs_main, theApp.vNodesCS());
@@ -49,13 +50,13 @@ UniValue edcping(const UniValue& params, bool fHelp)
 	EDCapp & theApp = EDCapp::singleton();
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "ping\n"
+            "eb_ping\n"
             "\nRequests that a ping be sent to all other nodes, to measure ping time.\n"
-            "Results provided in getpeerinfo, pingtime and pingwait fields are decimal seconds.\n"
+            "Results provided in eb_getpeerinfo, pingtime and pingwait fields are decimal seconds.\n"
             "Ping command is handled in queue with all other commands, so it measures processing backlog, not just network ping.\n"
             "\nExamples:\n"
-            + HelpExampleCli("ping", "")
-            + HelpExampleRpc("ping", "")
+            + HelpExampleCli("eb_ping", "")
+            + HelpExampleRpc("eb_ping", "")
         );
 
     // Request that each node send a ping during next message processing pass
@@ -86,7 +87,7 @@ UniValue edcgetpeerinfo(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "getpeerinfo\n"
+            "eb_getpeerinfo\n"
             "\nReturns data about each connected network node as a json array of objects.\n"
             "\nResult:\n"
             "[\n"
@@ -128,8 +129,8 @@ UniValue edcgetpeerinfo(const UniValue& params, bool fHelp)
             "  ,...\n"
             "]\n"
             "\nExamples:\n"
-            + HelpExampleCli("getpeerinfo", "")
-            + HelpExampleRpc("getpeerinfo", "")
+            + HelpExampleCli("eb_getpeerinfo", "")
+            + HelpExampleRpc("eb_getpeerinfo", "")
         );
 
     LOCK(cs_main);
@@ -210,15 +211,15 @@ UniValue edcaddnode(const UniValue& params, bool fHelp)
     if (fHelp || params.size() != 2 ||
         (strCommand != "onetry" && strCommand != "add" && strCommand != "remove"))
         throw runtime_error(
-            "addnode \"node\" \"add|remove|onetry\"\n"
+            "eb_addnode \"node\" \"add|remove|onetry\"\n"
             "\nAttempts add or remove a node from the addnode list.\n"
             "Or try a connection to a node once.\n"
             "\nArguments:\n"
-            "1. \"node\"     (string, required) The node (see getpeerinfo for nodes)\n"
+            "1. \"node\"     (string, required) The node (see eb_getpeerinfo for nodes)\n"
             "2. \"command\"  (string, required) 'add' to add a node to the list, 'remove' to remove a node from the list, 'onetry' to try a connection to the node once\n"
             "\nExamples:\n"
-            + HelpExampleCli("addnode", "\"192.168.0.6:8333\" \"onetry\"")
-            + HelpExampleRpc("addnode", "\"192.168.0.6:8333\", \"onetry\"")
+            + HelpExampleCli("eb_addnode", "\"192.168.0.6:8333\" \"onetry\"")
+            + HelpExampleRpc("eb_addnode", "\"192.168.0.6:8333\", \"onetry\"")
         );
 
     string strNode = params[0].get_str();
@@ -256,13 +257,13 @@ UniValue edcdisconnectnode(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "disconnectnode \"node\" \n"
+            "eb_disconnectnode \"node\" \n"
             "\nImmediately disconnects from the specified node.\n"
             "\nArguments:\n"
-            "1. \"node\"     (string, required) The node (see getpeerinfo for nodes)\n"
+            "1. \"node\"     (string, required) The node (see eb_getpeerinfo for nodes)\n"
             "\nExamples:\n"
-            + HelpExampleCli("disconnectnode", "\"192.168.0.6:8333\"")
-            + HelpExampleRpc("disconnectnode", "\"192.168.0.6:8333\"")
+            + HelpExampleCli("eb_disconnectnode", "\"192.168.0.6:8333\"")
+            + HelpExampleRpc("eb_disconnectnode", "\"192.168.0.6:8333\"")
         );
 
     CEDCNode* pNode = edcFindNode(params[0].get_str());
@@ -280,7 +281,7 @@ UniValue edcgetaddednodeinfo(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-            "getaddednodeinfo dns ( \"node\" )\n"
+            "eb_getaddednodeinfo dns ( \"node\" )\n"
             "\nReturns information about the given added node, or all added nodes\n"
             "(note that onetry addnodes are not listed here)\n"
             "If dns is false, only a list of added nodes will be provided,\n"
@@ -304,9 +305,9 @@ UniValue edcgetaddednodeinfo(const UniValue& params, bool fHelp)
             "  ,...\n"
             "]\n"
             "\nExamples:\n"
-            + HelpExampleCli("getaddednodeinfo", "true")
-            + HelpExampleCli("getaddednodeinfo", "true \"192.168.0.201\"")
-            + HelpExampleRpc("getaddednodeinfo", "true, \"192.168.0.201\"")
+            + HelpExampleCli("eb_getaddednodeinfo", "true")
+            + HelpExampleCli("eb_getaddednodeinfo", "true \"192.168.0.201\"")
+            + HelpExampleRpc("eb_getaddednodeinfo", "true, \"192.168.0.201\"")
         );
 
     bool fDns = params[0].get_bool();
@@ -398,7 +399,7 @@ UniValue edcgetnettotals(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() > 0)
         throw runtime_error(
-            "getnettotals\n"
+            "eb_getnettotals\n"
             "\nReturns information about network traffic, including bytes in, bytes out,\n"
             "and current time.\n"
             "\nResult:\n"
@@ -417,8 +418,8 @@ UniValue edcgetnettotals(const UniValue& params, bool fHelp)
             "  }\n"
             "}\n"
             "\nExamples:\n"
-            + HelpExampleCli("getnettotals", "")
-            + HelpExampleRpc("getnettotals", "")
+            + HelpExampleCli("eb_getnettotals", "")
+            + HelpExampleRpc("eb_getnettotals", "")
        );
 
     UniValue obj(UniValue::VOBJ);
@@ -464,7 +465,7 @@ UniValue edcgetnetworkinfo(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "getnetworkinfo\n"
+            "eb_getnetworkinfo\n"
             "Returns an object containing various state info regarding P2P networking.\n"
             "\nResult:\n"
             "{\n"
@@ -495,8 +496,8 @@ UniValue edcgetnetworkinfo(const UniValue& params, bool fHelp)
             "  \"warnings\": \"...\"                    (string) any network warnings (such as alert messages) \n"
             "}\n"
             "\nExamples:\n"
-            + HelpExampleCli("getnetworkinfo", "")
-            + HelpExampleRpc("getnetworkinfo", "")
+            + HelpExampleCli("eb_getnetworkinfo", "")
+            + HelpExampleRpc("eb_getnetworkinfo", "")
         );
 
     LOCK(cs_main);
@@ -537,17 +538,17 @@ UniValue edcsetban(const UniValue& params, bool fHelp)
     if (fHelp || params.size() < 2 ||
         (strCommand != "add" && strCommand != "remove"))
         throw runtime_error(
-                            "setban \"ip(/netmask)\" \"add|remove\" (bantime) (absolute)\n"
+                            "eb_setban \"ip(/netmask)\" \"add|remove\" (bantime) (absolute)\n"
                             "\nAttempts add or remove a IP/Subnet from the banned list.\n"
                             "\nArguments:\n"
-                            "1. \"ip(/netmask)\" (string, required) The IP/Subnet (see getpeerinfo for nodes ip) with a optional netmask (default is /32 = single ip)\n"
+                            "1. \"ip(/netmask)\" (string, required) The IP/Subnet (see eb_getpeerinfo for nodes ip) with a optional netmask (default is /32 = single ip)\n"
                             "2. \"command\"      (string, required) 'add' to add a IP/Subnet to the list, 'remove' to remove a IP/Subnet from the list\n"
                             "3. \"bantime\"      (numeric, optional) time in seconds how long (or until when if [absolute] is set) the ip is banned (0 or empty means using the default time of 24h which can also be overwritten by the -bantime startup argument)\n"
                             "4. \"absolute\"     (boolean, optional) If set, the bantime must be a absolute timestamp in seconds since epoch (Jan 1 1970 GMT)\n"
                             "\nExamples:\n"
-                            + HelpExampleCli("setban", "\"192.168.0.6\" \"add\" 86400")
-                            + HelpExampleCli("setban", "\"192.168.0.0/24\" \"add\"")
-                            + HelpExampleRpc("setban", "\"192.168.0.6\", \"add\" 86400")
+                            + HelpExampleCli("eb_setban", "\"192.168.0.6\" \"add\" 86400")
+                            + HelpExampleCli("eb_setban", "\"192.168.0.0/24\" \"add\"")
+                            + HelpExampleRpc("eb_setban", "\"192.168.0.6\", \"add\" 86400")
                             );
 
     CSubNet subNet;
@@ -600,11 +601,11 @@ UniValue edclistbanned(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
-                            "listbanned\n"
+                            "eb_listbanned\n"
                             "\nList all banned IPs/Subnets.\n"
                             "\nExamples:\n"
-                            + HelpExampleCli("listbanned", "")
-                            + HelpExampleRpc("listbanned", "")
+                            + HelpExampleCli("eb_listbanned", "")
+                            + HelpExampleRpc("eb_listbanned", "")
                             );
 
     banmap_t banMap;
@@ -630,11 +631,11 @@ UniValue edcclearbanned(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
-                            "clearbanned\n"
+                            "eb_clearbanned\n"
                             "\nClear all banned IPs.\n"
                             "\nExamples:\n"
-                            + HelpExampleCli("clearbanned", "")
-                            + HelpExampleRpc("clearbanned", "")
+                            + HelpExampleCli("eb_clearbanned", "")
+                            + HelpExampleRpc("eb_clearbanned", "")
                             );
 
     CEDCNode::ClearBanned();
@@ -660,8 +661,8 @@ static const CRPCCommand edcCommands[] =
     { "network",            "eb_clearbanned",            &edcclearbanned,            true  },
 };
 
-void edcRegisterNetRPCCommands(CRPCTable &tableRPC)
+void edcRegisterNetRPCCommands(CEDCRPCTable & edcTableRPC)
 {
     for (unsigned int vcidx = 0; vcidx < ARRAYLEN(edcCommands); vcidx++)
-        tableRPC.appendCommand(edcCommands[vcidx].name, &edcCommands[vcidx]);
+        edcTableRPC.appendCommand(edcCommands[vcidx].name, &edcCommands[vcidx]);
 }

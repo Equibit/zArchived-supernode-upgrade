@@ -1,4 +1,5 @@
 // Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2016 Equibit Development Corporation
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -10,23 +11,23 @@
 class CRPCTable;
 
 /** Register block chain RPC commands */
-void edcRegisterBlockchainRPCCommands(CRPCTable &tableRPC);
+void edcRegisterBlockchainRPCCommands( CEDCRPCTable & edcTableRPC);
 /** Register P2P networking RPC commands */
-void edcRegisterNetRPCCommands(CRPCTable &tableRPC);
+void edcRegisterNetRPCCommands(CEDCRPCTable &edcTableRPC);
 /** Register miscellaneous RPC commands */
-void edcRegisterMiscRPCCommands(CRPCTable &tableRPC);
+void edcRegisterMiscRPCCommands(CEDCRPCTable &edcTableRPC);
 /** Register mining RPC commands */
-void edcRegisterMiningRPCCommands(CRPCTable &tableRPC);
+void edcRegisterMiningRPCCommands(CEDCRPCTable &edcTableRPC);
 /** Register raw transaction RPC commands */
-void edcRegisterRawTransactionRPCCommands(CRPCTable &tableRPC);
+void edcRegisterRawTransactionRPCCommands(CEDCRPCTable &edcTableRPC);
 
-static inline void edcRegisterAllCoreRPCCommands(CRPCTable &tableRPC)
+static inline void edcRegisterAllCoreRPCCommands(CEDCRPCTable &edcTableRPC)
 {
-    edcRegisterBlockchainRPCCommands(tableRPC);
-    edcRegisterNetRPCCommands(tableRPC);
-    edcRegisterMiscRPCCommands(tableRPC);
-    edcRegisterMiningRPCCommands(tableRPC);
-    edcRegisterRawTransactionRPCCommands(tableRPC);
+    edcRegisterBlockchainRPCCommands(edcTableRPC);
+    edcRegisterNetRPCCommands(edcTableRPC);
+    edcRegisterMiscRPCCommands(edcTableRPC);
+    edcRegisterMiningRPCCommands(edcTableRPC);
+    edcRegisterRawTransactionRPCCommands(edcTableRPC);
 }
 
 #endif

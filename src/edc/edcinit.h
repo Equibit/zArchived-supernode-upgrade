@@ -10,3 +10,4 @@
 
 
 bool EdcAppInit(boost::thread_group& threadGroup, CScheduler& scheduler);
+void edcInterrupt(boost::thread_group& threadGroup);

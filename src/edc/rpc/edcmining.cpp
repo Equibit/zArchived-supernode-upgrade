@@ -16,7 +16,7 @@
 #include "edc/edcminer.h"
 #include "edc/edcnet.h"
 #include "pow.h"
-#include "rpc/server.h"
+#include "edc/rpc/edcserver.h"
 #include "edc/edctxmempool.h"
 #include "edc/edcutil.h"
 #include "utilstrencodings.h"
@@ -164,7 +164,7 @@ UniValue edcgenerate(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-            "generate numblocks ( maxtries )\n"
+            "eb_generate numblocks ( maxtries )\n"
             "\nMine up to numblocks blocks immediately (before the RPC call returns)\n"
             "\nArguments:\n"
             "1. numblocks    (numeric, required) How many blocks are generated immediately.\n"
@@ -173,7 +173,7 @@ UniValue edcgenerate(const UniValue& params, bool fHelp)
             "[ blockhashes ]     (array) hashes of blocks generated\n"
             "\nExamples:\n"
             "\nGenerate 11 blocks\n"
-            + HelpExampleCli("generate", "11")
+            + HelpExampleCli("eb_generate", "11")
         );
 
     int nGenerate = params[0].get_int();
@@ -202,7 +202,7 @@ UniValue edcgeneratetoaddress(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 3)
         throw runtime_error(
-            "generatetoaddress numblocks address (maxtries)\n"
+            "eb_generatetoaddress numblocks address (maxtries)\n"
             "\nMine blocks immediately to a specified address (before the RPC call returns)\n"
             "\nArguments:\n"
             "1. numblocks    (numeric, required) How many blocks are generated immediately.\n"
@@ -212,7 +212,7 @@ UniValue edcgeneratetoaddress(const UniValue& params, bool fHelp)
             "[ blockhashes ]     (array) hashes of blocks generated\n"
             "\nExamples:\n"
             "\nGenerate 11 blocks to myaddress\n"
-            + HelpExampleCli("generatetoaddress", "11 \"myaddress\"")
+            + HelpExampleCli("eb_generatetoaddress", "11 \"myaddress\"")
         );
 
     int nGenerate = params[0].get_int();
@@ -237,7 +237,7 @@ UniValue edcgetmininginfo(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "getmininginfo\n"
+            "eb_getmininginfo\n"
             "\nReturns a json object containing mining-related information."
             "\nResult:\n"
             "{\n"
@@ -251,8 +251,8 @@ UniValue edcgetmininginfo(const UniValue& params, bool fHelp)
             "  \"chain\": \"xxxx\",         (string) current network name as defined in BIP70 (main, test, regtest)\n"
             "}\n"
             "\nExamples:\n"
-            + HelpExampleCli("getmininginfo", "")
-            + HelpExampleRpc("getmininginfo", "")
+            + HelpExampleCli("eb_getmininginfo", "")
+            + HelpExampleRpc("eb_getmininginfo", "")
         );
 
 
@@ -278,7 +278,7 @@ UniValue edcprioritisetransaction(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 3)
         throw runtime_error(
-            "prioritisetransaction <txid> <priority delta> <fee delta>\n"
+            "eb_prioritisetransaction <txid> <priority delta> <fee delta>\n"
             "Accepts the transaction into mined blocks at a higher (or lower) priority\n"
             "\nArguments:\n"
             "1. \"txid\"       (string, required) The transaction id.\n"
@@ -291,8 +291,8 @@ UniValue edcprioritisetransaction(const UniValue& params, bool fHelp)
             "\nResult\n"
             "true              (boolean) Returns true\n"
             "\nExamples:\n"
-            + HelpExampleCli("prioritisetransaction", "\"txid\" 0.0 10000")
-            + HelpExampleRpc("prioritisetransaction", "\"txid\", 0.0, 10000")
+            + HelpExampleCli("eb_prioritisetransaction", "\"txid\" 0.0 10000")
+            + HelpExampleRpc("eb_prioritisetransaction", "\"txid\", 0.0, 10000")
         );
 
     LOCK(EDC_cs_main);
@@ -331,7 +331,7 @@ UniValue edcgetblocktemplate(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() > 1)
         throw runtime_error(
-            "getblocktemplate ( \"jsonrequestobject\" )\n"
+            "eb_getblocktemplate ( \"jsonrequestobject\" )\n"
             "\nIf the request parameters include a 'mode' key, that is used to explicitly select between the default 'template' request or a 'proposal'.\n"
             "It returns data needed to construct a block to work on.\n"
             "See https://en.bitcoin.it/wiki/BIP_0022 for full specification.\n"
@@ -385,8 +385,8 @@ UniValue edcgetblocktemplate(const UniValue& params, bool fHelp)
             "}\n"
 
             "\nExamples:\n"
-            + HelpExampleCli("getblocktemplate", "")
-            + HelpExampleRpc("getblocktemplate", "")
+            + HelpExampleCli("eb_getblocktemplate", "")
+            + HelpExampleRpc("eb_getblocktemplate", "")
          );
 
     LOCK(EDC_cs_main);
@@ -479,7 +479,7 @@ UniValue edcgetblocktemplate(const UniValue& params, bool fHelp)
             checktxtime = boost::get_system_time() + boost::posix_time::minutes(1);
 
             boost::unique_lock<boost::mutex> lock(edccsBestBlock);
-            while (theApp.chainActive().Tip()->GetBlockHash() == hashWatchedChain && IsRPCRunning())
+            while (theApp.chainActive().Tip()->GetBlockHash() == hashWatchedChain && edcIsRPCRunning())
             {
                 if (!theApp.blockChange().timed_wait(lock, checktxtime))
                 {
@@ -492,7 +492,7 @@ UniValue edcgetblocktemplate(const UniValue& params, bool fHelp)
         }
         ENTER_CRITICAL_SECTION(EDC_cs_main);
 
-        if (!IsRPCRunning())
+        if (!edcIsRPCRunning())
             throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, "Shutting down");
         // TODO: Maybe recheck connections/IBD and (if something wrong) send an expires-immediately template to stop miners?
     }
@@ -626,7 +626,7 @@ UniValue edcsubmitblock(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-            "submitblock \"hexdata\" ( \"jsonparametersobject\" )\n"
+            "eb_submitblock \"hexdata\" ( \"jsonparametersobject\" )\n"
             "\nAttempts to submit new block to network.\n"
             "The 'jsonparametersobject' parameter is currently ignored.\n"
             "See https://en.bitcoin.it/wiki/BIP_0022 for full specification.\n"
@@ -639,8 +639,8 @@ UniValue edcsubmitblock(const UniValue& params, bool fHelp)
             "    }\n"
             "\nResult:\n"
             "\nExamples:\n"
-            + HelpExampleCli("submitblock", "\"mydata\"")
-            + HelpExampleRpc("submitblock", "\"mydata\"")
+            + HelpExampleCli("eb_submitblock", "\"mydata\"")
+            + HelpExampleRpc("eb_submitblock", "\"mydata\"")
         );
 
     CEDCBlock block;
@@ -690,7 +690,7 @@ UniValue edcestimatefee(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "estimatefee nblocks\n"
+            "eb_estimatefee nblocks\n"
             "\nEstimates the approximate fee per kilobyte needed for a transaction to begin\n"
             "confirmation within nblocks blocks.\n"
             "\nArguments:\n"
@@ -701,7 +701,7 @@ UniValue edcestimatefee(const UniValue& params, bool fHelp)
             "A negative value is returned if not enough transactions and blocks\n"
             "have been observed to make an estimate.\n"
             "\nExample:\n"
-            + HelpExampleCli("estimatefee", "6")
+            + HelpExampleCli("eb_estimatefee", "6")
             );
 
     RPCTypeCheck(params, boost::assign::list_of(UniValue::VNUM));
@@ -722,7 +722,7 @@ UniValue edcestimatepriority(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "estimatepriority nblocks\n"
+            "eb_estimatepriority nblocks\n"
             "\nEstimates the approximate priority a zero-fee transaction needs to begin\n"
             "confirmation within nblocks blocks.\n"
             "\nArguments:\n"
@@ -733,7 +733,7 @@ UniValue edcestimatepriority(const UniValue& params, bool fHelp)
             "A negative value is returned if not enough transactions and blocks\n"
             "have been observed to make an estimate.\n"
             "\nExample:\n"
-            + HelpExampleCli("estimatepriority", "6")
+            + HelpExampleCli("eb_estimatepriority", "6")
             );
 
     RPCTypeCheck(params, boost::assign::list_of(UniValue::VNUM));
@@ -750,7 +750,7 @@ UniValue edcestimatesmartfee(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "estimatesmartfee nblocks\n"
+            "eb_estimatesmartfee nblocks\n"
             "\nWARNING: This interface is unstable and may disappear or change!\n"
             "\nEstimates the approximate fee per kilobyte needed for a transaction to begin\n"
             "confirmation within nblocks blocks if possible and return the number of blocks\n"
@@ -767,7 +767,7 @@ UniValue edcestimatesmartfee(const UniValue& params, bool fHelp)
             "have been observed to make an estimate for any number of blocks.\n"
             "However it will not return a value below the mempool reject fee.\n"
             "\nExample:\n"
-            + HelpExampleCli("estimatesmartfee", "6")
+            + HelpExampleCli("eb_estimatesmartfee", "6")
             );
 
     RPCTypeCheck(params, boost::assign::list_of(UniValue::VNUM));
@@ -787,7 +787,7 @@ UniValue edcestimatesmartpriority(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "estimatesmartpriority nblocks\n"
+            "eb_estimatesmartpriority nblocks\n"
             "\nWARNING: This interface is unstable and may disappear or change!\n"
             "\nEstimates the approximate priority a zero-fee transaction needs to begin\n"
             "confirmation within nblocks blocks if possible and return the number of blocks\n"
@@ -804,7 +804,7 @@ UniValue edcestimatesmartpriority(const UniValue& params, bool fHelp)
             "have been observed to make an estimate for any number of blocks.\n"
             "However if the mempool reject fee is set it will return 1e9 * MAX_MONEY.\n"
             "\nExample:\n"
-            + HelpExampleCli("estimatesmartpriority", "6")
+            + HelpExampleCli("eb_estimatesmartpriority", "6")
             );
 
     RPCTypeCheck(params, boost::assign::list_of(UniValue::VNUM));
@@ -838,8 +838,8 @@ static const CRPCCommand edcCommands[] =
     { "util",               "eb_estimatesmartpriority",  &edcestimatesmartpriority,  true  },
 };
 
-void edcRegisterMiningRPCCommands(CRPCTable &tableRPC)
+void edcRegisterMiningRPCCommands( CEDCRPCTable & edcTableRPC)
 {
     for (unsigned int vcidx = 0; vcidx < ARRAYLEN(edcCommands); vcidx++)
-        tableRPC.appendCommand(edcCommands[vcidx].name, &edcCommands[vcidx]);
+        edcTableRPC.appendCommand(edcCommands[vcidx].name, &edcCommands[vcidx]);
 }

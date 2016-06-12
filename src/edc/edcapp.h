@@ -1,3 +1,7 @@
+// Copyright (c) 2016 Equibit Development Corporation
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
 #pragma once
 
 #include "edctxmempool.h"
@@ -12,6 +16,7 @@ class CEDCBlockTreeDB;
 class CEDCNode;
 class CEDCCoinsViewCache;
 class CEDCWallet;
+struct event_base;
 
 
 class EDCapp
@@ -127,6 +132,9 @@ public:
 
 	CConditionVariable & blockChange() { return blockChange_; }
 
+	event_base * eventBase()				{ return eventBase_; }
+	void	eventBase( event_base * eb )	{ eventBase_ = eb; }
+
 private:
 	EDCapp();
 
@@ -229,4 +237,6 @@ private:
 	CEDCDBEnv bitdb_;
 
 	CConditionVariable blockChange_;
+
+	event_base	* eventBase_;
 };

@@ -43,7 +43,7 @@
 
 static bool fDaemon;
 
-void WaitForShutdown(boost::thread_group* threadGroup)
+void WaitForShutdown(boost::thread_group* threadGroup, boost::thread_group * edcThreadGroup )
 {
     bool fShutdown = ShutdownRequested();
     // Tell the main threads to shutdown.
@@ -56,6 +56,10 @@ void WaitForShutdown(boost::thread_group* threadGroup)
     {
         Interrupt(*threadGroup);
         threadGroup->join_all();
+// EDC BEGIN
+        edcInterrupt(*edcThreadGroup);
+        edcThreadGroup->join_all();
+// EDC END
     }
 }
 
@@ -66,6 +70,9 @@ void WaitForShutdown(boost::thread_group* threadGroup)
 bool AppInit(int argc, char* argv[])
 {
     boost::thread_group threadGroup;
+// EDC BEGIN
+    boost::thread_group edcThreadGroup;
+// EDC END
     CScheduler scheduler;
 
     bool fRet = false;
@@ -170,7 +177,7 @@ bool AppInit(int argc, char* argv[])
 // EDC BEGIN
 	try
 	{
-		fRet = EdcAppInit( threadGroup, scheduler );
+		fRet = EdcAppInit( edcThreadGroup, scheduler );
 	}
 	catch( const std::exception & ex )
 	{
@@ -185,11 +192,14 @@ bool AppInit(int argc, char* argv[])
     if (!fRet)
     {
         Interrupt(threadGroup);
+// EDC BEGIN
+        edcInterrupt(edcThreadGroup);
+// EDC END
         // threadGroup.join_all(); was left out intentionally here, because we didn't re-test all of
         // the startup-failure cases to make sure they don't result in a hang due to some
         // thread-blocking-waiting-for-another-thread-during-startup case
     } else {
-        WaitForShutdown(&threadGroup);
+        WaitForShutdown(&threadGroup, &edcThreadGroup);
     }
     Shutdown();
 

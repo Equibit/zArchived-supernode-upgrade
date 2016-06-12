@@ -13,7 +13,7 @@
 #include "edc/edcnet.h"
 #include "netbase.h"
 #include "edc/policy/edcrbf.h"
-#include "rpc/server.h"
+#include "edc/rpc/edcserver.h"
 #include "timedata.h"
 #include "edc/edcutil.h"
 #include "utilmoneystr.h"
@@ -36,7 +36,7 @@ std::string edcHelpRequiringPassphrase()
 	EDCapp & theApp = EDCapp::singleton();
 
     return theApp.walletMain() && theApp.walletMain()->IsCrypted()
-        ? "\nRequires wallet passphrase to be set with walletpassphrase call."
+        ? "\nRequires wallet passphrase to be set with eb_walletpassphrase call."
         : "";
 }
 
@@ -126,7 +126,7 @@ UniValue edcgetnewaddress(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() > 1)
         throw runtime_error(
-            "getnewaddress ( \"account\" )\n"
+            "eb_getnewaddress ( \"account\" )\n"
             "\nReturns a new Bitcoin address for receiving payments.\n"
             "If 'account' is specified (DEPRECATED), it is added to the address book \n"
             "so payments received with the address will be credited to 'account'.\n"
@@ -135,8 +135,8 @@ UniValue edcgetnewaddress(const UniValue& params, bool fHelp)
             "\nResult:\n"
             "\"bitcoinaddress\"    (string) The new bitcoin address\n"
             "\nExamples:\n"
-            + HelpExampleCli("getnewaddress", "")
-            + HelpExampleRpc("getnewaddress", "")
+            + HelpExampleCli("eb_getnewaddress", "")
+            + HelpExampleRpc("eb_getnewaddress", "")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -212,17 +212,17 @@ UniValue edcgetaccountaddress(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "getaccountaddress \"account\"\n"
+            "eb_getaccountaddress \"account\"\n"
             "\nDEPRECATED. Returns the current Bitcoin address for receiving payments to this account.\n"
             "\nArguments:\n"
             "1. \"account\"       (string, required) The account name for the address. It can also be set to the empty string \"\" to represent the default account. The account does not need to exist, it will be created and a new address created  if there is no account by the given name.\n"
             "\nResult:\n"
             "\"bitcoinaddress\"   (string) The account bitcoin address\n"
             "\nExamples:\n"
-            + HelpExampleCli("getaccountaddress", "")
-            + HelpExampleCli("getaccountaddress", "\"\"")
-            + HelpExampleCli("getaccountaddress", "\"myaccount\"")
-            + HelpExampleRpc("getaccountaddress", "\"myaccount\"")
+            + HelpExampleCli("eb_getaccountaddress", "")
+            + HelpExampleCli("eb_getaccountaddress", "\"\"")
+            + HelpExampleCli("eb_getaccountaddress", "\"myaccount\"")
+            + HelpExampleRpc("eb_getaccountaddress", "\"myaccount\"")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -246,14 +246,14 @@ UniValue edcgetrawchangeaddress(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() > 1)
         throw runtime_error(
-            "getrawchangeaddress\n"
+            "eb_getrawchangeaddress\n"
             "\nReturns a new Bitcoin address, for receiving change.\n"
             "This is for use with raw transactions, NOT normal use.\n"
             "\nResult:\n"
             "\"address\"    (string) The address\n"
             "\nExamples:\n"
-            + HelpExampleCli("getrawchangeaddress", "")
-            + HelpExampleRpc("getrawchangeaddress", "")
+            + HelpExampleCli("eb_getrawchangeaddress", "")
+            + HelpExampleRpc("eb_getrawchangeaddress", "")
        );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -283,14 +283,14 @@ UniValue edcsetaccount(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-            "setaccount \"bitcoinaddress\" \"account\"\n"
+            "eb_setaccount \"bitcoinaddress\" \"account\"\n"
             "\nDEPRECATED. Sets the account associated with the given address.\n"
             "\nArguments:\n"
             "1. \"bitcoinaddress\"  (string, required) The bitcoin address to be associated with an account.\n"
             "2. \"account\"         (string, required) The account to assign the address to.\n"
             "\nExamples:\n"
-            + HelpExampleCli("setaccount", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\" \"tabby\"")
-            + HelpExampleRpc("setaccount", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\", \"tabby\"")
+            + HelpExampleCli("eb_setaccount", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\" \"tabby\"")
+            + HelpExampleRpc("eb_setaccount", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\", \"tabby\"")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -316,7 +316,7 @@ UniValue edcsetaccount(const UniValue& params, bool fHelp)
         theApp.walletMain()->SetAddressBook(address.Get(), strAccount, "receive");
     }
     else
-        throw JSONRPCError(RPC_MISC_ERROR, "setaccount can only be used with own address");
+        throw JSONRPCError(RPC_MISC_ERROR, "eb_setaccount can only be used with own address");
 
     return NullUniValue;
 }
@@ -331,15 +331,15 @@ UniValue edcgetaccount(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "getaccount \"bitcoinaddress\"\n"
+            "eb_getaccount \"bitcoinaddress\"\n"
             "\nDEPRECATED. Returns the account associated with the given address.\n"
             "\nArguments:\n"
             "1. \"bitcoinaddress\"  (string, required) The bitcoin address for account lookup.\n"
             "\nResult:\n"
             "\"accountname\"        (string) the account address\n"
             "\nExamples:\n"
-            + HelpExampleCli("getaccount", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\"")
-            + HelpExampleRpc("getaccount", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\"")
+            + HelpExampleCli("eb_getaccount", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\"")
+            + HelpExampleRpc("eb_getaccount", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\"")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -365,7 +365,7 @@ UniValue edcgetaddressesbyaccount(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "getaddressesbyaccount \"account\"\n"
+            "eb_getaddressesbyaccount \"account\"\n"
             "\nDEPRECATED. Returns the list of addresses for the given account.\n"
             "\nArguments:\n"
             "1. \"account\"  (string, required) The account name.\n"
@@ -375,8 +375,8 @@ UniValue edcgetaddressesbyaccount(const UniValue& params, bool fHelp)
             "  ,...\n"
             "]\n"
             "\nExamples:\n"
-            + HelpExampleCli("getaddressesbyaccount", "\"tabby\"")
-            + HelpExampleRpc("getaddressesbyaccount", "\"tabby\"")
+            + HelpExampleCli("eb_getaddressesbyaccount", "\"tabby\"")
+            + HelpExampleRpc("eb_getaddressesbyaccount", "\"tabby\"")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -440,7 +440,7 @@ UniValue edcsendtoaddress(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() < 2 || params.size() > 5)
         throw runtime_error(
-            "sendtoaddress \"bitcoinaddress\" amount ( \"comment\" \"comment-to\" subtractfeefromamount )\n"
+            "eb_sendtoaddress \"bitcoinaddress\" amount ( \"comment\" \"comment-to\" subtractfeefromamount )\n"
             "\nSend an amount to a given address.\n"
             + edcHelpRequiringPassphrase() +
             "\nArguments:\n"
@@ -456,10 +456,10 @@ UniValue edcsendtoaddress(const UniValue& params, bool fHelp)
             "\nResult:\n"
             "\"transactionid\"  (string) The transaction id.\n"
             "\nExamples:\n"
-            + HelpExampleCli("sendtoaddress", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1")
-            + HelpExampleCli("sendtoaddress", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1 \"donation\" \"seans outpost\"")
-            + HelpExampleCli("sendtoaddress", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1 \"\" \"\" true")
-            + HelpExampleRpc("sendtoaddress", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", 0.1, \"donation\", \"seans outpost\"")
+            + HelpExampleCli("eb_sendtoaddress", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1")
+            + HelpExampleCli("eb_sendtoaddress", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1 \"donation\" \"seans outpost\"")
+            + HelpExampleCli("eb_sendtoaddress", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1 \"\" \"\" true")
+            + HelpExampleRpc("eb_sendtoaddress", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", 0.1, \"donation\", \"seans outpost\"")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -500,7 +500,7 @@ UniValue edclistaddressgroupings(const UniValue& params, bool fHelp)
 
     if (fHelp)
         throw runtime_error(
-            "listaddressgroupings\n"
+            "eb_listaddressgroupings\n"
             "\nLists groups of addresses which have had their common ownership\n"
             "made public by common use as inputs or as the resulting change\n"
             "in past transactions\n"
@@ -517,8 +517,8 @@ UniValue edclistaddressgroupings(const UniValue& params, bool fHelp)
             "  ,...\n"
             "]\n"
             "\nExamples:\n"
-            + HelpExampleCli("listaddressgroupings", "")
-            + HelpExampleRpc("listaddressgroupings", "")
+            + HelpExampleCli("eb_listaddressgroupings", "")
+            + HelpExampleRpc("eb_listaddressgroupings", "")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -553,7 +553,7 @@ UniValue edcsignmessage(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() != 2)
         throw runtime_error(
-            "signmessage \"bitcoinaddress\" \"message\"\n"
+            "eb_signmessage \"bitcoinaddress\" \"message\"\n"
             "\nSign a message with the private key of an address"
             + edcHelpRequiringPassphrase() + "\n"
             "\nArguments:\n"
@@ -563,13 +563,13 @@ UniValue edcsignmessage(const UniValue& params, bool fHelp)
             "\"signature\"          (string) The signature of the message encoded in base 64\n"
             "\nExamples:\n"
             "\nUnlock the wallet for 30 seconds\n"
-            + HelpExampleCli("walletpassphrase", "\"mypassphrase\" 30") +
+            + HelpExampleCli("eb_walletpassphrase", "\"mypassphrase\" 30") +
             "\nCreate the signature\n"
-            + HelpExampleCli("signmessage", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\" \"my message\"") +
+            + HelpExampleCli("eb_signmessage", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\" \"my message\"") +
             "\nVerify the signature\n"
             + HelpExampleCli("verifymessage", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\" \"signature\" \"my message\"") +
             "\nAs json rpc\n"
-            + HelpExampleRpc("signmessage", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\", \"my message\"")
+            + HelpExampleRpc("eb_signmessage", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\", \"my message\"")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -611,7 +611,7 @@ UniValue edcgetreceivedbyaddress(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-            "getreceivedbyaddress \"bitcoinaddress\" ( minconf )\n"
+            "eb_getreceivedbyaddress \"bitcoinaddress\" ( minconf )\n"
             "\nReturns the total amount received by the given bitcoinaddress in transactions with at least minconf confirmations.\n"
             "\nArguments:\n"
             "1. \"bitcoinaddress\"  (string, required) The bitcoin address for transactions.\n"
@@ -620,13 +620,13 @@ UniValue edcgetreceivedbyaddress(const UniValue& params, bool fHelp)
             "amount   (numeric) The total amount in " + CURRENCY_UNIT + " received at this address.\n"
             "\nExamples:\n"
             "\nThe amount from transactions with at least 1 confirmation\n"
-            + HelpExampleCli("getreceivedbyaddress", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\"") +
+            + HelpExampleCli("eb_getreceivedbyaddress", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\"") +
             "\nThe amount including unconfirmed transactions, zero confirmations\n"
-            + HelpExampleCli("getreceivedbyaddress", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\" 0") +
+            + HelpExampleCli("eb_getreceivedbyaddress", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\" 0") +
             "\nThe amount with at least 6 confirmation, very safe\n"
-            + HelpExampleCli("getreceivedbyaddress", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\" 6") +
+            + HelpExampleCli("eb_getreceivedbyaddress", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\" 6") +
             "\nAs a json rpc call\n"
-            + HelpExampleRpc("getreceivedbyaddress", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\", 6")
+            + HelpExampleRpc("eb_getreceivedbyaddress", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\", 6")
        );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -671,7 +671,7 @@ UniValue edcgetreceivedbyaccount(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-            "getreceivedbyaccount \"account\" ( minconf )\n"
+            "eb_getreceivedbyaccount \"account\" ( minconf )\n"
             "\nDEPRECATED. Returns the total amount received by addresses with <account> in transactions with at least [minconf] confirmations.\n"
             "\nArguments:\n"
             "1. \"account\"      (string, required) The selected account, may be the default account using \"\".\n"
@@ -680,13 +680,13 @@ UniValue edcgetreceivedbyaccount(const UniValue& params, bool fHelp)
             "amount              (numeric) The total amount in " + CURRENCY_UNIT + " received for this account.\n"
             "\nExamples:\n"
             "\nAmount received by the default account with at least 1 confirmation\n"
-            + HelpExampleCli("getreceivedbyaccount", "\"\"") +
+            + HelpExampleCli("eb_getreceivedbyaccount", "\"\"") +
             "\nAmount received at the tabby account including unconfirmed amounts with zero confirmations\n"
-            + HelpExampleCli("getreceivedbyaccount", "\"tabby\" 0") +
+            + HelpExampleCli("eb_getreceivedbyaccount", "\"tabby\" 0") +
             "\nThe amount with at least 6 confirmation, very safe\n"
-            + HelpExampleCli("getreceivedbyaccount", "\"tabby\" 6") +
+            + HelpExampleCli("eb_getreceivedbyaccount", "\"tabby\" 6") +
             "\nAs a json rpc call\n"
-            + HelpExampleRpc("getreceivedbyaccount", "\"tabby\", 6")
+            + HelpExampleRpc("eb_getreceivedbyaccount", "\"tabby\", 6")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -766,7 +766,7 @@ UniValue edcgetbalance(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() > 3)
         throw runtime_error(
-            "getbalance ( \"account\" minconf includeWatchonly )\n"
+            "eb_getbalance ( \"account\" minconf includeWatchonly )\n"
             "\nIf account is not specified, returns the server's total available balance.\n"
             "If account is specified (DEPRECATED), returns the balance in the account.\n"
             "Note that the account \"\" is not the same as leaving the parameter out.\n"
@@ -774,16 +774,16 @@ UniValue edcgetbalance(const UniValue& params, bool fHelp)
             "\nArguments:\n"
             "1. \"account\"      (string, optional) DEPRECATED. The selected account, or \"*\" for entire wallet. It may be the default account using \"\".\n"
             "2. minconf          (numeric, optional, default=1) Only include transactions confirmed at least this many times.\n"
-            "3. includeWatchonly (bool, optional, default=false) Also include balance in watchonly addresses (see 'importaddress')\n"
+            "3. includeWatchonly (bool, optional, default=false) Also include balance in watchonly addresses (see 'eb_importaddress')\n"
             "\nResult:\n"
             "amount              (numeric) The total amount in " + CURRENCY_UNIT + " received for this account.\n"
             "\nExamples:\n"
             "\nThe total amount in the wallet\n"
-            + HelpExampleCli("getbalance", "") +
+            + HelpExampleCli("eb_getbalance", "") +
             "\nThe total amount in the wallet at least 5 blocks confirmed\n"
-            + HelpExampleCli("getbalance", "\"*\" 6") +
+            + HelpExampleCli("eb_getbalance", "\"*\" 6") +
             "\nAs a json rpc call\n"
-            + HelpExampleRpc("getbalance", "\"*\", 6")
+            + HelpExampleRpc("eb_getbalance", "\"*\", 6")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -846,7 +846,7 @@ UniValue edcgetunconfirmedbalance(const UniValue &params, bool fHelp)
 
     if (fHelp || params.size() > 0)
         throw runtime_error(
-                "getunconfirmedbalance\n"
+                "eb_getunconfirmedbalance\n"
                 "Returns the server's total unconfirmed balance\n");
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -865,7 +865,7 @@ UniValue edcmovecmd(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() < 3 || params.size() > 5)
         throw runtime_error(
-            "move \"fromaccount\" \"toaccount\" amount ( minconf \"comment\" )\n"
+            "eb_move \"fromaccount\" \"toaccount\" amount ( minconf \"comment\" )\n"
             "\nDEPRECATED. Move a specified amount from one account in your wallet to another.\n"
             "\nArguments:\n"
             "1. \"fromaccount\"   (string, required) The name of the account to move funds from. May be the default account using \"\".\n"
@@ -877,11 +877,11 @@ UniValue edcmovecmd(const UniValue& params, bool fHelp)
             "true|false           (boolean) true if successful.\n"
             "\nExamples:\n"
             "\nMove 0.01 " + CURRENCY_UNIT + " from the default account to the account named tabby\n"
-            + HelpExampleCli("move", "\"\" \"tabby\" 0.01") +
+            + HelpExampleCli("eb_move", "\"\" \"tabby\" 0.01") +
             "\nMove 0.01 " + CURRENCY_UNIT + " timotei to akiko with a comment and funds have 6 confirmations\n"
-            + HelpExampleCli("move", "\"timotei\" \"akiko\" 0.01 6 \"happy birthday!\"") +
+            + HelpExampleCli("eb_move", "\"timotei\" \"akiko\" 0.01 6 \"happy birthday!\"") +
             "\nAs a json rpc call\n"
-            + HelpExampleRpc("move", "\"timotei\", \"akiko\", 0.01, 6, \"happy birthday!\"")
+            + HelpExampleRpc("eb_move", "\"timotei\", \"akiko\", 0.01, 6, \"happy birthday!\"")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -940,8 +940,8 @@ UniValue edcsendfrom(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() < 3 || params.size() > 6)
         throw runtime_error(
-            "sendfrom \"fromaccount\" \"tobitcoinaddress\" amount ( minconf \"comment\" \"comment-to\" )\n"
-            "\nDEPRECATED (use sendtoaddress). Sent an amount from an account to a bitcoin address."
+            "eb_sendfrom \"fromaccount\" \"tobitcoinaddress\" amount ( minconf \"comment\" \"comment-to\" )\n"
+            "\nDEPRECATED (use eb_sendtoaddress). Sent an amount from an account to a bitcoin address."
             + edcHelpRequiringPassphrase() + "\n"
             "\nArguments:\n"
             "1. \"fromaccount\"       (string, required) The name of the account to send funds from. May be the default account using \"\".\n"
@@ -957,11 +957,11 @@ UniValue edcsendfrom(const UniValue& params, bool fHelp)
             "\"transactionid\"        (string) The transaction id.\n"
             "\nExamples:\n"
             "\nSend 0.01 " + CURRENCY_UNIT + " from the default account to the address, must have at least 1 confirmation\n"
-            + HelpExampleCli("sendfrom", "\"\" \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.01") +
+            + HelpExampleCli("eb_sendfrom", "\"\" \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.01") +
             "\nSend 0.01 from the tabby account to the given address, funds must have at least 6 confirmations\n"
-            + HelpExampleCli("sendfrom", "\"tabby\" \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.01 6 \"donation\" \"seans outpost\"") +
+            + HelpExampleCli("eb_sendfrom", "\"tabby\" \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.01 6 \"donation\" \"seans outpost\"") +
             "\nAs a json rpc call\n"
-            + HelpExampleRpc("sendfrom", "\"tabby\", \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", 0.01, 6, \"donation\", \"seans outpost\"")
+            + HelpExampleRpc("eb_sendfrom", "\"tabby\", \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", 0.01, 6, \"donation\", \"seans outpost\"")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -1006,7 +1006,7 @@ UniValue edcsendmany(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() < 2 || params.size() > 5)
         throw runtime_error(
-            "sendmany \"fromaccount\" {\"address\":amount,...} ( minconf \"comment\" [\"address\",...] )\n"
+            "eb_sendmany \"fromaccount\" {\"address\":amount,...} ( minconf \"comment\" [\"address\",...] )\n"
             "\nSend multiple times. Amounts are double-precision floating point numbers."
             + edcHelpRequiringPassphrase() + "\n"
             "\nArguments:\n"
@@ -1031,13 +1031,13 @@ UniValue edcsendmany(const UniValue& params, bool fHelp)
             "                                    the number of addresses.\n"
             "\nExamples:\n"
             "\nSend two amounts to two different addresses:\n"
-            + HelpExampleCli("sendmany", "\"\" \"{\\\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\\\":0.01,\\\"1353tsE8YMTA4EuV7dgUXGjNFf9KpVvKHz\\\":0.02}\"") +
+            + HelpExampleCli("eb_sendmany", "\"\" \"{\\\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\\\":0.01,\\\"1353tsE8YMTA4EuV7dgUXGjNFf9KpVvKHz\\\":0.02}\"") +
             "\nSend two amounts to two different addresses setting the confirmation and comment:\n"
-            + HelpExampleCli("sendmany", "\"\" \"{\\\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\\\":0.01,\\\"1353tsE8YMTA4EuV7dgUXGjNFf9KpVvKHz\\\":0.02}\" 6 \"testing\"") +
+            + HelpExampleCli("eb_sendmany", "\"\" \"{\\\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\\\":0.01,\\\"1353tsE8YMTA4EuV7dgUXGjNFf9KpVvKHz\\\":0.02}\" 6 \"testing\"") +
             "\nSend two amounts to two different addresses, subtract fee from amount:\n"
-            + HelpExampleCli("sendmany", "\"\" \"{\\\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\\\":0.01,\\\"1353tsE8YMTA4EuV7dgUXGjNFf9KpVvKHz\\\":0.02}\" 1 \"\" \"[\\\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\\\",\\\"1353tsE8YMTA4EuV7dgUXGjNFf9KpVvKHz\\\"]\"") +
+            + HelpExampleCli("eb_sendmany", "\"\" \"{\\\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\\\":0.01,\\\"1353tsE8YMTA4EuV7dgUXGjNFf9KpVvKHz\\\":0.02}\" 1 \"\" \"[\\\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\\\",\\\"1353tsE8YMTA4EuV7dgUXGjNFf9KpVvKHz\\\"]\"") +
             "\nAs a json rpc call\n"
-            + HelpExampleRpc("sendmany", "\"\", \"{\\\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\\\":0.01,\\\"1353tsE8YMTA4EuV7dgUXGjNFf9KpVvKHz\\\":0.02}\", 6, \"testing\"")
+            + HelpExampleRpc("eb_sendmany", "\"\", \"{\\\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\\\":0.01,\\\"1353tsE8YMTA4EuV7dgUXGjNFf9KpVvKHz\\\":0.02}\", 6, \"testing\"")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -1312,12 +1312,12 @@ UniValue edclistreceivedbyaddress(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() > 3)
         throw runtime_error(
-            "listreceivedbyaddress ( minconf includeempty includeWatchonly)\n"
+            "eb_listreceivedbyaddress ( minconf includeempty includeWatchonly)\n"
             "\nList balances by receiving address.\n"
             "\nArguments:\n"
             "1. minconf       (numeric, optional, default=1) The minimum number of confirmations before payments are included.\n"
             "2. includeempty  (bool, optional, default=false) Whether to include addresses that haven't received any payments.\n"
-            "3. includeWatchonly (bool, optional, default=false) Whether to include watchonly addresses (see 'importaddress').\n"
+            "3. includeWatchonly (bool, optional, default=false) Whether to include watchonly addresses (see 'eb_importaddress').\n"
 
             "\nResult:\n"
             "[\n"
@@ -1333,9 +1333,9 @@ UniValue edclistreceivedbyaddress(const UniValue& params, bool fHelp)
             "]\n"
 
             "\nExamples:\n"
-            + HelpExampleCli("listreceivedbyaddress", "")
-            + HelpExampleCli("listreceivedbyaddress", "6 true")
-            + HelpExampleRpc("listreceivedbyaddress", "6, true, true")
+            + HelpExampleCli("eb_listreceivedbyaddress", "")
+            + HelpExampleCli("eb_listreceivedbyaddress", "6 true")
+            + HelpExampleRpc("eb_listreceivedbyaddress", "6, true, true")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -1352,12 +1352,12 @@ UniValue edclistreceivedbyaccount(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() > 3)
         throw runtime_error(
-            "listreceivedbyaccount ( minconf includeempty includeWatchonly)\n"
+            "eb_listreceivedbyaccount ( minconf includeempty includeWatchonly)\n"
             "\nDEPRECATED. List balances by account.\n"
             "\nArguments:\n"
             "1. minconf      (numeric, optional, default=1) The minimum number of confirmations before payments are included.\n"
             "2. includeempty (bool, optional, default=false) Whether to include accounts that haven't received any payments.\n"
-            "3. includeWatchonly (bool, optional, default=false) Whether to include watchonly addresses (see 'importaddress').\n"
+            "3. includeWatchonly (bool, optional, default=false) Whether to include watchonly addresses (see 'eb_importaddress').\n"
 
             "\nResult:\n"
             "[\n"
@@ -1372,9 +1372,9 @@ UniValue edclistreceivedbyaccount(const UniValue& params, bool fHelp)
             "]\n"
 
             "\nExamples:\n"
-            + HelpExampleCli("listreceivedbyaccount", "")
-            + HelpExampleCli("listreceivedbyaccount", "6 true")
-            + HelpExampleRpc("listreceivedbyaccount", "6, true, true")
+            + HelpExampleCli("eb_listreceivedbyaccount", "")
+            + HelpExampleCli("eb_listreceivedbyaccount", "6 true")
+            + HelpExampleRpc("eb_listreceivedbyaccount", "6, true, true")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -1493,13 +1493,13 @@ UniValue edclisttransactions(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() > 4)
         throw runtime_error(
-            "listtransactions ( \"account\" count from includeWatchonly)\n"
+            "eb_listtransactions ( \"account\" count from includeWatchonly)\n"
             "\nReturns up to 'count' most recent transactions skipping the first 'from' transactions for account 'account'.\n"
             "\nArguments:\n"
             "1. \"account\"    (string, optional) DEPRECATED. The account name. Should be \"*\".\n"
             "2. count          (numeric, optional, default=10) The number of transactions to return\n"
             "3. from           (numeric, optional, default=0) The number of transactions to skip\n"
-            "4. includeWatchonly (bool, optional, default=false) Include transactions to watchonly addresses (see 'importaddress')\n"
+            "4. includeWatchonly (bool, optional, default=false) Include transactions to watchonly addresses (see 'eb_importaddress')\n"
             "\nResult:\n"
             "[\n"
             "  {\n"
@@ -1543,11 +1543,11 @@ UniValue edclisttransactions(const UniValue& params, bool fHelp)
 
             "\nExamples:\n"
             "\nList the most recent 10 transactions in the systems\n"
-            + HelpExampleCli("listtransactions", "") +
+            + HelpExampleCli("eb_listtransactions", "") +
             "\nList transactions 100 to 120\n"
-            + HelpExampleCli("listtransactions", "\"*\" 20 100") +
+            + HelpExampleCli("eb_listtransactions", "\"*\" 20 100") +
             "\nAs a json rpc call\n"
-            + HelpExampleRpc("listtransactions", "\"*\", 20, 100")
+            + HelpExampleRpc("eb_listtransactions", "\"*\", 20, 100")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -1622,7 +1622,7 @@ UniValue edclistaccounts(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() > 2)
         throw runtime_error(
-            "listaccounts ( minconf includeWatchonly)\n"
+            "eb_listaccounts ( minconf includeWatchonly)\n"
             "\nDEPRECATED. Returns Object that has account names as keys, account balances as values.\n"
             "\nArguments:\n"
             "1. minconf          (numeric, optional, default=1) Only include transactions with at least this many confirmations\n"
@@ -1634,13 +1634,13 @@ UniValue edclistaccounts(const UniValue& params, bool fHelp)
             "}\n"
             "\nExamples:\n"
             "\nList account balances where there at least 1 confirmation\n"
-            + HelpExampleCli("listaccounts", "") +
+            + HelpExampleCli("eb_listaccounts", "") +
             "\nList account balances including zero confirmation transactions\n"
-            + HelpExampleCli("listaccounts", "0") +
+            + HelpExampleCli("eb_listaccounts", "0") +
             "\nList account balances for 6 or more confirmations\n"
-            + HelpExampleCli("listaccounts", "6") +
+            + HelpExampleCli("eb_listaccounts", "6") +
             "\nAs json rpc call\n"
-            + HelpExampleRpc("listaccounts", "6")
+            + HelpExampleRpc("eb_listaccounts", "6")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -1705,12 +1705,12 @@ UniValue edclistsinceblock(const UniValue& params, bool fHelp)
 
     if (fHelp)
         throw runtime_error(
-            "listsinceblock ( \"blockhash\" target-confirmations includeWatchonly)\n"
+            "eb_listsinceblock ( \"blockhash\" target-confirmations includeWatchonly)\n"
             "\nGet all transactions in blocks since block [blockhash], or all transactions if omitted\n"
             "\nArguments:\n"
             "1. \"blockhash\"   (string, optional) The block hash to list transactions since\n"
             "2. target-confirmations:    (numeric, optional) The confirmations required, must be 1 or more\n"
-            "3. includeWatchonly:        (bool, optional, default=false) Include transactions to watchonly addresses (see 'importaddress')"
+            "3. includeWatchonly:        (bool, optional, default=false) Include transactions to watchonly addresses (see 'eb_importaddress')"
             "\nResult:\n"
             "{\n"
             "  \"transactions\": [\n"
@@ -1735,9 +1735,9 @@ UniValue edclistsinceblock(const UniValue& params, bool fHelp)
             "  \"lastblock\": \"lastblockhash\"     (string) The hash of the last block\n"
             "}\n"
             "\nExamples:\n"
-            + HelpExampleCli("listsinceblock", "")
-            + HelpExampleCli("listsinceblock", "\"000000000000000bacf66f7497b7dc45ef753ee9a7d38571037cdb1a57f663ad\" 6")
-            + HelpExampleRpc("listsinceblock", "\"000000000000000bacf66f7497b7dc45ef753ee9a7d38571037cdb1a57f663ad\", 6")
+            + HelpExampleCli("eb_listsinceblock", "")
+            + HelpExampleCli("eb_listsinceblock", "\"000000000000000bacf66f7497b7dc45ef753ee9a7d38571037cdb1a57f663ad\" 6")
+            + HelpExampleRpc("eb_listsinceblock", "\"000000000000000bacf66f7497b7dc45ef753ee9a7d38571037cdb1a57f663ad\", 6")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -1799,7 +1799,7 @@ UniValue edcgettransaction(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-            "gettransaction \"txid\" ( includeWatchonly )\n"
+            "eb_gettransaction \"txid\" ( includeWatchonly )\n"
             "\nGet detailed information about in-wallet transaction <txid>\n"
             "\nArguments:\n"
             "1. \"txid\"    (string, required) The transaction id\n"
@@ -1831,9 +1831,9 @@ UniValue edcgettransaction(const UniValue& params, bool fHelp)
             "}\n"
 
             "\nExamples:\n"
-            + HelpExampleCli("gettransaction", "\"1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d\"")
-            + HelpExampleCli("gettransaction", "\"1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d\" true")
-            + HelpExampleRpc("gettransaction", "\"1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d\"")
+            + HelpExampleCli("eb_gettransaction", "\"1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d\"")
+            + HelpExampleCli("eb_gettransaction", "\"1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d\" true")
+            + HelpExampleRpc("eb_gettransaction", "\"1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d\"")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -1881,7 +1881,7 @@ UniValue edcabandontransaction(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "abandontransaction \"txid\"\n"
+            "eb_abandontransaction \"txid\"\n"
             "\nMark in-wallet transaction <txid> as abandoned\n"
             "This will mark this transaction and all its in-wallet descendants as abandoned which will allow\n"
             "for their inputs to be respent.  It can be used to replace \"stuck\" or evicted transactions.\n"
@@ -1891,8 +1891,8 @@ UniValue edcabandontransaction(const UniValue& params, bool fHelp)
             "1. \"txid\"    (string, required) The transaction id\n"
             "\nResult:\n"
             "\nExamples:\n"
-            + HelpExampleCli("abandontransaction", "\"1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d\"")
-            + HelpExampleRpc("abandontransaction", "\"1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d\"")
+            + HelpExampleCli("eb_abandontransaction", "\"1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d\"")
+            + HelpExampleRpc("eb_abandontransaction", "\"1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d\"")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -1946,14 +1946,14 @@ UniValue edckeypoolrefill(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() > 1)
         throw runtime_error(
-            "keypoolrefill ( newsize )\n"
+            "eb_keypoolrefill ( newsize )\n"
             "\nFills the keypool."
             + edcHelpRequiringPassphrase() + "\n"
             "\nArguments\n"
             "1. newsize     (numeric, optional, default=100) The new keypool size\n"
             "\nExamples:\n"
-            + HelpExampleCli("keypoolrefill", "")
-            + HelpExampleRpc("keypoolrefill", "")
+            + HelpExampleCli("eb_keypoolrefill", "")
+            + HelpExampleRpc("eb_keypoolrefill", "")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -1994,22 +1994,22 @@ UniValue edcwalletpassphrase(const UniValue& params, bool fHelp)
 
     if (theApp.walletMain()->IsCrypted() && (fHelp || params.size() != 2))
         throw runtime_error(
-            "walletpassphrase \"passphrase\" timeout\n"
+            "eb_walletpassphrase \"passphrase\" timeout\n"
             "\nStores the wallet decryption key in memory for 'timeout' seconds.\n"
             "This is needed prior to performing transactions related to private keys such as sending bitcoins\n"
             "\nArguments:\n"
             "1. \"passphrase\"     (string, required) The wallet passphrase\n"
             "2. timeout            (numeric, required) The time to keep the decryption key in seconds.\n"
             "\nNote:\n"
-            "Issuing the walletpassphrase command while the wallet is already unlocked will set a new unlock\n"
+            "Issuing the eb_walletpassphrase command while the wallet is already unlocked will set a new unlock\n"
             "time that overrides the old one.\n"
             "\nExamples:\n"
             "\nunlock the wallet for 60 seconds\n"
-            + HelpExampleCli("walletpassphrase", "\"my pass phrase\" 60") +
+            + HelpExampleCli("eb_walletpassphrase", "\"my pass phrase\" 60") +
             "\nLock the wallet again (before 60 seconds)\n"
-            + HelpExampleCli("walletlock", "") +
+            + HelpExampleCli("eb_walletlock", "") +
             "\nAs json rpc call\n"
-            + HelpExampleRpc("walletpassphrase", "\"my pass phrase\", 60")
+            + HelpExampleRpc("eb_walletpassphrase", "\"my pass phrase\", 60")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -2017,9 +2017,9 @@ UniValue edcwalletpassphrase(const UniValue& params, bool fHelp)
     if (fHelp)
         return true;
     if (!theApp.walletMain()->IsCrypted())
-        throw JSONRPCError(RPC_WALLET_WRONG_ENC_STATE, "Error: running with an unencrypted wallet, but walletpassphrase was called.");
+        throw JSONRPCError(RPC_WALLET_WRONG_ENC_STATE, "Error: running with an unencrypted wallet, but eb_walletpassphrase was called.");
 
-    // Note that the walletpassphrase is stored in params[0] which is not mlock()ed
+    // Note that the eb_walletpassphrase is stored in params[0] which is not mlock()ed
     SecureString strWalletPass;
     strWalletPass.reserve(100);
     // TODO: get rid of this .c_str() by implementing 
@@ -2034,7 +2034,7 @@ UniValue edcwalletpassphrase(const UniValue& params, bool fHelp)
     }
     else
         throw runtime_error(
-            "walletpassphrase <passphrase> <timeout>\n"
+            "eb_walletpassphrase <passphrase> <timeout>\n"
             "Stores the wallet decryption key in memory for <timeout> seconds.");
 
     theApp.walletMain()->TopUpKeyPool();
@@ -2042,7 +2042,7 @@ UniValue edcwalletpassphrase(const UniValue& params, bool fHelp)
     int64_t nSleepTime = params[1].get_int64();
     LOCK(cs_nWalletUnlockTime);
     theApp.walletUnlockTime( GetTime() + nSleepTime );
-    RPCRunLater("lockwallet", boost::bind(LockWallet, theApp.walletMain()), nSleepTime);
+    edcRPCRunLater("lockwallet", boost::bind(LockWallet, theApp.walletMain()), nSleepTime);
 
     return NullUniValue;
 }
@@ -2057,14 +2057,14 @@ UniValue edcwalletpassphrasechange(const UniValue& params, bool fHelp)
 
     if (theApp.walletMain()->IsCrypted() && (fHelp || params.size() != 2))
         throw runtime_error(
-            "walletpassphrasechange \"oldpassphrase\" \"newpassphrase\"\n"
+            "eb_walletpassphrasechange \"oldpassphrase\" \"newpassphrase\"\n"
             "\nChanges the wallet passphrase from 'oldpassphrase' to 'newpassphrase'.\n"
             "\nArguments:\n"
             "1. \"oldpassphrase\"      (string) The current passphrase\n"
             "2. \"newpassphrase\"      (string) The new passphrase\n"
             "\nExamples:\n"
-            + HelpExampleCli("walletpassphrasechange", "\"old one\" \"new one\"")
-            + HelpExampleRpc("walletpassphrasechange", "\"old one\", \"new one\"")
+            + HelpExampleCli("eb_walletpassphrasechange", "\"old one\" \"new one\"")
+            + HelpExampleRpc("eb_walletpassphrasechange", "\"old one\", \"new one\"")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -2072,7 +2072,7 @@ UniValue edcwalletpassphrasechange(const UniValue& params, bool fHelp)
     if (fHelp)
         return true;
     if (!theApp.walletMain()->IsCrypted())
-        throw JSONRPCError(RPC_WALLET_WRONG_ENC_STATE, "Error: running with an unencrypted wallet, but walletpassphrasechange was called.");
+        throw JSONRPCError(RPC_WALLET_WRONG_ENC_STATE, "Error: running with an unencrypted wallet, but eb_walletpassphrasechange was called.");
 
     // TODO: get rid of these .c_str() calls by implementing 
 	// SecureString::operator=(std::string)
@@ -2087,7 +2087,7 @@ UniValue edcwalletpassphrasechange(const UniValue& params, bool fHelp)
 
     if (strOldWalletPass.length() < 1 || strNewWalletPass.length() < 1)
         throw runtime_error(
-            "walletpassphrasechange <oldpassphrase> <newpassphrase>\n"
+            "eb_walletpassphrasechange <oldpassphrase> <newpassphrase>\n"
             "Changes the wallet passphrase from <oldpassphrase> to <newpassphrase>.");
 
     if (!theApp.walletMain()->ChangeWalletPassphrase(strOldWalletPass, strNewWalletPass))
@@ -2106,19 +2106,19 @@ UniValue edcwalletlock(const UniValue& params, bool fHelp)
 
     if (theApp.walletMain()->IsCrypted() && (fHelp || params.size() != 0))
         throw runtime_error(
-            "walletlock\n"
+            "eb_walletlock\n"
             "\nRemoves the wallet encryption key from memory, locking the wallet.\n"
-            "After calling this method, you will need to call walletpassphrase again\n"
+            "After calling this method, you will need to call eb_walletpassphrase again\n"
             "before being able to call any methods which require the wallet to be unlocked.\n"
             "\nExamples:\n"
             "\nSet the passphrase for 2 minutes to perform a transaction\n"
-            + HelpExampleCli("walletpassphrase", "\"my pass phrase\" 120") +
+            + HelpExampleCli("eb_walletpassphrase", "\"my pass phrase\" 120") +
             "\nPerform a send (requires passphrase set)\n"
-            + HelpExampleCli("sendtoaddress", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 1.0") +
+            + HelpExampleCli("eb_sendtoaddress", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 1.0") +
             "\nClear the passphrase since we are done before 2 minutes is up\n"
-            + HelpExampleCli("walletlock", "") +
+            + HelpExampleCli("eb_walletlock", "") +
             "\nAs json rpc call\n"
-            + HelpExampleRpc("walletlock", "")
+            + HelpExampleRpc("eb_walletlock", "")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -2126,7 +2126,7 @@ UniValue edcwalletlock(const UniValue& params, bool fHelp)
     if (fHelp)
         return true;
     if (!theApp.walletMain()->IsCrypted())
-        throw JSONRPCError(RPC_WALLET_WRONG_ENC_STATE, "Error: running with an unencrypted wallet, but walletlock was called.");
+        throw JSONRPCError(RPC_WALLET_WRONG_ENC_STATE, "Error: running with an unencrypted wallet, but eb_walletlock was called.");
 
     {
 		EDCapp & theApp = EDCapp::singleton();
@@ -2153,8 +2153,8 @@ UniValue edcencryptwallet(const UniValue& params, bool fHelp)
             "\nEncrypts the wallet with 'passphrase'. This is for first time encryption.\n"
             "After this, any calls that interact with private keys such as sending or signing \n"
             "will require the passphrase to be set prior the making these calls.\n"
-            "Use the walletpassphrase call for this, and then walletlock call.\n"
-            "If the wallet is already encrypted, use the walletpassphrasechange call.\n"
+            "Use the eb_walletpassphrase call for this, and then eb_walletlock call.\n"
+            "If the wallet is already encrypted, use the eb_walletpassphrasechange call.\n"
             "Note that this will shutdown the server.\n"
             "\nArguments:\n"
             "1. \"passphrase\"    (string) The pass phrase to encrypt the wallet with. It must be at least 1 character, but should be long.\n"
@@ -2162,11 +2162,11 @@ UniValue edcencryptwallet(const UniValue& params, bool fHelp)
             "\nEncrypt you wallet\n"
             + HelpExampleCli("eb_encryptwallet", "\"my pass phrase\"") +
             "\nNow set the passphrase to use the wallet, such as for signing or sending bitcoin\n"
-            + HelpExampleCli("walletpassphrase", "\"my pass phrase\"") +
+            + HelpExampleCli("eb_walletpassphrase", "\"my pass phrase\"") +
             "\nNow we can so something like sign\n"
-            + HelpExampleCli("signmessage", "\"bitcoinaddress\" \"test message\"") +
+            + HelpExampleCli("eb_signmessage", "\"bitcoinaddress\" \"test message\"") +
             "\nNow lock the wallet again by removing the passphrase\n"
-            + HelpExampleCli("walletlock", "") +
+            + HelpExampleCli("eb_walletlock", "") +
             "\nAs a json rpc call\n"
             + HelpExampleRpc("eb_encryptwallet", "\"my pass phrase\"")
         );
@@ -2209,14 +2209,14 @@ UniValue edclockunspent(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-            "lockunspent unlock ([{\"txid\":\"txid\",\"vout\":n},...])\n"
+            "eb_lockunspent unlock ([{\"txid\":\"txid\",\"vout\":n},...])\n"
             "\nUpdates list of temporarily unspendable outputs.\n"
             "Temporarily lock (unlock=false) or unlock (unlock=true) specified transaction outputs.\n"
             "If no transaction outputs are specified when unlocking then all current locked transaction outputs are unlocked.\n"
             "A locked transaction output will not be chosen by automatic coin selection, when spending bitcoins.\n"
             "Locks are stored in memory only. Nodes start with zero locked outputs, and the locked output list\n"
             "is always cleared (by virtue of process exit) when a node stops or fails.\n"
-            "Also see the listunspent call\n"
+            "Also see the eb_listunspent call\n"
             "\nArguments:\n"
             "1. unlock            (boolean, required) Whether to unlock (true) or lock (false) the specified transactions\n"
             "2. \"transactions\"  (string, optional) A json array of objects. Each object the txid (string) vout (numeric)\n"
@@ -2233,15 +2233,15 @@ UniValue edclockunspent(const UniValue& params, bool fHelp)
 
             "\nExamples:\n"
             "\nList the unspent transactions\n"
-            + HelpExampleCli("listunspent", "") +
+            + HelpExampleCli("eb_listunspent", "") +
             "\nLock an unspent transaction\n"
-            + HelpExampleCli("lockunspent", "false \"[{\\\"txid\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"vout\\\":1}]\"") +
+            + HelpExampleCli("eb_lockunspent", "false \"[{\\\"txid\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"vout\\\":1}]\"") +
             "\nList the locked transactions\n"
-            + HelpExampleCli("listlockunspent", "") +
+            + HelpExampleCli("eb_listlockunspent", "") +
             "\nUnlock the transaction again\n"
-            + HelpExampleCli("lockunspent", "true \"[{\\\"txid\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"vout\\\":1}]\"") +
+            + HelpExampleCli("eb_lockunspent", "true \"[{\\\"txid\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"vout\\\":1}]\"") +
             "\nAs a json rpc call\n"
-            + HelpExampleRpc("lockunspent", "false, \"[{\\\"txid\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"vout\\\":1}]\"")
+            + HelpExampleRpc("eb_lockunspent", "false, \"[{\\\"txid\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"vout\\\":1}]\"")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -2298,7 +2298,7 @@ UniValue edclistlockunspent(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() > 0)
         throw runtime_error(
-            "listlockunspent\n"
+            "eb_listlockunspent\n"
             "\nReturns list of temporarily unspendable outputs.\n"
             "See the lockunspent call to lock and unlock transactions for spending.\n"
             "\nResult:\n"
@@ -2311,15 +2311,15 @@ UniValue edclistlockunspent(const UniValue& params, bool fHelp)
             "]\n"
             "\nExamples:\n"
             "\nList the unspent transactions\n"
-            + HelpExampleCli("listunspent", "") +
+            + HelpExampleCli("eb_listunspent", "") +
             "\nLock an unspent transaction\n"
-            + HelpExampleCli("lockunspent", "false \"[{\\\"txid\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"vout\\\":1}]\"") +
+            + HelpExampleCli("eb_lockunspent", "false \"[{\\\"txid\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"vout\\\":1}]\"") +
             "\nList the locked transactions\n"
-            + HelpExampleCli("listlockunspent", "") +
+            + HelpExampleCli("eb_listlockunspent", "") +
             "\nUnlock the transaction again\n"
-            + HelpExampleCli("lockunspent", "true \"[{\\\"txid\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"vout\\\":1}]\"") +
+            + HelpExampleCli("eb_lockunspent", "true \"[{\\\"txid\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"vout\\\":1}]\"") +
             "\nAs a json rpc call\n"
-            + HelpExampleRpc("listlockunspent", "")
+            + HelpExampleRpc("eb_listlockunspent", "")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -2349,15 +2349,15 @@ UniValue edcsettxfee(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() < 1 || params.size() > 1)
         throw runtime_error(
-            "settxfee amount\n"
+            "eb_settxfee amount\n"
             "\nSet the transaction fee per kB. Overwrites the paytxfee parameter.\n"
             "\nArguments:\n"
             "1. amount         (numeric or sting, required) The transaction fee in " + CURRENCY_UNIT + "/kB\n"
             "\nResult\n"
             "true|false        (boolean) Returns true if successful\n"
             "\nExamples:\n"
-            + HelpExampleCli("settxfee", "0.00001")
-            + HelpExampleRpc("settxfee", "0.00001")
+            + HelpExampleCli("eb_settxfee", "0.00001")
+            + HelpExampleRpc("eb_settxfee", "0.00001")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -2378,7 +2378,7 @@ UniValue edcgetwalletinfo(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "getwalletinfo\n"
+            "eb_getwalletinfo\n"
             "Returns an object containing various wallet state info.\n"
             "\nResult:\n"
             "{\n"
@@ -2393,8 +2393,8 @@ UniValue edcgetwalletinfo(const UniValue& params, bool fHelp)
             "  \"paytxfee\": x.xxxx,         (numeric) the transaction fee configuration, set in " + CURRENCY_UNIT + "/kB\n"
             "}\n"
             "\nExamples:\n"
-            + HelpExampleCli("getwalletinfo", "")
-            + HelpExampleRpc("getwalletinfo", "")
+            + HelpExampleCli("eb_getwalletinfo", "")
+            + HelpExampleRpc("eb_getwalletinfo", "")
         );
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
@@ -2422,7 +2422,7 @@ UniValue edcresendwallettransactions(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "resendwallettransactions\n"
+            "eb_resendwallettransactions\n"
             "Immediately re-broadcast unconfirmed wallet transactions to all peers.\n"
             "Intended only for testing; the wallet code periodically re-broadcasts\n"
             "automatically.\n"
@@ -2449,7 +2449,7 @@ UniValue edclistunspent(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() > 3)
         throw runtime_error(
-            "listunspent ( minconf maxconf  [\"address\",...] )\n"
+            "eb_listunspent ( minconf maxconf  [\"address\",...] )\n"
             "\nReturns array of unspent transaction outputs\n"
             "with between minconf and maxconf (inclusive) confirmations.\n"
             "Optionally filter to only include txouts paid to specified addresses.\n"
@@ -2480,9 +2480,9 @@ UniValue edclistunspent(const UniValue& params, bool fHelp)
             "]\n"
 
             "\nExamples\n"
-            + HelpExampleCli("listunspent", "")
-            + HelpExampleCli("listunspent", "6 9999999 \"[\\\"1PGFqEzfmQch1gKD3ra4k18PNj3tTUUSqg\\\",\\\"1LtvqCaApEdUGFkpKMM4MstjcaL4dKg8SP\\\"]\"")
-            + HelpExampleRpc("listunspent", "6, 9999999 \"[\\\"1PGFqEzfmQch1gKD3ra4k18PNj3tTUUSqg\\\",\\\"1LtvqCaApEdUGFkpKMM4MstjcaL4dKg8SP\\\"]\"")
+            + HelpExampleCli("eb_listunspent", "")
+            + HelpExampleCli("eb_listunspent", "6 9999999 \"[\\\"1PGFqEzfmQch1gKD3ra4k18PNj3tTUUSqg\\\",\\\"1LtvqCaApEdUGFkpKMM4MstjcaL4dKg8SP\\\"]\"")
+            + HelpExampleRpc("eb_listunspent", "6, 9999999 \"[\\\"1PGFqEzfmQch1gKD3ra4k18PNj3tTUUSqg\\\",\\\"1LtvqCaApEdUGFkpKMM4MstjcaL4dKg8SP\\\"]\"")
         );
 
     RPCTypeCheck(params, boost::assign::list_of(UniValue::VNUM)(UniValue::VNUM)(UniValue::VARR));
@@ -2583,7 +2583,7 @@ UniValue edcfundrawtransaction(const UniValue& params, bool fHelp)
                             "The inputs added will not be signed, use signrawtransaction for that.\n"
                             "Note that all existing inputs must have their previous output transaction be in the wallet.\n"
                             "Note that all inputs selected must be of standard form and P2SH scripts must be\n"
-                            "in the wallet using importaddress or eb_addmultisigaddress (to calculate fees).\n"
+                            "in the wallet using eb_importaddress or eb_addmultisigaddress (to calculate fees).\n"
                             "You can see whether this is the case by checking the \"solvable\" field in the listunspent output.\n"
                             "Only pay-to-pubkey, multisig, and P2SH versions thereof are currently supported for watch-only\n"
                             "\nArguments:\n"
@@ -2693,7 +2693,7 @@ extern UniValue edcimportwallet(const UniValue& params, bool fHelp);
 extern UniValue edcimportprunedfunds(const UniValue& params, bool fHelp);
 extern UniValue edcremoveprunedfunds(const UniValue& params, bool fHelp);
 
-static const CRPCCommand commands[] =
+static const CRPCCommand edcCommands[] =
 { //  category              name                        actor (function)           okSafeMode
     //  --------------------- ------------------------    -----------------------    ----------
     { "rawtransactions",    "eb_fundrawtransaction",       &edcfundrawtransaction,       false },
@@ -2743,8 +2743,8 @@ static const CRPCCommand commands[] =
     { "wallet",             "eb_removeprunedfunds",        &edcremoveprunedfunds,        true  },
 };
 
-void edcRegisterWalletRPCCommands(CRPCTable &tableRPC)
+void edcRegisterWalletRPCCommands(CEDCRPCTable & edcTableRPC)
 {
-    for (unsigned int vcidx = 0; vcidx < ARRAYLEN(commands); vcidx++)
-        tableRPC.appendCommand(commands[vcidx].name, &commands[vcidx]);
+    for (unsigned int vcidx = 0; vcidx < ARRAYLEN(edcCommands); vcidx++)
+        edcTableRPC.appendCommand(edcCommands[vcidx].name, &edcCommands[vcidx]);
 }

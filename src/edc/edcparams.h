@@ -57,6 +57,7 @@ public:
 	bool rest;
 	bool salvagewallet;
 	bool sendfreetransactions;
+	bool server;
 	bool shrinkdebugfile;
 	bool spendzeroconfchange;
 	bool stopafterblockimport;

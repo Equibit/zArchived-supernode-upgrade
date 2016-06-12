@@ -3,7 +3,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <stdexcept>
-#include "../rpc/server.h"
+#include "edc/rpc/edcserver.h"
 #include "../utilstrencodings.h"
 
 
@@ -167,13 +167,13 @@ static const CRPCCommand commands[] =
 	{ "equibit", "acceptEquibitAgentRequest",&acceptEquibitAgentRequest, true },
 };
 
-void RegisterEquibitRPCCommands( CRPCTable & tableRPC)
+void RegisterEquibitRPCCommands( CEDCRPCTable & edcTableRPC)
 {
 	for( unsigned int vcidx = 0; vcidx < ARRAYLEN(commands); vcidx++ )
-		tableRPC.appendCommand(commands[vcidx].name, &commands[vcidx]);
+		edcTableRPC.appendCommand(commands[vcidx].name, &commands[vcidx]);
 }
 
-void RegisterEquibitWalletRPCCommands( CRPCTable & tableRPC)
+void RegisterEquibitWalletRPCCommands( CEDCRPCTable & edcTableRPC)
 {
 	// TODO
 }

@@ -284,17 +284,10 @@ bool static Bind(const CService &addr, unsigned int flags) {
     return true;
 }
 
-// EDC BEGIN
-extern void OnEDCRPCStopped();
-// EDC END
-
 void OnRPCStopped()
 {
     cvBlockChange.notify_all();
     LogPrint("rpc", "RPC stopped.\n");
-// EDC BEGIN
-	OnEDCRPCStopped();
-// EDC END
 }
 
 void OnRPCPreCommand(const CRPCCommand& cmd)

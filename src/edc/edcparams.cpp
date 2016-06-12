@@ -220,6 +220,7 @@ EDCparams::EDCparams()
 	rest                = GetBoolArg( "-eb_rest", EDC_DEFAULT_REST_ENABLE );
 	salvagewallet       = GetBoolArg( "-eb_salvagewallet", false );
 	sendfreetransactions= GetBoolArg( "-eb_sendfreetransactions", EDC_DEFAULT_SEND_FREE_TRANSACTIONS );
+	server              = GetBoolArg( "-eb_server", false );
 	shrinkdebugfile     = GetBoolArg( "-eb_shrinkdebugfile", debug.size() > 0 );
 	spendzeroconfchange = GetBoolArg( "-eb_spendzeroconfchange", EDC_DEFAULT_SPEND_ZEROCONF_CHANGE );
 	stopafterblockimport= GetBoolArg( "-eb_stopafterblockimport", EDC_DEFAULT_STOPAFTERBLOCKIMPORT );
@@ -556,9 +557,11 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
     if (showDebug)
         strUsage += HelpMessageOpt("-eb_blockversion=<n>", "Override block version to test forking scenarios");
 
+
 	////////////////////////////////////////////////////////////////////////
     strUsage += HelpMessageGroup(_("Equibit RPC server options:"));
 
+    strUsage += HelpMessageOpt("-eb_server", _("Accept command line and JSON-RPC commands"));
     strUsage += HelpMessageOpt("-eb_rest", 
 		strprintf(_("Accept public REST requests (default: %u)"), EDC_DEFAULT_REST_ENABLE));
     strUsage += HelpMessageOpt("-eb_rpcbind=<addr>", 

@@ -13,7 +13,7 @@
 #include "edc/edcmain.h"
 #include "edc/policy/edcpolicy.h"
 #include "edc/primitives/edctransaction.h"
-#include "rpc/server.h"
+#include "edc/rpc/edcserver.h"
 #include "streams.h"
 #include "sync.h"
 #include "edc/edctxmempool.h"
@@ -147,13 +147,13 @@ UniValue edcgetblockcount(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "getblockcount\n"
+            "eb_getblockcount\n"
             "\nReturns the number of blocks in the longest block chain.\n"
             "\nResult:\n"
             "n    (numeric) The current block count\n"
             "\nExamples:\n"
-            + HelpExampleCli("getblockcount", "")
-            + HelpExampleRpc("getblockcount", "")
+            + HelpExampleCli("eb_getblockcount", "")
+            + HelpExampleRpc("eb_getblockcount", "")
         );
 
     LOCK(EDC_cs_main);
@@ -166,13 +166,13 @@ UniValue edcgetbestblockhash(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "getbestblockhash\n"
+            "eb_getbestblockhash\n"
             "\nReturns the hash of the best (tip) block in the longest block chain.\n"
             "\nResult\n"
             "\"hex\"      (string) the block hash hex encoded\n"
             "\nExamples\n"
-            + HelpExampleCli("getbestblockhash", "")
-            + HelpExampleRpc("getbestblockhash", "")
+            + HelpExampleCli("eb_getbestblockhash", "")
+            + HelpExampleRpc("eb_getbestblockhash", "")
         );
 
     LOCK(EDC_cs_main);
@@ -183,13 +183,13 @@ UniValue edcgetdifficulty(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "getdifficulty\n"
+            "eb_getdifficulty\n"
             "\nReturns the proof-of-work difficulty as a multiple of the minimum difficulty.\n"
             "\nResult:\n"
             "n.nnn       (numeric) the proof-of-work difficulty as a multiple of the minimum difficulty.\n"
             "\nExamples:\n"
-            + HelpExampleCli("getdifficulty", "")
-            + HelpExampleRpc("getdifficulty", "")
+            + HelpExampleCli("eb_getdifficulty", "")
+            + HelpExampleRpc("eb_getdifficulty", "")
         );
 
     LOCK(EDC_cs_main);
@@ -254,7 +254,7 @@ UniValue edcgetrawmempool(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
         throw runtime_error(
-            "getrawmempool ( verbose )\n"
+            "eb_getrawmempool ( verbose )\n"
             "\nReturns all transaction ids in memory pool as a json array of string transaction ids.\n"
             "\nArguments:\n"
             "1. verbose           (boolean, optional, default=false) true for a json object, false for array of transaction ids\n"
@@ -282,8 +282,8 @@ UniValue edcgetrawmempool(const UniValue& params, bool fHelp)
             "  }, ...\n"
             "}\n"
             "\nExamples\n"
-            + HelpExampleCli("getrawmempool", "true")
-            + HelpExampleRpc("getrawmempool", "true")
+            + HelpExampleCli("eb_getrawmempool", "true")
+            + HelpExampleRpc("eb_getrawmempool", "true")
         );
 
     LOCK(EDC_cs_main);
@@ -301,15 +301,15 @@ UniValue edcgetblockhash(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "getblockhash index\n"
+            "eb_getblockhash index\n"
             "\nReturns hash of block in best-block-chain at index provided.\n"
             "\nArguments:\n"
             "1. index         (numeric, required) The block index\n"
             "\nResult:\n"
             "\"hash\"         (string) The block hash\n"
             "\nExamples:\n"
-            + HelpExampleCli("getblockhash", "1000")
-            + HelpExampleRpc("getblockhash", "1000")
+            + HelpExampleCli("eb_getblockhash", "1000")
+            + HelpExampleRpc("eb_getblockhash", "1000")
         );
 
     LOCK(EDC_cs_main);
@@ -328,7 +328,7 @@ UniValue edcgetblockheader(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-            "getblockheader \"hash\" ( verbose )\n"
+            "eb_getblockheader \"hash\" ( verbose )\n"
             "\nIf verbose is false, returns a string that is serialized, hex-encoded data for blockheader 'hash'.\n"
             "If verbose is true, returns an Object with information about blockheader <hash>.\n"
             "\nArguments:\n"
@@ -354,8 +354,8 @@ UniValue edcgetblockheader(const UniValue& params, bool fHelp)
             "\nResult (for verbose=false):\n"
             "\"data\"             (string) A string that is serialized, hex-encoded data for block 'hash'.\n"
             "\nExamples:\n"
-            + HelpExampleCli("getblockheader", "\"00000000c937983704a73af28acdec37b049d214adbda81d7e2a3dd146f6ed09\"")
-            + HelpExampleRpc("getblockheader", "\"00000000c937983704a73af28acdec37b049d214adbda81d7e2a3dd146f6ed09\"")
+            + HelpExampleCli("eb_getblockheader", "\"00000000c937983704a73af28acdec37b049d214adbda81d7e2a3dd146f6ed09\"")
+            + HelpExampleRpc("eb_getblockheader", "\"00000000c937983704a73af28acdec37b049d214adbda81d7e2a3dd146f6ed09\"")
         );
 
     LOCK(EDC_cs_main);
@@ -388,7 +388,7 @@ UniValue edcgetblock(const UniValue& params, bool fHelp)
 	EDCapp & theApp = EDCapp::singleton();
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-            "getblock \"hash\" ( verbose )\n"
+            "eb_getblock \"hash\" ( verbose )\n"
             "\nIf verbose is false, returns a string that is serialized, hex-encoded data for block 'hash'.\n"
             "If verbose is true, returns an Object with information about block <hash>.\n"
             "\nArguments:\n"
@@ -419,8 +419,8 @@ UniValue edcgetblock(const UniValue& params, bool fHelp)
             "\nResult (for verbose=false):\n"
             "\"data\"             (string) A string that is serialized, hex-encoded data for block 'hash'.\n"
             "\nExamples:\n"
-            + HelpExampleCli("getblock", "\"00000000c937983704a73af28acdec37b049d214adbda81d7e2a3dd146f6ed09\"")
-            + HelpExampleRpc("getblock", "\"00000000c937983704a73af28acdec37b049d214adbda81d7e2a3dd146f6ed09\"")
+            + HelpExampleCli("eb_getblock", "\"00000000c937983704a73af28acdec37b049d214adbda81d7e2a3dd146f6ed09\"")
+            + HelpExampleRpc("eb_getblock", "\"00000000c937983704a73af28acdec37b049d214adbda81d7e2a3dd146f6ed09\"")
         );
 
     LOCK(EDC_cs_main);
@@ -522,7 +522,7 @@ UniValue edcgettxoutsetinfo(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "gettxoutsetinfo\n"
+            "eb_gettxoutsetinfo\n"
             "\nReturns statistics about the unspent transaction output set.\n"
             "Note this call may take some time.\n"
             "\nResult:\n"
@@ -536,8 +536,8 @@ UniValue edcgettxoutsetinfo(const UniValue& params, bool fHelp)
             "  \"total_amount\": x.xxx          (numeric) The total amount\n"
             "}\n"
             "\nExamples:\n"
-            + HelpExampleCli("gettxoutsetinfo", "")
-            + HelpExampleRpc("gettxoutsetinfo", "")
+            + HelpExampleCli("eb_gettxoutsetinfo", "")
+            + HelpExampleRpc("eb_gettxoutsetinfo", "")
         );
 
     UniValue ret(UniValue::VOBJ);
@@ -561,7 +561,7 @@ UniValue edcgettxout(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 3)
         throw runtime_error(
-            "gettxout \"txid\" n ( includemempool )\n"
+            "eb_gettxout \"txid\" n ( includemempool )\n"
             "\nReturns details about an unspent transaction output.\n"
             "\nArguments:\n"
             "1. \"txid\"       (string, required) The transaction id\n"
@@ -590,9 +590,9 @@ UniValue edcgettxout(const UniValue& params, bool fHelp)
             "\nGet unspent transactions\n"
             + HelpExampleCli("listunspent", "") +
             "\nView the details\n"
-            + HelpExampleCli("gettxout", "\"txid\" 1") +
+            + HelpExampleCli("eb_gettxout", "\"txid\" 1") +
             "\nAs a json rpc call\n"
-            + HelpExampleRpc("gettxout", "\"txid\", 1")
+            + HelpExampleRpc("eb_gettxout", "\"txid\", 1")
         );
 
     LOCK(EDC_cs_main);
@@ -652,7 +652,7 @@ UniValue edcverifychain(const UniValue& param, bool fHelp)
 
     if (fHelp || param.size() > 2)
         throw runtime_error(
-            "verifychain ( checklevel numblocks )\n"
+            "eb_verifychain ( checklevel numblocks )\n"
             "\nVerifies blockchain database.\n"
             "\nArguments:\n"
             "1. checklevel   (numeric, optional, 0-4, default=" + strprintf("%d", nCheckLevel) + ") How thorough the block verification is.\n"
@@ -660,8 +660,8 @@ UniValue edcverifychain(const UniValue& param, bool fHelp)
             "\nResult:\n"
             "true|false       (boolean) Verified or not\n"
             "\nExamples:\n"
-            + HelpExampleCli("verifychain", "")
-            + HelpExampleRpc("verifychain", "")
+            + HelpExampleCli("eb_verifychain", "")
+            + HelpExampleRpc("eb_verifychain", "")
         );
 
     LOCK(EDC_cs_main);
@@ -733,7 +733,7 @@ UniValue edcgetblockchaininfo(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "getblockchaininfo\n"
+            "eb_getblockchaininfo\n"
             "Returns an object containing various state info regarding block chain processing.\n"
             "\nResult:\n"
             "{\n"
@@ -770,8 +770,8 @@ UniValue edcgetblockchaininfo(const UniValue& params, bool fHelp)
             "  }\n"
             "}\n"
             "\nExamples:\n"
-            + HelpExampleCli("getblockchaininfo", "")
-            + HelpExampleRpc("getblockchaininfo", "")
+            + HelpExampleCli("eb_getblockchaininfo", "")
+            + HelpExampleRpc("eb_getblockchaininfo", "")
         );
 
     LOCK(EDC_cs_main);
@@ -829,7 +829,7 @@ UniValue edcgetchaintips(const UniValue& params, bool fHelp)
 	EDCapp & theApp = EDCapp::singleton();
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "getchaintips\n"
+            "eb_getchaintips\n"
             "Return information about all known tips in the block tree,"
             " including the main chain as well as orphaned branches.\n"
             "\nResult:\n"
@@ -854,8 +854,8 @@ UniValue edcgetchaintips(const UniValue& params, bool fHelp)
             "4.  \"valid-fork\"            This branch is not part of the active chain, but is fully validated\n"
             "5.  \"active\"                This is the tip of the active main chain, which is certainly valid\n"
             "\nExamples:\n"
-            + HelpExampleCli("getchaintips", "")
-            + HelpExampleRpc("getchaintips", "")
+            + HelpExampleCli("eb_getchaintips", "")
+            + HelpExampleRpc("eb_getchaintips", "")
         );
 
     LOCK(EDC_cs_main);
@@ -960,7 +960,7 @@ UniValue edcgetmempoolinfo(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "getmempoolinfo\n"
+            "eb_getmempoolinfo\n"
             "\nReturns details on the active state of the TX memory pool.\n"
             "\nResult:\n"
             "{\n"
@@ -971,8 +971,8 @@ UniValue edcgetmempoolinfo(const UniValue& params, bool fHelp)
             "  \"mempoolminfee\": xxxxx       (numeric) Minimum fee for tx to be accepted\n"
             "}\n"
             "\nExamples:\n"
-            + HelpExampleCli("getmempoolinfo", "")
-            + HelpExampleRpc("getmempoolinfo", "")
+            + HelpExampleCli("eb_getmempoolinfo", "")
+            + HelpExampleRpc("eb_getmempoolinfo", "")
         );
 
     return edcmempoolInfoToJSON();
@@ -983,14 +983,14 @@ UniValue edcinvalidateblock(const UniValue& params, bool fHelp)
 	EDCapp & theApp = EDCapp::singleton();
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "invalidateblock \"hash\"\n"
+            "eb_invalidateblock \"hash\"\n"
             "\nPermanently marks a block as invalid, as if it violated a consensus rule.\n"
             "\nArguments:\n"
             "1. hash   (string, required) the hash of the block to mark as invalid\n"
             "\nResult:\n"
             "\nExamples:\n"
-            + HelpExampleCli("invalidateblock", "\"blockhash\"")
-            + HelpExampleRpc("invalidateblock", "\"blockhash\"")
+            + HelpExampleCli("eb_invalidateblock", "\"blockhash\"")
+            + HelpExampleRpc("eb_invalidateblock", "\"blockhash\"")
         );
 
     std::string strHash = params[0].get_str();
@@ -1031,8 +1031,8 @@ UniValue edcreconsiderblock(const UniValue& params, bool fHelp)
             "1. hash   (string, required) the hash of the block to reconsider\n"
             "\nResult:\n"
             "\nExamples:\n"
-            + HelpExampleCli("reconsiderblock", "\"blockhash\"")
-            + HelpExampleRpc("reconsiderblock", "\"blockhash\"")
+            + HelpExampleCli("eb_reconsiderblock", "\"blockhash\"")
+            + HelpExampleRpc("eb_reconsiderblock", "\"blockhash\"")
         );
 
     std::string strHash = params[0].get_str();
@@ -1080,8 +1080,8 @@ static const CRPCCommand edcCommands[] =
     { "hidden",             "eb_reconsiderblock",        &edcreconsiderblock,        true  },
 };
 
-void edcRegisterBlockchainRPCCommands(CRPCTable &tableRPC)
+void edcRegisterBlockchainRPCCommands(CEDCRPCTable & edcTableRPC)
 {
     for (unsigned int vcidx = 0; vcidx < ARRAYLEN(edcCommands); vcidx++)
-        tableRPC.appendCommand(edcCommands[vcidx].name, &edcCommands[vcidx]);
+        edcTableRPC.appendCommand(edcCommands[vcidx].name, &edcCommands[vcidx]);
 }
