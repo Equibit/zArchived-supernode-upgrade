@@ -368,7 +368,7 @@ CEDCNode* ConnectEDCNode(CAddress addrConnect, const char *pszDest)
     bool proxyConnectionFailed = false;
 	EDCapp & theApp = EDCapp::singleton();
 
-    if (pszDest ? ConnectSocketByName(addrConnect, hSocket, pszDest, Params().
+    if (pszDest ? ConnectSocketByName(addrConnect, hSocket, pszDest, edcParams().
 		GetDefaultPort(), theApp.connectTimeout(), &proxyConnectionFailed) :
         ConnectSocket(addrConnect, hSocket, theApp.connectTimeout(), 
 		&proxyConnectionFailed))
@@ -659,7 +659,7 @@ bool CEDCNode::ReceiveMsgBytes(const char *pch, unsigned int nBytes)
         // get current incomplete message, or create a new one
         if (vRecvMsg.empty() ||
             vRecvMsg.back().complete())
-            vRecvMsg.push_back(CNetMessage(Params().MessageStart(), SER_NETWORK, nRecvVersion));
+            vRecvMsg.push_back(CNetMessage(edcParams().MessageStart(), SER_NETWORK, nRecvVersion));
 
         CNetMessage& msg = vRecvMsg.back();
 
@@ -1424,7 +1424,7 @@ void edcThreadDNSAddressSeed()
         }
     }
 
-    const vector<CDNSSeedData> &vSeeds = Params().DNSSeeds();
+    const vector<CDNSSeedData> &vSeeds = edcParams().DNSSeeds();
     int found = 0;
 
     edcLogPrintf("Loading addresses from DNS seeds (could take a while)\n");
@@ -1444,7 +1444,7 @@ void edcThreadDNSAddressSeed()
                 BOOST_FOREACH(const CNetAddr& ip, vIPs)
                 {
                     int nOneDay = 24*3600;
-                    CAddress addr = CAddress(CService(ip, Params().GetDefaultPort()));
+                    CAddress addr = CAddress(CService(ip, edcParams().GetDefaultPort()));
                     addr.nTime = GetTime() - 3*nOneDay - GetRand(4*nOneDay); // use a random age between 3 and 7 days old
                     vAdd.push_back(addr);
                     found++;
@@ -1473,7 +1473,7 @@ void edcDumpAddresses()
 
     int64_t nStart = GetTimeMillis();
 
-    CAddrDB adb;
+    CEDCAddrDB adb;
     adb.Write(theApp.addrman());
 
     edcLogPrint("net", "Flushed %d addresses to peers.dat  %dms\n",
@@ -1547,7 +1547,7 @@ void edcThreadOpenConnections()
             if (!done) 
 			{
                 edcLogPrintf("Adding fixed seed nodes as DNS doesn't seem to be available.\n");
-                theApp.addrman().Add(convertSeed6(Params().FixedSeeds()), CNetAddr("127.0.0.1"));
+                theApp.addrman().Add(convertSeed6(edcParams().FixedSeeds()), CNetAddr("127.0.0.1"));
                 done = true;
             }
         }
@@ -1599,7 +1599,7 @@ void edcThreadOpenConnections()
                 continue;
 
             // do not allow non-default ports, unless after 50 invalid addresses selected already
-            if (addr.GetPort() != Params().GetDefaultPort() && nTries < 50)
+            if (addr.GetPort() != edcParams().GetDefaultPort() && nTries < 50)
                 continue;
 
             addrConnect = addr;
@@ -1654,7 +1654,7 @@ void edcThreadOpenAddedConnections()
         BOOST_FOREACH(const std::string& strAddNode, lAddresses) 
 		{
             vector<CService> vservNode(0);
-            if(Lookup(strAddNode.c_str(), vservNode, Params().GetDefaultPort(),				fNameLookup, 0))
+            if(Lookup(strAddNode.c_str(), vservNode, edcParams().GetDefaultPort(),				fNameLookup, 0))
             {
                 lservAddressesToAdd.push_back(vservNode);
                 {
@@ -1977,7 +1977,7 @@ void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
     // Load addresses from peers.dat
     int64_t nStart = GetTimeMillis();
     {
-        CAddrDB adb;
+        CEDCAddrDB adb;
         if (adb.Read(theApp.addrman()))
             edcLogPrintf("Loaded %i addresses from peers.dat  %dms\n", theApp.addrman().size(), GetTimeMillis() - nStart);
         else 
@@ -1990,7 +1990,7 @@ void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
     uiInterface.InitMessage(_("Loading banlist..."));
     // Load addresses from banlist.dat
     nStart = GetTimeMillis();
-    CBanDB bandb;
+    CEDCBanDB bandb;
     banmap_t banmap;
     if (bandb.Read(banmap)) 
 	{
@@ -2279,6 +2279,111 @@ void CEDCNode::Fuzz(int nChance)
     Fuzz(2);
 }
 
+//
+// CEDCAddrDB
+//
+
+CEDCAddrDB::CEDCAddrDB()
+{
+    pathAddr = edcGetDataDir() / "peers.dat";
+}
+
+bool CEDCAddrDB::Write(const CAddrMan& addr)
+{
+    // Generate random temporary filename
+    unsigned short randv = 0;
+    GetRandBytes((unsigned char*)&randv, sizeof(randv));
+    std::string tmpfn = strprintf("peers.dat.%04x", randv);
+
+    // serialize addresses, checksum data up to that point, then append csum
+    CDataStream ssPeers(SER_DISK, CLIENT_VERSION);
+    ssPeers << FLATDATA(Params().MessageStart());
+    ssPeers << addr;
+    uint256 hash = Hash(ssPeers.begin(), ssPeers.end());
+    ssPeers << hash;
+
+    // open temp output file, and associate with CAutoFile
+    boost::filesystem::path pathTmp = edcGetDataDir() / tmpfn;
+    FILE *file = fopen(pathTmp.string().c_str(), "wb");
+    CAutoFile fileout(file, SER_DISK, CLIENT_VERSION);
+    if (fileout.IsNull())
+        return edcError("%s: Failed to open file %s", __func__, pathTmp.string());
+
+    // Write and commit header, data
+    try {
+        fileout << ssPeers;
+    }
+    catch (const std::exception& e) {
+        return edcError("%s: Serialize or I/O error - %s", __func__, e.what());
+    }
+    FileCommit(fileout.Get());
+    fileout.fclose();
+
+    // replace existing peers.dat, if any, with new peers.dat.XXXX
+    if (!RenameOver(pathTmp, pathAddr))
+        return edcError("%s: Rename-into-place failed", __func__);
+
+    return true;
+}
+
+bool CEDCAddrDB::Read(CAddrMan& addr)
+{
+    // open input file, and associate with CAutoFile
+    FILE *file = fopen(pathAddr.string().c_str(), "rb");
+    CAutoFile filein(file, SER_DISK, CLIENT_VERSION);
+    if (filein.IsNull())
+        return edcError("%s: Failed to open file %s", __func__, pathAddr.string());
+
+    // use file size to size memory buffer
+    uint64_t fileSize = boost::filesystem::file_size(pathAddr);
+    uint64_t dataSize = 0;
+    // Don't try to resize to a negative number if file is small
+    if (fileSize >= sizeof(uint256))
+        dataSize = fileSize - sizeof(uint256);
+    vector<unsigned char> vchData;
+    vchData.resize(dataSize);
+    uint256 hashIn;
+
+    // read data and checksum from file
+    try 
+	{
+        filein.read((char *)&vchData[0], dataSize);
+        filein >> hashIn;
+    }
+    catch (const std::exception& e) 
+	{
+        return edcError("%s: Deserialize or I/O error - %s", __func__, e.what());
+    }
+    filein.fclose();
+
+    CDataStream ssPeers(vchData, SER_DISK, CLIENT_VERSION);
+
+    // verify stored checksum matches input data
+    uint256 hashTmp = Hash(ssPeers.begin(), ssPeers.end());
+    if (hashIn != hashTmp)
+        return edcError("%s: Checksum mismatch, data corrupted", __func__);
+
+    unsigned char pchMsgTmp[4];
+    try 
+	{
+        // de-serialize file header (network specific magic number) and ..
+        ssPeers >> FLATDATA(pchMsgTmp);
+
+        // ... verify the network matches ours
+        if (memcmp(pchMsgTmp, Params().MessageStart(), sizeof(pchMsgTmp)))
+            return edcError("%s: Invalid network magic number", __func__);
+
+        // de-serialize address data into one CAddrMan object
+        ssPeers >> addr;
+    }
+    catch (const std::exception& e) 
+	{
+        return edcError("%s: Deserialize or I/O error - %s", __func__, e.what());
+    }
+
+    return true;
+}
+
 unsigned int edcReceiveFloodSize() 
 { 
 	EDCparams & params = EDCparams::singleton();
@@ -2415,7 +2520,7 @@ void CEDCNode::BeginMessage(const char* pszCommand) EXCLUSIVE_LOCK_FUNCTION(cs_v
 {
     ENTER_CRITICAL_SECTION(cs_vSend);
     assert(ssSend.size() == 0);
-    ssSend << CMessageHeader(Params().MessageStart(), pszCommand, 0);
+    ssSend << CMessageHeader(edcParams().MessageStart(), pszCommand, 0);
     edcLogPrint("net", "sending: %s ", SanitizeString(pszCommand));
 }
 
@@ -2475,6 +2580,116 @@ void CEDCNode::EndMessage(const char* pszCommand) UNLOCK_FUNCTION(cs_vSend)
     LEAVE_CRITICAL_SECTION(cs_vSend);
 }
 
+
+//
+// CEDCBanDB
+//
+
+CEDCBanDB::CEDCBanDB()
+{
+    pathBanlist = edcGetDataDir() / "banlist.dat";
+}
+
+bool CEDCBanDB::Write(const banmap_t& banSet)
+{
+    // Generate random temporary filename
+    unsigned short randv = 0;
+    GetRandBytes((unsigned char*)&randv, sizeof(randv));
+    std::string tmpfn = strprintf("banlist.dat.%04x", randv);
+
+    // serialize banlist, checksum data up to that point, then append csum
+    CDataStream ssBanlist(SER_DISK, CLIENT_VERSION);
+    ssBanlist << FLATDATA(Params().MessageStart());
+    ssBanlist << banSet;
+    uint256 hash = Hash(ssBanlist.begin(), ssBanlist.end());
+    ssBanlist << hash;
+
+    // open temp output file, and associate with CAutoFile
+    boost::filesystem::path pathTmp = edcGetDataDir() / tmpfn;
+    FILE *file = fopen(pathTmp.string().c_str(), "wb");
+    CAutoFile fileout(file, SER_DISK, CLIENT_VERSION);
+    if (fileout.IsNull())
+        return edcError("%s: Failed to open file %s", __func__, pathTmp.string());
+
+    // Write and commit header, data
+    try 
+	{
+        fileout << ssBanlist;
+    }
+    catch (const std::exception& e) 
+	{
+        return edcError("%s: Serialize or I/O error - %s", __func__, e.what());
+    }
+
+    FileCommit(fileout.Get());
+    fileout.fclose();
+
+    // replace existing banlist.dat, if any, with new banlist.dat.XXXX
+    if (!RenameOver(pathTmp, pathBanlist))
+        return edcError("%s: Rename-into-place failed", __func__);
+
+    return true;
+}
+
+bool CEDCBanDB::Read(banmap_t& banSet)
+{
+    // open input file, and associate with CAutoFile
+    FILE *file = fopen(pathBanlist.string().c_str(), "rb");
+    CAutoFile filein(file, SER_DISK, CLIENT_VERSION);
+    if (filein.IsNull())
+        return edcError("%s: Failed to open file %s", __func__, pathBanlist.string());
+
+    // use file size to size memory buffer
+    uint64_t fileSize = boost::filesystem::file_size(pathBanlist);
+    uint64_t dataSize = 0;
+
+    // Don't try to resize to a negative number if file is small
+    if (fileSize >= sizeof(uint256))
+        dataSize = fileSize - sizeof(uint256);
+    vector<unsigned char> vchData;
+    vchData.resize(dataSize);
+    uint256 hashIn;
+
+    // read data and checksum from file
+    try 
+	{
+        filein.read((char *)&vchData[0], dataSize);
+        filein >> hashIn;
+    }
+    catch (const std::exception& e
+	) {
+        return edcError("%s: Deserialize or I/O error - %s", __func__, e.what());
+    }
+    filein.fclose();
+
+    CDataStream ssBanlist(vchData, SER_DISK, CLIENT_VERSION);
+
+    // verify stored checksum matches input data
+    uint256 hashTmp = Hash(ssBanlist.begin(), ssBanlist.end());
+    if (hashIn != hashTmp)
+        return edcError("%s: Checksum mismatch, data corrupted", __func__);
+
+    unsigned char pchMsgTmp[4];
+    try 
+	{
+        // de-serialize file header (network specific magic number) and ..
+        ssBanlist >> FLATDATA(pchMsgTmp);
+
+        // ... verify the network matches ours
+        if (memcmp(pchMsgTmp, Params().MessageStart(), sizeof(pchMsgTmp)))
+            return edcError("%s: Invalid network magic number", __func__);
+
+        // de-serialize address data into one CAddrMan object
+        ssBanlist >> banSet;
+    }
+    catch (const std::exception& e) 
+	{
+        return edcError("%s: Deserialize or I/O error - %s", __func__, e.what());
+    }
+
+    return true;
+}
+
 void edcDumpBanlist()
 {
     CEDCNode::SweepBanned(); // clean unused entries (if bantime has expired)
@@ -2484,7 +2699,7 @@ void edcDumpBanlist()
 
     int64_t nStart = GetTimeMillis();
 
-    CBanDB bandb;
+    CEDCBanDB bandb;
     banmap_t banmap;
     CEDCNode::SetBannedSetDirty(false);
     CEDCNode::GetBanned(banmap);

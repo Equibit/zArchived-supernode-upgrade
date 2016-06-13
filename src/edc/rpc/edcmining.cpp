@@ -51,7 +51,7 @@ UniValue edcGetNetworkHashPS(int lookup, int height)
 
     // If lookup is -1, then use blocks since last difficulty change.
     if (lookup <= 0)
-        lookup = pb->nHeight % Params().GetConsensus().DifficultyAdjustmentInterval() + 1;
+        lookup = pb->nHeight % edcParams().GetConsensus().DifficultyAdjustmentInterval() + 1;
 
     // If lookup is larger than chain, then set it to chain length.
     if (lookup > pb->nHeight)
@@ -123,7 +123,7 @@ UniValue edcgenerateBlocks(
     UniValue blockHashes(UniValue::VARR);
     while (nHeight < nHeightEnd)
     {
-        std::unique_ptr<CEDCBlockTemplate> pblocktemplate(CreateNewEDCBlock(Params(), coinbaseScript->reserveScript));
+        std::unique_ptr<CEDCBlockTemplate> pblocktemplate(CreateNewEDCBlock(edcParams(), coinbaseScript->reserveScript));
         if (!pblocktemplate.get())
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Couldn't create new block");
         CEDCBlock *pblock = &pblocktemplate->block;
@@ -132,7 +132,7 @@ UniValue edcgenerateBlocks(
             IncrementExtraNonce(pblock, theApp.chainActive().Tip(), nExtraNonce);
         }
 
-        while (nMaxTries > 0 && pblock->nNonce < nInnerLoopCount && !CheckProofOfWork(pblock->GetHash(), pblock->nBits, Params().GetConsensus())) 
+        while (nMaxTries > 0 && pblock->nNonce < nInnerLoopCount && !CheckProofOfWork(pblock->GetHash(), pblock->nBits, edcParams().GetConsensus())) 
 		{
             ++pblock->nNonce;
             --nMaxTries;
@@ -267,8 +267,8 @@ UniValue edcgetmininginfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("errors",           edcGetWarnings("statusbar")));
     obj.push_back(Pair("networkhashps",    edcgetnetworkhashps(params, false)));
     obj.push_back(Pair("pooledtx",         (uint64_t)theApp.mempool().size()));
-    obj.push_back(Pair("testnet",          Params().TestnetToBeDeprecatedFieldRPC()));
-    obj.push_back(Pair("chain",            Params().NetworkIDString()));
+    obj.push_back(Pair("testnet",          edcParams().TestnetToBeDeprecatedFieldRPC()));
+    obj.push_back(Pair("chain",            edcParams().NetworkIDString()));
     return obj;
 }
 
@@ -435,7 +435,7 @@ UniValue edcgetblocktemplate(const UniValue& params, bool fHelp)
             if (block.hashPrevBlock != pindexPrev->GetBlockHash())
                 return "inconclusive-not-best-prevblk";
             CValidationState state;
-            TestBlockValidity(state, Params(), block, pindexPrev, false, true);
+            TestBlockValidity(state, edcParams(), block, pindexPrev, false, true);
             return BIP22ValidationResult(state);
         }
     }
@@ -519,7 +519,7 @@ UniValue edcgetblocktemplate(const UniValue& params, bool fHelp)
             pblocktemplate = NULL;
         }
         CScript scriptDummy = CScript() << OP_TRUE;
-        pblocktemplate = CreateNewEDCBlock(Params(), scriptDummy);
+        pblocktemplate = CreateNewEDCBlock(edcParams(), scriptDummy);
         if (!pblocktemplate)
             throw JSONRPCError(RPC_OUT_OF_MEMORY, "Out of memory");
 
@@ -529,7 +529,7 @@ UniValue edcgetblocktemplate(const UniValue& params, bool fHelp)
     CEDCBlock* pblock = &pblocktemplate->block; // pointer for convenience
 
     // Update nTime
-    UpdateTime(pblock, Params().GetConsensus(), pindexPrev);
+    UpdateTime(pblock, edcParams().GetConsensus(), pindexPrev);
     pblock->nNonce = 0;
 
     UniValue aCaps(UniValue::VARR); aCaps.push_back("proposal");

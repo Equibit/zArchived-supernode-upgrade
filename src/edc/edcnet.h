@@ -554,6 +554,29 @@ public:
 class CEDCTransaction;
 void RelayTransaction(const CEDCTransaction& tx, CFeeRate feerate);
 
+/** Access to the (IP) address database (peers.dat) */
+class CEDCAddrDB
+{
+private:
+    boost::filesystem::path pathAddr;
+
+public:
+    CEDCAddrDB();
+    bool Write(const CAddrMan& addr);
+    bool Read(CAddrMan& addr);
+};
+
+/** Access to the banlist database (banlist.dat) */
+class CEDCBanDB
+{
+private:
+    boost::filesystem::path pathBanlist;
+public:
+    CEDCBanDB();
+    bool Write(const banmap_t& banSet);
+    bool Read(banmap_t& banSet);
+};
+
 void edcDumpBanlist();
 
 /** Return a timestamp in the future (in microseconds) for exponentially distributed events. */

@@ -441,7 +441,7 @@ UniValue edcgetblock(const UniValue& params, bool fHelp)
     if (theApp.havePruned() && !(pblockindex->nStatus & BLOCK_HAVE_DATA) && pblockindex->nTx > 0)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Block not available (pruned data)");
 
-    if(!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))
+    if(!ReadBlockFromDisk(block, pblockindex, edcParams().GetConsensus()))
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
 
     if (!fVerbose)
@@ -777,17 +777,17 @@ UniValue edcgetblockchaininfo(const UniValue& params, bool fHelp)
     LOCK(EDC_cs_main);
 
     UniValue obj(UniValue::VOBJ);
-    obj.push_back(Pair("chain",                 Params().NetworkIDString()));
+    obj.push_back(Pair("chain",                 edcParams().NetworkIDString()));
     obj.push_back(Pair("blocks",                (int)theApp.chainActive().Height()));
     obj.push_back(Pair("headers",               theApp.indexBestHeader() ? theApp.indexBestHeader()->nHeight : -1));
     obj.push_back(Pair("bestblockhash",         theApp.chainActive().Tip()->GetBlockHash().GetHex()));
     obj.push_back(Pair("difficulty",            (double)edcGetDifficulty(NULL)));
     obj.push_back(Pair("mediantime",            (int64_t)theApp.chainActive().Tip()->GetMedianTimePast()));
-    obj.push_back(Pair("verificationprogress",  Checkpoints::GuessVerificationProgress(Params().Checkpoints(), theApp.chainActive().Tip())));
+    obj.push_back(Pair("verificationprogress",  Checkpoints::GuessVerificationProgress(edcParams().Checkpoints(), theApp.chainActive().Tip())));
     obj.push_back(Pair("chainwork",             theApp.chainActive().Tip()->nChainWork.GetHex()));
     obj.push_back(Pair("pruned",                theApp.pruneMode() ));
 
-    const Consensus::Params& consensusParams = Params().GetConsensus();
+    const Consensus::Params& consensusParams = edcParams().GetConsensus();
     CBlockIndex* tip = theApp.chainActive().Tip();
     UniValue softforks(UniValue::VARR);
     UniValue bip9_softforks(UniValue::VOBJ);

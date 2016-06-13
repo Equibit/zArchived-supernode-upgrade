@@ -58,8 +58,29 @@ using namespace std;
  */
 CCriticalSection EDC_cs_main;
 
-int64_t edcnTimeBestReceived = 0;
+const string edcstrMessageMagic = "Equibit Signed Message:\n";
+
 CWaitableCriticalSection edccsBestBlock;
+
+namespace
+{
+bool edcCheckBlock(const CEDCBlock& block, CValidationState& state, bool fCheckPOW = true, bool fCheckMerkleRoot = true);
+bool edcContextualCheckBlock(const CEDCBlock& block, CValidationState& state, CBlockIndex *pindexPrev);
+
+/** Apply the effects of this block (with given index) on the UTXO set represented by coins.
+ *  Validity checks that depend on the UTXO set are also done; ConnectBlock()
+ *  can fail if those validity checks fail (among other reasons). */
+bool edcConnectBlock(const CEDCBlock& block, CValidationState& state, CBlockIndex* pindex, CEDCCoinsViewCache& coins,
+                  const CEDCChainParams& chainparams, bool fJustCheck = false);
+
+/** Undo the effects of this block (with given index) on the UTXO set represented by coins.
+ *  In case pfClean is provided, operation will try to be tolerant about errors, and *pfClean
+ *  will be true if no problems were found. Otherwise, the return value will be false in case
+ *  of problems. Note that in any case, coins may be modified. */
+bool edcDisconnectBlock(const CEDCBlock& block, CValidationState& state, const CBlockIndex* pindex, CEDCCoinsViewCache& coins, bool* pfClean = NULL);
+
+
+int64_t edcnTimeBestReceived = 0;
 
 FeeFilterRounder edcfilterRounder(EDCapp::singleton().minRelayTxFee());
 
@@ -76,121 +97,118 @@ void edcEraseOrphansFor(NodeId peer) EXCLUSIVE_LOCKS_REQUIRED(EDC_cs_main);
  * Returns true if there are nRequired or more blocks of minVersion or above
  * in the last Consensus::Params::nMajorityWindow blocks, starting at pstart and going backwards.
  */
-static bool IsSuperMajority(int minVersion, const CBlockIndex* pstart, unsigned nRequired, const Consensus::Params& consensusParams);
-static void CheckBlockIndex(const Consensus::Params& consensusParams);
-
-const string edcstrMessageMagic = "Equibit Signed Message:\n";
+bool IsSuperMajority(int minVersion, const CBlockIndex* pstart, unsigned nRequired, const Consensus::Params& consensusParams);
+void edcCheckBlockIndex(const Consensus::Params& consensusParams);
 
 bool edcFindBlockPos(CValidationState &state, CDiskBlockPos &pos, unsigned int nAddSize, unsigned int nHeight, uint64_t nTime, bool fKnown = false);
 
 // Internal stuff
-namespace 
+struct CBlockIndexWorkComparator
 {
-
-    struct CBlockIndexWorkComparator
-    {
-        bool operator()(CBlockIndex *pa, CBlockIndex *pb) const 
-		{
-            // First sort by most total work, ...
-            if (pa->nChainWork > pb->nChainWork) return false;
-            if (pa->nChainWork < pb->nChainWork) return true;
-
-            // ... then by earliest time received, ...
-            if (pa->nSequenceId < pb->nSequenceId) return false;
-            if (pa->nSequenceId > pb->nSequenceId) return true;
-
-            // Use pointer address as tie breaker (should only happen with blocks
-            // loaded from disk, as those all have id 0).
-            if (pa < pb) return false;
-            if (pa > pb) return true;
-
-            // Identical blocks.
-            return false;
-        }
-    };
-
-    CBlockIndex *pindexBestInvalid;
-
-    /**
-     * The set of all CBlockIndex entries with BLOCK_VALID_TRANSACTIONS (for itself and all ancestors) and
-     * as good as our current tip or better. Entries may be failed, though, and pruning nodes may be
-     * missing the data for the block.
-     */
-    set<CBlockIndex*, CBlockIndexWorkComparator> setBlockIndexCandidates;
-    /** Number of nodes with fSyncStarted. */
-    int nSyncStarted = 0;
-    /** All pairs A->B, where A (or one of its ancestors) misses transactions, but B has transactions.
-     * Pruned nodes may have entries where B is missing data.
-     */
-    multimap<CBlockIndex*, CBlockIndex*> mapBlocksUnlinked;
-
-    CCriticalSection cs_LastBlockFile;
-    std::vector<CBlockFileInfo> vinfoBlockFile;
-    int nLastBlockFile = 0;
-    /** Global flag to indicate we should check to see if there are
-     *  block/undo files that should be deleted.  Set on startup
-     *  or if we allocate more file space when we're in prune mode
-     */
-    bool fCheckForPruning = false;
-
-    /**
-     * Every received block is assigned a unique and increasing identifier, so we
-     * know which one to give priority in case of a fork.
-     */
-    CCriticalSection cs_nBlockSequenceId;
-    /** Blocks loaded from disk are assigned id 0, so start the counter at 1. */
-    uint32_t nBlockSequenceId = 1;
-
-    /**
-     * Sources of received blocks, saved to be able to send them reject
-     * messages or ban them when processing happens afterwards. Protected by
-     * EDC_cs_main.
-     */
-    map<uint256, NodeId> mapBlockSource;
-
-    /**
-     * Filter for transactions that were recently rejected by
-     * AcceptToMemoryPool. These are not rerequested until the chain tip
-     * changes, at which point the entire filter is reset. Protected by
-     * EDC_cs_main.
-     *
-     * Without this filter we'd be re-requesting txs from each of our peers,
-     * increasing bandwidth consumption considerably. For instance, with 100
-     * peers, half of which relay a tx we don't accept, that might be a 50x
-     * bandwidth increase. A flooding attacker attempting to roll-over the
-     * filter using minimum-sized, 60byte, transactions might manage to send
-     * 1000/sec if we have fast peers, so we pick 120,000 to give our peers a
-     * two minute window to send invs to us.
-     *
-     * Decreasing the false positive rate is fairly cheap, so we pick one in a
-     * million to make it highly unlikely for users to have issues with this
-     * filter.
-     *
-     * Memory used: 1.3 MB
-     */
-    boost::scoped_ptr<CRollingBloomFilter> recentRejects;
-    uint256 hashRecentRejectsChainTip;
-
-    /** Blocks that are in flight, and that are in the queue to be downloaded. Protected by EDC_cs_main. */
-    struct QueuedBlock 	
+    bool operator()(CBlockIndex *pa, CBlockIndex *pb) const 
 	{
-        uint256 hash;
-        CBlockIndex* pindex;     //!< Optional.
-        bool fValidatedHeaders;  //!< Whether this block has validated headers at the time of request.
-    };
-    map<uint256, pair<NodeId, list<QueuedBlock>::iterator> > mapBlocksInFlight;
+        // First sort by most total work, ...
+        if (pa->nChainWork > pb->nChainWork) return false;
+        if (pa->nChainWork < pb->nChainWork) return true;
 
-    /** Number of preferable block download peers. */
-    int nPreferredDownload = 0;
+        // ... then by earliest time received, ...
+        if (pa->nSequenceId < pb->nSequenceId) return false;
+        if (pa->nSequenceId > pb->nSequenceId) return true;
 
-    /** Dirty block index entries. */
-    set<CBlockIndex*> setDirtyBlockIndex;
+        // Use pointer address as tie breaker (should only happen with blocks
+        // loaded from disk, as those all have id 0).
+        if (pa < pb) return false;
+        if (pa > pb) return true;
 
-    /** Dirty block file entries. */
-    set<int> setDirtyFileInfo;
+        // Identical blocks.
+        return false;
+    }
+};
 
-    /** Number of peers from which we're downloading blocks. */
-    int nPeersWithValidatedDownloads = 0;
+CBlockIndex *pindexBestInvalid;
+
+/**
+ * The set of all CBlockIndex entries with BLOCK_VALID_TRANSACTIONS (for itself and all ancestors) and
+ * as good as our current tip or better. Entries may be failed, though, and pruning nodes may be
+ * missing the data for the block.
+ */
+set<CBlockIndex*, CBlockIndexWorkComparator> setBlockIndexCandidates;
+/** Number of nodes with fSyncStarted. */
+int nSyncStarted = 0;
+/** All pairs A->B, where A (or one of its ancestors) misses transactions, but B has transactions.
+ * Pruned nodes may have entries where B is missing data.
+ */
+multimap<CBlockIndex*, CBlockIndex*> mapBlocksUnlinked;
+
+CCriticalSection cs_LastBlockFile;
+std::vector<CBlockFileInfo> vinfoBlockFile;
+int nLastBlockFile = 0;
+/** Global flag to indicate we should check to see if there are
+ *  block/undo files that should be deleted.  Set on startup
+ *  or if we allocate more file space when we're in prune mode
+ */
+bool fCheckForPruning = false;
+
+/**
+ * Every received block is assigned a unique and increasing identifier, so we
+ * know which one to give priority in case of a fork.
+ */
+CCriticalSection cs_nBlockSequenceId;
+
+/** Blocks loaded from disk are assigned id 0, so start the counter at 1. */
+uint32_t nBlockSequenceId = 1;
+
+/**
+ * Sources of received blocks, saved to be able to send them reject
+ * messages or ban them when processing happens afterwards. Protected by
+ * EDC_cs_main.
+ */
+map<uint256, NodeId> mapBlockSource;
+
+/**
+ * Filter for transactions that were recently rejected by
+ * AcceptToMemoryPool. These are not rerequested until the chain tip
+ * changes, at which point the entire filter is reset. Protected by
+ * EDC_cs_main.
+ *
+ * Without this filter we'd be re-requesting txs from each of our peers,
+ * increasing bandwidth consumption considerably. For instance, with 100
+ * peers, half of which relay a tx we don't accept, that might be a 50x
+ * bandwidth increase. A flooding attacker attempting to roll-over the
+ * filter using minimum-sized, 60byte, transactions might manage to send
+ * 1000/sec if we have fast peers, so we pick 120,000 to give our peers a
+ * two minute window to send invs to us.
+ *
+ * Decreasing the false positive rate is fairly cheap, so we pick one in a
+ * million to make it highly unlikely for users to have issues with this
+ * filter.
+ *
+ * Memory used: 1.3 MB
+ */
+boost::scoped_ptr<CRollingBloomFilter> recentRejects;
+uint256 hashRecentRejectsChainTip;
+
+/** Blocks that are in flight, and that are in the queue to be downloaded. Protected by EDC_cs_main. */
+struct QueuedBlock 	
+{
+    uint256 hash;
+    CBlockIndex* pindex;     //!< Optional.
+    bool fValidatedHeaders;  //!< Whether this block has validated headers at the time of request.
+};
+map<uint256, pair<NodeId, list<QueuedBlock>::iterator> > mapBlocksInFlight;
+
+/** Number of preferable block download peers. */
+int nPreferredDownload = 0;
+
+/** Dirty block index entries. */
+set<CBlockIndex*> setDirtyBlockIndex;
+
+/** Dirty block file entries. */
+set<int> setDirtyFileInfo;
+
+/** Number of peers from which we're downloading blocks. */
+int nPeersWithValidatedDownloads = 0;
+
 } // anon namespace
 
 //////////////////////////////////////////////////////////////////////////////
@@ -678,7 +696,9 @@ bool AddOrphanTx(const CEDCTransaction& tx, NodeId peer) EXCLUSIVE_LOCKS_REQUIRE
     return true;
 }
 
-void static EraseOrphanTx(uint256 hash) EXCLUSIVE_LOCKS_REQUIRED(EDC_cs_main)
+namespace
+{
+void EraseOrphanTx(uint256 hash) EXCLUSIVE_LOCKS_REQUIRED(EDC_cs_main)
 {
     map<uint256, COrphanTx>::iterator it = edcMapOrphanTransactions.find(hash);
     if (it == edcMapOrphanTransactions.end())
@@ -711,6 +731,7 @@ void edcEraseOrphansFor(NodeId peer)
     if (nErased > 0) edcLogPrint("mempool", "Erased %d orphan tx from peer %d\n", nErased, peer);
 }
 
+}
 
 unsigned int edcLimitOrphanTxSize(unsigned int nMaxOrphans) EXCLUSIVE_LOCKS_REQUIRED(EDC_cs_main)
 {
@@ -775,13 +796,15 @@ bool CheckFinalTx(const CEDCTransaction &tx, int flags)
     return IsFinalTx(tx, nBlockHeight, nBlockTime);
 }
 
+namespace
+{
 /**
  * Calculates the block height and previous block's median time past at
  * which the transaction will be considered final in the context of BIP 68.
  * Also removes from the vector of input heights any entries which did not
  * correspond to sequence locked inputs as they do not affect the calculation.
  */
-static std::pair<int, int64_t> CalculateSequenceLocks(const CEDCTransaction &tx, int flags, std::vector<int>* prevHeights, const CBlockIndex& block)
+std::pair<int, int64_t> CalculateSequenceLocks(const CEDCTransaction &tx, int flags, std::vector<int>* prevHeights, const CBlockIndex& block)
 {
     assert(prevHeights->size() == tx.vin.size());
 
@@ -849,7 +872,7 @@ static std::pair<int, int64_t> CalculateSequenceLocks(const CEDCTransaction &tx,
     return std::make_pair(nMinHeight, nMinTime);
 }
 
-static bool EvaluateSequenceLocks(const CBlockIndex& block, std::pair<int, int64_t> lockPair)
+bool EvaluateSequenceLocks(const CBlockIndex& block, std::pair<int, int64_t> lockPair)
 {
     assert(block.pprev);
     int64_t nBlockTime = block.pprev->GetMedianTimePast();
@@ -857,6 +880,7 @@ static bool EvaluateSequenceLocks(const CBlockIndex& block, std::pair<int, int64
         return false;
 
     return true;
+}
 }
 
 bool SequenceLocks(const CEDCTransaction &tx, int flags, std::vector<int>* prevHeights, const CBlockIndex& block)
@@ -968,7 +992,6 @@ bool CheckSequenceLocks(const CEDCTransaction &tx, int flags, LockPoints* lp, bo
     }
     return EvaluateSequenceLocks(index, lockPair);
 }
-
 
 unsigned int GetLegacySigOpCount(const CEDCTransaction& tx)
 {
@@ -1726,7 +1749,9 @@ bool edcfLargeWorkForkFound = false;
 bool edcfLargeWorkInvalidChainFound = false;
 CBlockIndex *edcPindexBestForkTip = NULL, *edcpindexBestForkBase = NULL;
 
-static void AlertNotify(const std::string& strMessage)
+namespace
+{
+void AlertNotify(const std::string& strMessage)
 {
     uiInterface.NotifyAlertChanged();
  	EDCparams & params = EDCparams::singleton();
@@ -1742,6 +1767,7 @@ static void AlertNotify(const std::string& strMessage)
     boost::replace_all(strCmd, "%s", safeStatus);
 
     boost::thread t(edcRunCommand, strCmd); // thread runs free
+}
 }
 
 void edcCheckForkWarningConditions()
@@ -1845,7 +1871,9 @@ void edcMisbehaving(NodeId pnode, int howmuch)
         edcLogPrintf("%s: %s (%d -> %d)\n", __func__, state->name, state->nMisbehavior-howmuch, state->nMisbehavior);
 }
 
-void static InvalidChainFound(CBlockIndex* pindexNew)
+namespace
+{
+void InvalidChainFound(CBlockIndex* pindexNew)
 {
 	EDCapp & theApp = EDCapp::singleton();
     if (!pindexBestInvalid || pindexNew->nChainWork > pindexBestInvalid->nChainWork)
@@ -1863,7 +1891,7 @@ void static InvalidChainFound(CBlockIndex* pindexNew)
     edcCheckForkWarningConditions();
 }
 
-void static InvalidBlockFound(CBlockIndex *pindex, const CValidationState &state) 
+void edcInvalidBlockFound(CBlockIndex *pindex, const CValidationState &state) 
 {
     int nDoS = 0;
     if (state.IsInvalid(nDoS)) 
@@ -1886,6 +1914,7 @@ void static InvalidBlockFound(CBlockIndex *pindex, const CValidationState &state
         setBlockIndexCandidates.erase(pindex);
         InvalidChainFound(pindex);
     }
+}
 }
 
 void UpdateCoins(const CEDCTransaction& tx, CEDCCoinsViewCache &inputs, CEDCTxUndo &txundo, int nHeight)
@@ -1945,7 +1974,11 @@ int GetSpendHeight(const CEDCCoinsViewCache& inputs)
 namespace Consensus 
 {
 
-bool CheckTxInputs(const CEDCTransaction& tx, CValidationState& state, const CEDCCoinsViewCache& inputs, int nSpendHeight)
+bool CheckTxInputs(
+	const CEDCTransaction & tx, 
+	CValidationState & state, 
+	const CEDCCoinsViewCache & inputs, 
+	int nSpendHeight)
 {
         // This doesn't trigger the DoS code on purpose; if it did, it would make it easier
         // for an attacker to attempt to split the network.
@@ -1989,7 +2022,7 @@ bool CheckTxInputs(const CEDCTransaction& tx, CValidationState& state, const CED
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-fee-outofrange");
     return true;
 }
-}// namespace Consensus
+}
 
 bool CheckInputs(const CEDCTransaction& tx, CValidationState &state, const CEDCCoinsViewCache &inputs, bool fScriptChecks, unsigned int flags, bool cacheStore, std::vector<CEDCScriptCheck> *pvChecks)
 {
@@ -2134,7 +2167,6 @@ bool AbortNode(CValidationState& state, const std::string& strMessage, const std
     return state.Error(strMessage);
 }
 
-} // anon namespace
 
 /**
  * Apply the undo operation of a CEDCTxInUndo to the given chain state.
@@ -2143,7 +2175,7 @@ bool AbortNode(CValidationState& state, const std::string& strMessage, const std
  * @param out The out point that corresponds to the tx input.
  * @return True on success.
  */
-static bool ApplyTxInUndo(const CEDCTxInUndo& undo, CEDCCoinsViewCache& view, const COutPoint& out)
+bool ApplyTxInUndo(const CEDCTxInUndo& undo, CEDCCoinsViewCache& view, const COutPoint& out)
 {
     bool fClean = true;
 
@@ -2172,7 +2204,7 @@ static bool ApplyTxInUndo(const CEDCTxInUndo& undo, CEDCCoinsViewCache& view, co
     return fClean;
 }
 
-bool DisconnectBlock(const CEDCBlock& block, CValidationState& state, const CBlockIndex* pindex, CEDCCoinsViewCache& view, bool* pfClean)
+bool edcDisconnectBlock(const CEDCBlock& block, CValidationState& state, const CBlockIndex* pindex, CEDCCoinsViewCache& view, bool* pfClean)
 {
     assert(pindex->GetBlockHash() == view.GetBestBlock());
 
@@ -2244,7 +2276,7 @@ bool DisconnectBlock(const CEDCBlock& block, CValidationState& state, const CBlo
     return fClean;
 }
 
-void static FlushBlockFile(bool fFinalize = false)
+void FlushBlockFile(bool fFinalize = false)
 {
     LOCK(cs_LastBlockFile);
 
@@ -2269,9 +2301,10 @@ void static FlushBlockFile(bool fFinalize = false)
     }
 }
 
-bool edcFindUndoPos(CValidationState &state, int nFile, CDiskBlockPos &pos, unsigned int nAddSize);
+CCheckQueue<CEDCScriptCheck> scriptcheckqueue(128);
+}
 
-static CCheckQueue<CEDCScriptCheck> scriptcheckqueue(128);
+bool edcFindUndoPos(CValidationState &state, int nFile, CDiskBlockPos &pos, unsigned int nAddSize);
 
 void edcThreadScriptCheck() 
 {
@@ -2346,7 +2379,10 @@ void edcPartitionCheck(
 }
 
 // Protected by EDC_cs_main
-static VersionBitsCache versionbitscache;
+namespace
+{
+VersionBitsCache versionbitscache;
+}
 
 int32_t edcComputeBlockVersion(const CBlockIndex* pindexPrev, const Consensus::Params& params)
 {
@@ -2394,18 +2430,20 @@ public:
     }
 };
 
+namespace
+{
 // Protected by EDC_cs_main
-static ThresholdConditionCache warningcache[VERSIONBITS_NUM_BITS];
+ThresholdConditionCache warningcache[VERSIONBITS_NUM_BITS];
 
-static int64_t nTimeCheck = 0;
-static int64_t nTimeForks = 0;
-static int64_t nTimeVerify = 0;
-static int64_t nTimeConnect = 0;
-static int64_t nTimeIndex = 0;
-static int64_t nTimeCallbacks = 0;
-static int64_t nTimeTotal = 0;
+int64_t nTimeCheck = 0;
+int64_t nTimeForks = 0;
+int64_t nTimeVerify = 0;
+int64_t nTimeConnect = 0;
+int64_t nTimeIndex = 0;
+int64_t nTimeCallbacks = 0;
+int64_t nTimeTotal = 0;
 
-bool ConnectBlock(
+bool edcConnectBlock(
 		  const CEDCBlock & block, 
 		 CValidationState & state, 
 			  CBlockIndex * pindex,
@@ -2418,7 +2456,7 @@ bool ConnectBlock(
     int64_t nTimeStart = GetTimeMicros();
 
     // Check it again in case a previous version let a bad block in
-    if (!CheckBlock(block, state, !fJustCheck, !fJustCheck))
+    if (!edcCheckBlock(block, state, !fJustCheck, !fJustCheck))
         return edcError("%s: Consensus::CheckBlock: %s", __func__, FormatStateMessage(state));
 
     // verify that the view's current state corresponds to the previous block
@@ -2665,7 +2703,7 @@ enum FlushStateMode
  * if they're too large, if it's been a while since the last write,
  * or always and in all cases if we're in prune mode and are deleting files.
  */
-bool static FlushStateToDisk(CValidationState &state, FlushStateMode mode) 
+bool FlushStateToDisk(CValidationState &state, FlushStateMode mode) 
 {
     const CEDCChainParams & chainparams = edcParams();
     LOCK2(EDC_cs_main, cs_LastBlockFile);
@@ -2787,6 +2825,7 @@ bool static FlushStateToDisk(CValidationState &state, FlushStateMode mode)
 
     return true;
 }
+}
 
 void edcFlushStateToDisk() 
 {
@@ -2801,8 +2840,10 @@ void edcPruneAndFlush()
     FlushStateToDisk(state, FLUSH_STATE_NONE);
 }
 
+namespace
+{
 /** Update theApp.chainActive() and related internal data structures. */
-void static UpdateTip(
+void UpdateTip(
 			  CBlockIndex * pindexNew, 
 	const CEDCChainParams & chainParams) 
 {
@@ -2871,7 +2912,7 @@ void static UpdateTip(
 }
 
 /** Disconnect theApp.chainActive()'s tip. You probably want to call mempool.removeForReorg and manually re-limit mempool size after this, with EDC_cs_main held. */
-bool static DisconnectTip(
+bool DisconnectTip(
 	  	 CValidationState & state, 
 	const CEDCChainParams & chainparams)
 {
@@ -2887,7 +2928,7 @@ bool static DisconnectTip(
     int64_t nStart = GetTimeMicros();
     {
         CEDCCoinsViewCache view(theApp.coinsTip());
-        if (!DisconnectBlock(block, state, pindexDelete, view))
+        if (!edcDisconnectBlock(block, state, pindexDelete, view))
             return edcError("DisconnectTip(): DisconnectBlock %s failed", pindexDelete->GetBlockHash().ToString());
         assert(view.Flush());
     }
@@ -2928,17 +2969,17 @@ bool static DisconnectTip(
     return true;
 }
 
-static int64_t nTimeReadFromDisk = 0;
-static int64_t nTimeConnectTotal = 0;
-static int64_t nTimeFlush = 0;
-static int64_t nTimeChainState = 0;
-static int64_t nTimePostConnect = 0;
+int64_t nTimeReadFromDisk = 0;
+int64_t nTimeConnectTotal = 0;
+int64_t nTimeFlush = 0;
+int64_t nTimeChainState = 0;
+int64_t nTimePostConnect = 0;
 
 /**
  * Connect a new block to theApp.chainActive(). pblock is either NULL or a pointer to a CBlock
  * corresponding to pindexNew, to bypass loading it again from disk.
  */
-bool static ConnectTip(
+bool ConnectTip(
 	     CValidationState & state, 
 	const CEDCChainParams & chainparams, 
 		      CBlockIndex * pindexNew, 
@@ -2964,13 +3005,13 @@ bool static ConnectTip(
     edcLogPrint("bench", "  - Load block from disk: %.2fms [%.2fs]\n", (nTime2 - nTime1) * 0.001, nTimeReadFromDisk * 0.000001);
     {
         CEDCCoinsViewCache view(theApp.coinsTip());
-        bool rv = ConnectBlock(*pblock, state, pindexNew, view, chainparams);
+        bool rv = edcConnectBlock(*pblock, state, pindexNew, view, chainparams);
         GetEDCMainSignals().BlockChecked(*pblock, state);
 
         if (!rv) 
 		{
             if (state.IsInvalid())
-                InvalidBlockFound(pindexNew, state);
+                edcInvalidBlockFound(pindexNew, state);
             return edcError("ConnectTip(): ConnectBlock %s failed", pindexNew->GetBlockHash().ToString());
         }
         mapBlockSource.erase(pindexNew->GetBlockHash());
@@ -3013,7 +3054,7 @@ bool static ConnectTip(
  * Return the tip of the chain with the most work in it, that isn't
  * known to be invalid (it's however far from certain to be valid).
  */
-static CBlockIndex* FindMostWorkChain() 
+CBlockIndex* FindMostWorkChain() 
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -3078,7 +3119,7 @@ static CBlockIndex* FindMostWorkChain()
 }
 
 /** Delete all entries in setBlockIndexCandidates that are worse than the current tip. */
-static void PruneBlockIndexCandidates() 
+void PruneBlockIndexCandidates() 
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -3097,7 +3138,7 @@ static void PruneBlockIndexCandidates()
  * Try to make some progress towards making pindexMostWork the active block.
  * pblock is either NULL or a pointer to a CBlock corresponding to pindexMostWork.
  */
-static bool ActivateBestChainStep(
+bool ActivateBestChainStep(
 	     CValidationState & state, 
 	const CEDCChainParams & chainparams, 
 	          CBlockIndex * pindexMostWork, 
@@ -3192,6 +3233,8 @@ static bool ActivateBestChainStep(
     return true;
 }
 
+}
+
 /**
  * Make the best chain active, in multiple steps. The result is either failure
  * or an activated best chain. pblock is either NULL or a pointer to a block
@@ -3280,7 +3323,7 @@ bool ActivateBestChain(
             }
         }
     } while(pindexMostWork != theApp.chainActive().Tip());
-    CheckBlockIndex(chainparams.GetConsensus());
+    edcCheckBlockIndex(chainparams.GetConsensus());
 
     // Write changes periodically to disk, after relay.
     if (!FlushStateToDisk(state, FLUSH_STATE_PERIODIC)) 
@@ -3518,20 +3561,38 @@ bool edcFindUndoPos(
     return true;
 }
 
-bool CheckBlock(
+bool edcCheckBlockHeader(
+	const CBlockHeader & block, 
+	CValidationState & state, 
+	bool fCheckPOW = true )
+{
+    // Check proof of work matches claimed amount
+    if (fCheckPOW && !CheckProofOfWork(block.GetHash(), block.nBits, edcParams().GetConsensus()))
+        return state.DoS(50, false, REJECT_INVALID, "high-hash", false, "proof of work failed");
+
+    // Check timestamp
+    if (block.GetBlockTime() > edcGetAdjustedTime() + 2 * 60 * 60)
+        return state.Invalid(false, REJECT_INVALID, "time-too-new", "block timestamp too far in the future");
+
+    return true;
+}
+
+namespace
+{
+
+bool edcCheckBlock(
 	const CEDCBlock& block, 
 	CValidationState& state, 
 	bool fCheckPOW, 
 	bool fCheckMerkleRoot)
 {
     // These are checks that are independent of context.
-
     if (block.fChecked)
         return true;
 
     // Check that the header is valid (particularly PoW).  This is mostly
     // redundant with the call in AcceptBlockHeader.
-    if (!CheckBlockHeader(block, state, fCheckPOW))
+    if (!edcCheckBlockHeader(block, state, fCheckPOW))
         return false;
 
     // Check the merkle root.
@@ -3584,7 +3645,7 @@ bool CheckBlock(
     return true;
 }
 
-static bool CheckIndexAgainstCheckpoint(
+bool CheckIndexAgainstCheckpoint(
 	    const CBlockIndex * pindexPrev, 
 	     CValidationState & state, 
 	const CEDCChainParams & chainparams, 
@@ -3604,7 +3665,7 @@ static bool CheckIndexAgainstCheckpoint(
 
 bool edcContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& state, CBlockIndex * const pindexPrev)
 {
-    const Consensus::Params& consensusParams = Params().GetConsensus();
+    const Consensus::Params& consensusParams = edcParams().GetConsensus();
     // Check proof of work
     if (block.nBits != GetNextWorkRequired(pindexPrev, &block, consensusParams))
         return state.DoS(100, false, REJECT_INVALID, "bad-diffbits", false, "incorrect proof of work");
@@ -3622,10 +3683,10 @@ bool edcContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& 
     return true;
 }
 
-bool ContextualCheckBlock(const CEDCBlock& block, CValidationState& state, CBlockIndex * const pindexPrev)
+bool edcContextualCheckBlock(const CEDCBlock& block, CValidationState& state, CBlockIndex * const pindexPrev)
 {
     const int nHeight = pindexPrev == NULL ? 0 : pindexPrev->nHeight + 1;
-    const Consensus::Params& consensusParams = Params().GetConsensus();
+    const Consensus::Params& consensusParams = edcParams().GetConsensus();
 
     // Start enforcing BIP113 (Median Time Past) using versionbits logic.
     int nLockTimeFlags = 0;
@@ -3663,7 +3724,7 @@ bool ContextualCheckBlock(const CEDCBlock& block, CValidationState& state, CBloc
     return true;
 }
 
-static bool AcceptBlockHeader(
+bool AcceptBlockHeader(
 	   const CBlockHeader & block, 
 	     CValidationState & state, 
 	const CEDCChainParams & chainparams, 
@@ -3690,7 +3751,7 @@ static bool AcceptBlockHeader(
             return true;
         }
 
-        if (!CheckBlockHeader(block, state))
+        if (!edcCheckBlockHeader(block, state))
             return edcError("%s: Consensus::CheckBlockHeader: %s, %s", __func__, hash.ToString(), FormatStateMessage(state));
 
         // Get prev block index
@@ -3720,7 +3781,7 @@ static bool AcceptBlockHeader(
 }
 
 /** Store block on disk. If dbp is non-NULL, the file is known to already reside on disk */
-static bool AcceptBlock(
+bool AcceptBlock(
           const CEDCBlock & block, 
 	     CValidationState & state, 
 	const CEDCChainParams & chainparams, 
@@ -3762,8 +3823,8 @@ static bool AcceptBlock(
         if (fTooFarAhead) return true;      // Block height is too high
     }
 
-    if ((!CheckBlock(block, state)) || 
-	!ContextualCheckBlock(block, state, pindex->pprev)) 
+    if ((!edcCheckBlock(block, state)) || 
+	!edcContextualCheckBlock(block, state, pindex->pprev)) 
 	{
         if (state.IsInvalid() && !state.CorruptionPossible()) 
 		{
@@ -3801,7 +3862,7 @@ static bool AcceptBlock(
     return true;
 }
 
-static bool IsSuperMajority(int minVersion, const CBlockIndex* pstart, unsigned nRequired, const Consensus::Params& consensusParams)
+bool IsSuperMajority(int minVersion, const CBlockIndex* pstart, unsigned nRequired, const Consensus::Params& consensusParams)
 {
     unsigned int nFound = 0;
     for (int i = 0; i < consensusParams.nMajorityWindow && nFound < nRequired && pstart != NULL; i++)
@@ -3812,7 +3873,7 @@ static bool IsSuperMajority(int minVersion, const CBlockIndex* pstart, unsigned 
     }
     return (nFound >= nRequired);
 }
-
+}
 
 bool ProcessNewBlock(
 	     CValidationState & state, 
@@ -3834,7 +3895,7 @@ bool ProcessNewBlock(
 		{
             mapBlockSource[pindex->GetBlockHash()] = pfrom->GetId();
         }
-        CheckBlockIndex(chainparams.GetConsensus());
+        edcCheckBlockIndex(chainparams.GetConsensus());
         if (!ret)
             return edcError("%s: AcceptBlock FAILED", __func__);
     }
@@ -3869,11 +3930,11 @@ bool TestBlockValidity(
     // NOTE: CheckBlockHeader is called by CheckBlock
     if (!edcContextualCheckBlockHeader(block, state, pindexPrev))
         return edcError("%s: Consensus::ContextualCheckBlockHeader: %s", __func__, FormatStateMessage(state));
-    if (!CheckBlock(block, state, fCheckPOW, fCheckMerkleRoot))
+    if (!edcCheckBlock(block, state, fCheckPOW, fCheckMerkleRoot))
         return edcError("%s: Consensus::CheckBlock: %s", __func__, FormatStateMessage(state));
-    if (!ContextualCheckBlock(block, state, pindexPrev))
+    if (!edcContextualCheckBlock(block, state, pindexPrev))
         return edcError("%s: Consensus::ContextualCheckBlock: %s", __func__, FormatStateMessage(state));
-    if (!ConnectBlock(block, state, &indexDummy, viewNew, chainparams, true))
+    if (!edcConnectBlock(block, state, &indexDummy, viewNew, chainparams, true))
         return false;
     assert(state.IsValid());
 
@@ -4016,7 +4077,9 @@ CBlockIndex * edcInsertBlockIndex(uint256 hash)
     return pindexNew;
 }
 
-bool static LoadBlockIndexDB()
+namespace
+{
+bool LoadBlockIndexDB()
 {
     const CEDCChainParams& chainparams = edcParams();
 	EDCapp & theApp = EDCapp::singleton();
@@ -4146,6 +4209,7 @@ bool static LoadBlockIndexDB()
 
     return true;
 }
+}
 
 CEDCVerifyDB::CEDCVerifyDB()
 {
@@ -4191,7 +4255,7 @@ bool CEDCVerifyDB::VerifyDB(
         if (!ReadBlockFromDisk(block, pindex, chainparams.GetConsensus()))
             return edcError("VerifyDB(): *** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
         // check level 1: verify block validity
-        if (nCheckLevel >= 1 && !CheckBlock(block, state))
+        if (nCheckLevel >= 1 && !edcCheckBlock(block, state))
             return edcError("%s: *** found bad block at %d, hash=%s (%s)\n", __func__, 
                          pindex->nHeight, pindex->GetBlockHash().ToString(), FormatStateMessage(state));
         // check level 2: verify undo validity
@@ -4212,7 +4276,7 @@ bool CEDCVerifyDB::VerifyDB(
         if (nCheckLevel >= 3 && pindex == pindexState && (coins.DynamicMemoryUsage() + theApp.coinsTip()->DynamicMemoryUsage()) <= theApp.coinCacheUsage() ) 
 		{
             bool fClean = true;
-            if (!DisconnectBlock(block, state, pindex, coins, &fClean))
+            if (!edcDisconnectBlock(block, state, pindex, coins, &fClean))
                 return edcError("VerifyDB(): *** irrecoverable inconsistency in block data at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
             pindexState = pindex->pprev;
             if (!fClean) 
@@ -4240,7 +4304,7 @@ bool CEDCVerifyDB::VerifyDB(
             CEDCBlock block;
             if (!ReadBlockFromDisk(block, pindex, chainparams.GetConsensus()))
                 return edcError("VerifyDB(): *** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
-            if (!ConnectBlock(block, state, pindex, coins, chainparams))
+            if (!edcConnectBlock(block, state, pindex, coins, chainparams))
                 return edcError("VerifyDB(): *** found unconnectable block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
         }
     }
@@ -4480,7 +4544,9 @@ bool edcLoadExternalBlockFile(
     return nLoaded > 0;
 }
 
-void static CheckBlockIndex(const Consensus::Params& consensusParams)
+namespace
+{
+void edcCheckBlockIndex(const Consensus::Params& consensusParams)
 {
 	EDCapp &  theApp = EDCapp::singleton();
 	EDCparams & params = EDCparams::singleton();
@@ -4492,7 +4558,7 @@ void static CheckBlockIndex(const Consensus::Params& consensusParams)
 
     LOCK(EDC_cs_main);
 
-    // During a reindex, we read the genesis block and call CheckBlockIndex before ActivateBestChain,
+    // During a reindex, we read the genesis block and call edcCheckBlockIndex before ActivateBestChain,
     // so we have the genesis block in theApp.mapBlockIndex() but no active chain.  (A few of the tests when
     // iterating the block tree require that theApp.chainActive() has been initialized.)
     if (theApp.chainActive().Height() < 0) 
@@ -4701,7 +4767,7 @@ void static CheckBlockIndex(const Consensus::Params& consensusParams)
 //
 
 
-bool static AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(EDC_cs_main)
+bool AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(EDC_cs_main)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -4736,7 +4802,7 @@ bool static AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(EDC_cs_main)
     return true;
 }
 
-void static ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
+void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -4889,11 +4955,14 @@ void static ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusPa
         pfrom->PushMessage(NetMsgType::NOTFOUND, vNotFound);
     }
 }
+}
 
 extern CAddress edcGetLocalAddress(const CNetAddr *paddrPeer);
 extern void edcAddTimeData(const CNetAddr& ip, int64_t nOffsetSample);
 
-bool static ProcessMessage(
+namespace
+{
+bool ProcessMessage(
 				 CEDCNode * pfrom, 
 					 string strCommand, 
 			  CDataStream & vRecv, 
@@ -5612,7 +5681,7 @@ bool static ProcessMessage(
             }
         }
 
-        CheckBlockIndex(chainparams.GetConsensus());
+        edcCheckBlockIndex(chainparams.GetConsensus());
     }
 
     else if (strCommand == NetMsgType::BLOCK && !theApp.importing() && !theApp.reindex()) // Ignore blocks received while importing
@@ -5870,6 +5939,7 @@ bool static ProcessMessage(
 
     return true;
 }
+}
 
 // requires LOCK(cs_vRecvMsg)
 bool ProcessEDCMessages(CEDCNode* pfrom)
@@ -6021,7 +6091,7 @@ bool SendEDCMessages(CEDCNode* pto)
 	EDCapp & theApp = EDCapp::singleton();
 	EDCparams & params = EDCparams::singleton();
 
-    const Consensus::Params& consensusParams = Params().GetConsensus();
+    const Consensus::Params& consensusParams = edcParams().GetConsensus();
     {
         // Don't send anything until we get its version message
         if (pto->nVersion == 0)
@@ -6565,6 +6635,9 @@ public:
 } edcinstance_of_cmaincleanup;
 
 
+namespace
+{
+
 bool edcFindBlockPos(
 	CValidationState & state, 
 	   CDiskBlockPos & pos, 
@@ -6641,8 +6714,6 @@ bool edcFindBlockPos(
     return true;
 }
 
-namespace
-{
 bool fLargeWorkForkFound = false;
 bool fLargeWorkInvalidChainFound = false;
 }

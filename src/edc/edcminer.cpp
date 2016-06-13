@@ -58,7 +58,7 @@ public:
 
 extern int64_t edcGetAdjustedTime();
 
-CEDCBlockTemplate* CreateNewEDCBlock(const CChainParams& chainparams, const CScript& scriptPubKeyIn)
+CEDCBlockTemplate* CreateNewEDCBlock(const CEDCChainParams& chainparams, const CScript& scriptPubKeyIn)
 {
     // Create new block
     std::unique_ptr<CEDCBlockTemplate> pblocktemplate(new CEDCBlockTemplate());

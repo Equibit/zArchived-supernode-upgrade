@@ -9,11 +9,6 @@
 #include "utilstrencodings.h"
 #include "crypto/common.h"
 
-uint256 CBlockHeader::GetHash() const
-{
-    return SerializeHash(*this);
-}
-
 std::string CEDCBlock::ToString() const
 {
     std::stringstream s;

@@ -110,7 +110,7 @@ bool CEDCDBEnv::Open(const boost::filesystem::path& pathIn)
                              nEnvFlags,
                          S_IRUSR | S_IWUSR);
     if (ret != 0)
-        return error("CEDCDBEnv::Open: Error %d opening database environment: %s\n", ret, DbEnv::strerror(ret));
+        return edcError("CEDCDBEnv::Open: Error %d opening database environment: %s\n", ret, DbEnv::strerror(ret));
 
     fDbEnvInit = true;
     fMockDb = false;

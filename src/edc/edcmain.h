@@ -262,28 +262,6 @@ bool WriteBlockToDisk(const CEDCBlock& block, CDiskBlockPos& pos, const CMessage
 bool ReadBlockFromDisk(CEDCBlock& block, const CDiskBlockPos& pos, const Consensus::Params& consensusParams);
 bool ReadBlockFromDisk(CEDCBlock& block, const CBlockIndex* pindex, const Consensus::Params& consensusParams);
 
-/** Functions for validating blocks and updating the block tree */
-
-/** Context-independent validity checks */
-bool CheckBlock(const CEDCBlock& block, CValidationState& state, bool fCheckPOW = true, bool fCheckMerkleRoot = true);
-
-/** Context-dependent validity checks.
- *  By "context", we mean only the previous block headers, but not the UTXO
- *  set; UTXO-related validity checks are done in ConnectBlock(). */
-bool ContextualCheckBlock(const CEDCBlock& block, CValidationState& state, CBlockIndex *pindexPrev);
-
-/** Apply the effects of this block (with given index) on the UTXO set represented by coins.
- *  Validity checks that depend on the UTXO set are also done; ConnectBlock()
- *  can fail if those validity checks fail (among other reasons). */
-bool ConnectBlock(const CEDCBlock& block, CValidationState& state, CBlockIndex* pindex, CEDCCoinsViewCache& coins,
-                  const CEDCChainParams& chainparams, bool fJustCheck = false);
-
-/** Undo the effects of this block (with given index) on the UTXO set represented by coins.
- *  In case pfClean is provided, operation will try to be tolerant about errors, and *pfClean
- *  will be true if no problems were found. Otherwise, the return value will be false in case
- *  of problems. Note that in any case, coins may be modified. */
-bool DisconnectBlock(const CEDCBlock& block, CValidationState& state, const CBlockIndex* pindex, CEDCCoinsViewCache& coins, bool* pfClean = NULL);
-
 /** Check a block is completely valid from start to finish (only works on top of our current best block, with mainCS held) */
 bool TestBlockValidity(CValidationState& state, const CEDCChainParams& chainparams, const CEDCBlock& block, CBlockIndex* pindexPrev, bool fCheckPOW = true, bool fCheckMerkleRoot = true);
 

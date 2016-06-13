@@ -19,6 +19,7 @@
 #include "edc/wallet/edcwalletdb.h"
 #endif
 #include "edc/edcapp.h"
+#include "edc/edcchainparams.h"
 
 #include <stdint.h>
 
@@ -98,7 +99,7 @@ UniValue edcgetinfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("connections",   (int)theApp.vNodes().size()));
     obj.push_back(Pair("proxy",         (proxy.IsValid() ? proxy.proxy.ToStringIPPort() : string())));
     obj.push_back(Pair("difficulty",    (double)GetDifficulty()));
-    obj.push_back(Pair("testnet",       Params().TestnetToBeDeprecatedFieldRPC()));
+    obj.push_back(Pair("testnet",       edcParams().TestnetToBeDeprecatedFieldRPC()));
 #ifdef ENABLE_WALLET
     if (theApp.walletMain()) {
         obj.push_back(Pair("keypoololdest", theApp.walletMain()->GetOldestKeyPoolTime()));
@@ -435,7 +436,7 @@ UniValue edcsetmocktime(const UniValue& params, bool fHelp)
             "   Pass 0 to go back to using the system time."
         );
 
-    if (!Params().MineBlocksOnDemand())
+    if (!edcParams().MineBlocksOnDemand())
         throw runtime_error("eb_setmocktime for regression testing (-regtest mode) only");
 
     // vNodesCS is locked and node send/receive times are updated

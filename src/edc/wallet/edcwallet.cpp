@@ -1274,7 +1274,7 @@ int CEDCWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate
                 ShowProgress(_("Rescanning..."), std::max(1, std::min(99, (int)((Checkpoints::GuessVerificationProgress(chainParams.Checkpoints(), pindex, false) - dProgressStart) / (dProgressTip - dProgressStart) * 100))));
 
             CEDCBlock block;
-            ReadBlockFromDisk(block, pindex, Params().GetConsensus());
+            ReadBlockFromDisk(block, pindex, edcParams().GetConsensus());
             BOOST_FOREACH(CEDCTransaction& tx, block.vtx)
             {
                 if (AddToWalletIfInvolvingMe(tx, &block, fUpdate))

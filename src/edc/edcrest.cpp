@@ -10,7 +10,6 @@
 #include "edcmain.h"
 #include "edchttpserver.h"
 #include "edc/rpc/edcserver.h"
-#warning "REPLACE server.h with edcserver.h"
 #include "streams.h"
 #include "sync.h"
 #include "edctxmempool.h"
@@ -247,7 +246,7 @@ bool rest_block(EDCHTTPRequest* req,
         if (fHavePruned && !(pblockindex->nStatus & BLOCK_HAVE_DATA) && pblockindex->nTx > 0)
             return RESTERR(req, HTTP_NOT_FOUND, hashStr + " not available (pruned data)");
 
-        if (!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))
+        if (!ReadBlockFromDisk(block, pblockindex, edcParams().GetConsensus()))
             return RESTERR(req, HTTP_NOT_FOUND, hashStr + " not found");
     }
 
@@ -398,7 +397,7 @@ bool rest_tx(EDCHTTPRequest* req, const std::string& strURIPart)
 
     CEDCTransaction tx;
     uint256 hashBlock = uint256();
-    if (!GetTransaction(hash, tx, Params().GetConsensus(), hashBlock, true))
+    if (!GetTransaction(hash, tx, edcParams().GetConsensus(), hashBlock, true))
         return RESTERR(req, HTTP_NOT_FOUND, hashStr + " not found");
 
     CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);

@@ -17,7 +17,9 @@
 
 #include "chainparamsseeds.h"
 
-static CEDCBlock CreateGenesisBlock(
+	#include "arith_uint256.h"
+
+static CEDCBlock edcCreateGenesisBlock(
 	   const char * pszTimestamp, 
 	const CScript & genesisOutputScript, 
 	       uint32_t nTime, 
@@ -56,7 +58,7 @@ static CEDCBlock CreateGenesisBlock(
  *     CTxOut(nValue=50.00000000, scriptPubKey=0x5F1DF16B2B704C8A578D0B)
  *   vMerkleTree: 4a5e1e
  */
-static CEDCBlock CreateGenesisBlock(
+static CEDCBlock edcCreateGenesisBlock(
 	       uint32_t nTime, 
            uint32_t nNonce, 
        	   uint32_t nBits, 
@@ -65,7 +67,7 @@ static CEDCBlock CreateGenesisBlock(
 {
     const char* pszTimestamp = "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks";
     const CScript genesisOutputScript = CScript() << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f") << OP_CHECKSIG;
-    return CreateGenesisBlock(pszTimestamp, genesisOutputScript, nTime, nNonce, nBits, nVersion, genesisReward);
+    return edcCreateGenesisBlock(pszTimestamp, genesisOutputScript, nTime, nNonce, nBits, nVersion, genesisReward);
 }
 
 /**
@@ -119,7 +121,7 @@ public:
         nDefaultPort = 8333;
         nPruneAfterHeight = 100000;
 
-        genesis = CreateGenesisBlock(1231006505, 2083236893, 0x1d00ffff, 1, 50 * COIN);
+        genesis = edcCreateGenesisBlock(1231006505, 2083236893, 0x1d00ffff, 1, 50 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
 //        assert(consensus.hashGenesisBlock == uint256S("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"));
 //        assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
@@ -209,9 +211,26 @@ public:
         nDefaultPort = 18333;
         nPruneAfterHeight = 1000;
 
-        genesis = CreateGenesisBlock(1296688602, 414098458, 0x1d00ffff, 1, 50 * COIN);
-        consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0xe1194d79c04a2e45363abb1213024c87bdb457b5a77dc4ed008db385a8f68f35"));
+/*
+		arith_uint256 target;
+		bool b1, b2;
+		target.SetCompact( 486604799, &b1, &b2 );
+		printf( "%s:%d %s\n", __FILE__, __LINE__, target.ToString().c_str() );
+
+		uint32_t nonce = 2742956900; 
+		for( ; ; ++nonce )
+		{
+       		genesis = edcCreateGenesisBlock(1296688602, nonce, 0x1d00ffff, 1, 50 * COIN);
+       		consensus.hashGenesisBlock = genesis.GetHash();
+			if(UintToArith256(consensus.hashGenesisBlock) <= target )
+				break;
+		}
+
+*/
+   	    genesis = edcCreateGenesisBlock(1296688602, 2742957622, 0x1d00ffff, 1, 50 * COIN);
+      	consensus.hashGenesisBlock = genesis.GetHash();
+
+        assert(consensus.hashGenesisBlock == uint256S("0x0000000054625bbb2088cdaf7f3a87a86b437a2c6a8f7115e9cf09339c733e9a"));
         assert(genesis.hashMerkleRoot == uint256S("0x3691a31622c21bdf8b58a3edd838e311edc07dbe2a6f4b0b13f16bfd307b213d"));
 
         vFixedSeeds.clear();
@@ -282,7 +301,7 @@ public:
         nDefaultPort = 18444;
         nPruneAfterHeight = 1000;
 
-        genesis = CreateGenesisBlock(1296688602, 2, 0x207fffff, 1, 50 * COIN);
+        genesis = edcCreateGenesisBlock(1296688602, 2, 0x207fffff, 1, 50 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
         assert(consensus.hashGenesisBlock == uint256S("0x5fa6bb49db65efd0c90cab9d18c58778375fdd02c571d2cc4dcaf8a33f51395a"));
         assert(genesis.hashMerkleRoot == uint256S("0x3691a31622c21bdf8b58a3edd838e311edc07dbe2a6f4b0b13f16bfd307b213d"));

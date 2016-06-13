@@ -11,6 +11,7 @@
 #include "pow.h"
 #include "uint256.h"
 #include "edcutil.h"
+#include "edcchainparams.h"
 
 
 #include <stdint.h>
@@ -245,14 +246,14 @@ bool CEDCBlockTreeDB::LoadBlockIndexGuts(
                 pindexNew->nStatus        = diskindex.nStatus;
                 pindexNew->nTx            = diskindex.nTx;
 
-                if (!CheckProofOfWork(pindexNew->GetBlockHash(), pindexNew->nBits, Params().GetConsensus()))
-                    return error("LoadBlockIndex(): CheckProofOfWork failed: %s", pindexNew->ToString());
+                if (!CheckProofOfWork(pindexNew->GetBlockHash(), pindexNew->nBits, edcParams().GetConsensus()))
+                    return edcError("LoadBlockIndex(): CheckProofOfWork failed: %s", pindexNew->ToString());
 
                 pcursor->Next();
             } 
 			else 
 			{
-                return error("LoadBlockIndex() : failed to read value");
+                return edcError("LoadBlockIndex() : failed to read value");
             }
         } 
 		else 
