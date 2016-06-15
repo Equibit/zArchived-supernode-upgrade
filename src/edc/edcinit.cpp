@@ -1017,6 +1017,8 @@ bool EdcAppInit(
 				boost::ref(theApp.walletMain()->strWalletFile)));
     	}
 #endif
+		params.dumpToLog();
+		params.checkParams();
 	}
 	catch( const std::exception & e )
 	{

@@ -199,6 +199,7 @@ EDCparams::EDCparams()
 	acceptnonstdtxn     = GetBoolArg( "-eb_acceptnonstdtxn", 
 		!edcParams(network).RequireStandard() );
 	blocksonly          = GetBoolArg( "-eb_blocksonly", EDC_DEFAULT_BLOCKSONLY );
+	checkparams         = GetBoolArg( "-eb_checkparams", true );
 	checkpoints         = GetBoolArg( "-eb_checkpoints", EDC_DEFAULT_CHECKPOINTS_ENABLED );
 	datacarrier         = GetBoolArg( "-eb_datacarrier", EDC_DEFAULT_ACCEPT_DATACARRIER );
 	disablesafemode     = GetBoolArg( "-eb_disablesafemode", EDC_DEFAULT_DISABLE_SAFEMODE );
@@ -350,6 +351,8 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
 			strprintf(_("Whether to operate in a blocks only mode (default: %u)"), EDC_DEFAULT_BLOCKSONLY));
     strUsage += HelpMessageOpt("-eb_checkblocks=<n>", 
 		strprintf(_("How many blocks to check at startup (default: %u, 0 = all)"), EDC_DEFAULT_CHECKBLOCKS));
+    strUsage += HelpMessageOpt("-eb_checkparams", 
+		strprintf(_("Verify all command line options are valid (default: %s)"), "true" ));
     strUsage += HelpMessageOpt("-eb_checklevel=<n>", 
 		strprintf(_("How thorough the block verification of -checkblocks is (0-4, default: %u)"), EDC_DEFAULT_CHECKLEVEL));
     strUsage += HelpMessageOpt("-eb_conf=<file>", 
@@ -775,3 +778,434 @@ bool EDCparams::validate()
 	return true;
 }
 
+inline const char * toString( bool b )	{ return b?"true":"false"; }
+
+void printStrVec( const char * n, const std::vector<std::string> & sv )
+{
+	auto i = sv.begin();
+	auto e = sv.end();
+
+	edcLogPrintf( "%s {", n );
+	bool first = true;
+
+	while( i != e )
+	{
+		if(!first)
+			edcLogPrintf( "," );
+		else
+			first = false;
+
+        edcLogPrintf( "\"%s\"", i->c_str() );
+
+		++i;
+	}
+	edcLogPrintf( "}\n" );
+}
+
+void EDCparams::dumpToLog() const
+{
+	edcLogPrintf( ">>>>>>>>>>>>>>>>>> Equibit Options <<<<<<<<<<<<<<<<<<\n" );
+
+	edcLogPrintf( "eb_acceptnonstdtxn      %s\n", toString(acceptnonstdtxn) );
+	printStrVec( "eb_addnode             ", addnode );
+	edcLogPrintf( "eb_alertnotify          \"%s\"\n", alertnotify.c_str() );
+
+	edcLogPrintf( "eb_banscore             %lld\n", banscore );
+	edcLogPrintf( "eb_bantime              %lld\n", bantime );
+	printStrVec( "eb_bind                ", bind );
+	edcLogPrintf( "eb_blockmaxsize         %lld\n", blockmaxsize );
+	edcLogPrintf( "eb_blockminsize         %lld\n", blockminsize );
+	edcLogPrintf( "eb_blocknotify          \"%s\"\n", blocknotify.c_str() );
+	edcLogPrintf( "eb_blockprioritysize    %lld\n", blockprioritysize );
+	edcLogPrintf( "eb_blocksonly           %s\n", toString(blocksonly) );
+	edcLogPrintf( "eb_blockversion         %lld\n", blockversion );
+	edcLogPrintf( "eb_bytespersigop        %lld\n", bytespersigop );
+
+	edcLogPrintf( "eb_checkblockindex      %s\n", toString(checkblockindex) );
+	edcLogPrintf( "eb_checkblocks          %lld\n", checkblocks );
+	edcLogPrintf( "eb_checklevel           %lld\n", checklevel );
+	edcLogPrintf( "eb_checkmempool         %s\n", toString(checkmempool) );
+	edcLogPrintf( "eb_checkpoints          %s\n", toString(checkpoints) );
+	edcLogPrintf( "eb_conf                 \"%s\"\n", conf.c_str() );
+	printStrVec( "eb_connect             ", connect );
+
+	edcLogPrintf( "eb_datacarrier          %s\n", toString(datacarrier) );
+	edcLogPrintf( "eb_datacarriersize      %lld\n", datacarriersize );
+	edcLogPrintf( "eb_datadir              \"%s\"\n", datadir.c_str() );
+	edcLogPrintf( "eb_dbcache              %lld\n", dbcache );
+	edcLogPrintf( "eb_dblogsize            %lld\n", dblogsize );
+	printStrVec( "eb_debug               ", debug );
+	edcLogPrintf( "eb_disablesafemode      %s\n", toString(disablesafemode) );
+	edcLogPrintf( "eb_disablewallet        %s\n", toString(disablewallet) );
+	edcLogPrintf( "eb_discover             %s\n", toString(discover) );
+	edcLogPrintf( "eb_dnsseed              %s\n", toString(dnsseed) );
+	edcLogPrintf( "eb_dropmessagestest     %lld\n", dropmessagestest );
+
+	printStrVec( "eb_externalip          ", externalip );
+
+	edcLogPrintf( "eb_fallbackfee          \"%s\"\n", fallbackfee.c_str() );
+	edcLogPrintf( "eb_feefilter            %s\n", toString(feefilter) );
+	edcLogPrintf( "eb_flushwallet          %s\n", toString(flushwallet) );
+	edcLogPrintf( "eb_forcednsseed         %s\n", toString(forcednsseed) );
+	edcLogPrintf( "eb_fuzzmessagetest      %lld\n", fuzzmessagetest );
+
+	edcLogPrintf( "eb_keypool              %lld\n", keypool );
+
+	edcLogPrintf( "eb_limitancestorcount   %lld\n", limitancestorcount );
+	edcLogPrintf( "eb_limitancestorsize    %lld\n", limitancestorsize );
+	edcLogPrintf( "eb_limitdescendantcount %lld\n", limitdescendantcount );
+	edcLogPrintf( "eb_limitdescendantsize  %lld\n", limitdescendantsize );
+	edcLogPrintf( "eb_limitfreerelay       %lld\n", limitfreerelay );
+	edcLogPrintf( "eb_listen               %s\n", toString(listen) );
+	edcLogPrintf( "eb_listenonion          %s\n", toString(listenonion) );
+	printStrVec( "eb_loadblock           ", loadblock );
+	edcLogPrintf( "eb_logips               %s\n", toString(logips) );
+	edcLogPrintf( "eb_logtimemicros        %s\n", toString(logtimemicros) );
+	edcLogPrintf( "eb_logtimestamps        %s\n", toString(logtimestamps) );
+
+	edcLogPrintf( "eb_maxconnections       %lld\n", maxconnections );
+	edcLogPrintf( "eb_maxmempool           %lld\n", maxmempool );
+	edcLogPrintf( "eb_maxorphantx          %lld\n", maxorphantx );
+	edcLogPrintf( "eb_maxreceivebuffer     %lld\n", maxreceivebuffer );
+	edcLogPrintf( "eb_maxsendbuffer        %lld\n", maxsendbuffer );
+	edcLogPrintf( "eb_maxsigcachesize      %lld\n", maxsigcachesize );
+	edcLogPrintf( "eb_maxtimeadjustment    %lld\n", maxtimeadjustment );
+	edcLogPrintf( "eb_maxtipage            %lld\n", maxtipage );
+	edcLogPrintf( "eb_maxtxfee             %lld\n", maxtxfee );
+	edcLogPrintf( "eb_maxuploadtarget      %lld\n", maxuploadtarget );
+	edcLogPrintf( "eb_mempoolexpiry        %lld\n", mempoolexpiry );
+	edcLogPrintf( "eb_mempoolreplacement   %s\n", toString(mempoolreplacement) );
+	edcLogPrintf( "eb_minrelaytxfee        \"%s\"\n", minrelaytxfee.c_str() );
+	edcLogPrintf( "eb_mintxfee             \"%s\"\n", mintxfee.c_str() );
+
+	edcLogPrintf( "eb_nodebug              %s\n", toString(nodebug) );
+
+	edcLogPrintf( "eb_onion                \"%s\"\n", onion.c_str() );
+	printStrVec( "eb_onlynet             ", onlynet );
+
+	edcLogPrintf( "eb_par                  %lld\n", par );
+	edcLogPrintf( "eb_paytxfee             \"%s\"\n", paytxfee.c_str() );
+	edcLogPrintf( "eb_peerbloomfilters     %s\n", toString(peerbloomfilters) );
+	edcLogPrintf( "eb_permitbaremultisig   %s\n", toString(permitbaremultisig) );
+	edcLogPrintf( "eb_pid                  \"%s\"\n", pid.c_str() );
+	edcLogPrintf( "eb_port                 %lld\n", port );
+	edcLogPrintf( "eb_printpriority        %s\n", toString(printpriority) );
+	edcLogPrintf( "eb_printtoconsole       %s\n", toString(printtoconsole) );
+	edcLogPrintf( "eb_privdb               %s\n", toString(privdb) );
+	edcLogPrintf( "eb_proxy                \"%s\"\n", proxy.c_str() );
+	edcLogPrintf( "eb_proxyrandomize       %s\n", toString(proxyrandomize) );
+	edcLogPrintf( "eb_prune                %lld\n", prune );
+
+	edcLogPrintf( "eb_regtest              %s\n", toString(regtest) );
+	edcLogPrintf( "eb_reindex              %s\n", toString(reindex) );
+	edcLogPrintf( "eb_relaypriority        %s\n", toString(relaypriority) );
+	edcLogPrintf( "eb_rescan               %s\n", toString(rescan) );
+	edcLogPrintf( "eb_rest                 %s\n", toString(rest) );
+	printStrVec( "eb_rpcallowip          ", rpcallowip );
+	printStrVec( "eb_rpcauth             ", rpcauth );
+	printStrVec( "eb_rpcbind             ", rpcbind );
+	edcLogPrintf( "eb_rpccookiefile        \"%s\"\n", rpccookiefile.c_str() );
+	edcLogPrintf( "eb_rpcpassword          \"%s\"\n", rpcpassword.c_str() );
+	edcLogPrintf( "eb_rpcport              %lld\n", rpcport );
+	edcLogPrintf( "eb_rpcservertimeout     %lld\n", rpcservertimeout );
+	edcLogPrintf( "eb_rpcthreads           %lld\n", rpcthreads );
+	edcLogPrintf( "eb_rpcuser              \"%s\"\n", rpcuser.c_str() );
+	edcLogPrintf( "eb_rpcworkqueue         %lld\n", rpcworkqueue );
+
+	edcLogPrintf( "eb_salvagewallet        %s\n", toString( salvagewallet) );
+	printStrVec( "eb_seednode            ", seednode );
+	edcLogPrintf( "eb_sendfreetransactions %s\n", toString(sendfreetransactions) );
+	edcLogPrintf( "eb_server               %s\n", toString(server) );
+	edcLogPrintf( "eb_shrinkdebugfile      %s\n", toString( shrinkdebugfile) );
+	edcLogPrintf( "eb_spendzeroconfchange  %s\n", toString( spendzeroconfchange) );
+	edcLogPrintf( "eb_stopafterblockimport %s\n", toString( stopafterblockimport));
+
+	edcLogPrintf( "eb_testnet              %s\n", toString(testnet) );
+	edcLogPrintf( "eb_testsafemode         %s\n", toString( testsafemode) );
+	edcLogPrintf( "eb_timeout              %lld\n", timeout );
+	edcLogPrintf( "eb_torcontrol           \"%s\"\n", torcontrol.c_str() );
+	edcLogPrintf( "eb_torpassword          \"%s\"\n", torpassword.c_str() );
+	edcLogPrintf( "eb_txconfirmtarget      %lld\n", txconfirmtarget );
+	edcLogPrintf( "eb_txindex              %s\n", toString( txindex) );
+
+	printStrVec( "eb_uacomment           ", uacomment );
+	edcLogPrintf( "eb_upgradewallet        %s\n", toString( upgradewallet) );
+	edcLogPrintf( "eb_upnp                 %s\n", toString( upnp) );
+
+	edcLogPrintf( "eb_wallet               \"%s\"\n", wallet.c_str() );
+	edcLogPrintf( "eb_walletbroadcast      %s\n", toString( walletbroadcast) );
+	edcLogPrintf( "eb_walletnotify         \"%s\"\n", walletnotify.c_str() );
+	printStrVec( "eb_whitebind           ", whitebind );
+	printStrVec( "eb_whitelist           ", whitelist );
+	edcLogPrintf( "eb_whitelistforcerelay  %s\n", toString( whitelistforcerelay) );
+	edcLogPrintf( "eb_whitelistrelay       %s\n", toString( whitelistrelay) );
+
+	edcLogPrintf( "eb_zapwallettxes        %lld\n", zapwallettxes );
+
+	edcLogPrintf( ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n" );
+}
+
+void EDCparams::checkParams() const
+{
+	if( !checkparams )
+		return;
+
+	std::set<std::string> validparams;
+
+	validparams.insert("-acceptnonstdtxn");
+	validparams.insert("-addnode");
+	validparams.insert("-alertnotify");
+	validparams.insert("-banscore");
+	validparams.insert("-bantime");
+	validparams.insert("-bind");
+	validparams.insert("-blockmaxsize");
+	validparams.insert("-blockminsize");
+	validparams.insert("-blocknotify");
+	validparams.insert("-blockprioritysize");
+	validparams.insert("-blocksonly");
+	validparams.insert("-blockversion");
+	validparams.insert("-bytespersigop");
+	validparams.insert("-checkblockindex");
+	validparams.insert("-checkblocks");
+	validparams.insert("-checklevel");
+	validparams.insert("-checkmempool");
+	validparams.insert("-checkpoints");
+	validparams.insert("-conf");
+	validparams.insert("-connect");
+	validparams.insert("-daemon");
+	validparams.insert("-datacarrier");
+	validparams.insert("-datacarriersize");
+	validparams.insert("-datadir");
+	validparams.insert("-dbcache");
+	validparams.insert("-dblogsize");
+	validparams.insert("-debug");
+	validparams.insert("-disablesafemode");
+	validparams.insert("-disablewallet");
+	validparams.insert("-discover");
+	validparams.insert("-dnsseed");
+	validparams.insert("-dropmessagestest");
+	validparams.insert("-externalip");
+	validparams.insert("-fallbackfee");
+	validparams.insert("-feefilter");
+	validparams.insert("-flushwallet");
+	validparams.insert("-forcednsseed");
+	validparams.insert("-fuzzmessagetest");
+	validparams.insert("-keypool");
+	validparams.insert("-limitancestorcount");
+	validparams.insert("-limitancestorsize");
+	validparams.insert("-limitdescendantcount");
+	validparams.insert("-limitdescendantsize");
+	validparams.insert("-limitfreerelay");
+	validparams.insert("-listen");
+	validparams.insert("-listenonion");
+	validparams.insert("-loadblock");
+	validparams.insert("-logips");
+	validparams.insert("-logtimemicros");
+	validparams.insert("-logtimestamps");
+	validparams.insert("-maxconnections");
+	validparams.insert("-maxmempool");
+	validparams.insert("-maxorphantx");
+	validparams.insert("-maxreceivebuffer");
+	validparams.insert("-maxsendbuffer");
+	validparams.insert("-maxsigcachesize");
+	validparams.insert("-maxtimeadjustment");
+	validparams.insert("-maxtipage");
+	validparams.insert("-maxtxfee");
+	validparams.insert("-maxuploadtarget");
+	validparams.insert("-mempoolexpiry");
+	validparams.insert("-mempoolreplacement");
+	validparams.insert("-minrelaytxfee");
+	validparams.insert("-mintxfee");
+	validparams.insert("-nodebug");
+	validparams.insert("-onion");
+	validparams.insert("-onlynet");
+	validparams.insert("-par");
+	validparams.insert("-paytxfee");
+	validparams.insert("-peerbloomfilters");
+	validparams.insert("-permitbaremultisig");
+	validparams.insert("-pid");
+	validparams.insert("-port");
+	validparams.insert("-printpriority");
+	validparams.insert("-printtoconsole");
+	validparams.insert("-privdb");
+	validparams.insert("-proxy");
+	validparams.insert("-proxyrandomize");
+	validparams.insert("-prune");
+	validparams.insert("-regtest");
+	validparams.insert("-reindex");
+	validparams.insert("-relaypriority");
+	validparams.insert("-rescan");
+	validparams.insert("-rest");
+	validparams.insert("-rpcallowip");
+	validparams.insert("-rpcauth");
+	validparams.insert("-rpcbind");
+	validparams.insert("-rpccookiefile");
+	validparams.insert("-rpcpassword");
+	validparams.insert("-rpcport");
+	validparams.insert("-rpcservertimeout");
+	validparams.insert("-rpcthreads");
+	validparams.insert("-rpcuser");
+	validparams.insert("-rpcworkqueue");
+	validparams.insert("-salvagewallet");
+	validparams.insert("-seednode");
+	validparams.insert("-sendfreetransactions");
+	validparams.insert("-server");
+	validparams.insert("-shrinkdebugfile");
+	validparams.insert("-spendzeroconfchange");
+	validparams.insert("-stopafterblockimport");
+	validparams.insert("-testnet");
+	validparams.insert("-testsafemode");
+	validparams.insert("-timeout");
+	validparams.insert("-torcontrol");
+	validparams.insert("-torpassword");
+	validparams.insert("-txconfirmtarget");
+	validparams.insert("-txindex");
+	validparams.insert("-uacomment");
+	validparams.insert("-upgradewallet");
+	validparams.insert("-upnp");
+	validparams.insert("-wallet");
+	validparams.insert("-walletbroadcast");
+	validparams.insert("-walletnotify");
+	validparams.insert("-whitebind");
+	validparams.insert("-whitelist");
+	validparams.insert("-whitelistforcerelay");
+	validparams.insert("-whitelistrelay");
+	validparams.insert("-zapwallettxes");
+	validparams.insert("-eb_acceptnonstdtxn");
+	validparams.insert("-eb_addnode");
+	validparams.insert("-eb_alertnotify");
+	validparams.insert("-eb_banscore");
+	validparams.insert("-eb_bantime");
+	validparams.insert("-eb_bind");
+	validparams.insert("-eb_blockmaxsize");
+	validparams.insert("-eb_blockminsize");
+	validparams.insert("-eb_blocknotify");
+	validparams.insert("-eb_blockprioritysize");
+	validparams.insert("-eb_blocksonly");
+	validparams.insert("-eb_blockversion");
+	validparams.insert("-eb_bytespersigop");
+	validparams.insert("-eb_checkblockindex");
+	validparams.insert("-eb_checkblocks");
+	validparams.insert("-eb_checklevel");
+	validparams.insert("-eb_checkmempool");
+	validparams.insert("-eb_checkparams");
+	validparams.insert("-eb_checkpoints");
+	validparams.insert("-eb_conf");
+	validparams.insert("-eb_connect");
+	validparams.insert("-eb_datacarrier");
+	validparams.insert("-eb_datacarriersize");
+	validparams.insert("-eb_datadir");
+	validparams.insert("-eb_dbcache");
+	validparams.insert("-eb_dblogsize");
+	validparams.insert("-eb_debug");
+	validparams.insert("-eb_disablesafemode");
+	validparams.insert("-eb_disablewallet");
+	validparams.insert("-eb_discover");
+	validparams.insert("-eb_dnsseed");
+	validparams.insert("-eb_dropmessagestest");
+	validparams.insert("-eb_externalip");
+	validparams.insert("-eb_fallbackfee");
+	validparams.insert("-eb_feefilter");
+	validparams.insert("-eb_flushwallet");
+	validparams.insert("-eb_forcednsseed");
+	validparams.insert("-eb_fuzzmessagetest");
+	validparams.insert("-eb_keypool");
+	validparams.insert("-eb_limitancestorcount");
+	validparams.insert("-eb_limitancestorsize");
+	validparams.insert("-eb_limitdescendantcount");
+	validparams.insert("-eb_limitdescendantsize");
+	validparams.insert("-eb_limitfreerelay");
+	validparams.insert("-eb_listen");
+	validparams.insert("-eb_listenonion");
+	validparams.insert("-eb_loadblock");
+	validparams.insert("-eb_logips");
+	validparams.insert("-eb_logtimemicros");
+	validparams.insert("-eb_logtimestamps");
+	validparams.insert("-eb_maxconnections");
+	validparams.insert("-eb_maxmempool");
+	validparams.insert("-eb_maxorphantx");
+	validparams.insert("-eb_maxreceivebuffer");
+	validparams.insert("-eb_maxsendbuffer");
+	validparams.insert("-eb_maxsigcachesize");
+	validparams.insert("-eb_maxtimeadjustment");
+	validparams.insert("-eb_maxtipage");
+	validparams.insert("-eb_maxtxfee");
+	validparams.insert("-eb_maxuploadtarget");
+	validparams.insert("-eb_mempoolexpiry");
+	validparams.insert("-eb_mempoolreplacement");
+	validparams.insert("-eb_minrelaytxfee");
+	validparams.insert("-eb_mintxfee");
+	validparams.insert("-eb_nodebug");
+	validparams.insert("-eb_onion");
+	validparams.insert("-eb_onlynet");
+	validparams.insert("-eb_par");
+	validparams.insert("-eb_paytxfee");
+	validparams.insert("-eb_peerbloomfilters");
+	validparams.insert("-eb_permitbaremultisig");
+	validparams.insert("-eb_pid");
+	validparams.insert("-eb_port");
+	validparams.insert("-eb_printpriority");
+	validparams.insert("-eb_printtoconsole");
+	validparams.insert("-eb_privdb");
+	validparams.insert("-eb_proxy");
+	validparams.insert("-eb_proxyrandomize");
+	validparams.insert("-eb_prune");
+	validparams.insert("-eb_regtest");
+	validparams.insert("-eb_reindex");
+	validparams.insert("-eb_relaypriority");
+	validparams.insert("-eb_rescan");
+	validparams.insert("-eb_rest");
+	validparams.insert("-eb_rpcallowip");
+	validparams.insert("-eb_rpcauth");
+	validparams.insert("-eb_rpcbind");
+	validparams.insert("-eb_rpccookiefile");
+	validparams.insert("-eb_rpcpassword");
+	validparams.insert("-eb_rpcport");
+	validparams.insert("-eb_rpcservertimeout");
+	validparams.insert("-eb_rpcthreads");
+	validparams.insert("-eb_rpcuser");
+	validparams.insert("-eb_rpcworkqueue");
+	validparams.insert("-eb_salvagewallet");
+	validparams.insert("-eb_seednode");
+	validparams.insert("-eb_sendfreetransactions");
+	validparams.insert("-eb_server");
+	validparams.insert("-eb_shrinkdebugfile");
+	validparams.insert("-eb_spendzeroconfchange");
+	validparams.insert("-eb_stopafterblockimport");
+	validparams.insert("-eb_testnet");
+	validparams.insert("-eb_testsafemode");
+	validparams.insert("-eb_timeout");
+	validparams.insert("-eb_torcontrol");
+	validparams.insert("-eb_torpassword");
+	validparams.insert("-eb_txconfirmtarget");
+	validparams.insert("-eb_txindex");
+	validparams.insert("-eb_uacomment");
+	validparams.insert("-eb_upgradewallet");
+	validparams.insert("-eb_upnp");
+	validparams.insert("-eb_wallet");
+	validparams.insert("-eb_walletbroadcast");
+	validparams.insert("-eb_walletnotify");
+	validparams.insert("-eb_whitebind");
+	validparams.insert("-eb_whitelist");
+	validparams.insert("-eb_whitelistforcerelay");
+	validparams.insert("-eb_whitelistrelay");
+	validparams.insert("-eb_zapwallettxes");
+
+	auto i = mapArgs.begin();
+	auto e = mapArgs.end();
+
+	while( i != e )
+	{
+		auto key = i->first;
+
+		if( validparams.find(key) == validparams.end() )
+		{
+			std::string msg = "Invalid option ";
+			msg += key;
+
+			throw std::runtime_error( msg );
+		}
+
+		++i;
+	}
+}

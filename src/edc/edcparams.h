@@ -25,12 +25,15 @@ public:
 
 	std::string helpMessage( HelpMessageMode );
 	bool validate();
+	void dumpToLog() const;
+	void checkParams() const;
 
 	// Bool parameters
 	bool acceptnonstdtxn;
 	bool blocksonly;
 	bool checkblockindex;
 	bool checkmempool;
+	bool checkparams;
 	bool checkpoints;
 	bool datacarrier;
 	bool disablesafemode;
