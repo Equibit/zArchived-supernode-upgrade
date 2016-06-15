@@ -44,8 +44,11 @@
        root.
 */
 
+namespace
+{
+
 /* This implements a constant-space merkle root/path calculator, limited to 2^32 leaves. */
-static void MerkleComputation(
+void edcMerkleComputation(
 	const std::vector<uint256>& leaves, 
 	uint256* proot, 
 	bool* pmutated, 
@@ -138,6 +141,39 @@ static void MerkleComputation(
     if (proot) *proot = h;
 }
 
+uint256 edcComputeMerkleRoot(const std::vector<uint256>& leaves, bool* mutated) 
+{
+    uint256 hash;
+    edcMerkleComputation(leaves, &hash, mutated, -1, NULL);
+    return hash;
+}
+
+std::vector<uint256> edcComputeMerkleBranch(const std::vector<uint256>& leaves, uint32_t position) 
+{
+    std::vector<uint256> ret;
+    edcMerkleComputation(leaves, NULL, NULL, position, &ret);
+    return ret;
+}
+
+uint256 edcComputeMerkleRootFromBranch(const uint256& leaf, const std::vector<uint256>& vMerkleBranch, uint32_t nIndex) {
+    uint256 hash = leaf;
+    for (std::vector<uint256>::const_iterator it = vMerkleBranch.begin(); it != vMerkleBranch.end(); ++it) 
+	{
+        if (nIndex & 1) 
+		{
+            hash = Hash(BEGIN(*it), END(*it), BEGIN(hash), END(hash));
+        } 
+		else 
+		{
+            hash = Hash(BEGIN(hash), END(hash), BEGIN(*it), END(*it));
+        }
+        nIndex >>= 1;
+    }
+    return hash;
+}
+
+}
+
 uint256 edcBlockMerkleRoot(const CEDCBlock& block, bool* mutated)
 {
     std::vector<uint256> leaves;
@@ -146,7 +182,7 @@ uint256 edcBlockMerkleRoot(const CEDCBlock& block, bool* mutated)
 	{
         leaves[s] = block.vtx[s].GetHash();
     }
-    return ComputeMerkleRoot(leaves, mutated);
+    return edcComputeMerkleRoot(leaves, mutated);
 }
 
 std::vector<uint256> edcBlockMerkleBranch(
@@ -160,5 +196,5 @@ std::vector<uint256> edcBlockMerkleBranch(
         leaves[s] = block.vtx[s].GetHash();
     }
 
-    return ComputeMerkleBranch(leaves, position);
+    return edcComputeMerkleBranch(leaves, position);
 }

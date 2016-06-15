@@ -17,6 +17,7 @@
 #include "edc/rpc/edcregister.h"
 #include "edchttpserver.h"
 #include "edchttprpc.h"
+#include "edctorcontrol.h"
 #include "consensus/validation.h"
 #include <boost/interprocess/sync/file_lock.hpp>
 
@@ -1037,7 +1038,7 @@ void edcInterrupt(boost::thread_group& threadGroup)
     edcInterruptHTTPRPC();
     edcInterruptRPC();
     edcInterruptREST();
-    // TODO edcInterruptTorControl();
+    edcInterruptTorControl();
     threadGroup.interrupt_all();
 }
 

@@ -10,7 +10,7 @@
 #include "chain.h"
 #include "edcchainparams.h"
 #include "edc/edccoins.h"
-#include "consensus/consensus.h"
+#include "edc/consensus/edcconsensus.h"
 #include "edc/consensus/edcmerkle.h"
 #include "consensus/validation.h"
 #include "hash.h"
@@ -81,8 +81,8 @@ CEDCBlockTemplate* CreateNewEDCBlock(const CEDCChainParams& chainparams, const C
     // Largest block you're willing to create:
     EDCparams & params = EDCparams::singleton();
     unsigned int nBlockMaxSize = params.blockmaxsize;
-    // Limit to between 1K and MAX_BLOCK_SIZE-1K for sanity:
-    nBlockMaxSize = std::max((unsigned int)1000, std::min((unsigned int)(MAX_BLOCK_SIZE-1000), nBlockMaxSize));
+    // Limit to between 1K and EDC_MAX_BLOCK_SIZE-1K for sanity:
+    nBlockMaxSize = std::max((unsigned int)1000, std::min((unsigned int)(EDC_MAX_BLOCK_SIZE-1000), nBlockMaxSize));
 
     // How much of the block should be dedicated to high-priority transactions,
     // included regardless of the fees they pay
@@ -127,7 +127,7 @@ CEDCBlockTemplate* CreateNewEDCBlock(const CEDCChainParams& chainparams, const C
         if (chainparams.MineBlocksOnDemand())
             pblock->nVersion = params.blockversion;
 
-        int64_t nLockTimeCutoff = (STANDARD_LOCKTIME_VERIFY_FLAGS & LOCKTIME_MEDIAN_TIME_PAST)
+        int64_t nLockTimeCutoff = (STANDARD_LOCKTIME_VERIFY_FLAGS & EDC_LOCKTIME_MEDIAN_TIME_PAST)
                                 ? nMedianTimePast
                                 : pblock->GetBlockTime();
 
@@ -225,9 +225,9 @@ CEDCBlockTemplate* CreateNewEDCBlock(const CEDCChainParams& chainparams, const C
                 continue;
 
             unsigned int nTxSigOps = iter->GetSigOpCount();
-            if (nBlockSigOps + nTxSigOps >= MAX_BLOCK_SIGOPS) 
+            if (nBlockSigOps + nTxSigOps >= EDC_MAX_BLOCK_SIGOPS) 
 			{
-                if (nBlockSigOps > MAX_BLOCK_SIGOPS - 2) 
+                if (nBlockSigOps > EDC_MAX_BLOCK_SIGOPS - 2) 
 				{
                     break;
                 }

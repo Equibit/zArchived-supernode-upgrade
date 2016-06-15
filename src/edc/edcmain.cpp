@@ -11,7 +11,7 @@
 #include "edcchainparams.h"
 #include "checkpoints.h"
 #include "checkqueue.h"
-#include "consensus/consensus.h"
+#include "edc/consensus/edcconsensus.h"
 #include "edc/consensus/edcmerkle.h"
 #include "consensus/validation.h"
 #include "hash.h"
@@ -788,8 +788,8 @@ bool CheckFinalTx(const CEDCTransaction &tx, int flags)
     // less than the median time of the previous block they're contained in.
     // When the next block is created its previous block will be the current
     // chain tip, so we use that to calculate the median time passed to
-    // IsFinalTx() if LOCKTIME_MEDIAN_TIME_PAST is set.
-    const int64_t nBlockTime = (flags & LOCKTIME_MEDIAN_TIME_PAST)
+    // IsFinalTx() if EDC_LOCKTIME_MEDIAN_TIME_PAST is set.
+    const int64_t nBlockTime = (flags & EDC_LOCKTIME_MEDIAN_TIME_PAST)
                              ? theApp.chainActive().Tip()->GetMedianTimePast()
                              : edcGetAdjustedTime();
 
@@ -820,7 +820,7 @@ std::pair<int, int64_t> CalculateSequenceLocks(const CEDCTransaction &tx, int fl
     // we would be doing a signed comparison and half the range of nVersion
     // wouldn't support BIP 68.
     bool fEnforceBIP68 = static_cast<uint32_t>(tx.nVersion) >= 2
-                      && flags & LOCKTIME_VERIFY_SEQUENCE;
+                      && flags & EDC_LOCKTIME_VERIFY_SEQUENCE;
 
     // Do not enforce sequence numbers as a relative lock time
     // unless we have been instructed to
@@ -1030,7 +1030,7 @@ bool CheckTransaction(const CEDCTransaction& tx, CValidationState &state)
     if (tx.vout.empty())
         return state.DoS(10, false, REJECT_INVALID, "bad-txns-vout-empty");
     // Size limits
-    if (::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
+    if (::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION) > EDC_MAX_BLOCK_SIZE)
         return state.DoS(100, false, REJECT_INVALID, "bad-txns-oversize");
 
     // Check for negative or overflow output values
@@ -1247,7 +1247,7 @@ bool AcceptToMemoryPoolWorker(CEDCTxMemPool& pool, CValidationState& state, cons
         double dPriority = view.GetPriority(tx, theApp.chainActive().Height(), inChainInputValue);
 
         // Keep track of transactions that spend a coinbase, which we re-scan
-        // during reorgs to ensure COINBASE_MATURITY is still met.
+        // during reorgs to ensure EDC_COINBASE_MATURITY is still met.
         bool fSpendsCoinbase = false;
         BOOST_FOREACH(const CEDCTxIn &txin, tx.vin) 
 		{
@@ -1269,7 +1269,7 @@ bool AcceptToMemoryPoolWorker(CEDCTxMemPool& pool, CValidationState& state, cons
         // Check that the transaction doesn't have an excessive number of
         // sigops, making it impossible to mine. Since the coinbase transaction
         // itself can contain sigops MAX_STANDARD_TX_SIGOPS is less than
-        // MAX_BLOCK_SIGOPS; we still consider this an invalid rather than
+        // EDC_MAX_BLOCK_SIGOPS; we still consider this an invalid rather than
         // merely non-standard transaction.
         if ((nSigOps > MAX_STANDARD_TX_SIGOPS) || (params.bytespersigop && nSigOps > nSize / params.bytespersigop))
             return state.DoS(0, false, REJECT_NONSTANDARD, "bad-txns-too-many-sigops", false,
@@ -1996,7 +1996,7 @@ bool CheckTxInputs(
             // If prev is coinbase, check that it's matured
             if (coins->IsCoinBase()) 
 			{
-                if (nSpendHeight - coins->nHeight < COINBASE_MATURITY)
+                if (nSpendHeight - coins->nHeight < EDC_COINBASE_MATURITY)
                     return state.Invalid(false,
                         REJECT_INVALID, "bad-txns-premature-spend-of-coinbase",
                         strprintf("tried to spend coinbase at depth %d", nSpendHeight - coins->nHeight));
@@ -2549,7 +2549,7 @@ bool edcConnectBlock(
     if (VersionBitsState(pindex->pprev, chainparams.GetConsensus(), Consensus::DEPLOYMENT_CSV, versionbitscache) == THRESHOLD_ACTIVE) 
 	{
         flags |= SCRIPT_VERIFY_CHECKSEQUENCEVERIFY;
-        nLockTimeFlags |= LOCKTIME_VERIFY_SEQUENCE;
+        nLockTimeFlags |= EDC_LOCKTIME_VERIFY_SEQUENCE;
     }
 
     int64_t nTime2 = GetTimeMicros(); nTimeForks += nTime2 - nTime1;
@@ -2574,7 +2574,7 @@ bool edcConnectBlock(
 
         nInputs += tx.vin.size();
         nSigOps += GetLegacySigOpCount(tx);
-        if (nSigOps > MAX_BLOCK_SIGOPS)
+        if (nSigOps > EDC_MAX_BLOCK_SIGOPS)
             return state.DoS(100, edcError("ConnectBlock(): too many sigops"),
                              REJECT_INVALID, "bad-blk-sigops");
 
@@ -2605,7 +2605,7 @@ bool edcConnectBlock(
                 // this is to prevent a "rogue miner" from creating
                 // an incredibly-expensive-to-validate block.
                 nSigOps += GetP2SHSigOpCount(tx, view);
-                if (nSigOps > MAX_BLOCK_SIGOPS)
+                if (nSigOps > EDC_MAX_BLOCK_SIGOPS)
                     return state.DoS(100, edcError("ConnectBlock(): too many sigops"),
                                      REJECT_INVALID, "bad-blk-sigops");
             }
@@ -3615,7 +3615,7 @@ bool edcCheckBlock(
     // because we receive the wrong transactions for it.
 
     // Size limits
-    if (block.vtx.empty() || block.vtx.size() > MAX_BLOCK_SIZE || ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
+    if (block.vtx.empty() || block.vtx.size() > EDC_MAX_BLOCK_SIZE || ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION) > EDC_MAX_BLOCK_SIZE)
         return state.DoS(100, false, REJECT_INVALID, "bad-blk-length", false, "size limits failed");
 
     // First transaction must be coinbase, the rest must not be
@@ -3636,7 +3636,7 @@ bool edcCheckBlock(
     {
         nSigOps += GetLegacySigOpCount(tx);
     }
-    if (nSigOps > MAX_BLOCK_SIGOPS)
+    if (nSigOps > EDC_MAX_BLOCK_SIGOPS)
         return state.DoS(100, false, REJECT_INVALID, "bad-blk-sigops", false, "out-of-bounds SigOpCount");
 
     if (fCheckPOW && fCheckMerkleRoot)
@@ -3693,10 +3693,10 @@ bool edcContextualCheckBlock(const CEDCBlock& block, CValidationState& state, CB
     if (VersionBitsState(pindexPrev, consensusParams, 
 	Consensus::DEPLOYMENT_CSV, versionbitscache) == THRESHOLD_ACTIVE) 
 	{
-        nLockTimeFlags |= LOCKTIME_MEDIAN_TIME_PAST;
+        nLockTimeFlags |= EDC_LOCKTIME_MEDIAN_TIME_PAST;
     }
 
-    int64_t nLockTimeCutoff = (nLockTimeFlags & LOCKTIME_MEDIAN_TIME_PAST)
+    int64_t nLockTimeCutoff = (nLockTimeFlags & EDC_LOCKTIME_MEDIAN_TIME_PAST)
                               ? pindexPrev->GetMedianTimePast()
                               : block.GetBlockTime();
 
@@ -4429,7 +4429,7 @@ bool edcLoadExternalBlockFile(
     try 
 	{
         // This takes over fileIn and calls fclose() on it in the CBufferedFile destructor
-        CBufferedFile blkdat(fileIn, 2*MAX_BLOCK_SIZE, MAX_BLOCK_SIZE+8, SER_DISK, CLIENT_VERSION);
+        CBufferedFile blkdat(fileIn, 2*EDC_MAX_BLOCK_SIZE, EDC_MAX_BLOCK_SIZE+8, SER_DISK, CLIENT_VERSION);
         uint64_t nRewind = blkdat.GetPos();
         while (!blkdat.eof()) 
 		{
@@ -4450,7 +4450,7 @@ bool edcLoadExternalBlockFile(
                     continue;
                 // read size
                 blkdat >> nSize;
-                if (nSize < 80 || nSize > MAX_BLOCK_SIZE)
+                if (nSize < 80 || nSize > EDC_MAX_BLOCK_SIZE)
                     continue;
             } 
 			catch (const std::exception&) 

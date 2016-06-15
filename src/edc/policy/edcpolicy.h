@@ -8,7 +8,7 @@
 #define EDC_POLICY_EDCPOLICY_H
 
 #include "policy/policy.h"
-#include "consensus/consensus.h"
+#include "edc/consensus/edcconsensus.h"
 #include "edc/script/edcinterpreter.h"
 #include "script/standard.h"
 

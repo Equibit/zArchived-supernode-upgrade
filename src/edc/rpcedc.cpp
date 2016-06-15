@@ -172,8 +172,3 @@ void RegisterEquibitRPCCommands( CEDCRPCTable & edcTableRPC)
 	for( unsigned int vcidx = 0; vcidx < ARRAYLEN(commands); vcidx++ )
 		edcTableRPC.appendCommand(commands[vcidx].name, &commands[vcidx]);
 }
-
-void RegisterEquibitWalletRPCCommands( CEDCRPCTable & edcTableRPC)
-{
-	// TODO
-}

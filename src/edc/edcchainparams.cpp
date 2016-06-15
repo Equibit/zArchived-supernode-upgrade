@@ -118,15 +118,13 @@ public:
         pchMessageStart[1] = 0xbe;
         pchMessageStart[2] = 0xb4;
         pchMessageStart[3] = 0xd9;
-        nDefaultPort = 8333;
+        nDefaultPort = 8330;
         nPruneAfterHeight = 100000;
 
         genesis = edcCreateGenesisBlock(1231006505, 2083236893, 0x1d00ffff, 1, 50 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-//        assert(consensus.hashGenesisBlock == uint256S("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"));
-//        assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
-        assert(consensus.hashGenesisBlock == uint256S("0xc57f57bfdc4d44b55476eac688ce6c3e1737a6afcaebd428efae34079dfa6c6c"));
-        assert(genesis.hashMerkleRoot == uint256S("0x3691a31622c21bdf8b58a3edd838e311edc07dbe2a6f4b0b13f16bfd307b213d"));
+        assert(consensus.hashGenesisBlock == uint256S("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"));
+        assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
 
         vSeeds.push_back(CDNSSeedData("bitcoin.sipa.be", "seed.bitcoin.sipa.be")); // Pieter Wuille
         vSeeds.push_back(CDNSSeedData("bluematt.me", "dnsseed.bluematt.me")); // Matt Corallo
@@ -145,6 +143,7 @@ public:
 
         fMiningRequiresPeers = true;
         fDefaultConsistencyChecks = false;
+        fRequireStandard = true;
         fMineBlocksOnDemand = false;
         fTestnetToBeDeprecatedFieldRPC = false;
 
@@ -208,30 +207,37 @@ public:
         pchMessageStart[1] = 0x11;
         pchMessageStart[2] = 0x09;
         pchMessageStart[3] = 0x07;
-        nDefaultPort = 18333;
+        nDefaultPort = 18330;
         nPruneAfterHeight = 1000;
 
 /*
+		FILE * fh = fopen( "nonce.trace.txt", "w" );
+
 		arith_uint256 target;
 		bool b1, b2;
 		target.SetCompact( 486604799, &b1, &b2 );
-		printf( "%s:%d %s\n", __FILE__, __LINE__, target.ToString().c_str() );
+		fprintf( fh, "%s:%d %s\n", __FILE__, __LINE__, target.ToString().c_str() );
 
-		uint32_t nonce = 2742956900; 
+		uint32_t nonce = 414098450; 
 		for( ; ; ++nonce )
 		{
        		genesis = edcCreateGenesisBlock(1296688602, nonce, 0x1d00ffff, 1, 50 * COIN);
        		consensus.hashGenesisBlock = genesis.GetHash();
+			if( nonce % 200000 == 0 )
+fprintf( fh, "%s:%d %u\n", __FILE__, __LINE__, nonce ); fflush(fh);
 			if(UintToArith256(consensus.hashGenesisBlock) <= target )
 				break;
 		}
+fprintf( fh, "%s:%d %u %s\n", __FILE__, __LINE__, nonce, consensus.hashGenesisBlock.ToString().c_str() ); fflush(fh);
+fclose(fh);
 
+//   	    genesis = edcCreateGenesisBlock(1296688602, 2742957622, 0x1d00ffff, 1, 50 * COIN);
 */
-   	    genesis = edcCreateGenesisBlock(1296688602, 2742957622, 0x1d00ffff, 1, 50 * COIN);
+  	    genesis = edcCreateGenesisBlock(1296688602, 414098458, 0x1d00ffff, 1, 50 * COIN);
       	consensus.hashGenesisBlock = genesis.GetHash();
 
-        assert(consensus.hashGenesisBlock == uint256S("0x0000000054625bbb2088cdaf7f3a87a86b437a2c6a8f7115e9cf09339c733e9a"));
-        assert(genesis.hashMerkleRoot == uint256S("0x3691a31622c21bdf8b58a3edd838e311edc07dbe2a6f4b0b13f16bfd307b213d"));
+        assert(consensus.hashGenesisBlock == uint256S("0x000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943"));
+        assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
 
         vFixedSeeds.clear();
         vSeeds.clear();
@@ -249,6 +255,7 @@ public:
 
         fMiningRequiresPeers = true;
         fDefaultConsistencyChecks = false;
+        fRequireStandard = false;
         fMineBlocksOnDemand = false;
         fTestnetToBeDeprecatedFieldRPC = true;
 
@@ -298,19 +305,21 @@ public:
         pchMessageStart[1] = 0xbf;
         pchMessageStart[2] = 0xb5;
         pchMessageStart[3] = 0xda;
-        nDefaultPort = 18444;
+        nDefaultPort = 18442;
         nPruneAfterHeight = 1000;
 
         genesis = edcCreateGenesisBlock(1296688602, 2, 0x207fffff, 1, 50 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0x5fa6bb49db65efd0c90cab9d18c58778375fdd02c571d2cc4dcaf8a33f51395a"));
-        assert(genesis.hashMerkleRoot == uint256S("0x3691a31622c21bdf8b58a3edd838e311edc07dbe2a6f4b0b13f16bfd307b213d"));
+        assert(consensus.hashGenesisBlock == uint256S("0x0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206"));
+        assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
+
 
         vFixedSeeds.clear(); //!< Regtest mode doesn't have any fixed seeds.
         vSeeds.clear();      //!< Regtest mode doesn't have any DNS seeds.
 
         fMiningRequiresPeers = false;
         fDefaultConsistencyChecks = true;
+        fRequireStandard = false;
         fMineBlocksOnDemand = true;
         fTestnetToBeDeprecatedFieldRPC = false;
 

@@ -1,6 +1,6 @@
-// Copyright (c) 2016 Equibit Development Corporation
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
+// Copyright (c) 2016 Equibit Development Corporation
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -59,6 +59,11 @@ public:
 	{ 
 		return fDefaultConsistencyChecks; 
 	}
+    /** Policy: Filter transactions that do not match well-defined patterns */
+    bool RequireStandard() const 
+	{ 
+		return fRequireStandard; 
+	}
     uint64_t PruneAfterHeight() const 
 	{ 
 		return nPruneAfterHeight; 
@@ -108,6 +113,7 @@ protected:
     std::vector<SeedSpec6> vFixedSeeds;
     bool fMiningRequiresPeers;
     bool fDefaultConsistencyChecks;
+    bool fRequireStandard;
     bool fMineBlocksOnDemand;
     bool fTestnetToBeDeprecatedFieldRPC;
     CCheckpointData checkpointData;

@@ -10,7 +10,7 @@
 #include "checkpoints.h"
 #include "chain.h"
 #include "coincontrol.h"
-#include "consensus/consensus.h"
+#include "edc/consensus/edcconsensus.h"
 #include "consensus/validation.h"
 #include "key.h"
 #include "keystore.h"
@@ -3433,7 +3433,7 @@ int CEDCMerkleTx::GetBlocksToMaturity() const
 {
     if (!IsCoinBase())
         return 0;
-    return max(0, (COINBASE_MATURITY+1) - GetDepthInMainChain());
+    return max(0, (EDC_COINBASE_MATURITY+1) - GetDepthInMainChain());
 }
 
 

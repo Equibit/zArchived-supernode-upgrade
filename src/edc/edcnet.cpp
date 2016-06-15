@@ -16,7 +16,7 @@
 #include "addrman.h"
 #include "edcchainparams.h"
 #include "clientversion.h"
-#include "consensus/consensus.h"
+#include "edc/consensus/edcconsensus.h"
 #include "crypto/common.h"
 #include "hash.h"
 #include "edc/primitives/edctransaction.h"
@@ -2156,7 +2156,7 @@ void CEDCNode::RecordBytesSent(uint64_t bytes)
 void CEDCNode::SetMaxOutboundTarget(uint64_t limit)
 {
     LOCK(cs_totalBytesSent);
-    uint64_t recommendedMinimum = (nMaxOutboundTimeframe / 600) * MAX_BLOCK_SIZE;
+    uint64_t recommendedMinimum = (nMaxOutboundTimeframe / 600) * EDC_MAX_BLOCK_SIZE;
     nMaxOutboundLimit = limit;
 
     if (limit > 0 && limit < recommendedMinimum)
@@ -2211,7 +2211,7 @@ bool CEDCNode::OutboundTargetReached(bool historicalBlockServingLimit)
     {
         // keep a large enough buffer to at least relay each block once
         uint64_t timeLeftInCycle = GetMaxOutboundTimeLeftInCycle();
-        uint64_t buffer = timeLeftInCycle / 600 * MAX_BLOCK_SIZE;
+        uint64_t buffer = timeLeftInCycle / 600 * EDC_MAX_BLOCK_SIZE;
         if (buffer >= nMaxOutboundLimit || nMaxOutboundTotalBytesSentInCycle >= nMaxOutboundLimit - buffer)
             return true;
     }
@@ -2297,7 +2297,7 @@ bool CEDCAddrDB::Write(const CAddrMan& addr)
 
     // serialize addresses, checksum data up to that point, then append csum
     CDataStream ssPeers(SER_DISK, CLIENT_VERSION);
-    ssPeers << FLATDATA(Params().MessageStart());
+    ssPeers << FLATDATA(edcParams().MessageStart());
     ssPeers << addr;
     uint256 hash = Hash(ssPeers.begin(), ssPeers.end());
     ssPeers << hash;
@@ -2370,7 +2370,7 @@ bool CEDCAddrDB::Read(CAddrMan& addr)
         ssPeers >> FLATDATA(pchMsgTmp);
 
         // ... verify the network matches ours
-        if (memcmp(pchMsgTmp, Params().MessageStart(), sizeof(pchMsgTmp)))
+        if (memcmp(pchMsgTmp, edcParams().MessageStart(), sizeof(pchMsgTmp)))
             return edcError("%s: Invalid network magic number", __func__);
 
         // de-serialize address data into one CAddrMan object
@@ -2599,7 +2599,7 @@ bool CEDCBanDB::Write(const banmap_t& banSet)
 
     // serialize banlist, checksum data up to that point, then append csum
     CDataStream ssBanlist(SER_DISK, CLIENT_VERSION);
-    ssBanlist << FLATDATA(Params().MessageStart());
+    ssBanlist << FLATDATA(edcParams().MessageStart());
     ssBanlist << banSet;
     uint256 hash = Hash(ssBanlist.begin(), ssBanlist.end());
     ssBanlist << hash;
@@ -2676,7 +2676,7 @@ bool CEDCBanDB::Read(banmap_t& banSet)
         ssBanlist >> FLATDATA(pchMsgTmp);
 
         // ... verify the network matches ours
-        if (memcmp(pchMsgTmp, Params().MessageStart(), sizeof(pchMsgTmp)))
+        if (memcmp(pchMsgTmp, edcParams().MessageStart(), sizeof(pchMsgTmp)))
             return edcError("%s: Invalid network magic number", __func__);
 
         // de-serialize address data into one CAddrMan object

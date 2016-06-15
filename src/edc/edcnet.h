@@ -587,4 +587,6 @@ CEDCNode * edcFindNode(const CSubNet& subNet);
 CEDCNode * edcFindNode(const std::string& addrName);
 CEDCNode * edcFindNode(const CService& ip);
 
+void edcSetLimited(enum Network net, bool fLimited);
+
 #endif // BITCOIN_NET_H

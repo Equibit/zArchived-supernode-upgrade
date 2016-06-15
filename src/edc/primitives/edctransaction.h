@@ -116,15 +116,13 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) 
 	{
         READWRITE(nValue);
-//        READWRITE(*(CScriptBase*)(&scriptPubKey));
-// TODO
+        READWRITE(*(CScriptBase*)(&scriptPubKey));
     }
 
     void SetNull()
     {
         nValue = -1;
-//        scriptPubKey.clear();
-// TODO
+        scriptPubKey.clear();
     }
 
     bool IsNull() const
@@ -144,9 +142,8 @@ public:
         // need a CTxIn of at least 148 bytes to spend:
         // so dust is a spendable txout less than
         // 546*minRelayTxFee/1000 (in satoshis)
-//        if (scriptPubKey.IsUnspendable())
-//            return 0;
-// TODO
+        if (scriptPubKey.IsUnspendable())
+            return 0;
 
         size_t nSize = GetSerializeSize(SER_DISK,0)+148u;
         return 3*minRelayTxFee.GetFee(nSize);

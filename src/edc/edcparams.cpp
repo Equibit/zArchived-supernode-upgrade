@@ -188,8 +188,16 @@ EDCparams::EDCparams()
     }
     configFileReadFailed = false;
 
+	regtest  = GetBoolArg( "-eb_regtest", false );
+	testnet  = GetBoolArg( "-eb_testnet", false );
+
+	std::string network = regtest?
+		(CBaseChainParams::REGTEST):
+		(testnet?CBaseChainParams::TESTNET:CBaseChainParams::MAIN);
+
 	// Bool parameters
-	acceptnonstdtxn     = GetBoolArg( "-eb_acceptnonstdtxn", false );
+	acceptnonstdtxn     = GetBoolArg( "-eb_acceptnonstdtxn", 
+		!edcParams(network).RequireStandard() );
 	blocksonly          = GetBoolArg( "-eb_blocksonly", EDC_DEFAULT_BLOCKSONLY );
 	checkpoints         = GetBoolArg( "-eb_checkpoints", EDC_DEFAULT_CHECKPOINTS_ENABLED );
 	datacarrier         = GetBoolArg( "-eb_datacarrier", EDC_DEFAULT_ACCEPT_DATACARRIER );
@@ -206,10 +214,8 @@ EDCparams::EDCparams()
 	logtimestamps       = GetBoolArg( "-eb_logtimestamps", EDC_DEFAULT_LOGTIMESTAMPS );
 	mempoolreplacement  = GetBoolArg( "-eb_mempoolreplacement", EDC_DEFAULT_ENABLE_REPLACEMENT );
 	nodebug             = GetBoolArg( "-eb_nodebug", false );
-	regtest             = GetBoolArg( "-eb_regtest", false );
 	checkblockindex     = GetBoolArg( "-eb_checkblockindex", regtest );
 	checkmempool        = GetBoolArg( "-eb_checkmempool", regtest );
-	testnet             = GetBoolArg( "-eb_testnet", false );
 	reindex             = GetBoolArg( "-eb_reindex", false );
 	printpriority       = GetBoolArg( "-eb_printpriority", EDC_DEFAULT_PRINTPRIORITY );
 	printtoconsole      = GetBoolArg( "-eb_printtoconsole", false );
@@ -268,8 +274,9 @@ EDCparams::EDCparams()
 	par                 = GetArg( "-eb_par", EDC_DEFAULT_SCRIPTCHECK_THREADS );
 	peerbloomfilters    = GetArg( "-eb_peerbloomfilters", EDC_DEFAULT_PEERBLOOMFILTERS );
 	permitbaremultisig  = GetArg( "-eb_permitbaremultisig", EDC_DEFAULT_PERMIT_BAREMULTISIG );
-	port                = GetArg( "-eb_port", regtest?18445:(testnet?18334:8334) );
+	port                = GetArg( "-eb_port", edcParams(network).GetDefaultPort() );
 	prune               = GetArg( "-eb_prune", 0 );
+// TODO: BaseParams().RPCPort()
 	rpcport             = GetArg( "-eb_rpcport", regtest?18331:(testnet?18331:8331) );
 	rpcservertimeout    = GetArg( "-eb_rpcservertimeout", EDC_DEFAULT_HTTP_SERVER_TIMEOUT );
 	rpcthreads          = GetArg( "-eb_rpcthreads", EDC_DEFAULT_HTTP_THREADS );
@@ -419,7 +426,7 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-eb_peerbloomfilters", 
 		strprintf(_("Support filtering of blocks and transaction with bloom filters (default: %u)"), EDC_DEFAULT_PEERBLOOMFILTERS));
     strUsage += HelpMessageOpt("-eb_port=<port>", 
-		strprintf(_("Listen for connections on <port> (default: %u or testnet: %u)"), Params(CBaseChainParams::MAIN).GetDefaultPort(), Params(CBaseChainParams::TESTNET).GetDefaultPort()));
+		strprintf(_("Listen for connections on <port> (default: %u or testnet: %u)"), edcParams(CBaseChainParams::MAIN).GetDefaultPort(), edcParams(CBaseChainParams::TESTNET).GetDefaultPort()));
     strUsage += HelpMessageOpt("-eb_proxy=<ip:port>", 
 		_("Connect through SOCKS5 proxy"));
     strUsage += HelpMessageOpt("-eb_proxyrandomize", 
@@ -465,9 +472,9 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
     if (showDebug)
     {
         strUsage += HelpMessageOpt("-eb_checkblockindex", 
-			strprintf("Do a full consistency check for mapBlockIndex, setBlockIndexCandidates, chainActive and mapBlocksUnlinked occasionally. Also sets -checkmempool (default: %u)", Params(CBaseChainParams::MAIN).DefaultConsistencyChecks()));
+			strprintf("Do a full consistency check for mapBlockIndex, setBlockIndexCandidates, chainActive and mapBlocksUnlinked occasionally. Also sets -checkmempool (default: %u)", edcParams(CBaseChainParams::MAIN).DefaultConsistencyChecks()));
         strUsage += HelpMessageOpt("-eb_checkmempool=<n>", 
-			strprintf("Run checks every <n> transactions (default: %u)", Params(CBaseChainParams::MAIN).DefaultConsistencyChecks()));
+			strprintf("Run checks every <n> transactions (default: %u)", edcParams(CBaseChainParams::MAIN).DefaultConsistencyChecks()));
         strUsage += HelpMessageOpt("-eb_checkpoints", 
 			strprintf("Disable expensive verification for known chain history (default: %u)", EDC_DEFAULT_CHECKPOINTS_ENABLED));
         strUsage += HelpMessageOpt("-eb_disablesafemode", 
@@ -536,7 +543,7 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
     strUsage += HelpMessageGroup(_("Equibit Node relay options:"));
     if (showDebug)
         strUsage += HelpMessageOpt("-eb_acceptnonstdtxn", 
-			strprintf("Relay and mine \"non-standard\" transactions (%sdefault: %u)", "testnet/regtest only; ", !Params(CBaseChainParams::TESTNET).RequireStandard()));
+			strprintf("Relay and mine \"non-standard\" transactions (%sdefault: %u)", "testnet/regtest only; ", !edcParams(CBaseChainParams::TESTNET).RequireStandard()));
     strUsage += HelpMessageOpt("-eb_bytespersigop", 
 		strprintf(_("Minimum bytes per sigop in transactions we relay and mine (default: %u)"), EDC_DEFAULT_BYTES_PER_SIGOP));
     strUsage += HelpMessageOpt("-eb_datacarrier", 
@@ -611,7 +618,7 @@ bool EDCparams::validate()
 	if( configFileReadFailed )
 		return false;
 
-    // Check for -ebtestnet or -ebregtest parameter (Params() calls are 
+    // Check for -ebtestnet or -ebregtest parameter (edcParams() calls are 
     // only valid after this clause)
     if (testnet && regtest)
 	{

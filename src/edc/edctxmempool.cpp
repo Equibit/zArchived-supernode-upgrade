@@ -7,7 +7,7 @@
 #include "edctxmempool.h"
 
 #include "clientversion.h"
-#include "consensus/consensus.h"
+#include "edc/consensus/edcconsensus.h"
 #include "consensus/validation.h"
 #include "edcmain.h"
 #include "edc/policy/edcfees.h"
@@ -601,7 +601,7 @@ void CEDCTxMemPool::removeForReorg(const CEDCCoinsViewCache *pcoins, unsigned in
                     continue;
                 const CEDCCoins *coins = pcoins->AccessCoins(txin.prevout.hash);
 		if (nCheckFrequency != 0) assert(coins);
-                if (!coins || (coins->IsCoinBase() && ((signed long)nMemPoolHeight) - coins->nHeight < COINBASE_MATURITY)) 
+                if (!coins || (coins->IsCoinBase() && ((signed long)nMemPoolHeight) - coins->nHeight < EDC_COINBASE_MATURITY)) 
 		{
                     transactionsToRemove.push_back(tx);
                     break;
