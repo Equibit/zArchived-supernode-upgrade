@@ -1,0 +1,62 @@
+-------------------------------------------------------------------------------
+Commit: 4e0bd1e241d060babb603107c296b9435e76dff0
+Date:   Wed Jun 15 07:30:33 2016 -0400
+Author: David Cauz
+
+Added param dumping to the log file and checking for invalid parameters
+-------------------------------------------------------------------------------
+Commit: 80ed8f9d68e4e29a951745f54b2e5bfaf7dcd46b
+Author: David Cauz
+Date:   Tue Jun 14 22:30:24 2016 -0400
+
+Added RPC parameter processing code for Equibit RPCs. This enables Equibit
+RPC calls with non-string parameters to be handled.
+-------------------------------------------------------------------------------
+Commit: d9d5c1ca3c6218c5eac1d75b9d0b47cff4dfa6a0
+Author: David Cauz
+Date:   Tue Jun 14 21:57:36 2016 -0400
+
+Misc improvements
+-------------------------------------------------------------------------------
+Commit: 324e12325002d449a35986567d89346342457746
+Author: David Cauz
+Date:   Mon Jun 13 06:58:02 2016 -0400
+
+Misc fixes;Computed nonce for testnet network.
+-------------------------------------------------------------------------------
+Commit: f0483c2b96c3468062a9c17e90fa8d8be7cd673f
+Author: David Cauz
+Date:   Sun Jun 12 09:01:41 2016 -0400
+
+Added User Guide; Misc bug fixes.
+-------------------------------------------------------------------------------
+Commit: 02b4e967561618b052b156010c07b3bf7ab3e188
+Author: David Cauz
+Date:   Sat Jun 11 20:13:37 2016 -0400
+
+Added server classes for Equibit RPC processing.
+------------------------------------------------------------------------------
+Commit: da4b2fac251115c77970f4490c88ac9763038145
+Author: David Cauz
+Date:   Thu Jun 9 06:54:29 2016 -0400
+
+Corrected names of Equbit RPCs.
+-------------------------------------------------------------------------------
+Commit: d0333e996ffbf25aabb6037246b22d446da53d56
+Author: David Cauz
+Date:   Wed Jun 8 22:16:11 2016 -0400
+
+Changed names of Equibit command line options.
+-------------------------------------------------------------------------------
+Commit: ad0aaf434d8e2b1516a045c98e34fe20c8a03faf
+Author: David Cauz
+Date:   Wed Jun 8 21:47:21 2016 -0400
+
+Several bug fixes.
+-------------------------------------------------------------------------------
+Commit: 7fe2d2c53965dc8f37f1f4d1d5a6d262b1b5967e
+Author: David Cauz
+Date:   Wed Jun 8 19:08:42 2016 -0400
+
+Misc bugs and added Equibit version of merkle block algo.
+-------------------------------------------------------------------------------

@@ -17,6 +17,7 @@ EDCapp::EDCapp():
 	debug_(false),
 	maxConnections_ (EDC_DEFAULT_MAX_PEER_CONNECTIONS),
 	coinCacheUsage_(5000*300),
+	maxTxFee_(EDC_DEFAULT_TRANSACTION_MAXFEE),
 	minRelayTxFee_(EDC_DEFAULT_MIN_RELAY_TX_FEE),
 	mempool_(minRelayTxFee_),
 	mapAlreadyAskedFor_(MAX_INV_SZ),

@@ -8,13 +8,14 @@
 #include "init.h"
 
 
-const int          EDC_DEFAULT_CONNECT_TIMEOUT  = 5000;
-const unsigned int EDC_DEFAULT_MIN_RELAY_TX_FEE = 1000;
-const unsigned int EDC_DEFAULT_WALLET_DBLOGSIZE = 100;
-const bool         EDC_DEFAULT_WALLET_PRIVDB    = true;
-const int          EDC_MAX_SCRIPTCHECK_THREADS  = 16;
-const int64_t      EDC_MAX_DB_CACHE             = sizeof(void*)>4?16384:1024;
-const int64_t      EDC_MIN_DB_CACHE             = 4;
+const int          EDC_DEFAULT_CONNECT_TIMEOUT    = 5000;
+const unsigned int EDC_DEFAULT_MIN_RELAY_TX_FEE   = 1000;
+const CAmount      EDC_DEFAULT_TRANSACTION_MAXFEE = 0.1 * COIN;
+const unsigned int EDC_DEFAULT_WALLET_DBLOGSIZE   = 100;
+const bool         EDC_DEFAULT_WALLET_PRIVDB      = true;
+const int          EDC_MAX_SCRIPTCHECK_THREADS    = 16;
+const int64_t      EDC_MAX_DB_CACHE               = sizeof(void*)>4?16384:1024;
+const int64_t      EDC_MIN_DB_CACHE               = 4;
 
 
 // Equibit specific parameters

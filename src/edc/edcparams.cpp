@@ -91,7 +91,6 @@ const bool         EDC_DEFAULT_STOPAFTERBLOCKIMPORT    = false;
 
 const bool         EDC_DEFAULT_TESTSAFEMODE            = false;
 const char * const EDC_DEFAULT_TOR_CONTROL             = "127.0.0.1:9051";
-const CAmount      EDC_DEFAULT_TRANSACTION_MAXFEE      = 0.1 * COIN;
 const unsigned int EDC_DEFAULT_TX_CONFIRM_TARGET       = 2;
 const bool         EDC_DEFAULT_TXINDEX                 = false;
 

@@ -2319,8 +2319,9 @@ bool CEDCWallet::CreateTransaction(const vector<CRecipient>& vecSend, CEDCWallet
                     nFeeNeeded = coinControl->nMinimumTotalFee;
                 }
 
-                // If we made it here and we aren't even able to meet the relay fee on the next pass, give up
-                // because we must be at the maximum allowed fee.
+                // If we made it here and we aren't even able to meet the relay
+				// fee on the next pass, give up because we must be at the 
+				// maximum allowed fee.
                 if (nFeeNeeded < theApp.minRelayTxFee().GetFee(nBytes))
                 {
                     strFailReason = _("Transaction too large for fee policy");
@@ -2417,6 +2418,7 @@ CAmount CEDCWallet::GetMinimumFee(unsigned int nTxBytes, unsigned int nConfirmTa
 
     // payTxFee is user-set "I want to pay this much"
     CAmount nFeeNeeded = theApp.payTxFee().GetFee(nTxBytes);
+
     // User didn't set: use -txconfirmtarget to estimate...
     if (nFeeNeeded == 0) 
 	{
@@ -2428,6 +2430,7 @@ CAmount CEDCWallet::GetMinimumFee(unsigned int nTxBytes, unsigned int nConfirmTa
     }
     // prevent user from paying a fee below edcminRelayTxFee or minTxFee
     nFeeNeeded = std::max(nFeeNeeded, GetRequiredFee(nTxBytes));
+
     // But always obey the maximum
     if (nFeeNeeded > theApp.maxTxFee() )
         nFeeNeeded = theApp.maxTxFee();
