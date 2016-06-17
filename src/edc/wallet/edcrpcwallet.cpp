@@ -395,7 +395,14 @@ UniValue edcgetaddressesbyaccount(const UniValue& params, bool fHelp)
     return ret;
 }
 
-static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtractFeeFromAmount, CEDCWalletTx& wtxNew)
+namespace
+{
+
+void SendMoney(
+	const CTxDestination &address, 
+	CAmount nValue, 
+	bool fSubtractFeeFromAmount, 
+	CEDCWalletTx& wtxNew)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -430,6 +437,9 @@ static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtr
     if (!theApp.walletMain()->CommitTransaction(wtxNew, reservekey))
         throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of the wallet and coins were spent in the copy but not marked as spent here.");
 }
+
+}
+
 
 UniValue edcsendtoaddress(const UniValue& params, bool fHelp)
 {

@@ -126,13 +126,15 @@ UniValue edcgenerateBlocks(
         std::unique_ptr<CEDCBlockTemplate> pblocktemplate(CreateNewEDCBlock(edcParams(), coinbaseScript->reserveScript));
         if (!pblocktemplate.get())
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Couldn't create new block");
+
         CEDCBlock *pblock = &pblocktemplate->block;
         {
             LOCK(EDC_cs_main);
             IncrementExtraNonce(pblock, theApp.chainActive().Tip(), nExtraNonce);
         }
 
-        while (nMaxTries > 0 && pblock->nNonce < nInnerLoopCount && !CheckProofOfWork(pblock->GetHash(), pblock->nBits, edcParams().GetConsensus())) 
+        while (nMaxTries > 0 && pblock->nNonce < nInnerLoopCount && 
+		!CheckProofOfWork(pblock->GetHash(), pblock->nBits, edcParams().GetConsensus())) 
 		{
             ++pblock->nNonce;
             --nMaxTries;

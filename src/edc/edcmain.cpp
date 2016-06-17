@@ -4229,68 +4229,90 @@ bool CEDCVerifyDB::VerifyDB(
 {
 	EDCapp & theApp = EDCapp::singleton();
     LOCK(EDC_cs_main);
+
     if (theApp.chainActive().Tip() == NULL || theApp.chainActive().Tip()->pprev == NULL)
         return true;
 
     // Verify blocks in the best chain
     if (nCheckDepth <= 0)
         nCheckDepth = 1000000000; // suffices until the year 19000
+
     if (nCheckDepth > theApp.chainActive().Height())
         nCheckDepth = theApp.chainActive().Height();
+
     nCheckLevel = std::max(0, std::min(4, nCheckLevel));
+
     edcLogPrintf("Verifying last %i blocks at level %i\n", nCheckDepth, nCheckLevel);
+
     CEDCCoinsViewCache coins(coinsview);
     CBlockIndex* pindexState = theApp.chainActive().Tip();
     CBlockIndex* pindexFailure = NULL;
     int nGoodTransactions = 0;
     CValidationState state;
+
     for (CBlockIndex* pindex = theApp.chainActive().Tip(); pindex && pindex->pprev; pindex = pindex->pprev)
     {
         boost::this_thread::interruption_point();
-        uiInterface.ShowProgress(_("Verifying blocks..."), std::max(1, std::min(99, (int)(((double)(theApp.chainActive().Height() - pindex->nHeight)) / (double)nCheckDepth * (nCheckLevel >= 4 ? 50 : 100)))));
+        uiInterface.ShowProgress(_("Verifying blocks..."), std::max(1, std::min(99, 
+			(int)(((double)(theApp.chainActive().Height() - pindex->nHeight)) / (double)nCheckDepth * (nCheckLevel >= 4 ? 50 : 100)))));
+
         if (pindex->nHeight < theApp.chainActive().Height()-nCheckDepth)
             break;
+
         CEDCBlock block;
+
         // check level 0: read from disk
         if (!ReadBlockFromDisk(block, pindex, chainparams.GetConsensus()))
-            return edcError("VerifyDB(): *** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+            return edcError("VerifyDB(): *** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, 
+				pindex->GetBlockHash().ToString());
+
         // check level 1: verify block validity
         if (nCheckLevel >= 1 && !edcCheckBlock(block, state))
             return edcError("%s: *** found bad block at %d, hash=%s (%s)\n", __func__, 
                          pindex->nHeight, pindex->GetBlockHash().ToString(), FormatStateMessage(state));
+
         // check level 2: verify undo validity
         if (nCheckLevel >= 2 && pindex) 
 		{
             CEDCBlockUndo undo;
             CDiskBlockPos pos = pindex->GetUndoPos();
+
             if (!pos.IsNull()) 
 			{
                 if (!UndoReadFromDisk(undo, pos, pindex->pprev->GetBlockHash()))
-                    return edcError("VerifyDB(): *** found bad undo data at %d, hash=%s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
+                    return edcError("VerifyDB(): *** found bad undo data at %d, hash=%s\n", pindex->nHeight, 
+						pindex->GetBlockHash().ToString());
             }
         }
 
 		EDCapp & theApp = EDCapp::singleton();
 
         // check level 3: check for inconsistencies during memory-only disconnect of tip blocks
-        if (nCheckLevel >= 3 && pindex == pindexState && (coins.DynamicMemoryUsage() + theApp.coinsTip()->DynamicMemoryUsage()) <= theApp.coinCacheUsage() ) 
+        if (nCheckLevel >= 3 && pindex == pindexState && 
+		(coins.DynamicMemoryUsage() + theApp.coinsTip()->DynamicMemoryUsage()) <= theApp.coinCacheUsage() ) 
 		{
             bool fClean = true;
             if (!edcDisconnectBlock(block, state, pindex, coins, &fClean))
-                return edcError("VerifyDB(): *** irrecoverable inconsistency in block data at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+                return edcError("VerifyDB(): *** irrecoverable inconsistency in block data at %d, hash=%s", 
+					pindex->nHeight, pindex->GetBlockHash().ToString());
+
             pindexState = pindex->pprev;
             if (!fClean) 
 			{
                 nGoodTransactions = 0;
                 pindexFailure = pindex;
-            } else
+            } 
+			else
                 nGoodTransactions += block.vtx.size();
         }
+
         if (ShutdownRequested())
             return true;
     }
+
     if (pindexFailure)
-        return edcError("VerifyDB(): *** coin database inconsistencies found (last %i blocks, %i good transactions before that)\n", theApp.chainActive().Height() - pindexFailure->nHeight + 1, nGoodTransactions);
+        return edcError("VerifyDB(): *** coin database inconsistencies found (last %i blocks, %i good transactions before that)\n", 
+			theApp.chainActive().Height() - pindexFailure->nHeight + 1, nGoodTransactions);
 
     // check level 4: try reconnecting blocks
     if (nCheckLevel >= 4) 
@@ -4299,17 +4321,24 @@ bool CEDCVerifyDB::VerifyDB(
         while (pindex != theApp.chainActive().Tip()) 
 		{
             boost::this_thread::interruption_point();
-            uiInterface.ShowProgress(_("Verifying blocks..."), std::max(1, std::min(99, 100 - (int)(((double)(theApp.chainActive().Height() - pindex->nHeight)) / (double)nCheckDepth * 50))));
+            uiInterface.ShowProgress(_("Verifying blocks..."), 
+				std::max(1, std::min(99, 
+					100 - (int)(((double)(theApp.chainActive().Height() - pindex->nHeight)) / (double)nCheckDepth * 50))));
+
             pindex = theApp.chainActive().Next(pindex);
             CEDCBlock block;
+
             if (!ReadBlockFromDisk(block, pindex, chainparams.GetConsensus()))
-                return edcError("VerifyDB(): *** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+                return edcError("VerifyDB(): *** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, 
+					pindex->GetBlockHash().ToString());
             if (!edcConnectBlock(block, state, pindex, coins, chainparams))
-                return edcError("VerifyDB(): *** found unconnectable block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+                return edcError("VerifyDB(): *** found unconnectable block at %d, hash=%s", 
+					pindex->nHeight, pindex->GetBlockHash().ToString());
         }
     }
 
-    edcLogPrintf("No coin database inconsistencies in last %i blocks (%i transactions)\n", theApp.chainActive().Height() - pindexState->nHeight, nGoodTransactions);
+    edcLogPrintf("No coin database inconsistencies in last %i blocks (%i transactions)\n", 
+		theApp.chainActive().Height() - pindexState->nHeight, nGoodTransactions);
 
     return true;
 }

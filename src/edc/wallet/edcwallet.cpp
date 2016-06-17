@@ -3142,7 +3142,7 @@ std::string CEDCWallet::GetWalletHelpString(bool showDebug)
     strUsage += HelpMessageOpt("-eb_txconfirmtarget=<n>", strprintf(_("If paytxfee is not set, include enough fee so transactions begin confirmation on average within n blocks (default: %u)"), DEFAULT_TX_CONFIRM_TARGET));
     strUsage += HelpMessageOpt("-eb_upgradewallet", _("Upgrade wallet to latest format on startup"));
     strUsage += HelpMessageOpt("-eb_wallet=<file>", _("Specify wallet file (within data directory)") + " " + strprintf(_("(default: %s)"), edcDEFAULT_WALLET_DAT));
-    strUsage += HelpMessageOpt("-eb_walletbroadcast", _("Make the wallet broadcast transactions") + " " + strprintf(_("(default: %u)"), DEFAULT_WALLETBROADCAST));
+    strUsage += HelpMessageOpt("-eb_walletbroadcast", _("Make the wallet broadcast transactions") + " " + strprintf(_("(default: %u)"), EDC_DEFAULT_WALLETBROADCAST));
     strUsage += HelpMessageOpt("-eb_walletnotify=<cmd>", _("Execute command when a wallet transaction changes (%s in cmd is replaced by TxID)"));
     strUsage += HelpMessageOpt("-eb_zapwallettxes=<mode>", _("Delete all wallet transactions and only recover those parts of the blockchain through -rescan on startup") +
                                " " + _("(1 = keep tx meta data e.g. account owner and payment request information, 2 = drop tx meta data)"));

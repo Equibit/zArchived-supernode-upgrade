@@ -234,7 +234,7 @@ EDCparams::EDCparams()
 	txindex             = GetBoolArg( "-eb_txindex", EDC_DEFAULT_TXINDEX );
 	upgradewallet       = GetBoolArg( "-eb_upgradewallet", false );
 	upnp                = GetBoolArg( "-eb_upnp", EDC_DEFAULT_UPNP );
-	walletbroadcast     = GetBoolArg( "-eb_walletbroadcast", false );
+	walletbroadcast     = GetBoolArg( "-eb_walletbroadcast", EDC_DEFAULT_WALLETBROADCAST );
 	whitelistrelay      = GetBoolArg( "-eb_whitelistrelay", EDC_DEFAULT_WHITELISTRELAY );
 	whitelistforcerelay = GetBoolArg( "-eb_whitelistforcerelay", EDC_DEFAULT_WHITELISTFORCERELAY );
 	zapwallettxes       = GetBoolArg( "-eb_zapwallettxes", false );
