@@ -173,6 +173,7 @@ bool CEDCWallet::LoadCryptedKey(const CPubKey &vchPubKey, const std::vector<unsi
 bool CEDCWallet::AddCScript(const CScript& redeemScript)
 {
     if (!CCryptoKeyStore::AddCScript(redeemScript))
+//    if (!CCryptoKeyStore::edcAddCScript(redeemScript))
         return false;
     if (!fFileBacked)
         return true;
@@ -193,6 +194,7 @@ bool CEDCWallet::LoadCScript(const CScript& redeemScript)
     }
 
     return CCryptoKeyStore::AddCScript(redeemScript);
+//    return CCryptoKeyStore::edcAddCScript(redeemScript);
 }
 
 bool CEDCWallet::AddWatchOnly(const CScript &dest)

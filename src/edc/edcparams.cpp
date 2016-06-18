@@ -276,8 +276,7 @@ EDCparams::EDCparams()
 	permitbaremultisig  = GetArg( "-eb_permitbaremultisig", EDC_DEFAULT_PERMIT_BAREMULTISIG );
 	port                = GetArg( "-eb_port", edcParams(network).GetDefaultPort() );
 	prune               = GetArg( "-eb_prune", 0 );
-// TODO: BaseParams().RPCPort()
-	rpcport             = GetArg( "-eb_rpcport", regtest?18331:(testnet?18331:8331) );
+	rpcport             = GetArg( "-eb_rpcport", BaseParams().edcRPCPort() );
 	rpcservertimeout    = GetArg( "-eb_rpcservertimeout", EDC_DEFAULT_HTTP_SERVER_TIMEOUT );
 	rpcthreads          = GetArg( "-eb_rpcthreads", EDC_DEFAULT_HTTP_THREADS );
 	rpcworkqueue        = GetArg( "-eb_rpcworkqueue", EDC_DEFAULT_HTTP_WORKQUEUE );
@@ -584,7 +583,7 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-eb_rpcauth=<userpw>", 
 		_("Username and hashed password for JSON-RPC connections. The field <userpw> comes in the format: <USERNAME>:<SALT>$<HASH>. A canonical python script is included in share/rpcuser. This option can be specified multiple times"));
     strUsage += HelpMessageOpt("-eb_rpcport=<port>", 
-		strprintf(_("Listen for JSON-RPC connections on <port> (default: %u or testnet: %u)"), BaseParams(CBaseChainParams::MAIN).RPCPort(), BaseParams(CBaseChainParams::TESTNET).RPCPort()));
+		strprintf(_("Listen for JSON-RPC connections on <port> (default: %u or testnet: %u)"), BaseParams(CBaseChainParams::MAIN).edcRPCPort(), BaseParams(CBaseChainParams::TESTNET).edcRPCPort()));
     strUsage += HelpMessageOpt("-eb_rpcallowip=<ip>", 
 		_("Allow JSON-RPC connections from specified source. Valid for <ip> are a single IP (e.g. 1.2.3.4), a network/netmask (e.g. 1.2.3.4/255.255.255.0) or a network/CIDR (e.g. 1.2.3.4/24). This option can be specified multiple times"));
     strUsage += HelpMessageOpt("-eb_rpcthreads=<n>", 

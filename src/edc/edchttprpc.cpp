@@ -9,7 +9,7 @@
 #include "edcbase58.h"
 #include "edcchainparams.h"
 #include "edchttpserver.h"
-#include "rpc/protocol.h"
+#include "edc/rpc/edcprotocol.h"
 #include "edc/rpc/edcserver.h"
 #include "random.h"
 #include "sync.h"
@@ -242,7 +242,7 @@ bool InitRPCAuthentication()
     if (params.rpcpassword == "")
     {
         edcLogPrintf("No rpcpassword set for Equibit - using random cookie authentication\n");
-        if (!GenerateAuthCookie(&strRPCUserColonPass)) 
+        if (!edcGenerateAuthCookie(&strRPCUserColonPass)) 
 		{
             uiInterface.ThreadSafeMessageBox(
                 _("Error: A fatal internal error occurred, see debug.log for details"), // Same message as AbortNode
