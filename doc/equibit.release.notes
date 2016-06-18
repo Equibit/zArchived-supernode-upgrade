@@ -1,4 +1,16 @@
 -------------------------------------------------------------------------------
+Commit: 83fcb901c65ff7881ccfe6b4df228c3b6cc599b0
+Author: David <cauz.david@gmail.com>
+Date:   Sat Jun 18 05:52:08 2016 -0400
+
+    Continued moving code into EDC build. No interface changes
+-------------------------------------------------------------------------------
+Commit: b8300cb70c125e6c3007fc524d20264307c5da3b
+Author: David <cauz.david@gmail.com>
+Date:   Thu Jun 16 20:03:23 2016 -0400
+
+Updated release notes
+-------------------------------------------------------------------------------
 Commit: d140f84bd8715fc949297fa29ef2ba5897e2ef7d
 Author: David <cauz.david@gmail.com>
 Date:   Thu Jun 16 20:00:04 2016 -0400
