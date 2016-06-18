@@ -3,8 +3,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef EDC_EDCCORE_MEMUSAGE_H
-#define EDC_EDCCORE_MEMUSAGE_H
+#pragma once
 
 #include "core_memusage.h"
 #include "edc/primitives/edctransaction.h"
@@ -60,4 +59,3 @@ static inline size_t RecursiveDynamicUsage(const CEDCBlock& block)
     return mem;
 }
 
-#endif // BITCOIN_CORE_MEMUSAGE_H

@@ -156,7 +156,7 @@ static std::vector<CAddress> convertSeed6(const std::vector<SeedSpec6> &vSeedsIn
     return vSeedsOut;
 }
 
-extern int64_t edcGetAdjustedTime();
+int64_t edcGetAdjustedTime();
 
 // get best local address for a particular peer as a CAddress
 // Otherwise, return the unroutable 0.0.0.0 but filled in with

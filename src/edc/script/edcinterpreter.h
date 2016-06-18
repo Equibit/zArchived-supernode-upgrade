@@ -4,8 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef EDC_SCRIPT_EDCINTERPRETER_H
-#define EDC_SCRIPT_EDCINTERPRETER_H
+#pragma once
 
 #include "script/interpreter.h"
 #include "script/script_error.h"
@@ -52,4 +51,3 @@ public:
 bool edcEvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* serror = NULL );
 
 bool edcVerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* error = NULL);
-#endif // BITCOIN_SCRIPT_INTERPRETER_H

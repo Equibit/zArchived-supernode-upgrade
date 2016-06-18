@@ -4,8 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef EDC_EDCCOINS_H
-#define EDC_EDCCOINS_H
+#pragma once
 
 #include "coins.h"
 #include "edc/edccompressor.h"
@@ -515,4 +514,3 @@ private:
     CEDCCoinsViewCache(const CEDCCoinsViewCache &);
 };
 
-#endif // BITCOIN_COINS_H

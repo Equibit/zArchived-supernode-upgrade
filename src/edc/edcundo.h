@@ -4,8 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef EDC_EDCUNDO_H
-#define EDC_EDCUNDO_H
+#pragma once
 
 #include "undo.h"
 #include "edc/edccompressor.h" 
@@ -84,4 +83,3 @@ public:
     }
 };
 
-#endif // BITCOIN_UNDO_H

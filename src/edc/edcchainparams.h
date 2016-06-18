@@ -4,8 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef EDC_EDCCHAINPARAMS_H
-#define EDC_EDCCHAINPARAMS_H
+#pragma once 
 
 #include "chainparams.h"
 #include "edc/primitives/edcblock.h"
@@ -135,5 +134,3 @@ CEDCChainParams & edcParams(const std::string& chain);
  * @throws std::runtime_error when the chain is not supported.
  */
 void edcSelectParams(const std::string& chain);
-
-#endif // BITCOIN_CHAINPARAMS_H

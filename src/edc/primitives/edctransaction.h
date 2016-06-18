@@ -2,8 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef EDC_EDCTRANSACTION_H
-#define EDC_EDCTRANSACTION_H
+#pragma once
 
 #include "primitives/transaction.h"
 #include "amount.h"
@@ -288,4 +287,3 @@ struct CEDCMutableTransaction
 	uint256 GetHash() const;
 };
 
-#endif // EDC_EDCTRANSACTION_H

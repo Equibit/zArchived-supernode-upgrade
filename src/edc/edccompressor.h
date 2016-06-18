@@ -4,8 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef EDC_EDCCOMPRESSOR_H
-#define EDC_EDCCOMPRESSOR_H
+#pragma once 
 
 #include "compressor.h"
 #include "edc/primitives/edctransaction.h"
@@ -50,4 +49,3 @@ public:
     }
 };
 
-#endif // BITCOIN_COMPRESSOR_H

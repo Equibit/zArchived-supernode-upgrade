@@ -5,7 +5,7 @@
 
 #include "edccore_io.h"
 
-#include "base58.h"
+#include "edc/edcbase58.h"
 #include "edc/primitives/edctransaction.h"
 #include "script/script.h"
 #include "script/standard.h"
@@ -84,8 +84,9 @@ string EncodeHexTx(const CEDCTransaction& tx)
     return HexStr(ssTx.begin(), ssTx.end());
 }
 
-void edcScriptPubKeyToUniv(const CScript& scriptPubKey,
-                        UniValue& out, bool fIncludeHex)
+void edcScriptPubKeyToUniv(
+	const CScript& scriptPubKey,
+         UniValue& out, bool fIncludeHex)
 {
     txnouttype type;
     vector<CTxDestination> addresses;
@@ -106,7 +107,7 @@ void edcScriptPubKeyToUniv(const CScript& scriptPubKey,
 
     UniValue a(UniValue::VARR);
     BOOST_FOREACH(const CTxDestination& addr, addresses)
-        a.push_back(CBitcoinAddress(addr).ToString());
+        a.push_back(CEDCBitcoinAddress(addr).ToString());
     out.pushKV("addresses", a);
 }
 

@@ -25,15 +25,15 @@
 
 using namespace std;
 
-extern void TxToJSON(const CEDCTransaction& tx, const uint256 hashBlock, UniValue& entry);
-extern UniValue blockToJSON(const CEDCBlock& block, const CBlockIndex* blockindex, bool txDetails = false);
-extern UniValue edcmempoolInfoToJSON();
-extern UniValue edcmempoolToJSON(bool fVerbose = false);
-extern void ScriptPubKeyToJSON(const CScript& scriptPubKey, UniValue& out, bool fIncludeHex);
-extern UniValue blockheaderToJSON(const CBlockIndex* blockindex);
+void TxToJSON(const CEDCTransaction& tx, const uint256 hashBlock, UniValue& entry);
+UniValue blockToJSON(const CEDCBlock& block, const CBlockIndex* blockindex, bool txDetails = false);
+UniValue edcmempoolInfoToJSON();
+UniValue edcmempoolToJSON(bool fVerbose = false);
+void ScriptPubKeyToJSON(const CScript& scriptPubKey, UniValue& out, bool fIncludeHex);
+UniValue blockheaderToJSON(const CBlockIndex* blockindex);
 
 // A bit of a hack - dependency on a function defined in rpc/blockchain.cpp
-extern UniValue getblockchaininfo(const UniValue& params, bool fHelp);
+UniValue getblockchaininfo(const UniValue& params, bool fHelp);
 
 
 namespace

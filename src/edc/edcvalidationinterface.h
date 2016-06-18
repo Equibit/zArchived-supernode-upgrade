@@ -4,8 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef EDC_EDCVALIDATIONINTERFACE_H
-#define EDC_EDCVALIDATIONINTERFACE_H
+#pragma once
 
 #include "validationinterface.h"
 #include <boost/signals2/signal.hpp>
@@ -71,4 +70,3 @@ struct CEDCMainSignals {
 
 CEDCMainSignals& GetEDCMainSignals();
 
-#endif // BITCOIN_VALIDATIONINTERFACE_H

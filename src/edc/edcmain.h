@@ -4,8 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef EDC_EDCMAIN_H
-#define EDC_EDCMAIN_H
+#pragma once
 
 #if defined(HAVE_CONFIG_H)
 #include "config/bitcoin-config.h"
@@ -274,34 +273,33 @@ public:
 };
 
 /** Find the last common block between the parameter chain and a locator. */
-extern CBlockIndex* edcFindForkInGlobalIndex(const CChain& chain, const CBlockLocator& locator);
+CBlockIndex* edcFindForkInGlobalIndex(const CChain& chain, const CBlockLocator& locator);
 
 /** Mark a block as invalid. */
-extern bool edcInvalidateBlock(CValidationState& state, const CEDCChainParams& chainparams, CBlockIndex *pindex);
+bool edcInvalidateBlock(CValidationState& state, const CEDCChainParams& chainparams, CBlockIndex *pindex);
 
 /** Remove invalidity status from a block and its descendants. */
-extern bool edcResetBlockFailureFlags(CBlockIndex *pindex);
+bool edcResetBlockFailureFlags(CBlockIndex *pindex);
 
 /**
  * Return the spend height, which is one more than the inputs.GetBestBlock().
  * While checking, GetBestBlock() refers to the parent block. (protected by mainCS)
  * This is also true for mempool checks.
  */
-extern int GetSpendHeight(const CEDCCoinsViewCache& inputs);
+int GetSpendHeight(const CEDCCoinsViewCache& inputs);
 
 /**
  * Determine what nVersion a new block should use.
  */
-extern int32_t edcComputeBlockVersion(const CBlockIndex* pindexPrev, const Consensus::Params& params);
+int32_t edcComputeBlockVersion(const CBlockIndex* pindexPrev, const Consensus::Params& params);
 
-extern bool edcTestLockPointValidity(const LockPoints* lp);
+bool edcTestLockPointValidity(const LockPoints* lp);
 
-extern boost::filesystem::path edcGetBlockPosFilename(const CDiskBlockPos &pos, const char *prefix);
+boost::filesystem::path edcGetBlockPosFilename(const CDiskBlockPos &pos, const char *prefix);
 
-extern bool edcLoadExternalBlockFile( const CEDCChainParams & chainparams, FILE * fileIn, CDiskBlockPos * dbp = NULL );
+bool edcLoadExternalBlockFile( const CEDCChainParams & chainparams, FILE * fileIn, CDiskBlockPos * dbp = NULL );
 
-extern FILE* edcOpenBlockFile(const CDiskBlockPos &pos, bool fReadOnly = false );
+FILE* edcOpenBlockFile(const CDiskBlockPos &pos, bool fReadOnly = false );
 
-extern bool edcCheckDiskSpace(uint64_t nAdditionalBytes = 0);
+bool edcCheckDiskSpace(uint64_t nAdditionalBytes = 0);
 
-#endif // EDC_EDCMAIN_H

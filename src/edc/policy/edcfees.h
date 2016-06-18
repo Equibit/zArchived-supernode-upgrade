@@ -3,8 +3,8 @@
 // Copyright (c) 2016 Equibit Development Corporation
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#ifndef EDC_POLICY_EDCFEES_H
-#define EDC_POLICY_EDCFEES_H
+
+#pragma once
 
 #include "policy/fees.h"
 #include "amount.h"
@@ -146,4 +146,3 @@ private:
     double priLikely, priUnlikely;
 };
 
-#endif /*BITCOIN_POLICYESTIMATOR_H */

@@ -3,8 +3,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef EDC_POLICY_EDCRBF_H
-#define EDC_POLICY_EDCRBF_H
+#pragma once
 
 #include "policy/rbf.h"
 #include "edc/edctxmempool.h"
@@ -19,4 +18,3 @@ bool SignalsOptInRBF(const CEDCTransaction &tx);
 // as the sequence numbers of all in-mempool ancestors.
 RBFTransactionState IsRBFOptIn(const CEDCTransaction &tx, CEDCTxMemPool &pool);
 
-#endif // BITCOIN_POLICY_RBF_H

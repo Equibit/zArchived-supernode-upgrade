@@ -3,8 +3,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef EDC_EDC_RPCREGISTER_H
-#define EDC_EDC__RPCREGISTER_H
+#pragma once
 
 /** These are in one header file to avoid creating tons of single-function
  * headers for everything under src/rpc/ */
@@ -30,4 +29,3 @@ static inline void edcRegisterAllCoreRPCCommands(CEDCRPCTable &edcTableRPC)
     edcRegisterRawTransactionRPCCommands(edcTableRPC);
 }
 
-#endif

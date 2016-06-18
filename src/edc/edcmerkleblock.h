@@ -4,8 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef EDC_EDCMERKLEBLOCK_H
-#define EDC_EDCMERKLEBLOCK_H
+#pragma once
 
 #include "merkleblock.h"
 #include "serialize.h"
@@ -157,4 +156,3 @@ public:
     }
 };
 
-#endif // BITCOIN_MERKLEBLOCK_H

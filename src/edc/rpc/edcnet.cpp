@@ -459,7 +459,7 @@ static UniValue GetNetworksInfo()
     return networks;
 }
 
-extern int64_t edcGetTimeOffset();
+int64_t edcGetTimeOffset();
 
 UniValue edcgetnetworkinfo(const UniValue& params, bool fHelp)
 {

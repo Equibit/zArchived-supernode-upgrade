@@ -3,8 +3,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef EDC_EDCMERKLE
-#define EDC_EDCMERKLE
+#pragma once
 
 #include <stdint.h>
 #include <vector>
@@ -26,4 +25,3 @@ uint256 edcBlockMerkleRoot(const CEDCBlock& block, bool* mutated = NULL);
  */
 std::vector<uint256> edcBlockMerkleBranch(const CEDCBlock& block, uint32_t position);
 
-#endif

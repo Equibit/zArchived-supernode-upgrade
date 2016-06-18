@@ -7,7 +7,7 @@
 #include "config/bitcoin-config.h"
 #endif
 
-#include "base58.h"
+#include "edcbase58.h"
 #include "clientversion.h"
 #include "edc/edccoins.h"
 #include "edc/consensus/edcconsensus.h"
@@ -233,7 +233,7 @@ static void MutateTxAddOutAddr(CEDCMutableTransaction& tx, const string& strInpu
 
     // extract and validate ADDRESS
     string strAddr = strInput.substr(pos + 1, string::npos);
-    CBitcoinAddress addr(strAddr);
+    CEDCBitcoinAddress addr(strAddr);
     if (!addr.IsValid())
         throw runtime_error("invalid TX output address");
 

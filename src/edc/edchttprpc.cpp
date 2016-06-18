@@ -6,7 +6,7 @@
 #include "edchttprpc.h"
 
 #include "edcapp.h"
-#include "base58.h"
+#include "edcbase58.h"
 #include "edcchainparams.h"
 #include "edchttpserver.h"
 #include "rpc/protocol.h"

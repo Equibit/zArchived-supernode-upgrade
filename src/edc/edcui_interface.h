@@ -4,8 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef EDC_EDCUI_INTERFACE_H
-#define EDC_EDCUI_INTERFACE_H
+#pragma once
 
 #include "ui_interface.h"
 
@@ -100,4 +99,3 @@ extern CEDCClientUIInterface uiInterface;
 bool edcInitError(const std::string& str);
 void edcInitWarning(const std::string& str);
 
-#endif // BITCOIN_UI_INTERFACE_H

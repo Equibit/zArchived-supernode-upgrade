@@ -4,8 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef EDC_WALLET_EDCDB_H
-#define EDC_WALLET_EDCDB_H
+#pragma once
 
 #include "clientversion.h"
 #include "serialize.h"
@@ -293,4 +292,3 @@ public:
     bool static Rewrite(const std::string& strFile, const char* pszSkip = NULL);
 };
 
-#endif // BITCOIN_WALLET_DB_H

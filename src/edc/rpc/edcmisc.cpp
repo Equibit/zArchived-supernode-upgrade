@@ -4,7 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "base58.h"
+#include "edc/edcbase58.h"
 #include "clientversion.h"
 #include "edc/edcinit.h"
 #include "edc/edcmain.h"
@@ -29,7 +29,9 @@
 
 using namespace std;
 
-extern int64_t edcGetTimeOffset();
+
+int64_t edcGetTimeOffset();
+
 
 /**
  * @note Do not add or change anything in the information returned by this
@@ -148,7 +150,7 @@ public:
             obj.push_back(Pair("hex", HexStr(subscript.begin(), subscript.end())));
             UniValue a(UniValue::VARR);
             BOOST_FOREACH(const CTxDestination& addr, addresses)
-                a.push_back(CBitcoinAddress(addr).ToString());
+                a.push_back(CEDCBitcoinAddress(addr).ToString());
             obj.push_back(Pair("addresses", a));
             if (whichType == TX_MULTISIG)
                 obj.push_back(Pair("sigsrequired", nRequired));
@@ -191,7 +193,7 @@ UniValue edcvalidateaddress(const UniValue& params, bool fHelp)
     LOCK(cs_main);
 #endif
 
-    CBitcoinAddress address(params[0].get_str());
+    CEDCBitcoinAddress address(params[0].get_str());
     bool isValid = address.IsValid();
 
     UniValue ret(UniValue::VOBJ);
@@ -244,7 +246,7 @@ CScript edc_createmultisig_redeemScript(const UniValue& params)
         const std::string& ks = keys[i].get_str();
 #ifdef ENABLE_WALLET
         // Case 1: Bitcoin address and we have full public key:
-        CBitcoinAddress address(ks);
+        CEDCBitcoinAddress address(ks);
         if (theApp.walletMain() && address.IsValid())
         {
             CKeyID keyID;
@@ -318,7 +320,7 @@ UniValue edccreatemultisig(const UniValue& params, bool fHelp)
     // Construct using pay-to-script-hash:
     CScript inner = edc_createmultisig_redeemScript(params);
     CScriptID innerID(inner);
-    CBitcoinAddress address(innerID);
+    CEDCBitcoinAddress address(innerID);
 
     UniValue result(UniValue::VOBJ);
     result.push_back(Pair("address", address.ToString()));
@@ -356,7 +358,7 @@ UniValue edcverifymessage(const UniValue& params, bool fHelp)
     string strSign     = params[1].get_str();
     string strMessage  = params[2].get_str();
 
-    CBitcoinAddress addr(strAddress);
+    CEDCBitcoinAddress addr(strAddress);
     if (!addr.IsValid())
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
 

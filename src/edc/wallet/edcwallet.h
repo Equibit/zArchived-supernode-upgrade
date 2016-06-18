@@ -4,8 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef EDC_WALLET_EDCWALLET_H
-#define EDC_WALLET_EDCWALLET_H
+#pragma once
 
 #include "wallet/wallet.h"
 #include "amount.h"
@@ -710,4 +709,3 @@ public:
     void KeepScript() { KeepKey(); }
 };
 
-#endif // BITCOIN_WALLET_WALLET_H

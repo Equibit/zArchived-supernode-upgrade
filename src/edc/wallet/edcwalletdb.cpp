@@ -6,7 +6,7 @@
 
 #include "edc/wallet/edcwalletdb.h"
 
-#include "base58.h"
+#include "edc/edcbase58.h"
 #include "consensus/validation.h"
 #include "edc/edcmain.h" // For CheckTransaction
 #include "protocol.h"
@@ -381,13 +381,13 @@ ReadKeyValue(CEDCWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
         {
             string strAddress;
             ssKey >> strAddress;
-            ssValue >> pwallet->mapAddressBook[CBitcoinAddress(strAddress).Get()].name;
+            ssValue >> pwallet->mapAddressBook[CEDCBitcoinAddress(strAddress).Get()].name;
         }
         else if (strType == "purpose")
         {
             string strAddress;
             ssKey >> strAddress;
-            ssValue >> pwallet->mapAddressBook[CBitcoinAddress(strAddress).Get()].purpose;
+            ssValue >> pwallet->mapAddressBook[CEDCBitcoinAddress(strAddress).Get()].purpose;
         }
         else if (strType == "tx")
         {
@@ -620,7 +620,7 @@ ReadKeyValue(CEDCWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
             ssKey >> strAddress;
             ssKey >> strKey;
             ssValue >> strValue;
-            if (!pwallet->LoadDestData(CBitcoinAddress(strAddress).Get(), strKey, strValue))
+            if (!pwallet->LoadDestData(CEDCBitcoinAddress(strAddress).Get(), strKey, strValue))
             {
                 strErr = "Error reading wallet database: LoadDestData failed";
                 return false;

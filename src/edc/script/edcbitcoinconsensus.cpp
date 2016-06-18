@@ -70,24 +70,36 @@ struct ECCryptoClosure
 ECCryptoClosure instance_of_eccryptoclosure;
 }
 
-int bitcoinconsensus_verify_script(const unsigned char *scriptPubKey, unsigned int scriptPubKeyLen,
-                                    const unsigned char *txTo        , unsigned int txToLen,
-                                    unsigned int nIn, unsigned int flags, bitcoinconsensus_error* err)
+int bitcoinconsensus_verify_script(
+	const unsigned char * scriptPubKey, 
+			 unsigned int scriptPubKeyLen,
+    const unsigned char * txTo, 
+			 unsigned int txToLen,
+             unsigned int nIn, 
+			 unsigned int flags, 
+ bitcoinconsensus_error * err)
 {
-    try {
+    try 
+	{
         TxInputStream stream(SER_NETWORK, PROTOCOL_VERSION, txTo, txToLen);
         CEDCTransaction tx;
         stream >> tx;
+
         if (nIn >= tx.vin.size())
             return set_error(err, bitcoinconsensus_ERR_TX_INDEX);
+
         if (tx.GetSerializeSize(SER_NETWORK, PROTOCOL_VERSION) != txToLen)
             return set_error(err, bitcoinconsensus_ERR_TX_SIZE_MISMATCH);
 
          // Regardless of the verification result, the tx did not error.
          set_error(err, bitcoinconsensus_ERR_OK);
 
-        return edcVerifyScript(tx.vin[nIn].scriptSig, CScript(scriptPubKey, scriptPubKey + scriptPubKeyLen), flags, EDCTransactionSignatureChecker(&tx, nIn), NULL);
-    } catch (const std::exception&) {
+        return edcVerifyScript(tx.vin[nIn].scriptSig, 
+			CScript(scriptPubKey, scriptPubKey + scriptPubKeyLen), flags, 
+			EDCTransactionSignatureChecker(&tx, nIn), NULL);
+    } 
+	catch (const std::exception&) 
+	{
         return set_error(err, bitcoinconsensus_ERR_TX_DESERIALIZE); // Error deserializing
     }
 }

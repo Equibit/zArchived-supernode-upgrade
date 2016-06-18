@@ -4,8 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef EDC_SCRIPT_EDCSIGCACHE_H
-#define EDC_SCRIPT_EDCSIGCACHE_H
+#pragma once
 
 #include "script/sigcache.h"
 #include "edc/script/edcinterpreter.h"
@@ -25,4 +24,3 @@ public:
     bool VerifySignature(const std::vector<unsigned char>& vchSig, const CPubKey& vchPubKey, const uint256& sighash) const;
 };
 
-#endif // BITCOIN_SCRIPT_SIGCACHE_H

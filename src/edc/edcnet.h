@@ -4,8 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef EDC_EDCNET_H
-#define EDC_EDCNET_H
+#pragma once
 
 #include "net.h"
 #include "amount.h"
@@ -589,4 +588,3 @@ CEDCNode * edcFindNode(const CService& ip);
 
 void edcSetLimited(enum Network net, bool fLimited);
 
-#endif // BITCOIN_NET_H

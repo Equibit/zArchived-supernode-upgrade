@@ -56,7 +56,7 @@ public:
     }
 };
 
-extern int64_t edcGetAdjustedTime();
+int64_t edcGetAdjustedTime();
 
 CEDCBlockTemplate* CreateNewEDCBlock(const CEDCChainParams& chainparams, const CScript& scriptPubKeyIn)
 {

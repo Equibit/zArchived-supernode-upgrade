@@ -4,8 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef EDC_EDCMINER_H
-#define EDC_EDCMINER_H
+#pragma once
 
 #include "miner.h"
 #include "edc/primitives/edcblock.h"
@@ -28,7 +27,7 @@ struct CEDCBlockTemplate
 
 /** Generate a new block, without valid proof-of-work */
 CEDCBlockTemplate* CreateNewEDCBlock(const CEDCChainParams& chainparams, const CScript& scriptPubKeyIn);
+
 /** Modify the extranonce in a block */
 void IncrementExtraNonce(CEDCBlock* pblock, const CBlockIndex* pindexPrev, unsigned int& nExtraNonce);
 
-#endif // BITCOIN_MINER_H

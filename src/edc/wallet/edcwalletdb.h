@@ -4,8 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef EDC_WALLET_EDCWALLETDB_H
-#define EDC_WALLET_EDCWALLETDB_H
+#pragma once
 
 #include "wallet/walletdb.h"
 #include "amount.h"
@@ -100,4 +99,3 @@ private:
 bool BackupWallet(const CEDCWallet& wallet, const std::string& strDest);
 void edcThreadFlushWalletDB(const std::string& strFile);
 
-#endif // BITCOIN_WALLET_WALLETDB_H

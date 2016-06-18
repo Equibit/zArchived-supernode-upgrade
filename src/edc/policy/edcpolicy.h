@@ -4,8 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef EDC_POLICY_EDCPOLICY_H
-#define EDC_POLICY_EDCPOLICY_H
+#pragma once
 
 #include "policy/policy.h"
 #include "edc/consensus/edcconsensus.h"
@@ -28,4 +27,3 @@ bool IsStandardTx(const CEDCTransaction& tx, std::string& reason);
      */
 bool AreInputsStandard(const CEDCTransaction& tx, const CEDCCoinsViewCache& mapInputs);
 
-#endif // EDC_EDCPOLICY_POLICY_H

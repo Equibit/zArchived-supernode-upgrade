@@ -2,12 +2,12 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#pragma once
+
 /**
  * Server/client environment: argument handling, config file parsing,
  * logging, thread wrappers
  */
-#ifndef EDC_EDCUTIL_H
-#define EDC_EDCUTIL_H
 
 #include "util.h"
 
@@ -100,4 +100,3 @@ boost::filesystem::path edcGetPidFile();
 boost::filesystem::path edcGetConfigFile();
 void edcClearDatadirCache();
 
-#endif // EDC_EDCUTIL_H

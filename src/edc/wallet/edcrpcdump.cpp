@@ -3,7 +3,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "base58.h"
+#include "edc/edcbase58.h"
 #include "chain.h"
 #include "edc/rpc/edcserver.h"
 #include "init.h"
@@ -170,7 +170,7 @@ UniValue edcimportprivkey(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
-void edcImportAddress(const CBitcoinAddress& address, const string& strLabel);
+void edcImportAddress(const CEDCBitcoinAddress& address, const string& strLabel);
 void edcImportScript(const CScript& script, const string& strLabel, bool isRedeemScript)
 {
 	EDCapp & theApp = EDCapp::singleton();
@@ -187,11 +187,11 @@ void edcImportScript(const CScript& script, const string& strLabel, bool isRedee
 	{
         if (!theApp.walletMain()->HaveCScript(script) && !theApp.walletMain()->AddCScript(script))
             throw JSONRPCError(RPC_WALLET_ERROR, "Error adding p2sh redeemScript to wallet");
-        edcImportAddress(CBitcoinAddress(CScriptID(script)), strLabel);
+        edcImportAddress(CEDCBitcoinAddress(CScriptID(script)), strLabel);
     }
 }
 
-void edcImportAddress(const CBitcoinAddress& address, const string& strLabel)
+void edcImportAddress(const CEDCBitcoinAddress& address, const string& strLabel)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -248,7 +248,7 @@ UniValue edcimportaddress(const UniValue& params, bool fHelp)
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-    CBitcoinAddress address(params[0].get_str());
+    CEDCBitcoinAddress address(params[0].get_str());
     if (address.IsValid()) 
 	{
         if (fP2SH)
@@ -432,7 +432,7 @@ UniValue edcimportpubkey(const UniValue& params, bool fHelp)
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-    edcImportAddress(CBitcoinAddress(pubKey.GetID()), strLabel);
+    edcImportAddress(CEDCBitcoinAddress(pubKey.GetID()), strLabel);
     edcImportScript(GetScriptForRawPubKey(pubKey), strLabel, false);
 
     if (fRescan)
@@ -512,7 +512,7 @@ UniValue edcimportwallet(const UniValue& params, bool fHelp)
 
         if (theApp.walletMain()->HaveKey(keyid)) 
 		{
-            edcLogPrintf("Skipping import of %s (key already present)\n", CBitcoinAddress(keyid).ToString());
+            edcLogPrintf("Skipping import of %s (key already present)\n", CEDCBitcoinAddress(keyid).ToString());
             continue;
         }
 
@@ -535,7 +535,7 @@ UniValue edcimportwallet(const UniValue& params, bool fHelp)
             }
         }
 
-        edcLogPrintf("Importing %s...\n", CBitcoinAddress(keyid).ToString());
+        edcLogPrintf("Importing %s...\n", CEDCBitcoinAddress(keyid).ToString());
 
         if (!theApp.walletMain()->AddKeyPubKey(key, pubkey)) 
 		{
@@ -594,7 +594,7 @@ UniValue edcdumpprivkey(const UniValue& params, bool fHelp)
     edcEnsureWalletIsUnlocked();
 
     string strAddress = params[0].get_str();
-    CBitcoinAddress address;
+    CEDCBitcoinAddress address;
     if (!address.SetString(strAddress))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address");
     CKeyID keyID;
@@ -658,7 +658,7 @@ UniValue edcdumpwallet(const UniValue& params, bool fHelp)
 	{
         const CKeyID &keyid = it->second;
         std::string strTime = EncodeDumpTime(it->first);
-        std::string strAddr = CBitcoinAddress(keyid).ToString();
+        std::string strAddr = CEDCBitcoinAddress(keyid).ToString();
         CKey key;
         if (theApp.walletMain()->GetKey(keyid, key)) 
 		{

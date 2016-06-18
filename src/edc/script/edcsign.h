@@ -4,8 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef EDC_SCRIPT_EDCSIGN_H
-#define EDC_SCRIPT_EDCSIGN_H
+#pragma once
 
 #include "script/sign.h"
 #include "edc/script/edcinterpreter.h"
@@ -37,4 +36,3 @@ bool SignSignature(const CKeyStore& keystore, const CEDCTransaction& txFrom, CED
 /** Combine two script signatures on transactions. */
 CScript edcCombineSignatures(const CScript& scriptPubKey, const CEDCTransaction& txTo, unsigned int nIn, const CScript& scriptSig1, const CScript& scriptSig2);
 
-#endif // BITCOIN_SCRIPT_SIGN_H

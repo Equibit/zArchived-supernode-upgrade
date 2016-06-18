@@ -4,8 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef EDC_EDCTXDB_H
-#define EDC_EDCTXDB_H
+#pragma once
 
 #include "txdb.h"
 #include "edccoins.h"
@@ -115,4 +114,3 @@ public:
     bool LoadBlockIndexGuts(boost::function<CBlockIndex*(const uint256&)> insertBlockIndex);
 };
 
-#endif

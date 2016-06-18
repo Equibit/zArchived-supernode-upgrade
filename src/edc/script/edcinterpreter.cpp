@@ -215,7 +215,7 @@ bool static CheckMinimalPush(const valtype& data, opcodetype opcode) {
     return true;
 }
 
-extern bool CastToBool(const valtype& vch);
+bool CastToBool(const valtype& vch);
 
 bool edcEvalScript(vector<vector<unsigned char> >& stack, const CScript& script, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* serror)
 {

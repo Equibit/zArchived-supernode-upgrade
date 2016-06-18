@@ -3,8 +3,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef EDC_EDCBLOOM_H
-#define EDC_EDCBLOOM_H
+#pragma once 
 
 #include "bloom.h"
 #include "serialize.h"
@@ -88,4 +87,3 @@ public:
     void UpdateEmptyFull();
 };
 
-#endif // BITCOIN_BLOOM_H

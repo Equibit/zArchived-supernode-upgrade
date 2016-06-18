@@ -6,7 +6,7 @@
 
 #include "edc/wallet/edcwallet.h"
 
-#include "base58.h"
+#include "edc/edcbase58.h"
 #include "checkpoints.h"
 #include "chain.h"
 #include "coincontrol.h"
@@ -186,7 +186,7 @@ bool CEDCWallet::LoadCScript(const CScript& redeemScript)
      * these. Do not add them to the wallet and warn. */
     if (redeemScript.size() > MAX_SCRIPT_ELEMENT_SIZE)
     {
-        std::string strAddr = CBitcoinAddress(CScriptID(redeemScript)).ToString();
+        std::string strAddr = CEDCBitcoinAddress(CScriptID(redeemScript)).ToString();
         edcLogPrintf("%s: Warning: This wallet contains a redeemScript of size %i which exceeds maximum size %i thus can never be redeemed. Do not use address %s.\n",
             __func__, redeemScript.size(), MAX_SCRIPT_ELEMENT_SIZE, strAddr);
         return true;
@@ -641,7 +641,7 @@ void CEDCWallet::MarkDirty()
     }
 }
 
-extern int64_t edcGetAdjustedTime();
+int64_t edcGetAdjustedTime();
 
 bool CEDCWallet::AddToWallet(const CEDCWalletTx& wtxIn, bool fFromLoadWallet, CEDCWalletDB* pwalletdb)
 {
@@ -2530,9 +2530,9 @@ bool CEDCWallet::SetAddressBook(const CTxDestination& address, const string& str
                              strPurpose, (fUpdated ? CT_UPDATED : CT_NEW) );
     if (!fFileBacked)
         return false;
-    if (!strPurpose.empty() && !CEDCWalletDB(strWalletFile).WritePurpose(CBitcoinAddress(address).ToString(), strPurpose))
+    if (!strPurpose.empty() && !CEDCWalletDB(strWalletFile).WritePurpose(CEDCBitcoinAddress(address).ToString(), strPurpose))
         return false;
-    return CEDCWalletDB(strWalletFile).WriteName(CBitcoinAddress(address).ToString(), strName);
+    return CEDCWalletDB(strWalletFile).WriteName(CEDCBitcoinAddress(address).ToString(), strName);
 }
 
 bool CEDCWallet::DelAddressBook(const CTxDestination& address)
@@ -2543,7 +2543,7 @@ bool CEDCWallet::DelAddressBook(const CTxDestination& address)
         if(fFileBacked)
         {
             // Delete destdata tuples associated with address
-            std::string strAddress = CBitcoinAddress(address).ToString();
+            std::string strAddress = CEDCBitcoinAddress(address).ToString();
             BOOST_FOREACH(const PAIRTYPE(string, string) &item, mapAddressBook[address].destdata)
             {
                 CEDCWalletDB(strWalletFile).EraseDestData(strAddress, item.first);
@@ -2556,8 +2556,8 @@ bool CEDCWallet::DelAddressBook(const CTxDestination& address)
 
     if (!fFileBacked)
         return false;
-    CEDCWalletDB(strWalletFile).ErasePurpose(CBitcoinAddress(address).ToString());
-    return CEDCWalletDB(strWalletFile).EraseName(CBitcoinAddress(address).ToString());
+    CEDCWalletDB(strWalletFile).ErasePurpose(CEDCBitcoinAddress(address).ToString());
+    return CEDCWalletDB(strWalletFile).EraseName(CEDCBitcoinAddress(address).ToString());
 }
 
 bool CEDCWallet::SetDefaultKey(const CPubKey &vchPubKey)
@@ -3087,7 +3087,7 @@ bool CEDCWallet::AddDestData(const CTxDestination &dest, const std::string &key,
     mapAddressBook[dest].destdata.insert(std::make_pair(key, value));
     if (!fFileBacked)
         return true;
-    return CEDCWalletDB(strWalletFile).WriteDestData(CBitcoinAddress(dest).ToString(), key, value);
+    return CEDCWalletDB(strWalletFile).WriteDestData(CEDCBitcoinAddress(dest).ToString(), key, value);
 }
 
 bool CEDCWallet::EraseDestData(const CTxDestination &dest, const std::string &key)
@@ -3096,7 +3096,7 @@ bool CEDCWallet::EraseDestData(const CTxDestination &dest, const std::string &ke
         return false;
     if (!fFileBacked)
         return true;
-    return CEDCWalletDB(strWalletFile).EraseDestData(CBitcoinAddress(dest).ToString(), key);
+    return CEDCWalletDB(strWalletFile).EraseDestData(CEDCBitcoinAddress(dest).ToString(), key);
 }
 
 bool CEDCWallet::LoadDestData(const CTxDestination &dest, const std::string &key, const std::string &value)

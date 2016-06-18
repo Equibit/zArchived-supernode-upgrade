@@ -5,7 +5,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "amount.h"
-#include "base58.h"
+#include "edc/edcbase58.h"
 #include "chain.h"
 #include "edc/edccore_io.h"
 #include "init.h"
@@ -157,11 +157,11 @@ UniValue edcgetnewaddress(const UniValue& params, bool fHelp)
 
     theApp.walletMain()->SetAddressBook(keyID, strAccount, "receive");
 
-    return CBitcoinAddress(keyID).ToString();
+    return CEDCBitcoinAddress(keyID).ToString();
 }
 
 
-CBitcoinAddress edcGetAccountAddress(string strAccount, bool bForceNew=false)
+CEDCBitcoinAddress edcGetAccountAddress(string strAccount, bool bForceNew=false)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -200,7 +200,7 @@ CBitcoinAddress edcGetAccountAddress(string strAccount, bool bForceNew=false)
         walletdb.WriteAccount(strAccount, account);
     }
 
-    return CBitcoinAddress(account.vchPubKey.GetID());
+    return CEDCBitcoinAddress(account.vchPubKey.GetID());
 }
 
 UniValue edcgetaccountaddress(const UniValue& params, bool fHelp)
@@ -270,7 +270,7 @@ UniValue edcgetrawchangeaddress(const UniValue& params, bool fHelp)
 
     CKeyID keyID = vchPubKey.GetID();
 
-    return CBitcoinAddress(keyID).ToString();
+    return CEDCBitcoinAddress(keyID).ToString();
 }
 
 
@@ -295,7 +295,7 @@ UniValue edcsetaccount(const UniValue& params, bool fHelp)
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-    CBitcoinAddress address(params[0].get_str());
+    CEDCBitcoinAddress address(params[0].get_str());
     if (!address.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address");
 
@@ -344,7 +344,7 @@ UniValue edcgetaccount(const UniValue& params, bool fHelp)
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-    CBitcoinAddress address(params[0].get_str());
+    CEDCBitcoinAddress address(params[0].get_str());
     if (!address.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address");
 
@@ -385,9 +385,9 @@ UniValue edcgetaddressesbyaccount(const UniValue& params, bool fHelp)
 
     // Find all addresses that have the given account
     UniValue ret(UniValue::VARR);
-    BOOST_FOREACH(const PAIRTYPE(CBitcoinAddress, CAddressBookData)& item, theApp.walletMain()->mapAddressBook)
+    BOOST_FOREACH(const PAIRTYPE(CEDCBitcoinAddress, CAddressBookData)& item, theApp.walletMain()->mapAddressBook)
     {
-        const CBitcoinAddress& address = item.first;
+        const CEDCBitcoinAddress& address = item.first;
         const string& strName = item.second.name;
         if (strName == strAccount)
             ret.push_back(address.ToString());
@@ -474,7 +474,7 @@ UniValue edcsendtoaddress(const UniValue& params, bool fHelp)
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-    CBitcoinAddress address(params[0].get_str());
+    CEDCBitcoinAddress address(params[0].get_str());
     if (!address.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address");
 
@@ -541,11 +541,11 @@ UniValue edclistaddressgroupings(const UniValue& params, bool fHelp)
         BOOST_FOREACH(CTxDestination address, grouping)
         {
             UniValue addressInfo(UniValue::VARR);
-            addressInfo.push_back(CBitcoinAddress(address).ToString());
+            addressInfo.push_back(CEDCBitcoinAddress(address).ToString());
             addressInfo.push_back(ValueFromAmount(balances[address]));
             {
-                if (theApp.walletMain()->mapAddressBook.find(CBitcoinAddress(address).Get()) != theApp.walletMain()->mapAddressBook.end())
-                    addressInfo.push_back(theApp.walletMain()->mapAddressBook.find(CBitcoinAddress(address).Get())->second.name);
+                if (theApp.walletMain()->mapAddressBook.find(CEDCBitcoinAddress(address).Get()) != theApp.walletMain()->mapAddressBook.end())
+                    addressInfo.push_back(theApp.walletMain()->mapAddressBook.find(CEDCBitcoinAddress(address).Get())->second.name);
             }
             jsonGrouping.push_back(addressInfo);
         }
@@ -589,7 +589,7 @@ UniValue edcsignmessage(const UniValue& params, bool fHelp)
     string strAddress = params[0].get_str();
     string strMessage = params[1].get_str();
 
-    CBitcoinAddress addr(strAddress);
+    CEDCBitcoinAddress addr(strAddress);
     if (!addr.IsValid())
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
 
@@ -642,7 +642,7 @@ UniValue edcgetreceivedbyaddress(const UniValue& params, bool fHelp)
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     // Bitcoin address
-    CBitcoinAddress address = CBitcoinAddress(params[0].get_str());
+    CEDCBitcoinAddress address = CEDCBitcoinAddress(params[0].get_str());
     if (!address.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address");
     CScript scriptPubKey = GetScriptForDestination(address.Get());
@@ -864,7 +864,7 @@ UniValue edcgetunconfirmedbalance(const UniValue &params, bool fHelp)
     return ValueFromAmount(theApp.walletMain()->GetUnconfirmedBalance());
 }
 
-extern int64_t edcGetAdjustedTime();
+int64_t edcGetAdjustedTime();
 
 UniValue edcmovecmd(const UniValue& params, bool fHelp)
 {
@@ -977,7 +977,7 @@ UniValue edcsendfrom(const UniValue& params, bool fHelp)
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     string strAccount = edcAccountFromValue(params[0]);
-    CBitcoinAddress address(params[1].get_str());
+    CEDCBitcoinAddress address(params[1].get_str());
     if (!address.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address");
     CAmount nAmount = AmountFromValue(params[2]);
@@ -1067,14 +1067,14 @@ UniValue edcsendmany(const UniValue& params, bool fHelp)
     if (params.size() > 4)
         subtractFeeFromAmount = params[4].get_array();
 
-    set<CBitcoinAddress> setAddress;
+    set<CEDCBitcoinAddress> setAddress;
     vector<CRecipient> vecSend;
 
     CAmount totalAmount = 0;
     vector<string> keys = sendTo.getKeys();
     BOOST_FOREACH(const string& name_, keys)
     {
-        CBitcoinAddress address(name_);
+        CEDCBitcoinAddress address(name_);
         if (!address.IsValid())
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, string("Invalid Bitcoin address: ")+name_);
 
@@ -1122,7 +1122,7 @@ UniValue edcsendmany(const UniValue& params, bool fHelp)
 }
 
 // Defined in rpc/misc.cpp
-extern CScript _createmultisig_redeemScript(const UniValue& params);
+CScript _createmultisig_redeemScript(const UniValue& params);
 
 UniValue edcaddmultisigaddress(const UniValue& params, bool fHelp)
 {
@@ -1171,7 +1171,7 @@ UniValue edcaddmultisigaddress(const UniValue& params, bool fHelp)
     theApp.walletMain()->AddCScript(inner);
 
     theApp.walletMain()->SetAddressBook(innerID, strAccount, "send");
-    return CBitcoinAddress(innerID).ToString();
+    return CEDCBitcoinAddress(innerID).ToString();
 }
 
 
@@ -1209,7 +1209,7 @@ UniValue edcListReceived(const UniValue& params, bool fByAccounts)
             filter = filter | ISMINE_WATCH_ONLY;
 
     // Tally
-    map<CBitcoinAddress, tallyitem> mapTally;
+    map<CEDCBitcoinAddress, tallyitem> mapTally;
     for (map<uint256, CEDCWalletTx>::iterator it = theApp.walletMain()->mapWallet.begin(); it != theApp.walletMain()->mapWallet.end(); ++it)
     {
         const CEDCWalletTx& wtx = (*it).second;
@@ -1243,11 +1243,11 @@ UniValue edcListReceived(const UniValue& params, bool fByAccounts)
     // Reply
     UniValue ret(UniValue::VARR);
     map<string, tallyitem> mapAccountTally;
-    BOOST_FOREACH(const PAIRTYPE(CBitcoinAddress, CAddressBookData)& item, theApp.walletMain()->mapAddressBook)
+    BOOST_FOREACH(const PAIRTYPE(CEDCBitcoinAddress, CAddressBookData)& item, theApp.walletMain()->mapAddressBook)
     {
-        const CBitcoinAddress& address = item.first;
+        const CEDCBitcoinAddress& address = item.first;
         const string& strAccount = item.second.name;
-        map<CBitcoinAddress, tallyitem>::iterator it = mapTally.find(address);
+        map<CEDCBitcoinAddress, tallyitem>::iterator it = mapTally.find(address);
         if (it == mapTally.end() && !fIncludeEmpty)
             continue;
 
@@ -1394,7 +1394,7 @@ UniValue edclistreceivedbyaccount(const UniValue& params, bool fHelp)
 
 static void MaybePushAddress(UniValue & entry, const CTxDestination &dest)
 {
-    CBitcoinAddress addr;
+    CEDCBitcoinAddress addr;
     if (addr.Set(dest))
         entry.push_back(Pair("address", addr.ToString()));
 }
@@ -2505,14 +2505,14 @@ UniValue edclistunspent(const UniValue& params, bool fHelp)
     if (params.size() > 1)
         nMaxDepth = params[1].get_int();
 
-    set<CBitcoinAddress> setAddress;
+    set<CEDCBitcoinAddress> setAddress;
     if (params.size() > 2) 
 	{
         UniValue inputs = params[2].get_array();
         for (unsigned int idx = 0; idx < inputs.size(); idx++) 
 		{
             const UniValue& input = inputs[idx];
-            CBitcoinAddress address(input.get_str());
+            CEDCBitcoinAddress address(input.get_str());
             if (!address.IsValid())
                 throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, string("Invalid Bitcoin address: ")+input.get_str());
             if (setAddress.count(address))
@@ -2550,7 +2550,7 @@ UniValue edclistunspent(const UniValue& params, bool fHelp)
 
         if (ExtractDestination(out.tx->vout[out.i].scriptPubKey, address)) 
 		{
-            entry.push_back(Pair("address", CBitcoinAddress(address).ToString()));
+            entry.push_back(Pair("address", CEDCBitcoinAddress(address).ToString()));
             if (theApp.walletMain()->mapAddressBook.count(address))
                 entry.push_back(Pair("account", theApp.walletMain()->mapAddressBook[address].name));
         }
@@ -2649,7 +2649,7 @@ UniValue edcfundrawtransaction(const UniValue& params, bool fHelp)
 
         if (options.exists("changeAddress")) 
 		{
-            CBitcoinAddress address(options["changeAddress"].get_str());
+            CEDCBitcoinAddress address(options["changeAddress"].get_str());
 
             if (!address.IsValid())
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "changeAddress must be a valid bitcoin address");
@@ -2694,14 +2694,15 @@ UniValue edcfundrawtransaction(const UniValue& params, bool fHelp)
     return result;
 }
 
-extern UniValue edcdumpprivkey(const UniValue& params, bool fHelp); // in rpcdump.cpp
-extern UniValue edcimportprivkey(const UniValue& params, bool fHelp);
-extern UniValue edcimportaddress(const UniValue& params, bool fHelp);
-extern UniValue edcimportpubkey(const UniValue& params, bool fHelp);
-extern UniValue edcdumpwallet(const UniValue& params, bool fHelp);
-extern UniValue edcimportwallet(const UniValue& params, bool fHelp);
-extern UniValue edcimportprunedfunds(const UniValue& params, bool fHelp);
-extern UniValue edcremoveprunedfunds(const UniValue& params, bool fHelp);
+UniValue edcdumpprivkey(const UniValue& params, bool fHelp);
+UniValue edcimportprivkey(const UniValue& params, bool fHelp);
+UniValue edcimportaddress(const UniValue& params, bool fHelp);
+UniValue edcimportpubkey(const UniValue& params, bool fHelp);
+UniValue edcdumpwallet(const UniValue& params, bool fHelp);
+UniValue edcimportwallet(const UniValue& params, bool fHelp);
+UniValue edcimportprunedfunds(const UniValue& params, bool fHelp);
+UniValue edcremoveprunedfunds(const UniValue& params, bool fHelp);
+
 
 static const CRPCCommand edcCommands[] =
 { //  category              name                        actor (function)           okSafeMode

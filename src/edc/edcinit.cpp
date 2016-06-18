@@ -22,9 +22,10 @@
 #include <boost/interprocess/sync/file_lock.hpp>
 
 
-extern void edcRegisterAllCoreRPCCommands( CEDCRPCTable & edcTableRPC );
-extern void edcRegisterWalletRPCCommands(CEDCRPCTable & edcTableRPC );
-extern int64_t edcGetAdjustedTime();
+void edcRegisterAllCoreRPCCommands( CEDCRPCTable & edcTableRPC );
+void edcRegisterWalletRPCCommands(CEDCRPCTable & edcTableRPC );
+int64_t edcGetAdjustedTime();
+
 extern volatile sig_atomic_t fRequestShutdown;
 
 
@@ -32,8 +33,8 @@ namespace
 {
 const char* FEE_ESTIMATES_FILENAME="fee_estimates.dat";
 bool fFeeEstimatesInitialized = false;
-}
-static void BlockNotifyCallback(
+
+void BlockNotifyCallback(
 	               bool initialSync, 
 	const CBlockIndex * pBlockIndex )
 {
@@ -91,9 +92,6 @@ enum BindFlags
 #define MIN_CORE_FILEDESCRIPTORS 150
 
 
-namespace
-{
-
 void edcInitLogging()
 {
     edcLogPrintf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
@@ -118,7 +116,6 @@ bool Bind(const CService &addr, unsigned int flags)
     return true;
 }
 
-}
 
 struct CImportingNow
 {
@@ -137,7 +134,9 @@ struct CImportingNow
     }
 };
 
-extern void StartShutdown();
+}
+
+void StartShutdown();
 
 void edcThreadImport(std::vector<boost::filesystem::path> vImportFiles)
 {

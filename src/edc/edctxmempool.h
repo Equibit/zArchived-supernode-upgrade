@@ -4,8 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef EDC_EDCTXMEMPOOL_H
-#define EDC_EDCTXMEMPOOL_H
+#pragma once
 
 #include <list>
 #include <set>
@@ -678,4 +677,3 @@ struct EDCTxCoinAgePriorityCompare
     }
 };
 
-#endif // EDC_EDCTXMEMPOOL_H

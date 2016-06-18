@@ -216,7 +216,7 @@ int nPeersWithValidatedDownloads = 0;
 // Registration of network node signals.
 //
 
-extern int64_t edcGetAdjustedTime();
+int64_t edcGetAdjustedTime();
 
 namespace 
 {
@@ -3995,7 +3995,7 @@ void edcUnlinkPrunedFiles(std::set<int>& setFilesToPrune)
     }
 }
 
-extern uint64_t CalculateCurrentUsage();
+uint64_t CalculateCurrentUsage();
 
 /* Calculate the block/rev files that should be deleted to remain under target*/
 void edcFindFilesToPrune(std::set<int>& setFilesToPrune, uint64_t nPruneAfterHeight)
@@ -4986,8 +4986,8 @@ void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
 }
 }
 
-extern CAddress edcGetLocalAddress(const CNetAddr *paddrPeer);
-extern void edcAddTimeData(const CNetAddr& ip, int64_t nOffsetSample);
+CAddress edcGetLocalAddress(const CNetAddr *paddrPeer);
+void edcAddTimeData(const CNetAddr& ip, int64_t nOffsetSample);
 
 namespace
 {

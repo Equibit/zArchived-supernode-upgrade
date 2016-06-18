@@ -4,7 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "base58.h"
+#include "edc/edcbase58.h"
 #include "chain.h"
 #include "edc/edccoins.h"
 #include "consensus/validation.h"
@@ -60,7 +60,7 @@ void edcScriptPubKeyToJSON(const CScript& scriptPubKey, UniValue& out, bool fInc
 
     UniValue a(UniValue::VARR);
     BOOST_FOREACH(const CTxDestination& addr, addresses)
-        a.push_back(CBitcoinAddress(addr).ToString());
+        a.push_back(CEDCBitcoinAddress(addr).ToString());
     out.push_back(Pair("addresses", a));
 }
 
@@ -416,7 +416,7 @@ UniValue edccreaterawtransaction(const UniValue& params, bool fHelp)
         rawTx.vin.push_back(in);
     }
 
-    set<CBitcoinAddress> setAddress;
+    set<CEDCBitcoinAddress> setAddress;
     vector<string> addrList = sendTo.getKeys();
     BOOST_FOREACH(const string& name_, addrList) 
 	{
@@ -430,7 +430,7 @@ UniValue edccreaterawtransaction(const UniValue& params, bool fHelp)
         } 
 		else 
 		{
-            CBitcoinAddress address(name_);
+            CEDCBitcoinAddress address(name_);
             if (!address.IsValid())
                 throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, string("Invalid Bitcoin address: ")+name_);
 
@@ -556,7 +556,7 @@ UniValue edcdecodescript(const UniValue& params, bool fHelp)
     }
     edcScriptPubKeyToJSON(script, r, false);
 
-    r.push_back(Pair("p2sh", CBitcoinAddress(CScriptID(script)).ToString()));
+    r.push_back(Pair("p2sh", CEDCBitcoinAddress(CScriptID(script)).ToString()));
     return r;
 }
 

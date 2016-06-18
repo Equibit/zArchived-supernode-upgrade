@@ -6,7 +6,7 @@
 
 #include "edc/rpc/edcserver.h"
 
-#include "base58.h"
+#include "edc/edcbase58.h"
 #include "edc/edcinit.h"
 #include "random.h"
 #include "sync.h"
@@ -229,7 +229,7 @@ UniValue edchelp(const UniValue& params, bool fHelp)
     return edcTableRPC.help(strCommand);
 }
 
-extern void StartShutdown();
+void StartShutdown();
 
 UniValue edcstop(const UniValue& params, bool fHelp)
 {
