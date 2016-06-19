@@ -91,7 +91,8 @@ UniValue edcgetinfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("version", CLIENT_VERSION));
     obj.push_back(Pair("protocolversion", PROTOCOL_VERSION));
 #ifdef ENABLE_WALLET
-    if (theApp.walletMain()) {
+    if (theApp.walletMain()) 
+	{
         obj.push_back(Pair("walletversion", theApp.walletMain()->GetVersion()));
         obj.push_back(Pair("balance",       ValueFromAmount(theApp.walletMain()->GetBalance())));
     }
@@ -103,7 +104,8 @@ UniValue edcgetinfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("difficulty",    (double)GetDifficulty()));
     obj.push_back(Pair("testnet",       edcParams().TestnetToBeDeprecatedFieldRPC()));
 #ifdef ENABLE_WALLET
-    if (theApp.walletMain()) {
+    if (theApp.walletMain()) 
+	{
         obj.push_back(Pair("keypoololdest", theApp.walletMain()->GetOldestKeyPoolTime()));
         obj.push_back(Pair("keypoolsize",   (int)theApp.walletMain()->GetKeyPoolSize()));
     }
@@ -122,26 +124,30 @@ class DescribeAddressVisitor : public boost::static_visitor<UniValue>
 public:
     UniValue operator()(const CNoDestination &dest) const { return UniValue(UniValue::VOBJ); }
 
-    UniValue operator()(const CKeyID &keyID) const {
+    UniValue operator()(const CKeyID &keyID) const 
+	{
 		EDCapp & theApp = EDCapp::singleton();
 
         UniValue obj(UniValue::VOBJ);
         CPubKey vchPubKey;
         obj.push_back(Pair("isscript", false));
-        if (theApp.walletMain() && theApp.walletMain()->GetPubKey(keyID, vchPubKey)) {
+        if (theApp.walletMain() && theApp.walletMain()->GetPubKey(keyID, vchPubKey)) 
+		{
             obj.push_back(Pair("pubkey", HexStr(vchPubKey)));
             obj.push_back(Pair("iscompressed", vchPubKey.IsCompressed()));
         }
         return obj;
     }
 
-    UniValue operator()(const CScriptID &scriptID) const {
+    UniValue operator()(const CScriptID &scriptID) const 
+	{
 		EDCapp & theApp = EDCapp::singleton();
 
         UniValue obj(UniValue::VOBJ);
         CScript subscript;
         obj.push_back(Pair("isscript", true));
-        if (theApp.walletMain() && theApp.walletMain()->GetCScript(scriptID, subscript)) {
+        if (theApp.walletMain() && theApp.walletMain()->GetCScript(scriptID, subscript)) 
+		{
             std::vector<CTxDestination> addresses;
             txnouttype whichType;
             int nRequired;

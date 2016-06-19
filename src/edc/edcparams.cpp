@@ -276,7 +276,7 @@ EDCparams::EDCparams()
 	permitbaremultisig  = GetArg( "-eb_permitbaremultisig", EDC_DEFAULT_PERMIT_BAREMULTISIG );
 	port                = GetArg( "-eb_port", edcParams(network).GetDefaultPort() );
 	prune               = GetArg( "-eb_prune", 0 );
-	rpcport             = GetArg( "-eb_rpcport", BaseParams().edcRPCPort() );
+	rpcport             = GetArg( "-eb_rpcport", BaseParams(network).edcRPCPort() );
 	rpcservertimeout    = GetArg( "-eb_rpcservertimeout", EDC_DEFAULT_HTTP_SERVER_TIMEOUT );
 	rpcthreads          = GetArg( "-eb_rpcthreads", EDC_DEFAULT_HTTP_THREADS );
 	rpcworkqueue        = GetArg( "-eb_rpcworkqueue", EDC_DEFAULT_HTTP_WORKQUEUE );
@@ -619,11 +619,11 @@ bool EDCparams::validate()
 	if( configFileReadFailed )
 		return false;
 
-    // Check for -ebtestnet or -ebregtest parameter (edcParams() calls are 
+    // Check for -eb_testnet or -eb_regtest parameter (edcParams() calls are 
     // only valid after this clause)
     if (testnet && regtest)
 	{
-        fprintf( stderr, "Error: Invalid combination of -ebregtest and -ebtestnet.");
+        fprintf( stderr, "Error: Invalid combination of -eb_regtest and -eb_testnet.");
 		return false;
 	}
 
@@ -632,17 +632,18 @@ bool EDCparams::validate()
     if (bind.size() > 0) 
 	{
         listen = true;
-        edcLogPrintf("%s: parameter interaction: -ebbind set -> setting -eblisten=1\n", __func__);
+        edcLogPrintf("%s: parameter interaction: -eb_bind set -> setting -eb_listen=1\n", __func__);
     }
     if (whitebind.size() > 0) 
 	{
         listen = true;
-        edcLogPrintf("%s: parameter interaction: -ebwhitebind set -> setting -eblisten=1\n", __func__);
+        edcLogPrintf("%s: parameter interaction: -eb_whitebind set -> setting -eb_listen=1\n", __func__);
     }
 
     if ( connect.size() > 0 ) 
 	{
-        // when only connecting to trusted nodes, do not seed via DNS, or listen by default
+        // when only connecting to trusted nodes, do not seed via DNS, or 
+		// listen by default
         dnsseed = false;
         edcLogPrintf("%s: parameter interaction: -dbconnect set -> setting -dbdnsseed=false\n", __func__);
         listen = false;
@@ -651,59 +652,61 @@ bool EDCparams::validate()
 
     if (proxy.size() > 0 ) 
 	{
-        // to protect privacy, do not listen by default if a default proxy server is specified
+        // to protect privacy, do not listen by default if a default proxy 
+		// server is specified
         listen = false;
-        edcLogPrintf("%s: parameter interaction: -ebproxy set -> setting -eblisten=0\n", __func__);
+
+        edcLogPrintf("%s: parameter interaction: -eb_proxy set -> setting -eb_listen=0\n", __func__);
 
         // to protect privacy, do not use UPNP when a proxy is set. The user may still specify -listen=1
         // to listen locally, so don't rely on this happening through -listen below.
         upnp = false;
-        edcLogPrintf("%s: parameter interaction: -ebproxy set -> setting -ebupnp=0\n", __func__);
+        edcLogPrintf("%s: parameter interaction: -eb_proxy set -> setting -eb_upnp=0\n", __func__);
         // to protect privacy, do not discover addresses by default
         discover = false;
-        edcLogPrintf("%s: parameter interaction: -ebproxy set -> setting -ebdiscover=0\n", __func__);
+        edcLogPrintf("%s: parameter interaction: -eb_proxy set -> setting -eb_discover=0\n", __func__);
     }
 
     if (!listen) 
 	{
         // do not map ports or try to retrieve public IP when not listening (pointless)
         upnp = false;
-        edcLogPrintf("%s: parameter interaction: -eblisten=0 -> setting -ebupnp=0\n", __func__);
+        edcLogPrintf("%s: parameter interaction: -eb_listen=0 -> setting -eb_upnp=0\n", __func__);
         discover = false;
-        edcLogPrintf("%s: parameter interaction: -eblisten=0 -> setting -ebdiscover=0\n", __func__);
+        edcLogPrintf("%s: parameter interaction: -eb_listen=0 -> setting -eb_discover=0\n", __func__);
         listenonion = false;
-        edcLogPrintf("%s: parameter interaction: -eblisten=0 -> setting -eblistenonion=0\n", __func__);
+        edcLogPrintf("%s: parameter interaction: -eb_listen=0 -> setting -eb_listenonion=0\n", __func__);
     }
 
     if (externalip.size() > 0 )
 	{
         // if an explicit public IP is specified, do not try to find others
         discover = false;
-        edcLogPrintf("%s: parameter interaction: -ebexternalip set -> setting -ebdiscover=0\n", __func__);
+        edcLogPrintf("%s: parameter interaction: -eb_externalip set -> setting -eb_discover=0\n", __func__);
     }
 
     if (salvagewallet) 
 	{
         // Rewrite just private keys: rescan to find transactions
         rescan = true;
-        edcLogPrintf("%s: parameter interaction: -ebsalvagewallet=1 -> setting -ebrescan=1\n", __func__);
+        edcLogPrintf("%s: parameter interaction: -eb_salvagewallet=1 -> setting -eb_rescan=1\n", __func__);
     }
 
     // -zapwallettx implies a rescan
     if (zapwallettxes) 
 	{
         rescan = true;
-        edcLogPrintf("%s: parameter interaction: -ebzapwallettxes=<mode> -> setting -ebrescan=1\n", __func__);
+        edcLogPrintf("%s: parameter interaction: -eb_zapwallettxes=<mode> -> setting -eb_rescan=1\n", __func__);
     }
 
     // disable walletbroadcast and whitelistrelay in blocksonly mode
     if (blocksonly) 
 	{
         whitelistrelay = false;
-        edcLogPrintf("%s: parameter interaction: -ebblocksonly=1 -> setting -ebwhitelistrelay=0\n", __func__);
+        edcLogPrintf("%s: parameter interaction: -eb_blocksonly=1 -> setting -eb_whitelistrelay=0\n", __func__);
 #ifdef ENABLE_WALLET
         walletbroadcast = false;
-        edcLogPrintf("%s: parameter interaction: -ebblocksonly=1 -> setting -ebwalletbroadcast=0\n", __func__);
+        edcLogPrintf("%s: parameter interaction: -eb_blocksonly=1 -> setting -eb_walletbroadcast=0\n", __func__);
 #endif
     }
 
@@ -711,7 +714,7 @@ bool EDCparams::validate()
     if (whitelistforcerelay) 
 	{
         whitelistrelay = true;
-        edcLogPrintf("%s: parameter interaction: -ebwhitelistforcerelay=1 -> setting -ebwhitelistrelay=1\n", __func__);
+        edcLogPrintf("%s: parameter interaction: -eb_whitelistforcerelay=1 -> setting -eb_whitelistrelay=1\n", __func__);
     }
 
 	if (GetBoolArg( "-sysperms", false))

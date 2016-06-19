@@ -107,8 +107,10 @@ bool Bind(const CService &addr, unsigned int flags)
 {
     if (!(flags & BF_EXPLICIT) && IsLimited(addr))
         return false;
+
     std::string strError;
-    if (!BindListenPort(addr, strError, (flags & BF_WHITELIST) != 0)) {
+    if (!BindListenPort(addr, strError, (flags & BF_WHITELIST) != 0)) 
+	{
         if (flags & BF_REPORT_ERROR)
             return InitError(strError);
         return false;

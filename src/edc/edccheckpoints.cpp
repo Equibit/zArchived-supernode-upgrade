@@ -30,7 +30,8 @@ namespace Checkpoints
 static const double SIGCHECK_VERIFICATION_FACTOR = 5.0;
 
 //! Guess how far we are in the verification process at the given block index
-double GuessVerificationProgress(const CCheckpointData& data, CBlockIndex *pindex, bool fSigchecks) {
+double GuessVerificationProgress(const CCheckpointData& data, CBlockIndex *pindex, bool fSigchecks) 
+{
     if (pindex==NULL)
         return 0.0;
 
@@ -42,13 +43,16 @@ double GuessVerificationProgress(const CCheckpointData& data, CBlockIndex *pinde
     // Work is defined as: 1.0 per transaction before the last checkpoint, and
     // fSigcheckVerificationFactor per transaction after.
 
-    if (pindex->nChainTx <= data.nTransactionsLastCheckpoint) {
+    if (pindex->nChainTx <= data.nTransactionsLastCheckpoint) 
+	{
         double nCheapBefore = pindex->nChainTx;
         double nCheapAfter = data.nTransactionsLastCheckpoint - pindex->nChainTx;
         double nExpensiveAfter = (nNow - data.nTimeLastCheckpoint)/86400.0*data.fTransactionsPerDay;
         fWorkBefore = nCheapBefore;
         fWorkAfter = nCheapAfter + nExpensiveAfter*fSigcheckVerificationFactor;
-    } else {
+    } 
+	else 
+	{
         double nCheapBefore = data.nTransactionsLastCheckpoint;
         double nExpensiveBefore = pindex->nChainTx - data.nTransactionsLastCheckpoint;
         double nExpensiveAfter = (nNow - pindex->GetBlockTime())/86400.0*data.fTransactionsPerDay;

@@ -62,7 +62,8 @@ UniValue edcping(const UniValue& params, bool fHelp)
     // Request that each node send a ping during next message processing pass
     LOCK2(cs_main, theApp.vNodesCS());
 
-    BOOST_FOREACH(CEDCNode* pNode, theApp.vNodes()) {
+    BOOST_FOREACH(CEDCNode* pNode, theApp.vNodes()) 
+	{
         pNode->fPingQueued = true;
     }
 
@@ -76,7 +77,8 @@ static void CopyNodeStats(std::vector<CNodeStats>& vstats)
 
     LOCK(theApp.vNodesCS());
     vstats.reserve(theApp.vNodes().size());
-    BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes()) {
+    BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes()) 
+	{
         CNodeStats stats;
         pnode->copyStats(stats);
         vstats.push_back(stats);
@@ -140,14 +142,17 @@ UniValue edcgetpeerinfo(const UniValue& params, bool fHelp)
 
     UniValue ret(UniValue::VARR);
 
-    BOOST_FOREACH(const CNodeStats& stats, vstats) {
+    BOOST_FOREACH(const CNodeStats& stats, vstats) 
+	{
         UniValue obj(UniValue::VOBJ);
         CNodeStateStats statestats;
         bool fStateStats = GetNodeStateStats(stats.nodeid, statestats);
+
         obj.push_back(Pair("id", stats.nodeid));
         obj.push_back(Pair("addr", stats.addrName));
         if (!(stats.addrLocal.empty()))
             obj.push_back(Pair("addrlocal", stats.addrLocal));
+
         obj.push_back(Pair("services", strprintf("%016x", stats.nServices)));
         obj.push_back(Pair("relaytxes", stats.fRelayTxes));
         obj.push_back(Pair("lastsend", stats.nLastSend));
@@ -163,18 +168,21 @@ UniValue edcgetpeerinfo(const UniValue& params, bool fHelp)
         if (stats.dPingWait > 0.0)
             obj.push_back(Pair("pingwait", stats.dPingWait));
         obj.push_back(Pair("version", stats.nVersion));
+
         // Use the sanitized form of subver here, to avoid tricksy remote peers from
         // corrupting or modifiying the JSON output by putting special characters in
         // their ver message.
         obj.push_back(Pair("subver", stats.cleanSubVer));
         obj.push_back(Pair("inbound", stats.fInbound));
         obj.push_back(Pair("startingheight", stats.nStartingHeight));
-        if (fStateStats) {
+        if (fStateStats) 
+		{
             obj.push_back(Pair("banscore", statestats.nMisbehavior));
             obj.push_back(Pair("synced_headers", statestats.nSyncHeight));
             obj.push_back(Pair("synced_blocks", statestats.nCommonHeight));
             UniValue heights(UniValue::VARR);
-            BOOST_FOREACH(int height, statestats.vHeightInFlight) {
+            BOOST_FOREACH(int height, statestats.vHeightInFlight) 
+			{
                 heights.push_back(height);
             }
             obj.push_back(Pair("inflight", heights));
@@ -182,14 +190,16 @@ UniValue edcgetpeerinfo(const UniValue& params, bool fHelp)
         obj.push_back(Pair("whitelisted", stats.fWhitelisted));
 
         UniValue sendPerMsgCmd(UniValue::VOBJ);
-        BOOST_FOREACH(const mapMsgCmdSize::value_type &i, stats.mapSendBytesPerMsgCmd) {
+        BOOST_FOREACH(const mapMsgCmdSize::value_type &i, stats.mapSendBytesPerMsgCmd) 
+		{
             if (i.second > 0)
                 sendPerMsgCmd.push_back(Pair(i.first, i.second));
         }
         obj.push_back(Pair("bytessent_per_msg", sendPerMsgCmd));
 
         UniValue recvPerMsgCmd(UniValue::VOBJ);
-        BOOST_FOREACH(const mapMsgCmdSize::value_type &i, stats.mapRecvBytesPerMsgCmd) {
+        BOOST_FOREACH(const mapMsgCmdSize::value_type &i, stats.mapRecvBytesPerMsgCmd) 
+		{
             if (i.second > 0)
                 recvPerMsgCmd.push_back(Pair(i.first, i.second));
         }
@@ -323,7 +333,9 @@ UniValue edcgetaddednodeinfo(const UniValue& params, bool fHelp)
     {
         string strNode = params[1].get_str();
         LOCK(theApp.addedNodesCS());
-        BOOST_FOREACH(const std::string& strAddNode, theApp.addedNodes()) {
+
+        BOOST_FOREACH(const std::string& strAddNode, theApp.addedNodes()) 
+		{
             if (strAddNode == strNode)
             {
                 laddedNodes.push_back(strAddNode);
@@ -337,7 +349,8 @@ UniValue edcgetaddednodeinfo(const UniValue& params, bool fHelp)
     UniValue ret(UniValue::VARR);
     if (!fDns)
     {
-        BOOST_FOREACH (const std::string& strAddNode, laddedNodes) {
+        BOOST_FOREACH (const std::string& strAddNode, laddedNodes) 
+		{
             UniValue obj(UniValue::VOBJ);
             obj.push_back(Pair("addednode", strAddNode));
             ret.push_back(obj);
@@ -346,7 +359,8 @@ UniValue edcgetaddednodeinfo(const UniValue& params, bool fHelp)
     }
 
     list<pair<string, vector<CService> > > laddedAddreses(0);
-    BOOST_FOREACH(const std::string& strAddNode, laddedNodes) {
+    BOOST_FOREACH(const std::string& strAddNode, laddedNodes) 
+	{
         vector<CService> vservNode(0);
         if(Lookup(strAddNode.c_str(), vservNode, edcParams().GetDefaultPort(), fNameLookup, 0))
             laddedAddreses.push_back(make_pair(strAddNode, vservNode));
@@ -369,7 +383,8 @@ UniValue edcgetaddednodeinfo(const UniValue& params, bool fHelp)
 
         UniValue addresses(UniValue::VARR);
         bool fConnected = false;
-        BOOST_FOREACH(const CService& addrNode, it->second) {
+        BOOST_FOREACH(const CService& addrNode, it->second) 
+		{
             bool fFound = false;
             UniValue node(UniValue::VOBJ);
             node.push_back(Pair("address", addrNode.ToString()));
@@ -446,9 +461,11 @@ static UniValue GetNetworksInfo()
         enum Network network = static_cast<enum Network>(n);
         if(network == NET_UNROUTABLE)
             continue;
+
         proxyType proxy;
         UniValue obj(UniValue::VOBJ);
         GetProxy(network, proxy);
+
         obj.push_back(Pair("name", GetNetworkName(network)));
         obj.push_back(Pair("limited", IsLimited(network)));
         obj.push_back(Pair("reachable", IsReachable(network)));

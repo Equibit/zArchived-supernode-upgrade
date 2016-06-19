@@ -11,7 +11,8 @@
 #include "edc/script/edcinterpreter.h"
 #include "version.h"
 
-namespace {
+namespace 
+{
 
 /** A class that deserializes a single CEDCTransaction one time. */
 class TxInputStream

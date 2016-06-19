@@ -115,7 +115,9 @@ CEDCBlockTemplate* CreateNewEDCBlock(const CEDCChainParams& chainparams, const C
 
     {
 		EDCapp & theApp = EDCapp::singleton();
+
         LOCK2(EDC_cs_main, theApp.mempool().cs);
+
         CBlockIndex* pindexPrev = theApp.chainActive().Tip();
         const int nHeight = pindexPrev->nHeight + 1;
         pblock->nTime = edcGetAdjustedTime();

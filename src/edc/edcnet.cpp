@@ -1664,8 +1664,10 @@ void edcThreadOpenAddedConnections()
                 }
             }
         }
-        // Attempt to connect to each IP for each addnode entry until at least one is successful per addnode entry
-        // (keeping in mind that addnode entries can have many IPs if params.dns)
+        // Attempt to connect to each IP for each addnode entry until at least 
+		// one is successful per addnode entry
+        // (keeping in mind that addnode entries can have many IPs if 
+		// params.dns)
         {
             LOCK(theApp.vNodesCS());
             BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
@@ -1689,7 +1691,11 @@ void edcThreadOpenAddedConnections()
 }
 
 // if successful, this moves the passed grant to the constructed node
-bool edcOpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOutbound, const char *pszDest, bool fOneShot)
+bool edcOpenNetworkConnection(
+	 const CAddress & addrConnect, 
+	CSemaphoreGrant * grantOutbound, 
+	     const char * pszDest, 
+	             bool fOneShot )
 {
     //
     // Initiate outbound network connection
@@ -1698,10 +1704,12 @@ bool edcOpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *gran
     if (!pszDest) 
 	{
         if (edcIsLocal(addrConnect) ||
-            edcFindNode((CNetAddr)addrConnect) || CEDCNode::IsBanned(addrConnect) ||
+            edcFindNode((CNetAddr)addrConnect) || 
+			CEDCNode::IsBanned(addrConnect) ||
             edcFindNode(addrConnect.ToStringIPPort()))
             return false;
-    } else if (edcFindNode(std::string(pszDest)))
+    } 
+	else if (edcFindNode(std::string(pszDest)))
         return false;
 
     CEDCNode* pnode = ConnectEDCNode(addrConnect, pszDest);
@@ -1754,7 +1762,9 @@ void edcThreadMessageHandler()
 
                     if (pnode->nSendSize < edcSendBufferSize())
                     {
-                        if (!pnode->vRecvGetData.empty() || (!pnode->vRecvMsg.empty() && pnode->vRecvMsg[0].complete()))
+                        if (!pnode->vRecvGetData.empty() || 
+						(!pnode->vRecvMsg.empty() && 
+							pnode->vRecvMsg[0].complete()))
                         {
                             fSleep = false;
                         }
@@ -1779,7 +1789,9 @@ void edcThreadMessageHandler()
         }
 
         if (fSleep)
-            edcmessageHandlerCondition.timed_wait(lock, boost::posix_time::microsec_clock::universal_time() + boost::posix_time::milliseconds(100));
+            edcmessageHandlerCondition.timed_wait(lock, 
+				boost::posix_time::microsec_clock::universal_time() + 
+				boost::posix_time::milliseconds(100));
     }
 }
 
@@ -2039,7 +2051,8 @@ void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
     threadGroup.create_thread(boost::bind(&edcTraceThread<void (*)()>, "net", &edcThreadSocketHandler));
 
     // Initiate outbound connections from -addnode
-    threadGroup.create_thread(boost::bind(&edcTraceThread<void (*)()>, "addcon", &edcThreadOpenAddedConnections));
+    threadGroup.create_thread(boost::bind(&edcTraceThread<void (*)()>, 
+		"addcon", &edcThreadOpenAddedConnections));
 
     // Initiate outbound connections
     threadGroup.create_thread(boost::bind(&edcTraceThread<void (*)()>, "opencon", &edcThreadOpenConnections));

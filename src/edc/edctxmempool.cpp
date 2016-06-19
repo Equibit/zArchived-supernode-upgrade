@@ -179,7 +179,15 @@ void CEDCTxMemPool::UpdateTransactionsFromBlock(const std::vector<uint256> &vHas
     }
 }
 
-bool CEDCTxMemPool::CalculateMemPoolAncestors(const CEDCTxMemPoolEntry &entry, setEntries &setAncestors, uint64_t limitAncestorCount, uint64_t limitAncestorSize, uint64_t limitDescendantCount, uint64_t limitDescendantSize, std::string &errString, bool fSearchForParents /* = true */) const
+bool CEDCTxMemPool::CalculateMemPoolAncestors(
+	const CEDCTxMemPoolEntry &entry, 
+	setEntries &setAncestors, 
+	uint64_t limitAncestorCount, 
+	uint64_t limitAncestorSize, 
+	uint64_t limitDescendantCount, 
+	uint64_t limitDescendantSize, 
+	std::string &errString, 
+	bool fSearchForParents /* = true */) const
 {
     setEntries parentHashes;
     const CEDCTransaction &tx = entry.GetTx();

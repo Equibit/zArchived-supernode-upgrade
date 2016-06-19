@@ -186,9 +186,13 @@ static CScript CombineMultisig(const CScript& scriptPubKey, const BaseSignatureC
     return result;
 }
 
-static CScript edcCombineSignatures(const CScript& scriptPubKey, const BaseSignatureChecker& checker,
-                                 const txnouttype txType, const vector<valtype>& vSolutions,
-                                 vector<valtype>& sigs1, vector<valtype>& sigs2)
+static CScript edcCombineSignatures(
+	const CScript & scriptPubKey, 
+	const BaseSignatureChecker & checker,
+    const txnouttype txType, 
+	const vector<valtype> & vSolutions,
+    vector<valtype> & sigs1, 
+	vector<valtype> & sigs2)
 {
     switch (txType)
     {

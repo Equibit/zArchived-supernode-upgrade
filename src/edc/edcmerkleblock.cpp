@@ -82,7 +82,11 @@ uint256 CEDCPartialMerkleTree::CalcHash(int height, unsigned int pos, const std:
     }
 }
 
-void CEDCPartialMerkleTree::TraverseAndBuild(int height, unsigned int pos, const std::vector<uint256> &vTxid, const std::vector<bool> &vMatch) 
+void CEDCPartialMerkleTree::TraverseAndBuild(
+	int height, 
+	unsigned int pos, 
+	const std::vector<uint256> &vTxid, 
+	const std::vector<bool> &vMatch) 
 {
     // determine whether this node is the parent of at least one matched txid
     bool fParentOfMatch = false;
@@ -104,7 +108,13 @@ void CEDCPartialMerkleTree::TraverseAndBuild(int height, unsigned int pos, const
     }
 }
 
-uint256 CEDCPartialMerkleTree::TraverseAndExtract(int height, unsigned int pos, unsigned int &nBitsUsed, unsigned int &nHashUsed, std::vector<uint256> &vMatch, std::vector<unsigned int> &vnIndex) 
+uint256 CEDCPartialMerkleTree::TraverseAndExtract(
+	int height, 
+	unsigned int pos, 
+	unsigned int & nBitsUsed, 
+	unsigned int & nHashUsed, 
+	std::vector<uint256> & vMatch, 
+	std::vector<unsigned int> & vnIndex) 
 {
     if (nBitsUsed >= vBits.size()) 
 	{

@@ -16,7 +16,8 @@
 #include <boost/thread.hpp>
 #include <boost/unordered_set.hpp>
 
-namespace {
+namespace 
+{
 
 /**
  * We're hashing a nonce into the entries themselves, so we don't need extra
@@ -25,7 +26,8 @@ namespace {
 class CSignatureCacheHasher
 {
 public:
-    size_t operator()(const uint256& key) const {
+    size_t operator()(const uint256& key) const 
+	{
         return key.GetCheapHash();
     }
 };
@@ -81,7 +83,8 @@ public:
         {
             map_type::size_type s = GetRand(setValid.bucket_count());
             map_type::local_iterator it = setValid.begin(s);
-            if (it != setValid.end(s)) {
+            if (it != setValid.end(s)) 
+			{
                 setValid.erase(*it);
             }
         }
@@ -99,8 +102,10 @@ bool EDCCachingTransactionSignatureChecker::VerifySignature(const std::vector<un
     uint256 entry;
     signatureCache.ComputeEntry(entry, sighash, vchSig, pubkey);
 
-    if (signatureCache.Get(entry)) {
-        if (!store) {
+    if (signatureCache.Get(entry)) 
+	{
+        if (!store) 
+		{
             signatureCache.Erase(entry);
         }
         return true;
@@ -109,7 +114,8 @@ bool EDCCachingTransactionSignatureChecker::VerifySignature(const std::vector<un
     if (!EDCTransactionSignatureChecker::VerifySignature(vchSig, pubkey, sighash))
         return false;
 
-    if (store) {
+    if (store) 
+	{
         signatureCache.Set(entry);
     }
     return true;
