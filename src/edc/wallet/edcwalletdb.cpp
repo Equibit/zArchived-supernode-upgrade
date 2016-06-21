@@ -695,7 +695,8 @@ DBErrors CEDCWalletDB::LoadWallet(CEDCWallet* pwallet)
 					{
 						EDCparams & params = EDCparams::singleton();
                         // Rescan if there is a bad transaction record:
-                        params.rescan = true;
+						if( mapArgs.count( "-eb_rescan" ) == 0 )
+	                        params.rescan = true;
 					}
                 }
             }

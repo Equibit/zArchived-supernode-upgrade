@@ -198,7 +198,38 @@ mempoolrej, net, proxy, prune, http, libevent, tor, zmq.
 
 </table>
 
-</table>
+<h2>Configuring Node Connectitivity</h2>
+
+<p>The following options can be used to control which Equibit nodes that a given node will connect. 
+The options that control which Equibit node connectivity are:</p>
+
+<dl>
+<dt>-eb_addnode=<em>ip-list</em></dt>
+	<dd>Add a node to connect to and attempt to keep the connection open</dd>
+<dt>-eb_connect=<em>ip-list</em></dt>
+	<dd>Connect only to the specified node(s)</dd>
+<dt>-eb_dns</dt>
+	<dd>Allow DNS lookups for -addnode, -seednode and -connect (default: true)</dd>
+<dt>-eb_dnsseed</dt>
+	<dd>Query for peer addresses via DNS lookup, if low on addresses (default: true unless -connect)</dd>
+<dt>-eb_forcednsseed</dt>
+	<dd>Always query for peer addresses via DNS lookup (default: 0)</dd>
+<dt>-eb_onlynet=<em>network-list</em></dt>
+	<dd>Only connect to nodes in network <em>net</em> (ipv4, ipv6 or onion)</dd>
+<dt>-eb_seednode=<em>ip-list</em></dt>
+	<dd>Connect to a node to retrieve peer addresses, and disconnect</dd>
+</dl>
+
+<p>If peer node addresses are specified via the -eb_connect option, then by default, DNS seed processing is not done.</p>
+
+<p>Peer nodes specified by -eb_addnode processing are added to the nodes 
+discovered by all other means.</p>
+
+<p>Peer nodes specified by the -eb_seednode option are contacted exclusively
+to discover other peers. Once the peer node information has been transmitted
+to the node, the connection is ended.</p>
+
+<p>onlynet should be set to one or more of ipv4, ipv6 and onion. Connections will be limited to the specified network(s).</p> 
 
 </body>
 

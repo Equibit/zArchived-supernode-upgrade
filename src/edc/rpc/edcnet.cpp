@@ -9,7 +9,7 @@
 #include "clientversion.h"
 #include "edc/edcmain.h"
 #include "edc/edcnet.h"
-#include "netbase.h"
+#include "edc/edcnetbase.h"
 #include "protocol.h"
 #include "sync.h"
 #include "timedata.h"
@@ -18,6 +18,7 @@
 #include "utilstrencodings.h"
 #include "version.h"
 #include "edc/edcapp.h"
+#include "edc/edcparams.h"
 
 
 #include <boost/foreach.hpp>
@@ -288,6 +289,7 @@ UniValue edcdisconnectnode(const UniValue& params, bool fHelp)
 UniValue edcgetaddednodeinfo(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
+	EDCparams & theParams = EDCparams::singleton();
 
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
@@ -362,7 +364,8 @@ UniValue edcgetaddednodeinfo(const UniValue& params, bool fHelp)
     BOOST_FOREACH(const std::string& strAddNode, laddedNodes) 
 	{
         vector<CService> vservNode(0);
-        if(Lookup(strAddNode.c_str(), vservNode, edcParams().GetDefaultPort(), fNameLookup, 0))
+        if(Lookup(strAddNode.c_str(), vservNode, edcParams().GetDefaultPort(), 
+		theParams.dns, 0))
             laddedAddreses.push_back(make_pair(strAddNode, vservNode));
         else
         {
@@ -464,7 +467,7 @@ static UniValue GetNetworksInfo()
 
         proxyType proxy;
         UniValue obj(UniValue::VOBJ);
-        GetProxy(network, proxy);
+        edcGetProxy(network, proxy);
 
         obj.push_back(Pair("name", GetNetworkName(network)));
         obj.push_back(Pair("limited", IsLimited(network)));

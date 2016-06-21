@@ -11,7 +11,7 @@
 #include "edc/edcbloom.h"
 #include "compat.h"
 #include "limitedmap.h"
-#include "netbase.h"
+#include "edcnetbase.h"
 #include "protocol.h"
 #include "random.h"
 #include "streams.h"

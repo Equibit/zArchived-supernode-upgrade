@@ -342,7 +342,7 @@ CEDCNode* edcFindNode(const CService& addr)
     return NULL;
 }
 
-CEDCNode* ConnectEDCNode(CAddress addrConnect, const char *pszDest)
+CEDCNode* edcConnectNode(CAddress addrConnect, const char *pszDest)
 {
     if (pszDest == NULL) 
 	{
@@ -368,9 +368,9 @@ CEDCNode* ConnectEDCNode(CAddress addrConnect, const char *pszDest)
     bool proxyConnectionFailed = false;
 	EDCapp & theApp = EDCapp::singleton();
 
-    if (pszDest ? ConnectSocketByName(addrConnect, hSocket, pszDest, edcParams().
+    if (pszDest ? edcConnectSocketByName(addrConnect, hSocket, pszDest, edcParams().
 		GetDefaultPort(), theApp.connectTimeout(), &proxyConnectionFailed) :
-        ConnectSocket(addrConnect, hSocket, theApp.connectTimeout(), 
+        edcConnectSocket(addrConnect, hSocket, theApp.connectTimeout(), 
 		&proxyConnectionFailed))
     {
         if (!IsSelectableSocket(hSocket)) 
@@ -425,7 +425,10 @@ void CEDCNode::PushVersion()
     int nBestHeight = g_signals.GetHeight().get_value_or(0);
 
     int64_t nTime = (fInbound ? edcGetAdjustedTime() : GetTime());
-    CAddress addrYou = (addr.IsRoutable() && !IsProxy(addr) ? addr : CAddress(CService("0.0.0.0",0)));
+
+    CAddress addrYou = (addr.IsRoutable() && !edcIsProxy(addr) ? addr : 
+		CAddress(CService("0.0.0.0",0)));
+
     CAddress addrMe = edcGetLocalAddress(&addr);
 	uint64_t localHostNonce;
     GetRandBytes((unsigned char*)&localHostNonce, sizeof(localHostNonce));
@@ -1431,7 +1434,7 @@ void edcThreadDNSAddressSeed()
 
     BOOST_FOREACH(const CDNSSeedData &seed, vSeeds) 
 	{
-        if (HaveNameProxy()) 
+        if (edcHaveNameProxy()) 
 		{
             AddOneShot(seed.host);
         } 
@@ -1620,7 +1623,7 @@ void edcThreadOpenAddedConnections()
         theApp.addedNodes() = params.addnode;
     }
 
-    if (HaveNameProxy()) 
+    if (edcHaveNameProxy()) 
 	{
         while(true) 
 		{
@@ -1654,7 +1657,8 @@ void edcThreadOpenAddedConnections()
         BOOST_FOREACH(const std::string& strAddNode, lAddresses) 
 		{
             vector<CService> vservNode(0);
-            if(Lookup(strAddNode.c_str(), vservNode, edcParams().GetDefaultPort(),				fNameLookup, 0))
+            if(Lookup(strAddNode.c_str(), vservNode, 
+			edcParams().GetDefaultPort(), params.dns, 0))
             {
                 lservAddressesToAdd.push_back(vservNode);
                 {
@@ -1712,7 +1716,7 @@ bool edcOpenNetworkConnection(
 	else if (edcFindNode(std::string(pszDest)))
         return false;
 
-    CEDCNode* pnode = ConnectEDCNode(addrConnect, pszDest);
+    CEDCNode* pnode = edcConnectNode(addrConnect, pszDest);
     boost::this_thread::interruption_point();
 
     if (!pnode)

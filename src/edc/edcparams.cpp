@@ -203,6 +203,7 @@ EDCparams::EDCparams()
 	datacarrier         = GetBoolArg( "-eb_datacarrier", EDC_DEFAULT_ACCEPT_DATACARRIER );
 	disablesafemode     = GetBoolArg( "-eb_disablesafemode", EDC_DEFAULT_DISABLE_SAFEMODE );
 	discover            = GetBoolArg( "-eb_discover", true );
+	dns                 = GetBoolArg( "-eb_dns", true );
 	dnsseed             = GetBoolArg( "-eb_dnsseed", true );
 	feefilter           = GetBoolArg( "-eb_feefilter", EDC_DEFAULT_FEEFILTER );
 	flushwallet         = GetBoolArg( "-eb_flushwallet",EDC_DEFAULT_FLUSHWALLET);
@@ -400,6 +401,8 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
 		_("Connect only to the specified node(s)"));
     strUsage += HelpMessageOpt("-eb_discover", 
 		_("Discover own IP addresses (default: 1 when listening and no -externalip or -proxy)"));
+    strUsage += HelpMessageOpt("-eb_dns", _("Allow DNS lookups for -addnode, "
+		"-seednode and -connect") + " " + strprintf(_("(default: %u)"), true));
     strUsage += HelpMessageOpt("-eb_dnsseed", 
 		_("Query for peer addresses via DNS lookup, if low on addresses (default: 1 unless -connect)"));
     strUsage += HelpMessageOpt("-eb_externalip=<ip>", 
@@ -631,90 +634,140 @@ bool EDCparams::validate()
     // even when -connect or -proxy is specified
     if (bind.size() > 0) 
 	{
-        listen = true;
-        edcLogPrintf("%s: parameter interaction: -eb_bind set -> setting -eb_listen=1\n", __func__);
+		if( mapArgs.count( "-eb_listen" ) == 0 )
+		{
+        	listen = true;
+	        edcLogPrintf("%s: parameter interaction: -eb_bind set -> setting -eb_listen=1\n", __func__);
+		}
     }
     if (whitebind.size() > 0) 
 	{
-        listen = true;
-        edcLogPrintf("%s: parameter interaction: -eb_whitebind set -> setting -eb_listen=1\n", __func__);
+		if( mapArgs.count( "-eb_listen" ) == 0 )
+		{
+        	listen = true;
+	        edcLogPrintf("%s: parameter interaction: -eb_whitebind set -> setting -eb_listen=1\n", __func__);
+		}
     }
 
     if ( connect.size() > 0 ) 
 	{
         // when only connecting to trusted nodes, do not seed via DNS, or 
 		// listen by default
-        dnsseed = false;
-        edcLogPrintf("%s: parameter interaction: -dbconnect set -> setting -dbdnsseed=false\n", __func__);
-        listen = false;
-        edcLogPrintf("%s: parameter interaction: -dbconnect set -> setting -dblisten=0\n", __func__);
+		if( mapArgs.count( "-eb_dnsseed" ) == 0 )
+		{
+        	dnsseed = false;
+	        edcLogPrintf("%s: parameter interaction: -dbconnect set -> setting -dbdnsseed=false\n", __func__);
+		}
+		if( mapArgs.count( "-eb_listen" ) == 0 )
+		{
+        	listen = false;
+        	edcLogPrintf("%s: parameter interaction: -dbconnect set -> setting -dblisten=0\n", __func__);
+		}
     }
 
     if (proxy.size() > 0 ) 
 	{
         // to protect privacy, do not listen by default if a default proxy 
 		// server is specified
-        listen = false;
-
-        edcLogPrintf("%s: parameter interaction: -eb_proxy set -> setting -eb_listen=0\n", __func__);
+		if( mapArgs.count( "-eb_listen" ) == 0 )
+		{
+        	listen = false;
+        	edcLogPrintf("%s: parameter interaction: -eb_proxy set -> setting -eb_listen=0\n", __func__);
+		}
 
         // to protect privacy, do not use UPNP when a proxy is set. The user may still specify -listen=1
         // to listen locally, so don't rely on this happening through -listen below.
-        upnp = false;
-        edcLogPrintf("%s: parameter interaction: -eb_proxy set -> setting -eb_upnp=0\n", __func__);
+		if( mapArgs.count("-eb_upnp") == 0 )
+		{
+			upnp = false;
+        	edcLogPrintf("%s: parameter interaction: -eb_proxy set -> setting -eb_upnp=0\n", __func__);
+		}
+
         // to protect privacy, do not discover addresses by default
-        discover = false;
-        edcLogPrintf("%s: parameter interaction: -eb_proxy set -> setting -eb_discover=0\n", __func__);
+		if( mapArgs.count( "-eb_discover" ) == 0 )
+		{
+        	discover = false;
+        	edcLogPrintf("%s: parameter interaction: -eb_proxy set -> setting -eb_discover=0\n", __func__);
+		}
     }
 
     if (!listen) 
 	{
         // do not map ports or try to retrieve public IP when not listening (pointless)
-        upnp = false;
-        edcLogPrintf("%s: parameter interaction: -eb_listen=0 -> setting -eb_upnp=0\n", __func__);
-        discover = false;
-        edcLogPrintf("%s: parameter interaction: -eb_listen=0 -> setting -eb_discover=0\n", __func__);
-        listenonion = false;
-        edcLogPrintf("%s: parameter interaction: -eb_listen=0 -> setting -eb_listenonion=0\n", __func__);
+		if( mapArgs.count("-eb_upnp") == 0 )
+		{
+			upnp = false;
+        	edcLogPrintf("%s: parameter interaction: -eb_listen=0 -> setting -eb_upnp=0\n", __func__);
+		}
+
+		if( mapArgs.count( "-eb_discover" ) == 0 )
+		{
+        	discover = false;
+        	edcLogPrintf("%s: parameter interaction: -eb_listen=0 -> setting -eb_discover=0\n", __func__);
+		}
+
+		if( mapArgs.count( "-eb_listenonion" ) == 0 )
+		{
+        	listenonion = false;
+        	edcLogPrintf("%s: parameter interaction: -eb_listen=0 -> setting -eb_listenonion=0\n", __func__);
+		}
     }
 
     if (externalip.size() > 0 )
 	{
         // if an explicit public IP is specified, do not try to find others
-        discover = false;
-        edcLogPrintf("%s: parameter interaction: -eb_externalip set -> setting -eb_discover=0\n", __func__);
+		if( mapArgs.count( "-eb_discover" ) == 0 )
+		{
+	        discover = false;
+   	    	edcLogPrintf("%s: parameter interaction: -eb_externalip set -> setting -eb_discover=0\n", __func__);
+		}
     }
 
     if (salvagewallet) 
 	{
         // Rewrite just private keys: rescan to find transactions
-        rescan = true;
-        edcLogPrintf("%s: parameter interaction: -eb_salvagewallet=1 -> setting -eb_rescan=1\n", __func__);
+		if( mapArgs.count( "-eb_rescan" ) == 0 )
+		{
+        	rescan = true;
+	        edcLogPrintf("%s: parameter interaction: -eb_salvagewallet=1 -> setting -eb_rescan=1\n", __func__);
+		}
     }
 
     // -zapwallettx implies a rescan
     if (zapwallettxes) 
 	{
-        rescan = true;
-        edcLogPrintf("%s: parameter interaction: -eb_zapwallettxes=<mode> -> setting -eb_rescan=1\n", __func__);
+		if( mapArgs.count( "-eb_rescan" ) == 0 )
+		{
+        	rescan = true;
+	        edcLogPrintf("%s: parameter interaction: -eb_zapwallettxes=<mode> -> setting -eb_rescan=1\n", __func__);
+		}
     }
 
     // disable walletbroadcast and whitelistrelay in blocksonly mode
     if (blocksonly) 
 	{
-        whitelistrelay = false;
-        edcLogPrintf("%s: parameter interaction: -eb_blocksonly=1 -> setting -eb_whitelistrelay=0\n", __func__);
+		if( mapArgs.count( "-eb_whitelistrelay" ) == 0 )
+		{
+        	whitelistrelay = false;
+	        edcLogPrintf("%s: parameter interaction: -eb_blocksonly=1 -> setting -eb_whitelistrelay=0\n", __func__);
+		}
 #ifdef ENABLE_WALLET
-        walletbroadcast = false;
-        edcLogPrintf("%s: parameter interaction: -eb_blocksonly=1 -> setting -eb_walletbroadcast=0\n", __func__);
+        if( mapArgs.count( "-eb_walletbroadcast" ) == 0 )
+		{
+        	walletbroadcast = false;
+	        edcLogPrintf("%s: parameter interaction: -eb_blocksonly=1 -> setting -eb_walletbroadcast=0\n", __func__);
+		}
 #endif
     }
 
     // Forcing relay from whitelisted hosts implies we will accept relays from them in the first place.
     if (whitelistforcerelay) 
 	{
-        whitelistrelay = true;
-        edcLogPrintf("%s: parameter interaction: -eb_whitelistforcerelay=1 -> setting -eb_whitelistrelay=1\n", __func__);
+		if( mapArgs.count( "-eb_whitelistrelay" ) == 0 )
+		{
+        	whitelistrelay = true;
+	        edcLogPrintf("%s: parameter interaction: -eb_whitelistforcerelay=1 -> setting -eb_whitelistrelay=1\n", __func__);
+		}
     }
 
 	if (GetBoolArg( "-sysperms", false))
@@ -839,6 +892,7 @@ void EDCparams::dumpToLog() const
 	edcLogPrintf( "eb_disablesafemode      %s\n", toString(disablesafemode) );
 	edcLogPrintf( "eb_disablewallet        %s\n", toString(disablewallet) );
 	edcLogPrintf( "eb_discover             %s\n", toString(discover) );
+	edcLogPrintf( "eb_dns                  %s\n", toString(dns) );
 	edcLogPrintf( "eb_dnsseed              %s\n", toString(dnsseed) );
 	edcLogPrintf( "eb_dropmessagestest     %lld\n", dropmessagestest );
 
@@ -983,6 +1037,7 @@ void EDCparams::checkParams() const
 	validparams.insert("-disablesafemode");
 	validparams.insert("-disablewallet");
 	validparams.insert("-discover");
+	validparams.insert("-dns");
 	validparams.insert("-dnsseed");
 	validparams.insert("-dropmessagestest");
 	validparams.insert("-externalip");
@@ -1102,6 +1157,7 @@ void EDCparams::checkParams() const
 	validparams.insert("-eb_disablesafemode");
 	validparams.insert("-eb_disablewallet");
 	validparams.insert("-eb_discover");
+	validparams.insert("-eb_dns");
 	validparams.insert("-eb_dnsseed");
 	validparams.insert("-eb_dropmessagestest");
 	validparams.insert("-eb_externalip");

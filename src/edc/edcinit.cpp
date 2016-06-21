@@ -351,6 +351,9 @@ bool EdcAppInit(
 
 	try
 	{
+		if(mapArgs.count("-eb_server") == 0 )
+			params.server = true;
+
     	// Set this early so that parameter interactions go to console
 	    edcInitLogging();
 
@@ -571,7 +574,7 @@ bool EdcAppInit(
 			{
 	            enum Network net = (enum Network)n;
 	            if (!nets.count(net))
-	                SetLimited(net);
+	                edcSetLimited(net, true );
 	        }
 	    }
 	
@@ -593,7 +596,7 @@ bool EdcAppInit(
     	// -eb_noproxy (or -proxy=0) as well as the empty string can be used to 
 		// not set a proxy, this is the default
     	std::string proxyArg = params.proxy;
-    	SetLimited(NET_TOR);
+    	edcSetLimited(NET_TOR, true );
 
     	if (proxyArg != "" && proxyArg != "0") 
 		{
@@ -603,11 +606,12 @@ bool EdcAppInit(
             	return InitError(strprintf(_("Invalid -proxy address: '%s'"),
 					proxyArg));
 
-        	SetProxy(NET_IPV4, addrProxy);
-        	SetProxy(NET_IPV6, addrProxy);
-        	SetProxy(NET_TOR, addrProxy);
-        	SetNameProxy(addrProxy);
-        	SetLimited(NET_TOR, false); // by default, -proxy sets onion as 
+        	edcSetProxy(NET_IPV4, addrProxy);
+        	edcSetProxy(NET_IPV6, addrProxy);
+        	edcSetProxy(NET_TOR, addrProxy);
+        	edcSetNameProxy(addrProxy);
+
+        	edcSetLimited(NET_TOR, false); // by default, -proxy sets onion as 
 										// reachable, unless -noonion later
     	}
 
@@ -622,7 +626,7 @@ bool EdcAppInit(
 	        if (onionArg == "0") 
 			{ 
 				// Handle -noonion/-onion=0
-	            SetLimited(NET_TOR); // set onions as unreachable
+	            edcSetLimited(NET_TOR, true ); // set onions as unreachable
 	        } 
 			else 
 			{
@@ -632,8 +636,8 @@ bool EdcAppInit(
 	            if (!addrOnion.IsValid())
 	                return InitError(strprintf(_("Invalid -onion address: "
 						"'%s'"), onionArg));
-	            SetProxy(NET_TOR, addrOnion);
-	            SetLimited(NET_TOR, false);
+	            edcSetProxy(NET_TOR, addrOnion);
+	            edcSetLimited(NET_TOR, false);
 	        }
 	    }
 	
@@ -677,7 +681,7 @@ bool EdcAppInit(
 			{
             	CService addrLocal;
             	if (Lookup(strAddr.c_str(), addrLocal, edcGetListenPort(), 
-				fNameLookup) && addrLocal.IsValid())
+				params.dns) && addrLocal.IsValid())
                 	edcAddLocal(addrLocal, LOCAL_MANUAL);
             	else
                 	return InitError(ResolveErrMsg("externalip", strAddr));

@@ -9,7 +9,7 @@
 #include "edc/edcinit.h"
 #include "edc/edcmain.h"
 #include "edc/edcnet.h"
-#include "netbase.h"
+#include "edc/edcnetbase.h"
 #include "edc/rpc/edcserver.h"
 #include "timedata.h"
 #include "edc/edcutil.h"
@@ -85,7 +85,7 @@ UniValue edcgetinfo(const UniValue& params, bool fHelp)
 #endif
 
     proxyType proxy;
-    GetProxy(NET_IPV4, proxy);
+    edcGetProxy(NET_IPV4, proxy);
 
     UniValue obj(UniValue::VOBJ);
     obj.push_back(Pair("version", CLIENT_VERSION));

@@ -41,6 +41,7 @@ public:
 	bool disablesafemode;
 	bool disablewallet;
 	bool discover;
+	bool dns;
 	bool dnsseed;
 	bool feefilter;
 	bool flushwallet;

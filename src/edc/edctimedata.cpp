@@ -9,7 +9,7 @@
 
 #include "timedata.h"
 
-#include "netbase.h"
+#include "edcnetbase.h"
 #include "sync.h"
 #include "ui_interface.h"
 #include "edcutil.h"

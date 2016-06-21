@@ -578,7 +578,7 @@ void TorController::auth_cb(
         if (params.onion == "") 
 		{
             proxyType addrOnion = proxyType(CService("127.0.0.1", 9050), true);
-            SetProxy(NET_TOR, addrOnion);
+            edcSetProxy(NET_TOR, addrOnion);
             edcSetLimited(NET_TOR, false);
         }
 

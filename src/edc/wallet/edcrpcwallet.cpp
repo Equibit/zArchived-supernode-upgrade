@@ -11,7 +11,7 @@
 #include "init.h"
 #include "edc/edcmain.h"
 #include "edc/edcnet.h"
-#include "netbase.h"
+#include "edc/edcnetbase.h"
 #include "edc/policy/edcrbf.h"
 #include "edc/rpc/edcserver.h"
 #include "timedata.h"
