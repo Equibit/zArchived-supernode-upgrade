@@ -130,7 +130,9 @@ public:
     {
         double f1 = (double)a.GetModifiedFee() * b.GetTxSize();
         double f2 = (double)b.GetModifiedFee() * a.GetTxSize();
-        if (f1 == f2) {
+
+        if (f1 == f2) 
+		{
             return b.GetTx().GetHash() < a.GetTx().GetHash();
         }
         return f1 > f2;
@@ -221,7 +223,8 @@ public:
         double f1 = aModFee * bSize;
         double f2 = aSize * bModFee;
 
-        if (f1 == f2) {
+        if (f1 == f2) 
+		{
             return a.GetTime() >= b.GetTime();
         }
         return f1 < f2;
@@ -247,7 +250,9 @@ public:
     {
         double f1 = (double)a.GetModifiedFee() * b.GetTxSize();
         double f2 = (double)b.GetModifiedFee() * a.GetTxSize();
-        if (f1 == f2) {
+
+        if (f1 == f2) 
+		{
             return b.GetTx().GetHash() < a.GetTx().GetHash();
         }
         return f1 > f2;
@@ -278,7 +283,8 @@ public:
         double f1 = aFees * bSize;
         double f2 = aSize * bFees;
 
-        if (f1 == f2) {
+        if (f1 == f2) 
+		{
             return a.GetTx().GetHash() < b.GetTx().GetHash();
         }
 
@@ -436,8 +442,10 @@ public:
     mutable CCriticalSection cs;
     indexed_transaction_set mapTx;
     typedef indexed_transaction_set::nth_index<0>::type::iterator txiter;
-    struct CompareIteratorByHash {
-        bool operator()(const txiter &a, const txiter &b) const {
+    struct CompareIteratorByHash 
+	{
+        bool operator()(const txiter &a, const txiter &b) const 
+		{
             return a->GetTx().GetHash() < b->GetTx().GetHash();
         }
     };
@@ -448,7 +456,8 @@ public:
 private:
     typedef std::map<txiter, setEntries, CompareIteratorByHash> cacheMap;
 
-    struct TxLinks {
+    struct TxLinks 
+	{
         setEntries parents;
         setEntries children;
     };

@@ -990,6 +990,10 @@ bool EdcAppInit(
     	edcLogPrintf("mapAddressBook.size() = %u\n", 
 			theApp.walletMain() ? theApp.walletMain()->mapAddressBook.size():0);
 #endif
+
+		if(params.listenonion )
+			edcStartTorControl( threadGroup, scheduler );
+
     	edcStartNode(threadGroup, scheduler);
 
     	// Monitor the chain, and alert if we get blocks much quicker or 
@@ -1080,8 +1084,8 @@ void edcShutdown()
         theApp.walletMain()->Flush(false);
 #endif
     edcStopNode();
-//    StopTorControl();
-//    UnregisterNodeSignals(GetNodeSignals());
+    edcStopTorControl();
+// TODO: EDC version?    UnregisterNodeSignals(GetNodeSignals());
 
     if (fFeeEstimatesInitialized)
     {
@@ -1123,7 +1127,8 @@ void edcShutdown()
 #endif
 
 #if ENABLE_ZMQ
-    if (pzmqNotificationInterface) {
+    if (pzmqNotificationInterface) 
+	{
         UnregisterValidationInterface(pzmqNotificationInterface);
         delete pzmqNotificationInterface;
         pzmqNotificationInterface = NULL;
@@ -1147,7 +1152,7 @@ void edcShutdown()
     theApp.walletMain( NULL );
 #endif
 
-//    globalVerifyHandle.reset();
+// TODO: EDC version?   globalVerifyHandle.reset();
 
     ECC_Stop();
     edcLogPrintf("%s: done\n", __func__);

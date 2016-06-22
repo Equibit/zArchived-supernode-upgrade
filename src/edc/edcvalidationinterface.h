@@ -31,7 +31,8 @@ void edcUnregisterAllValidationInterfaces();
 /** Push an updated transaction to all registered wallets */
 void SyncWithWallets(const CEDCTransaction& tx, const CBlockIndex *pindex, const CEDCBlock* pblock = NULL);
 
-class CEDCValidationInterface {
+class CEDCValidationInterface 
+{
 protected:
     virtual void UpdatedBlockTip(const CBlockIndex *pindex) {}
     virtual void SyncTransaction(const CEDCTransaction &tx, const CBlockIndex *pindex, const CEDCBlock *pblock) {}
@@ -47,7 +48,8 @@ protected:
     friend void ::edcUnregisterAllValidationInterfaces();
 };
 
-struct CEDCMainSignals {
+struct CEDCMainSignals 
+{
     /** Notifies listeners of updated block chain tip */
     boost::signals2::signal<void (const CBlockIndex *)> UpdatedBlockTip;
     /** Notifies listeners of updated transaction data (transaction, and optionally the block it is found in. */

@@ -265,7 +265,8 @@ bool ReadBlockFromDisk(CEDCBlock& block, const CBlockIndex* pindex, const Consen
 bool TestBlockValidity(CValidationState& state, const CEDCChainParams& chainparams, const CEDCBlock& block, CBlockIndex* pindexPrev, bool fCheckPOW = true, bool fCheckMerkleRoot = true);
 
 /** RAII wrapper for VerifyDB: Verify consistency of the block and coin databases */
-class CEDCVerifyDB {
+class CEDCVerifyDB 
+{
 public:
     CEDCVerifyDB();
     ~CEDCVerifyDB();

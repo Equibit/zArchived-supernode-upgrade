@@ -22,39 +22,6 @@ class CBlockIndex;
 class CEDCCoinsViewDBCursor;
 class uint256;
 
-#if 0
-//! -dbcache default (MiB)
-static const int64_t nDefaultDbCache = 100;
-//! max. -dbcache in (MiB)
-static const int64_t nMaxDbCache = sizeof(void*) > 4 ? 16384 : 1024;
-//! min. -dbcache in (MiB)
-static const int64_t nMinDbCache = 4;
-
-struct CDiskTxPos : public CDiskBlockPos
-{
-    unsigned int nTxOffset; // after header
-
-    ADD_SERIALIZE_METHODS;
-
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
-        READWRITE(*(CDiskBlockPos*)this);
-        READWRITE(VARINT(nTxOffset));
-    }
-
-    CDiskTxPos(const CDiskBlockPos &blockIn, unsigned int nTxOffsetIn) : CDiskBlockPos(blockIn.nFile, blockIn.nPos), nTxOffset(nTxOffsetIn) {
-    }
-
-    CDiskTxPos() {
-        SetNull();
-    }
-
-    void SetNull() {
-        CDiskBlockPos::SetNull();
-        nTxOffset = 0;
-    }
-};
-#endif
 
 /** CCoinsView backed by the coin database (chainstate/) */
 class CEDCCoinsViewDB : public CEDCCoinsView
@@ -68,7 +35,7 @@ public:
     bool HaveCoins(const uint256 &txid) const;
     uint256 GetBestBlock() const;
     bool BatchWrite(CEDCCoinsMap &mapCoins, const uint256 &hashBlock);
-    CEDCCoinsViewCursor *Cursor() const;
+    CEDCCoinsViewCursor * Cursor() const;
 };
 
 /** Specialization of CCoinsViewCursor to iterate over a CCoinsViewDB */
@@ -85,7 +52,7 @@ public:
     void Next();
 
 private:
-    CEDCCoinsViewDBCursor(CDBIterator* pcursorIn, const uint256 &hashBlockIn):
+    CEDCCoinsViewDBCursor(CDBIterator * pcursorIn, const uint256 &hashBlockIn):
         CEDCCoinsViewCursor(hashBlockIn), pcursor(pcursorIn) {}
     boost::scoped_ptr<CDBIterator> pcursor;
     std::pair<char, uint256> keyTmp;
@@ -99,18 +66,22 @@ class CEDCBlockTreeDB : public CDBWrapper
 public:
     CEDCBlockTreeDB(size_t nCacheSize, bool fMemory = false, bool fWipe = false);
 private:
-    CEDCBlockTreeDB(const CEDCBlockTreeDB&);
-    void operator=(const CEDCBlockTreeDB&);
+    CEDCBlockTreeDB(const CEDCBlockTreeDB &);
+    void operator=(const CEDCBlockTreeDB &);
+
 public:
-    bool WriteBatchSync(const std::vector<std::pair<int, const CBlockFileInfo*> >& fileInfo, int nLastFile, const std::vector<const CBlockIndex*>& blockinfo);
-    bool ReadBlockFileInfo(int nFile, CBlockFileInfo &fileinfo);
-    bool ReadLastBlockFile(int &nFile);
+    bool WriteBatchSync(const std::vector<std::pair<int, const CBlockFileInfo *> > & fileInfo, 
+						int nLastFile, 
+						const std::vector<const CBlockIndex *> & blockinfo);
+
+    bool ReadBlockFileInfo(int nFile, CBlockFileInfo & fileinfo);
+    bool ReadLastBlockFile(int & nFile);
     bool WriteReindexing(bool fReindex);
-    bool ReadReindexing(bool &fReindex);
-    bool ReadTxIndex(const uint256 &txid, CDiskTxPos &pos);
-    bool WriteTxIndex(const std::vector<std::pair<uint256, CDiskTxPos> > &list);
-    bool WriteFlag(const std::string &name, bool fValue);
-    bool ReadFlag(const std::string &name, bool &fValue);
-    bool LoadBlockIndexGuts(boost::function<CBlockIndex*(const uint256&)> insertBlockIndex);
+    bool ReadReindexing(bool & fReindex);
+    bool ReadTxIndex(const uint256 & txid, CDiskTxPos & pos);
+    bool WriteTxIndex(const std::vector<std::pair<uint256, CDiskTxPos> > & list);
+    bool WriteFlag(const std::string & name, bool fValue);
+    bool ReadFlag(const std::string & name, bool & fValue);
+    bool LoadBlockIndexGuts(boost::function<CBlockIndex * (const uint256 &)> insertBlockIndex);
 };
 

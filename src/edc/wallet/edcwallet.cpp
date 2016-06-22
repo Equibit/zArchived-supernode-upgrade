@@ -645,7 +645,10 @@ void CEDCWallet::MarkDirty()
 
 int64_t edcGetAdjustedTime();
 
-bool CEDCWallet::AddToWallet(const CEDCWalletTx& wtxIn, bool fFromLoadWallet, CEDCWalletDB* pwalletdb)
+bool CEDCWallet::AddToWallet(
+	const CEDCWalletTx & wtxIn, 
+	bool fFromLoadWallet, 
+	CEDCWalletDB * pwalletdb)
 {
 	EDCapp & theApp = EDCapp::singleton();
 

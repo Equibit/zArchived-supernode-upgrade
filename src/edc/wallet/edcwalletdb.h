@@ -46,10 +46,14 @@ public:
     bool EraseTx(uint256 hash);
 
     bool WriteKey(const CPubKey& vchPubKey, const CPrivKey& vchPrivKey, const CKeyMetadata &keyMeta);
-    bool WriteCryptedKey(const CPubKey& vchPubKey, const std::vector<unsigned char>& vchCryptedSecret, const CKeyMetadata &keyMeta);
-    bool WriteMasterKey(unsigned int nID, const CMasterKey& kMasterKey);
 
-    bool WriteCScript(const uint160& hash, const CScript& redeemScript);
+    bool WriteCryptedKey(const CPubKey & vchPubKey, 
+						 const std::vector<unsigned char> & vchCryptedSecret, 
+						 const CKeyMetadata & keyMeta);
+
+    bool WriteMasterKey(unsigned int nID, const CMasterKey & kMasterKey);
+
+    bool WriteCScript(const uint160 & hash, const CScript & redeemScript);
 
     bool WriteWatchOnly(const CScript &script);
     bool EraseWatchOnly(const CScript &script);
@@ -75,6 +79,7 @@ public:
 
     /// Write destination data key,value tuple to database
     bool WriteDestData(const std::string &address, const std::string &key, const std::string &value);
+
     /// Erase destination data tuple from wallet database
     bool EraseDestData(const std::string &address, const std::string &key);
 

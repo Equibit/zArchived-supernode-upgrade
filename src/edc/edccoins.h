@@ -225,10 +225,13 @@ public:
     void Unserialize(Stream &s, int nType, int nVersion) 
 	{
         unsigned int nCode = 0;
+
         // version
         ::Unserialize(s, VARINT(this->nVersion), nType, nVersion);
+
         // header code
         ::Unserialize(s, VARINT(nCode), nType, nVersion);
+
         fCoinBase = nCode & 1;
         std::vector<bool> vAvail(2, false);
         vAvail[0] = (nCode & 2) != 0;
@@ -240,11 +243,13 @@ public:
 		{
             unsigned char chAvail = 0;
             ::Unserialize(s, chAvail, nType, nVersion);
+
             for (unsigned int p = 0; p < 8; p++) 
 			{
                 bool f = (chAvail & (1 << p)) != 0;
                 vAvail.push_back(f);
             }
+
             if (chAvail != 0)
                 nMaskCode--;
         }

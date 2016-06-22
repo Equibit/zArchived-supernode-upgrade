@@ -1,0 +1,71 @@
+
+Technical design for first demo actions
+
+
+The following actions will be done during the demo. This document covers the 
+RPCs to the Equibit node that currently exist or will be implemented for the 
+demo.
+
+The Equibit node RPCs already provides support for Accounts:
+
+getnewaddress           Associates the address with the account.
+getaccount              Returns the account corresponding to an address.
+getaccountaddress       Returns current address corresponding to input account.
+getaddressesbyaccount   Returns addresses corresponding to input account
+getbalance              Returns equibit balance corresponding to account
+getreceivedbyaccount    Returns the total amount received by addresses with 
+                        input account in transactions with at least 
+                        input minconf confirmations.
+listaccounts            List accounts satisfying various criteria
+listreceivedbyaccount   List balances by account
+move                    Move a specified amount from one account in your 
+                        wallet to another
+sendfrom                Send amount from an account to an address
+sendmany                Send amount from account to 1 or more addresses
+setaccount              Assigns an address to an account
+
+
+1. Log in to a dummy company account on a test website that has some blank 
+   equibits
+
+    This behavior can be implemented by doing the following:
+    a) Call RPC generate 101 to generate 101 blocks. Note: A equibits created 
+       via mining must have at least 100 confirmation blocks in order to be 
+       spendable. Therefore, 101 blocks must be generated.
+    b) Call RPC getnewaddress to create an account
+    c) Call RPC sendtoaddress to assign equibit(s) to the address corresponding 
+       to the account
+
+2. Go to the ‘Issuer’ functions and turn those blank EQB’s into signed one’s 
+   (“Authorizing” shares)
+
+    The node does not currently support the concept of an Issuer or signing 
+    Equibits. The new RPCs will be
+
+    getnewissuer <issuer-name>    
+
+    Creates a new issuer. This will update the Issuer DB and transmit it to 
+    all of the other nodes.
+
+    signequibit    <issuer-name> <transaction-id> <txout-index>
+
+    Create a transaction that applies the signature to the equibit located
+    at the specified transaction.
+
+3. Transfer the now signed EQB’s to other addresses
+
+    The existing RPC sendtoaddress can be used to send equibit(s) to another 
+    address.
+
+4. Send either a message, or bitcoins (i.e. dividend) to the shareholders
+
+    The existing RPC sendmany (either bitcoin or equibit) can be used to
+    send coins to 1 or more addresses.
+
+    Messaging will require a new message type to be added to the existing
+    node peer-to-peer protocol. The messages will need to be saved to the
+    DB.
+
+    The RPC to send a message will be
+
+    messagemany <message> <from-account|address> {to-addresses}

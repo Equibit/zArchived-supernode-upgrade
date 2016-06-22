@@ -28,14 +28,12 @@ using namespace std;
 
 static uint64_t nAccountingEntryNumber = 0;
 
-//
-// CEDCWalletDB
-//
 
 bool CEDCWalletDB::WriteName(const string& strAddress, const string& strName)
 {
 	EDCapp & theApp = EDCapp::singleton();
     theApp.incWalletDBUpdated();
+
     return Write(make_pair(string("name"), strAddress), strName);
 }
 
@@ -44,6 +42,7 @@ bool CEDCWalletDB::EraseName(const string& strAddress)
     // This should only be used for sending addresses, never for receiving addresses,
     // receiving addresses must always have an address book entry if they're not change return.
 	EDCapp & theApp = EDCapp::singleton();
+
     theApp.incWalletDBUpdated();
     return Erase(make_pair(string("name"), strAddress));
 }
@@ -51,6 +50,7 @@ bool CEDCWalletDB::EraseName(const string& strAddress)
 bool CEDCWalletDB::WritePurpose(const string& strAddress, const string& strPurpose)
 {
 	EDCapp & theApp = EDCapp::singleton();
+
     theApp.incWalletDBUpdated();
     return Write(make_pair(string("purpose"), strAddress), strPurpose);
 }
@@ -58,6 +58,7 @@ bool CEDCWalletDB::WritePurpose(const string& strAddress, const string& strPurpo
 bool CEDCWalletDB::ErasePurpose(const string& strPurpose)
 {
 	EDCapp & theApp = EDCapp::singleton();
+
     theApp.incWalletDBUpdated();
     return Erase(make_pair(string("purpose"), strPurpose));
 }
@@ -65,6 +66,7 @@ bool CEDCWalletDB::ErasePurpose(const string& strPurpose)
 bool CEDCWalletDB::WriteTx(const CEDCWalletTx& wtx)
 {
 	EDCapp & theApp = EDCapp::singleton();
+
     theApp.incWalletDBUpdated();
     return Write(std::make_pair(std::string("tx"), wtx.GetHash()), wtx);
 }
@@ -72,6 +74,7 @@ bool CEDCWalletDB::WriteTx(const CEDCWalletTx& wtx)
 bool CEDCWalletDB::EraseTx(uint256 hash)
 {
 	EDCapp & theApp = EDCapp::singleton();
+
     theApp.incWalletDBUpdated();
     return Erase(std::make_pair(std::string("tx"), hash));
 }
@@ -79,6 +82,7 @@ bool CEDCWalletDB::EraseTx(uint256 hash)
 bool CEDCWalletDB::WriteKey(const CPubKey& vchPubKey, const CPrivKey& vchPrivKey, const CKeyMetadata& keyMeta)
 {
 	EDCapp & theApp = EDCapp::singleton();
+
     theApp.incWalletDBUpdated();
 
     if (!Write(std::make_pair(std::string("keymeta"), vchPubKey),
@@ -91,34 +95,39 @@ bool CEDCWalletDB::WriteKey(const CPubKey& vchPubKey, const CPrivKey& vchPrivKey
     vchKey.insert(vchKey.end(), vchPubKey.begin(), vchPubKey.end());
     vchKey.insert(vchKey.end(), vchPrivKey.begin(), vchPrivKey.end());
 
-    return Write(std::make_pair(std::string("key"), vchPubKey), std::make_pair(vchPrivKey, Hash(vchKey.begin(), vchKey.end())), false);
+    return Write(std::make_pair(std::string("key"), vchPubKey), 
+		std::make_pair(vchPrivKey, Hash(vchKey.begin(), vchKey.end())), false);
 }
 
-bool CEDCWalletDB::WriteCryptedKey(const CPubKey& vchPubKey,
-                                const std::vector<unsigned char>& vchCryptedSecret,
-                                const CKeyMetadata &keyMeta)
+bool CEDCWalletDB::WriteCryptedKey(
+	                   const CPubKey & vchPubKey,
+    const std::vector<unsigned char> & vchCryptedSecret,
+                  const CKeyMetadata & keyMeta)
 {
-    const bool fEraseUnencryptedKey = true;
 	EDCapp & theApp = EDCapp::singleton();
+
+    const bool fEraseUnencryptedKey = true;
     theApp.incWalletDBUpdated();
 
-    if (!Write(std::make_pair(std::string("keymeta"), vchPubKey),
-            keyMeta))
+    if (!Write(std::make_pair(std::string("keymeta"), vchPubKey), keyMeta))
         return false;
 
     if (!Write(std::make_pair(std::string("ckey"), vchPubKey), vchCryptedSecret, false))
         return false;
+
     if (fEraseUnencryptedKey)
     {
         Erase(std::make_pair(std::string("key"), vchPubKey));
         Erase(std::make_pair(std::string("wkey"), vchPubKey));
     }
+
     return true;
 }
 
 bool CEDCWalletDB::WriteMasterKey(unsigned int nID, const CMasterKey& kMasterKey)
 {
 	EDCapp & theApp = EDCapp::singleton();
+
     theApp.incWalletDBUpdated();
     return Write(std::make_pair(std::string("mkey"), nID), kMasterKey, true);
 }
@@ -126,6 +135,7 @@ bool CEDCWalletDB::WriteMasterKey(unsigned int nID, const CMasterKey& kMasterKey
 bool CEDCWalletDB::WriteCScript(const uint160& hash, const CScript& redeemScript)
 {
 	EDCapp & theApp = EDCapp::singleton();
+
     theApp.incWalletDBUpdated();
     return Write(std::make_pair(std::string("cscript"), hash), *(const CScriptBase*)(&redeemScript), false);
 }
@@ -133,6 +143,7 @@ bool CEDCWalletDB::WriteCScript(const uint160& hash, const CScript& redeemScript
 bool CEDCWalletDB::WriteWatchOnly(const CScript &dest)
 {
 	EDCapp & theApp = EDCapp::singleton();
+
     theApp.incWalletDBUpdated();
     return Write(std::make_pair(std::string("watchs"), *(const CScriptBase*)(&dest)), '1');
 }
@@ -140,6 +151,7 @@ bool CEDCWalletDB::WriteWatchOnly(const CScript &dest)
 bool CEDCWalletDB::EraseWatchOnly(const CScript &dest)
 {
 	EDCapp & theApp = EDCapp::singleton();
+
     theApp.incWalletDBUpdated();
     return Erase(std::make_pair(std::string("watchs"), *(const CScriptBase*)(&dest)));
 }
@@ -147,20 +159,25 @@ bool CEDCWalletDB::EraseWatchOnly(const CScript &dest)
 bool CEDCWalletDB::WriteBestBlock(const CBlockLocator& locator)
 {
 	EDCapp & theApp = EDCapp::singleton();
+
     theApp.incWalletDBUpdated();
     Write(std::string("bestblock"), CBlockLocator()); // Write empty block locator so versions that require a merkle branch automatically rescan
+
     return Write(std::string("bestblock_nomerkle"), locator);
 }
 
 bool CEDCWalletDB::ReadBestBlock(CBlockLocator& locator)
 {
-    if (Read(std::string("bestblock"), locator) && !locator.vHave.empty()) return true;
+    if (Read(std::string("bestblock"), locator) && !locator.vHave.empty()) 
+		return true;
+
     return Read(std::string("bestblock_nomerkle"), locator);
 }
 
 bool CEDCWalletDB::WriteOrderPosNext(int64_t nOrderPosNext)
 {
 	EDCapp & theApp = EDCapp::singleton();
+
     theApp.incWalletDBUpdated();
     return Write(std::string("orderposnext"), nOrderPosNext);
 }
@@ -168,6 +185,7 @@ bool CEDCWalletDB::WriteOrderPosNext(int64_t nOrderPosNext)
 bool CEDCWalletDB::WriteDefaultKey(const CPubKey& vchPubKey)
 {
 	EDCapp & theApp = EDCapp::singleton();
+
     theApp.incWalletDBUpdated();
     return Write(std::string("defaultkey"), vchPubKey);
 }
@@ -180,6 +198,7 @@ bool CEDCWalletDB::ReadPool(int64_t nPool, CKeyPool& keypool)
 bool CEDCWalletDB::WritePool(int64_t nPool, const CKeyPool& keypool)
 {
 	EDCapp & theApp = EDCapp::singleton();
+
     theApp.incWalletDBUpdated();
     return Write(std::make_pair(std::string("pool"), nPool), keypool);
 }
@@ -187,6 +206,7 @@ bool CEDCWalletDB::WritePool(int64_t nPool, const CKeyPool& keypool)
 bool CEDCWalletDB::ErasePool(int64_t nPool)
 {
 	EDCapp & theApp = EDCapp::singleton();
+
     theApp.incWalletDBUpdated();
     return Erase(std::make_pair(std::string("pool"), nPool));
 }
@@ -209,7 +229,8 @@ bool CEDCWalletDB::WriteAccount(const string& strAccount, const CAccount& accoun
 
 bool CEDCWalletDB::WriteAccountingEntry(const uint64_t nAccEntryNum, const CAccountingEntry& acentry)
 {
-    return Write(std::make_pair(std::string("acentry"), std::make_pair(acentry.strAccount, nAccEntryNum)), acentry);
+    return Write(std::make_pair(std::string("acentry"), 
+		std::make_pair(acentry.strAccount, nAccEntryNum)), acentry);
 }
 
 bool CEDCWalletDB::WriteAccountingEntry_Backend(const CAccountingEntry& acentry)
@@ -236,16 +257,20 @@ void CEDCWalletDB::ListAccountCreditDebit(const string& strAccount, list<CAccoun
     Dbc* pcursor = GetCursor();
     if (!pcursor)
         throw runtime_error("CEDCWalletDB::ListAccountCreditDebit(): cannot create DB cursor");
+
     unsigned int fFlags = DB_SET_RANGE;
     while (true)
     {
         // Read next record
         CDataStream ssKey(SER_DISK, CLIENT_VERSION);
         if (fFlags == DB_SET_RANGE)
-            ssKey << std::make_pair(std::string("acentry"), std::make_pair((fAllAccounts ? string("") : strAccount), uint64_t(0)));
+            ssKey << std::make_pair(std::string("acentry"), 
+				std::make_pair((fAllAccounts ? string("") : strAccount), uint64_t(0)));
+
         CDataStream ssValue(SER_DISK, CLIENT_VERSION);
         int ret = ReadAtCursor(pcursor, ssKey, ssValue, fFlags);
         fFlags = DB_NEXT;
+
         if (ret == DB_NOTFOUND)
             break;
         else if (ret != 0)
@@ -259,6 +284,7 @@ void CEDCWalletDB::ListAccountCreditDebit(const string& strAccount, list<CAccoun
         ssKey >> strType;
         if (strType != "acentry")
             break;
+
         CAccountingEntry acentry;
         ssKey >> acentry.strAccount;
         if (!fAllAccounts && acentry.strAccount != strAccount)
@@ -275,6 +301,7 @@ void CEDCWalletDB::ListAccountCreditDebit(const string& strAccount, list<CAccoun
 DBErrors CEDCWalletDB::ReorderTransactions(CEDCWallet* pwallet)
 {
     LOCK(pwallet->cs_wallet);
+
     // Old wallets didn't have any defined order for transactions
     // Probably a bad idea to change the output of this
 
@@ -283,13 +310,16 @@ DBErrors CEDCWalletDB::ReorderTransactions(CEDCWallet* pwallet)
     typedef multimap<int64_t, TxPair > TxItems;
     TxItems txByTime;
 
-    for (map<uint256, CEDCWalletTx>::iterator it = pwallet->mapWallet.begin(); it != pwallet->mapWallet.end(); ++it)
+    for (map<uint256, CEDCWalletTx>::iterator it = pwallet->mapWallet.begin(); 
+	it != pwallet->mapWallet.end(); ++it)
     {
         CEDCWalletTx* wtx = &((*it).second);
         txByTime.insert(make_pair(wtx->nTimeReceived, TxPair(wtx, (CAccountingEntry*)0)));
     }
+
     list<CAccountingEntry> acentries;
     ListAccountCreditDebit("", acentries);
+
     BOOST_FOREACH(CAccountingEntry& entry, acentries)
     {
         txByTime.insert(make_pair(entry.nTime, TxPair((CEDCWalletTx*)0, &entry)));
@@ -368,8 +398,13 @@ public:
 };
 
 bool
-ReadKeyValue(CEDCWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
-             CWalletScanState &wss, string& strType, string& strErr)
+ReadKeyValue(
+	      CEDCWallet * pwallet, 
+       	 CDataStream & ssKey, 
+      	 CDataStream & ssValue,
+    CWalletScanState & wss, 
+	          string & strType, 
+	          string & strErr)
 {
     try 
 	{
@@ -377,6 +412,7 @@ ReadKeyValue(CEDCWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
         // Taking advantage of the fact that pair serialization
         // is just the two items serialized one after the other
         ssKey >> strType;
+
         if (strType == "name")
         {
             string strAddress;
@@ -408,12 +444,13 @@ ReadKeyValue(CEDCWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
                     char fUnused;
                     ssValue >> fTmp >> fUnused >> wtx.strFromAccount;
                     strErr = strprintf("LoadWallet() upgrading tx ver=%d %d '%s' %s",
-                                       wtx.fTimeReceivedIsTxTime, fTmp, wtx.strFromAccount, hash.ToString());
+                        wtx.fTimeReceivedIsTxTime, fTmp, wtx.strFromAccount, hash.ToString());
                     wtx.fTimeReceivedIsTxTime = fTmp;
                 }
                 else
                 {
-                    strErr = strprintf("LoadWallet() repairing tx ver=%d %s", wtx.fTimeReceivedIsTxTime, hash.ToString());
+                    strErr = strprintf("LoadWallet() repairing tx ver=%d %s", 
+                        wtx.fTimeReceivedIsTxTime, hash.ToString());
                     wtx.fTimeReceivedIsTxTime = 0;
                 }
                 wss.vWalletUpgrade.push_back(hash);
@@ -480,10 +517,11 @@ ReadKeyValue(CEDCWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
             }
 
             // Old wallets store keys as "key" [pubkey] => [privkey]
-            // ... which was slow for wallets with lots of keys, because the public key is re-derived from the private key
-            // using EC operations as a checksum.
-            // Newer wallets store keys as "key"[pubkey] => [privkey][hash(pubkey,privkey)], which is much faster while
-            // remaining backwards-compatible.
+            // ... which was slow for wallets with lots of keys, because the 
+            // public key is re-derived from the private key using EC 
+            // operations as a checksum. Newer wallets store keys as 
+            // "key"[pubkey] => [privkey][hash(pubkey,privkey)], which is much 
+			// faster while remaining backwards-compatible.
             try
             {
                 ssValue >> hash;
@@ -754,7 +792,10 @@ DBErrors CEDCWalletDB::LoadWallet(CEDCWallet* pwallet)
     return result;
 }
 
-DBErrors CEDCWalletDB::FindWalletTx(CEDCWallet* pwallet, vector<uint256>& vTxHash, vector<CEDCWalletTx>& vWtx)
+DBErrors CEDCWalletDB::FindWalletTx(
+	CEDCWallet * pwallet, 
+	vector<uint256> & vTxHash, 
+	vector<CEDCWalletTx> & vWtx)
 {
     pwallet->vchDefaultKey = CPubKey();
     bool fNoncriticalErrors = false;
@@ -824,7 +865,10 @@ DBErrors CEDCWalletDB::FindWalletTx(CEDCWallet* pwallet, vector<uint256>& vTxHas
     return result;
 }
 
-DBErrors CEDCWalletDB::ZapSelectTx(CEDCWallet* pwallet, vector<uint256>& vTxHashIn, vector<uint256>& vTxHashOut)
+DBErrors CEDCWalletDB::ZapSelectTx(
+	CEDCWallet * pwallet, 
+	vector<uint256> & vTxHashIn, 
+	vector<uint256> & vTxHashOut)
 {
     // build list of wallet TXs and hashes
     vector<uint256> vTxHash;
@@ -1096,16 +1140,22 @@ bool CEDCWalletDB::Recover(CEDCDBEnv& dbenv, const std::string& filename)
     return CEDCWalletDB::Recover(dbenv, filename, false);
 }
 
-bool CEDCWalletDB::WriteDestData(const std::string &address, const std::string &key, const std::string &value)
+bool CEDCWalletDB::WriteDestData(
+	const std::string & address, 
+	const std::string & key, 
+	const std::string & value)
 {
 	EDCapp & theApp = EDCapp::singleton();
+
     theApp.incWalletDBUpdated();
-    return Write(std::make_pair(std::string("destdata"), std::make_pair(address, key)), value);
+    return Write(std::make_pair(std::string("destdata"), 
+		std::make_pair(address, key)), value);
 }
 
 bool CEDCWalletDB::EraseDestData(const std::string &address, const std::string &key)
 {
 	EDCapp & theApp = EDCapp::singleton();
+
     theApp.incWalletDBUpdated();
     return Erase(std::make_pair(std::string("destdata"), std::make_pair(address, key)));
 }

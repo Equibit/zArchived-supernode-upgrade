@@ -33,9 +33,10 @@ class CAddrMan;
 class CScheduler;
 class CEDCNode;
 
-namespace boost {
+namespace boost 
+{
     class thread_group;
-} // namespace boost
+}
 
 unsigned int edcReceiveFloodSize();
 unsigned int edcSendBufferSize();
@@ -217,7 +218,8 @@ private:
 
 public:
 
-    NodeId GetId() const {
+    NodeId GetId() const 
+	{
       return id;
     }
 
@@ -270,10 +272,14 @@ public:
         // Known checking here is only to save space from duplicates.
         // SendMessages will filter it again for knowns that were added
         // after addresses were pushed.
-        if (addr.IsValid() && !addrKnown.contains(addr.GetKey())) {
-            if (vAddrToSend.size() >= MAX_ADDR_TO_SEND) {
+        if (addr.IsValid() && !addrKnown.contains(addr.GetKey())) 
+		{
+            if (vAddrToSend.size() >= MAX_ADDR_TO_SEND) 
+			{
                 vAddrToSend[insecure_rand() % vAddrToSend.size()] = addr;
-            } else {
+            } 
+			else 
+			{
                 vAddrToSend.push_back(addr);
             }
         }

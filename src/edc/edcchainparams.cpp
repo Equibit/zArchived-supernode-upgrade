@@ -234,7 +234,7 @@ fprintf( fh, "%s:%d %u\n", __FILE__, __LINE__, nonce ); fflush(fh);
 fprintf( fh, "%s:%d %u %s\n", __FILE__, __LINE__, nonce, consensus.hashGenesisBlock.ToString().c_str() ); fflush(fh);
 fclose(fh);
 
-//   	    genesis = edcCreateGenesisBlock(1296688602, 2742957622, 0x1d00ffff, 1, 50 * COIN);
+// OLD nonce  	    genesis = edcCreateGenesisBlock(1296688602, 2742957622, 0x1d00ffff, 1, 50 * COIN);
 */
   	    genesis = edcCreateGenesisBlock(1296688602, 414098458, 0x1d00ffff, 1, 50 * COIN);
       	consensus.hashGenesisBlock = genesis.GetHash();

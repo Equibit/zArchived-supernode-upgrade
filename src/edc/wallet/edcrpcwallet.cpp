@@ -731,14 +731,19 @@ UniValue edcgetreceivedbyaccount(const UniValue& params, bool fHelp)
 }
 
 
-CAmount edcGetAccountBalance(CEDCWalletDB& walletdb, const string& strAccount, int nMinDepth, const isminefilter& filter)
+CAmount edcGetAccountBalance(
+          CEDCWalletDB & walletdb, 
+	      const string & strAccount, 
+	                 int nMinDepth, 
+	const isminefilter & filter)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
     CAmount nBalance = 0;
 
     // Tally wallet transactions
-    for (map<uint256, CEDCWalletTx>::iterator it = theApp.walletMain()->mapWallet.begin(); it != theApp.walletMain()->mapWallet.end(); ++it)
+    for (map<uint256, CEDCWalletTx>::iterator it = theApp.walletMain()->mapWallet.begin(); 
+	it != theApp.walletMain()->mapWallet.end(); ++it)
     {
         const CEDCWalletTx& wtx = (*it).second;
         if (!CheckFinalTx(wtx) || wtx.GetBlocksToMaturity() > 0 || wtx.GetDepthInMainChain() < 0)
@@ -758,7 +763,10 @@ CAmount edcGetAccountBalance(CEDCWalletDB& walletdb, const string& strAccount, i
     return nBalance;
 }
 
-CAmount edcGetAccountBalance(const string& strAccount, int nMinDepth, const isminefilter& filter)
+CAmount edcGetAccountBalance(
+	    const string & strAccount, 
+	               int nMinDepth, 
+  const isminefilter & filter)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -909,6 +917,7 @@ UniValue edcmovecmd(const UniValue& params, bool fHelp)
         strComment = params[4].get_str();
 
     CEDCWalletDB walletdb(theApp.walletMain()->strWalletFile);
+
     if (!walletdb.TxnBegin())
         throw JSONRPCError(RPC_DATABASE_ERROR, "database error");
 

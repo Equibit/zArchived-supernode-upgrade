@@ -28,10 +28,6 @@
 using namespace std;
 
 
-//
-// CEDCDB
-//
-
 void CEDCDBEnv::EnvShutdown()
 {
     if (!fDbEnvInit)
@@ -40,7 +36,8 @@ void CEDCDBEnv::EnvShutdown()
     fDbEnvInit = false;
     int ret = dbenv->close(0);
     if (ret != 0)
-        edcLogPrintf("CEDCDBEnv::EnvShutdown: Error %d shutting down database environment: %s\n", ret, DbEnv::strerror(ret));
+        edcLogPrintf("CEDCDBEnv::EnvShutdown: Error %d shutting down database "
+			"environment: %s\n", ret, DbEnv::strerror(ret));
     if (!fMockDb)
         DbEnv(0).remove(strPath.c_str(), 0);
 }
@@ -83,7 +80,8 @@ bool CEDCDBEnv::Open(const boost::filesystem::path& pathIn)
     boost::filesystem::path pathLogDir = pathIn / "database";
     TryCreateDirectory(pathLogDir);
     boost::filesystem::path pathErrorFile = pathIn / "db.log";
-    edcLogPrintf("CEDCDBEnv::Open: LogDir=%s ErrorFile=%s\n", pathLogDir.string(), pathErrorFile.string());
+    edcLogPrintf("CEDCDBEnv::Open: LogDir=%s ErrorFile=%s\n", 
+		pathLogDir.string(), pathErrorFile.string());
 
     unsigned int nEnvFlags = 0;
     if (params.privdb)
@@ -110,10 +108,12 @@ bool CEDCDBEnv::Open(const boost::filesystem::path& pathIn)
                              nEnvFlags,
                          S_IRUSR | S_IWUSR);
     if (ret != 0)
-        return edcError("CEDCDBEnv::Open: Error %d opening database environment: %s\n", ret, DbEnv::strerror(ret));
+        return edcError("CEDCDBEnv::Open: Error %d opening database environment: %s\n", 
+			ret, DbEnv::strerror(ret));
 
     fDbEnvInit = true;
     fMockDb = false;
+
     return true;
 }
 
@@ -149,7 +149,9 @@ void CEDCDBEnv::MakeMock()
     fMockDb = true;
 }
 
-CEDCDBEnv::VerifyResult CEDCDBEnv::Verify(const std::string& strFile, bool (*recoverFunc)(CEDCDBEnv& dbenv, const std::string& strFile))
+CEDCDBEnv::VerifyResult CEDCDBEnv::Verify(
+	const std::string & strFile, 
+	bool (*recoverFunc)(CEDCDBEnv& dbenv, const std::string& strFile))
 {
     LOCK(cs_db);
     assert(mapFileUseCount.count(strFile) == 0);
@@ -168,10 +170,14 @@ CEDCDBEnv::VerifyResult CEDCDBEnv::Verify(const std::string& strFile, bool (*rec
 
 /* End of headers, beginning of key/value data */
 static const char *HEADER_END = "HEADER=END";
+
 /* End of key/value data */
 static const char *DATA_END = "DATA=END";
 
-bool CEDCDBEnv::Salvage(const std::string& strFile, bool fAggressive, std::vector<CEDCDBEnv::KeyValPair>& vResult)
+bool CEDCDBEnv::Salvage(
+	const std::string & strFile, 
+	bool fAggressive, 
+	std::vector<CEDCDBEnv::KeyValPair> & vResult)
 {
     LOCK(cs_db);
     assert(mapFileUseCount.count(strFile) == 0);
@@ -248,7 +254,10 @@ void CEDCDBEnv::CheckpointLSN(const std::string& strFile)
 }
 
 
-CEDCDB::CEDCDB(const std::string& strFilename, const char* pszMode, bool fFlushOnCloseIn) : pdb(NULL), activeTxn(NULL)
+CEDCDB::CEDCDB(
+	const std::string & strFilename, 
+	const char * pszMode, 
+	bool fFlushOnCloseIn) : pdb(NULL), activeTxn(NULL)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -335,14 +344,15 @@ void CEDCDB::Close()
 
     if (!pdb)
         return;
+
     if (activeTxn)
         activeTxn->abort();
+
     activeTxn = NULL;
     pdb = NULL;
 
     if (fFlushOnClose)
         Flush();
-
     {
         LOCK(theApp.bitdb().cs_db);
         --theApp.bitdb().mapFileUseCount[strFile];
@@ -381,7 +391,9 @@ bool CEDCDB::Rewrite(const string& strFile, const char* pszSkip)
 	{
         {
             LOCK(theApp.bitdb().cs_db);
-            if (!theApp.bitdb().mapFileUseCount.count(strFile) || theApp.bitdb().mapFileUseCount[strFile] == 0) 
+
+            if (!theApp.bitdb().mapFileUseCount.count(strFile) || 
+			theApp.bitdb().mapFileUseCount[strFile] == 0) 
 			{
                 // Flush log data to the dat file
                 theApp.bitdb().CloseDb(strFile);
@@ -390,8 +402,10 @@ bool CEDCDB::Rewrite(const string& strFile, const char* pszSkip)
 
                 bool fSuccess = true;
                 edcLogPrintf("CEDCDB::Rewrite: Rewriting %s...\n", strFile);
+
                 string strFileRes = strFile + ".rewrite";
-                { // surround usage of db with extra {}
+                { 
+					// surround usage of db with extra {}
                     CEDCDB db(strFile.c_str(), "r");
                     Db* pdbCopy = new Db(theApp.bitdb().dbenv, 0);
 
@@ -409,6 +423,7 @@ bool CEDCDB::Rewrite(const string& strFile, const char* pszSkip)
 
                     Dbc* pcursor = db.GetCursor();
                     if (pcursor)
+					{
                         while (fSuccess) 
 						{
                             CDataStream ssKey(SER_DISK, CLIENT_VERSION);
@@ -440,6 +455,7 @@ bool CEDCDB::Rewrite(const string& strFile, const char* pszSkip)
                             if (ret2 > 0)
                                 fSuccess = false;
                         }
+					}
                     if (fSuccess) 
 					{
                         db.Close();
@@ -472,10 +488,14 @@ bool CEDCDB::Rewrite(const string& strFile, const char* pszSkip)
 void CEDCDBEnv::Flush(bool fShutdown)
 {
     int64_t nStart = GetTimeMillis();
+
     // Flush log data to the actual data file on all files that are not in use
-    edcLogPrint("db", "CEDCDBEnv::Flush: Flush(%s)%s\n", fShutdown ? "true" : "false", fDbEnvInit ? "" : " database not started");
+    edcLogPrint("db", "CEDCDBEnv::Flush: Flush(%s)%s\n", 
+		fShutdown ? "true" : "false", fDbEnvInit ? "" : " database not started");
+
     if (!fDbEnvInit)
         return;
+
     {
         LOCK(cs_db);
         map<string, int>::iterator mi = mapFileUseCount.begin();
@@ -495,10 +515,15 @@ void CEDCDBEnv::Flush(bool fShutdown)
                     dbenv->lsn_reset(strFile.c_str(), 0);
                 edcLogPrint("db", "CEDCDBEnv::Flush: %s closed\n", strFile);
                 mapFileUseCount.erase(mi++);
-            } else
+            } 
+			else
                 mi++;
         }
-        edcLogPrint("db", "CEDCDBEnv::Flush: Flush(%s)%s took %15dms\n", fShutdown ? "true" : "false", fDbEnvInit ? "" : " database not started", GetTimeMillis() - nStart);
+
+        edcLogPrint("db", "CEDCDBEnv::Flush: Flush(%s)%s took %15dms\n", 
+			fShutdown ? "true" : "false", 
+			fDbEnvInit ? "" : " database not started", GetTimeMillis() - nStart);
+
         if (fShutdown) 
 		{
             char** listp;
@@ -520,10 +545,13 @@ bool CEDCDB::TxnBegin()
 
     if (!pdb || activeTxn)
         return false;
+
     DbTxn* ptxn = theApp.bitdb().TxnBegin();
+
     if (!ptxn)
         return false;
     activeTxn = ptxn;
+
     return true;
 }
 

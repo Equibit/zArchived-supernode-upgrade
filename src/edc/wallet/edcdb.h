@@ -50,10 +50,14 @@ public:
      * This must be called BEFORE strFile is opened.
      * Returns true if strFile is OK.
      */
-    enum VerifyResult { VERIFY_OK,
-                        RECOVER_OK,
-                        RECOVER_FAIL };
+    enum VerifyResult 
+	{ 
+		VERIFY_OK,
+        RECOVER_OK,
+        RECOVER_FAIL 
+	};
     VerifyResult Verify(const std::string& strFile, bool (*recoverFunc)(CEDCDBEnv& dbenv, const std::string& strFile));
+
     /**
      * Salvage data from a file that Verify says is bad.
      * fAggressive sets the DB_AGGRESSIVE flag (see berkeley DB->verify() method documentation).
@@ -62,6 +66,7 @@ public:
      * for huge databases.
      */
     typedef std::pair<std::vector<unsigned char>, std::vector<unsigned char> > KeyValPair;
+
     bool Salvage(const std::string& strFile, bool fAggressive, std::vector<KeyValPair>& vResult);
 
     bool Open(const boost::filesystem::path& path);
@@ -86,9 +91,9 @@ public:
 class CEDCDB
 {
 protected:
-    Db* pdb;
+    Db * pdb;
     std::string strFile;
-    DbTxn* activeTxn;
+    DbTxn * activeTxn;
     bool fReadOnly;
     bool fFlushOnClose;
 
@@ -104,6 +109,9 @@ private:
     void operator=(const CEDCDB&);
 
 protected:
+
+	// Read into value the value corresponding to the key
+	//
     template <typename K, typename T>
     bool Read(const K& key, T& value)
     {
@@ -125,10 +133,16 @@ protected:
             return false;
 
         // Unserialize value
-        try {
-            CDataStream ssValue((char*)datValue.get_data(), (char*)datValue.get_data() + datValue.get_size(), SER_DISK, CLIENT_VERSION);
+        try 
+		{
+            CDataStream ssValue((char*)datValue.get_data(), 
+								(char*)datValue.get_data() + datValue.get_size(), 
+								SER_DISK, 
+								CLIENT_VERSION);
             ssValue >> value;
-        } catch (const std::exception&) {
+        } 
+		catch (const std::exception&) 
+		{
             return false;
         }
 
@@ -138,11 +152,14 @@ protected:
         return (ret == 0);
     }
 
+	// Write key/value pair to the DB
+	//
     template <typename K, typename T>
     bool Write(const K& key, const T& value, bool fOverwrite = true)
     {
         if (!pdb)
             return false;
+
         if (fReadOnly)
             assert(!"Write called on database in read-only mode");
 
@@ -164,9 +181,12 @@ protected:
         // Clear memory in case it was a private key
         memset(datKey.get_data(), 0, datKey.get_size());
         memset(datValue.get_data(), 0, datValue.get_size());
+
         return (ret == 0);
     }
 
+	// Erase key/value pair corresponding to key from the DB
+	//
     template <typename K>
     bool Erase(const K& key)
     {
@@ -224,18 +244,22 @@ protected:
     {
         // Read at cursor
         Dbt datKey;
-        if (fFlags == DB_SET || fFlags == DB_SET_RANGE || fFlags == DB_GET_BOTH || fFlags == DB_GET_BOTH_RANGE) {
+        if (fFlags == DB_SET || fFlags == DB_SET_RANGE || fFlags == DB_GET_BOTH || fFlags == DB_GET_BOTH_RANGE) 
+		{
             datKey.set_data(&ssKey[0]);
             datKey.set_size(ssKey.size());
         }
+
         Dbt datValue;
-        if (fFlags == DB_GET_BOTH || fFlags == DB_GET_BOTH_RANGE) {
+        if (fFlags == DB_GET_BOTH || fFlags == DB_GET_BOTH_RANGE) 
+		{
             datValue.set_data(&ssValue[0]);
             datValue.set_size(ssValue.size());
         }
         datKey.set_flags(DB_DBT_MALLOC);
         datValue.set_flags(DB_DBT_MALLOC);
         int ret = pcursor->get(&datKey, &datValue, fFlags);
+
         if (ret != 0)
             return ret;
         else if (datKey.get_data() == NULL || datValue.get_data() == NULL)
@@ -254,36 +278,52 @@ protected:
         memset(datValue.get_data(), 0, datValue.get_size());
         free(datKey.get_data());
         free(datValue.get_data());
+
         return 0;
     }
 
 public:
+
+	// Begin a DB transaction
+	//
     bool TxnBegin();
 
+	// Commit a DB transaction
+	//
     bool TxnCommit()
     {
         if (!pdb || !activeTxn)
             return false;
+
         int ret = activeTxn->commit(0);
         activeTxn = NULL;
+
         return (ret == 0);
     }
 
+	// Abort/Rollback a DB transaction
+	//
     bool TxnAbort()
     {
         if (!pdb || !activeTxn)
             return false;
+
         int ret = activeTxn->abort();
+
         activeTxn = NULL;
         return (ret == 0);
     }
 
+	// Read version of DB 
+	//
     bool ReadVersion(int& nVersion)
     {
         nVersion = 0;
         return Read(std::string("version"), nVersion);
     }
 
+	// Write version of DB 
+	//
     bool WriteVersion(int nVersion)
     {
         return Write(std::string("version"), nVersion);

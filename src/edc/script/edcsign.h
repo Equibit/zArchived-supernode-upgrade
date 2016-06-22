@@ -17,15 +17,21 @@ class CEDCTransaction;
 struct CEDCMutableTransaction;
 
 /** A signature creator for transactions. */
-class EDCTransactionSignatureCreator : public BaseSignatureCreator {
+class EDCTransactionSignatureCreator : public BaseSignatureCreator 
+{
     const CEDCTransaction* txTo;
     unsigned int nIn;
     int nHashType;
     const EDCTransactionSignatureChecker checker;
 
 public:
-    EDCTransactionSignatureCreator(const CKeyStore* keystoreIn, const CEDCTransaction* txToIn, unsigned int nInIn, int nHashTypeIn=SIGHASH_ALL);
+    EDCTransactionSignatureCreator(	const CKeyStore* keystoreIn, 
+									const CEDCTransaction* txToIn, 
+									unsigned int nInIn, 
+									int nHashTypeIn=SIGHASH_ALL);
+
     const BaseSignatureChecker& Checker() const { return checker; }
+
     bool CreateSig(std::vector<unsigned char>& vchSig, const CKeyID& keyid, const CScript& scriptCode) const;
 };
 

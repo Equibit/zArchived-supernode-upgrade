@@ -51,8 +51,10 @@ bool CEDCCoinsViewDB::HaveCoins(const uint256 &txid) const
 uint256 CEDCCoinsViewDB::GetBestBlock() const 
 {
     uint256 hashBestChain;
+
     if (!db.Read(DB_BEST_BLOCK, hashBestChain))
         return uint256();
+
     return hashBestChain;
 }
 
@@ -61,6 +63,7 @@ bool CEDCCoinsViewDB::BatchWrite( CEDCCoinsMap &mapCoins, const uint256 &hashBlo
     CDBBatch batch(db);
     size_t count = 0;
     size_t changed = 0;
+
     for (CEDCCoinsMap::iterator it = mapCoins.begin(); it != mapCoins.end();) 
 	{
         if (it->second.flags & CCoinsCacheEntry::DIRTY) 
@@ -118,7 +121,8 @@ bool CEDCBlockTreeDB::ReadLastBlockFile(int &nFile)
 
 CEDCCoinsViewCursor *CEDCCoinsViewDB::Cursor() const
 {
-    CEDCCoinsViewDBCursor *i = new CEDCCoinsViewDBCursor(const_cast<CDBWrapper*>(&db)->NewIterator(), GetBestBlock());
+    CEDCCoinsViewDBCursor *i = new CEDCCoinsViewDBCursor(
+		const_cast<CDBWrapper*>(&db)->NewIterator(), GetBestBlock());
 
     /* It seems that there are no "const iterators" for LevelDB.  Since we
        only need read operations on it, use a const-cast to get around
@@ -165,9 +169,9 @@ void CEDCCoinsViewDBCursor::Next()
 }
 
 bool CEDCBlockTreeDB::WriteBatchSync(
-	const std::vector<std::pair<int, const CBlockFileInfo*> >& fileInfo, 
+	const std::vector<std::pair<int, const CBlockFileInfo*> > & fileInfo, 
 	int nLastFile, 
-	const std::vector<const CBlockIndex*>& blockinfo) 
+	const std::vector<const CBlockIndex*> & blockinfo) 
 {
     CDBBatch batch(*this);
     for (std::vector<std::pair<int, const CBlockFileInfo*> >::const_iterator 
@@ -194,9 +198,11 @@ bool CEDCBlockTreeDB::ReadTxIndex(const uint256 &txid, CDiskTxPos &pos)
 bool CEDCBlockTreeDB::WriteTxIndex(const std::vector<std::pair<uint256, CDiskTxPos> >&vect) 
 {
     CDBBatch batch(*this);
+
     for (std::vector<std::pair<uint256,CDiskTxPos> >::const_iterator 
 		it=vect.begin(); it!=vect.end(); it++)
         batch.Write(make_pair(DB_TXINDEX, it->first), it->second);
+
     return WriteBatch(batch);
 }
 
@@ -208,9 +214,11 @@ bool CEDCBlockTreeDB::WriteFlag(const std::string &name, bool fValue)
 bool CEDCBlockTreeDB::ReadFlag(const std::string &name, bool &fValue) 
 {
     char ch;
+
     if (!Read(std::make_pair(DB_FLAG, name), ch))
         return false;
     fValue = ch == '1';
+
     return true;
 }
 
