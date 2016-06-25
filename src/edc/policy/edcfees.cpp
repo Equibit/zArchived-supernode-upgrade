@@ -184,8 +184,10 @@ void CEDCBlockPolicyEstimator::processBlockTx(unsigned int nBlockHeight, const C
     }
 }
 
-void CEDCBlockPolicyEstimator::processBlock(unsigned int nBlockHeight,
-	std::vector<CEDCTxMemPoolEntry>& entries, bool fCurrentEstimate)
+void CEDCBlockPolicyEstimator::processBlock(
+						 unsigned int nBlockHeight,
+	std::vector<CEDCTxMemPoolEntry> & entries, 
+								 bool fCurrentEstimate)
 {
     if (nBlockHeight <= nBestSeenHeight) 
 	{
@@ -257,7 +259,10 @@ CFeeRate CEDCBlockPolicyEstimator::estimateFee(int confTarget)
     return CFeeRate(median);
 }
 
-CFeeRate CEDCBlockPolicyEstimator::estimateSmartFee(int confTarget, int *answerFoundAtTarget, const CEDCTxMemPool& pool)
+CFeeRate CEDCBlockPolicyEstimator::estimateSmartFee(
+	  				  int confTarget, 
+					int * answerFoundAtTarget, 
+	const CEDCTxMemPool & pool)
 {
     if (answerFoundAtTarget)
         *answerFoundAtTarget = confTarget;
@@ -295,7 +300,10 @@ double CEDCBlockPolicyEstimator::estimatePriority(int confTarget)
     return priStats.EstimateMedianVal(confTarget, SUFFICIENT_PRITXS, MIN_SUCCESS_PCT, true, nBestSeenHeight);
 }
 
-double CEDCBlockPolicyEstimator::estimateSmartPriority(int confTarget, int *answerFoundAtTarget, const CEDCTxMemPool& pool)
+double CEDCBlockPolicyEstimator::estimateSmartPriority(
+					  int confTarget, 
+					int * answerFoundAtTarget, 
+	const CEDCTxMemPool & pool)
 {
     if (answerFoundAtTarget)
         *answerFoundAtTarget = confTarget;

@@ -79,7 +79,10 @@ bool CEDCWalletDB::EraseTx(uint256 hash)
     return Erase(std::make_pair(std::string("tx"), hash));
 }
 
-bool CEDCWalletDB::WriteKey(const CPubKey& vchPubKey, const CPrivKey& vchPrivKey, const CKeyMetadata& keyMeta)
+bool CEDCWalletDB::WriteKey(
+	 	 const CPubKey & vchPubKey, 
+		const CPrivKey & vchPrivKey, 
+	const CKeyMetadata & keyMeta)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -793,8 +796,8 @@ DBErrors CEDCWalletDB::LoadWallet(CEDCWallet* pwallet)
 }
 
 DBErrors CEDCWalletDB::FindWalletTx(
-	CEDCWallet * pwallet, 
-	vector<uint256> & vTxHash, 
+			  CEDCWallet * pwallet, 
+		 vector<uint256> & vTxHash, 
 	vector<CEDCWalletTx> & vWtx)
 {
     pwallet->vchDefaultKey = CPubKey();
@@ -866,7 +869,7 @@ DBErrors CEDCWalletDB::FindWalletTx(
 }
 
 DBErrors CEDCWalletDB::ZapSelectTx(
-	CEDCWallet * pwallet, 
+		 CEDCWallet * pwallet, 
 	vector<uint256> & vTxHashIn, 
 	vector<uint256> & vTxHashOut)
 {

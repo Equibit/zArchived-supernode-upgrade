@@ -163,36 +163,47 @@ public:
 
     // inventory based relay
     CRollingBloomFilter filterInventoryKnown;
-   // Set of transaction ids we still have to announce.
+
+    // Set of transaction ids we still have to announce.
     // They are sorted by the mempool before relay, so the order is not important.
     std::set<uint256> setInventoryTxToSend;
+
     // List of block ids we still have announce.
     // There is no final sorting before sending, as they are always sent immediately
     // and in the order requested.
     std::vector<uint256> vInventoryBlockToSend;
+
     CCriticalSection cs_inventory;
     std::set<uint256> setAskFor;
     std::multimap<int64_t, CInv> mapAskFor;
     int64_t nNextInvSend;
+
     // Used for headers announcements - unfiltered blocks to relay
     // Also protected by cs_inventory
     std::vector<uint256> vBlockHashesToAnnounce;
+
     // Used for BIP35 mempool sending, also protected by cs_inventory
     bool fSendMempool;
 
     // Ping time measurement:
     // The pong reply we're expecting, or 0 if no pong expected.
     uint64_t nPingNonceSent;
+
     // Time (in usec) the last ping was sent, or 0 if no ping was ever sent.
     int64_t nPingUsecStart;
+
     // Last measured round-trip time.
     int64_t nPingUsecTime;
+
     // Best measured round-trip time.
     int64_t nMinPingUsecTime;
+
     // Whether a ping is requested.
     bool fPingQueued;
+
     // Minimum fee rate with which to filter inv's to this node
     CAmount minFeeFilter;
+
     CCriticalSection cs_feeFilter;
     CAmount lastSentFeeFilter;
     int64_t nextSendTimeFeeFilter;
@@ -260,8 +271,6 @@ public:
         nRefCount--;
     }
 
-
-
     void AddAddressKnown(const CAddress& addr)
     {
         addrKnown.insert(addr.GetKey());
@@ -284,7 +293,6 @@ public:
             }
         }
     }
-
 
     void AddInventoryKnown(const CInv& inv)
     {

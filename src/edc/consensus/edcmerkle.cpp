@@ -180,7 +180,10 @@ std::vector<uint256> edcComputeMerkleBranch(const std::vector<uint256>& leaves, 
     return ret;
 }
 
-uint256 edcComputeMerkleRootFromBranch(const uint256& leaf, const std::vector<uint256>& vMerkleBranch, uint32_t nIndex) 
+uint256 edcComputeMerkleRootFromBranch(
+				 const uint256 & leaf, 
+	const std::vector<uint256> & vMerkleBranch, 
+						uint32_t nIndex) 
 {
     uint256 hash = leaf;
     for (std::vector<uint256>::const_iterator it = vMerkleBranch.begin(); it != vMerkleBranch.end(); ++it) 
@@ -212,8 +215,8 @@ uint256 edcBlockMerkleRoot(const CEDCBlock& block, bool* mutated)
 }
 
 std::vector<uint256> edcBlockMerkleBranch(
-	const CEDCBlock& block, 
-	uint32_t position)
+	const CEDCBlock & block, 
+			 uint32_t position)
 {
     std::vector<uint256> leaves;
     leaves.resize(block.vtx.size());

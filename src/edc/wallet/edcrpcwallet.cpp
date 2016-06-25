@@ -146,6 +146,7 @@ UniValue edcgetnewaddress(const UniValue& params, bool fHelp)
     if (params.size() > 0)
         strAccount = edcAccountFromValue(params[0]);
 
+	// If keys can be generated
     if (!theApp.walletMain()->IsLocked())
         theApp.walletMain()->TopUpKeyPool();
 
@@ -399,10 +400,10 @@ namespace
 {
 
 void SendMoney(
-	const CTxDestination &address, 
-	CAmount nValue, 
-	bool fSubtractFeeFromAmount, 
-	CEDCWalletTx& wtxNew)
+	const CTxDestination & address, 
+				   CAmount nValue, 
+					  bool fSubtractFeeFromAmount, 
+			CEDCWalletTx & wtxNew)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -1408,7 +1409,13 @@ static void MaybePushAddress(UniValue & entry, const CTxDestination &dest)
         entry.push_back(Pair("address", addr.ToString()));
 }
 
-void ListTransactions(const CEDCWalletTx& wtx, const string& strAccount, int nMinDepth, bool fLong, UniValue& ret, const isminefilter& filter)
+void ListTransactions(
+	const CEDCWalletTx & wtx, 
+		  const string & strAccount, 
+					 int nMinDepth, 
+					bool fLong, 
+			  UniValue & ret, 
+	const isminefilter & filter)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -1486,7 +1493,10 @@ void ListTransactions(const CEDCWalletTx& wtx, const string& strAccount, int nMi
     }
 }
 
-void edcAcentryToJSON(const CAccountingEntry& acentry, const string& strAccount, UniValue& ret)
+void edcAcentryToJSON(
+	const CAccountingEntry & acentry, 
+			  const string & strAccount, 
+				  UniValue & ret)
 {
     bool fAllAccounts = (strAccount == string("*"));
 

@@ -21,7 +21,10 @@ typedef std::vector<unsigned char> valtype;
 
 EDCTransactionSignatureCreator::EDCTransactionSignatureCreator(const CKeyStore* keystoreIn, const CEDCTransaction* txToIn, unsigned int nInIn, int nHashTypeIn) : BaseSignatureCreator(keystoreIn), txTo(txToIn), nIn(nInIn), nHashType(nHashTypeIn), checker(txTo, nIn) {}
 
-bool EDCTransactionSignatureCreator::CreateSig(std::vector<unsigned char>& vchSig, const CKeyID& address, const CScript& scriptCode) const
+bool EDCTransactionSignatureCreator::CreateSig(
+	std::vector<unsigned char> & vchSig, 
+				  const CKeyID & address, 
+				 const CScript & scriptCode) const
 {
     CKey key;
     if (!keystore->GetKey(address, key))
@@ -34,7 +37,11 @@ bool EDCTransactionSignatureCreator::CreateSig(std::vector<unsigned char>& vchSi
     return true;
 }
 
-static bool Sign1(const CKeyID& address, const BaseSignatureCreator& creator, const CScript& scriptCode, CScript& scriptSigRet)
+static bool Sign1(
+				  const CKeyID & address, 
+	const BaseSignatureCreator & creator, 
+				 const CScript & scriptCode, 
+					   CScript & scriptSigRet)
 {
     vector<unsigned char> vchSig;
     if (!creator.CreateSig(vchSig, address, scriptCode))
@@ -43,7 +50,11 @@ static bool Sign1(const CKeyID& address, const BaseSignatureCreator& creator, co
     return true;
 }
 
-static bool SignN(const vector<valtype>& multisigdata, const BaseSignatureCreator& creator, const CScript& scriptCode, CScript& scriptSigRet)
+static bool SignN(
+		 const vector<valtype> & multisigdata, 
+	const BaseSignatureCreator & creator, 
+				 const CScript & scriptCode, 
+					   CScript & scriptSigRet)
 {
     int nSigned = 0;
     int nRequired = multisigdata.front()[0];
@@ -63,8 +74,11 @@ static bool SignN(const vector<valtype>& multisigdata, const BaseSignatureCreato
  * unless whichTypeRet is TX_SCRIPTHASH, in which case scriptSigRet is the redemption script.
  * Returns false if scriptPubKey could not be completely satisfied.
  */
-static bool SignStep(const BaseSignatureCreator& creator, const CScript& scriptPubKey,
-                     CScript& scriptSigRet, txnouttype& whichTypeRet)
+static bool SignStep(
+	const BaseSignatureCreator & creator, 
+				 const CScript & scriptPubKey,
+                       CScript & scriptSigRet, 
+					txnouttype & whichTypeRet)
 {
     scriptSigRet.clear();
 
@@ -102,7 +116,12 @@ static bool SignStep(const BaseSignatureCreator& creator, const CScript& scriptP
     return false;
 }
 
-bool SignSignature(const CKeyStore &keystore, const CScript& fromPubKey, CEDCMutableTransaction& txTo, unsigned int nIn, int nHashType)
+bool SignSignature(
+		   const CKeyStore & keystore, 
+	  		 const CScript & fromPubKey, 
+	CEDCMutableTransaction & txTo, 
+				unsigned int nIn, 
+						 int nHashType)
 {
     assert(nIn < txTo.vin.size());
     CEDCTxIn& txin = txTo.vin[nIn];
@@ -113,7 +132,12 @@ bool SignSignature(const CKeyStore &keystore, const CScript& fromPubKey, CEDCMut
     return ProduceSignature(creator, fromPubKey, txin.scriptSig);
 }
 
-bool SignSignature(const CKeyStore &keystore, const CEDCTransaction& txFrom, CEDCMutableTransaction& txTo, unsigned int nIn, int nHashType)
+bool SignSignature(
+		   const CKeyStore & keystore, 
+	 const CEDCTransaction & txFrom, 
+	CEDCMutableTransaction & txTo, 
+				unsigned int nIn, 
+						 int nHashType)
 {
     assert(nIn < txTo.vin.size());
     CEDCTxIn& txin = txTo.vin[nIn];
@@ -131,9 +155,12 @@ static CScript PushAll(const vector<valtype>& values)
     return result;
 }
 
-static CScript CombineMultisig(const CScript& scriptPubKey, const BaseSignatureChecker& checker,
-                               const vector<valtype>& vSolutions,
-                               const vector<valtype>& sigs1, const vector<valtype>& sigs2)
+static CScript CombineMultisig(
+				 const CScript & scriptPubKey, 
+	const BaseSignatureChecker & checker,
+         const vector<valtype> & vSolutions,
+         const vector<valtype> & sigs1, 
+		 const vector<valtype> & sigs2)
 {
     // Combine all the signatures we've got:
     set<valtype> allsigs;
@@ -187,12 +214,12 @@ static CScript CombineMultisig(const CScript& scriptPubKey, const BaseSignatureC
 }
 
 static CScript edcCombineSignatures(
-	const CScript & scriptPubKey, 
+				 const CScript & scriptPubKey, 
 	const BaseSignatureChecker & checker,
-    const txnouttype txType, 
-	const vector<valtype> & vSolutions,
-    vector<valtype> & sigs1, 
-	vector<valtype> & sigs2)
+    			const txnouttype txType, 
+		 const vector<valtype> & vSolutions,
+    		   vector<valtype> & sigs1, 
+			   vector<valtype> & sigs2)
 {
     switch (txType)
     {
@@ -238,15 +265,22 @@ static CScript edcCombineSignatures(
 CScript edcCombineSignatures(const CScript& scriptPubKey, const BaseSignatureChecker& checker,
                           const CScript& scriptSig1, const CScript& scriptSig2);
 
-CScript edcCombineSignatures(const CScript& scriptPubKey, const CEDCTransaction& txTo, unsigned int nIn,
-                          const CScript& scriptSig1, const CScript& scriptSig2)
+CScript edcCombineSignatures(
+		    const CScript & scriptPubKey, 
+	const CEDCTransaction & txTo, 
+			   unsigned int nIn,
+            const CScript & scriptSig1, 
+			const CScript & scriptSig2)
 {
     EDCTransactionSignatureChecker checker(&txTo, nIn);
     return edcCombineSignatures(scriptPubKey, checker, scriptSig1, scriptSig2);
 }
 
-CScript edcCombineSignatures(const CScript& scriptPubKey, const BaseSignatureChecker& checker,
-                          const CScript& scriptSig1, const CScript& scriptSig2)
+CScript edcCombineSignatures(
+				 const CScript & scriptPubKey, 
+	const BaseSignatureChecker & checker,
+                 const CScript & scriptSig1, 
+				 const CScript & scriptSig2)
 {
     txnouttype txType;
     vector<vector<unsigned char> > vSolutions;

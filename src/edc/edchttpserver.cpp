@@ -53,8 +53,8 @@ class HTTPWorkItem : public EDCHTTPClosure
 public:
     HTTPWorkItem(
 		std::unique_ptr<EDCHTTPRequest> req, 
-		const std::string &path, 
-		const EDCHTTPRequestHandler& func):
+		            const std::string & path, 
+		  const EDCHTTPRequestHandler & func):
       req(std::move(req)), path(path), func(func)
     {
     }
@@ -269,7 +269,7 @@ std::string RequestMethodString(EDCHTTPRequest::RequestMethod m)
 }
 
 /** HTTP request callback */
-void http_request_cb(struct evhttp_request* req, void* arg)
+void http_request_cb(struct evhttp_request * req, void * arg)
 {
     std::unique_ptr<EDCHTTPRequest> hreq(new EDCHTTPRequest(req));
 
@@ -331,7 +331,7 @@ void http_request_cb(struct evhttp_request* req, void* arg)
 }
 
 /** Callback to reject HTTP requests after shutdown. */
-void http_reject_request_cb(struct evhttp_request* req, void*)
+void http_reject_request_cb(struct evhttp_request * req, void*)
 {
     edcLogPrint("http", "Rejecting request while shutting down\n");
     evhttp_send_error(req, HTTP_SERVUNAVAIL, NULL);
@@ -594,9 +594,9 @@ static void httpevent_callback_fn(evutil_socket_t, short, void* data)
 }
 
 EDCHTTPEvent::EDCHTTPEvent(
-	struct event_base* base, 
-	bool deleteWhenTriggered, 
-	const boost::function<void(void)>& handler):
+	                struct event_base * base, 
+	                               bool deleteWhenTriggered, 
+	const boost::function<void(void)> & handler):
   deleteWhenTriggered(deleteWhenTriggered), 
   handler(handler)
 {
@@ -745,7 +745,10 @@ EDCHTTPRequest::RequestMethod EDCHTTPRequest::GetRequestMethod()
     }
 }
 
-void edcRegisterHTTPHandler(const std::string &prefix, bool exactMatch, const EDCHTTPRequestHandler &handler)
+void edcRegisterHTTPHandler(
+	      const std::string & prefix, 
+	                     bool exactMatch, 
+const EDCHTTPRequestHandler & handler)
 {
     edcLogPrint("http", "Registering Equibit HTTP handler for %s (exactmatch %d)\n", prefix, exactMatch);
     pathHandlers.push_back(HTTPPathHandler(prefix, exactMatch, handler));

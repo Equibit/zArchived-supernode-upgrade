@@ -81,7 +81,10 @@ unsigned int CEDCTransaction::CalculateModifiedSize(unsigned int nTxSize) const
 
 
 CEDCMutableTransaction::CEDCMutableTransaction() : nVersion(CEDCTransaction::CURRENT_VERSION), nLockTime(0) {}
-CEDCMutableTransaction::CEDCMutableTransaction(const CEDCTransaction& tx) : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime) {}
+
+CEDCMutableTransaction::CEDCMutableTransaction(const CEDCTransaction& tx) : 
+	nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime) 
+{}
 
 uint256 CEDCMutableTransaction::GetHash() const
 {

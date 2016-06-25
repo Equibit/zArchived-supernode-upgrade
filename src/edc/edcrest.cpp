@@ -78,7 +78,10 @@ struct CCoin
 };
 
 
-bool RESTERR(EDCHTTPRequest* req, enum HTTPStatusCode status, string message)
+bool RESTERR(
+	   EDCHTTPRequest * req, 
+	enum HTTPStatusCode status, 
+				 string message)
 {
     req->WriteHeader("Content-Type", "text/plain");
     req->WriteReply(status, message + "\r\n");
@@ -141,8 +144,9 @@ bool CheckWarmup(EDCHTTPRequest* req)
     return true;
 }
 
-bool rest_headers(EDCHTTPRequest* req,
-                  const std::string& strURIPart)
+bool rest_headers(
+	   EDCHTTPRequest * req,
+    const std::string & strURIPart)
 {
     if (!CheckWarmup(req))
         return false;
@@ -223,9 +227,10 @@ bool rest_headers(EDCHTTPRequest* req,
     return true; // continue to process further HTTP reqs on this cxn
 }
 
-bool rest_block(EDCHTTPRequest* req,
-                       const std::string& strURIPart,
-                       bool showTxDetails)
+bool rest_block(
+	EDCHTTPRequest * req,
+ const std::string & strURIPart,
+                bool showTxDetails)
 {
     if (!CheckWarmup(req))
         return false;

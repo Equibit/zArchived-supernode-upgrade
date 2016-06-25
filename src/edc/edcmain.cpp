@@ -389,7 +389,11 @@ bool MarkBlockAsReceived(const uint256& hash)
 }
 
 // Requires EDC_cs_main.
-void MarkBlockAsInFlight(NodeId nodeid, const uint256& hash, const Consensus::Params& consensusParams, CBlockIndex *pindex = NULL) 
+void MarkBlockAsInFlight(
+					   NodeId nodeid, 
+			  const uint256 & hash, 
+	const Consensus::Params & consensusParams, 
+				CBlockIndex * pindex = NULL) 
 {
     CNodeState *state = State(nodeid);
     assert(state != NULL);
@@ -504,10 +508,10 @@ CBlockIndex* LastCommonAncestor(CBlockIndex* pa, CBlockIndex* pb)
  * vBlocks, until it has at most count entries. 
  */
 void FindNextBlocksToDownload(
-	NodeId nodeid, 
-	unsigned int count, 
-	std::vector<CBlockIndex*>& vBlocks, 
-	NodeId& nodeStaller) 
+						 NodeId nodeid, 
+				   unsigned int count, 
+	std::vector<CBlockIndex*> & vBlocks, 
+					   NodeId & nodeStaller) 
 {
 	EDCapp & theApp = EDCapp::singleton();
     if (count == 0)
@@ -698,6 +702,7 @@ bool AddOrphanTx(const CEDCTransaction& tx, NodeId peer) EXCLUSIVE_LOCKS_REQUIRE
 
 namespace
 {
+
 void EraseOrphanTx(uint256 hash) EXCLUSIVE_LOCKS_REQUIRED(EDC_cs_main)
 {
     map<uint256, COrphanTx>::iterator it = edcMapOrphanTransactions.find(hash);
@@ -749,7 +754,10 @@ unsigned int edcLimitOrphanTxSize(unsigned int nMaxOrphans) EXCLUSIVE_LOCKS_REQU
     return nEvicted;
 }
 
-bool IsFinalTx(const CEDCTransaction &tx, int nBlockHeight, int64_t nBlockTime)
+bool IsFinalTx(
+	const CEDCTransaction & tx, 
+						int nBlockHeight, 
+					int64_t nBlockTime)
 {
     if (tx.nLockTime == 0)
         return true;
@@ -804,7 +812,11 @@ namespace
  * Also removes from the vector of input heights any entries which did not
  * correspond to sequence locked inputs as they do not affect the calculation.
  */
-std::pair<int, int64_t> CalculateSequenceLocks(const CEDCTransaction &tx, int flags, std::vector<int>* prevHeights, const CBlockIndex& block)
+std::pair<int, int64_t> CalculateSequenceLocks(
+	const CEDCTransaction & tx, 
+						int flags, 
+		 std::vector<int> * prevHeights, 
+		const CBlockIndex & block)
 {
     assert(prevHeights->size() == tx.vin.size());
 
@@ -883,7 +895,11 @@ bool EvaluateSequenceLocks(const CBlockIndex& block, std::pair<int, int64_t> loc
 }
 }
 
-bool SequenceLocks(const CEDCTransaction &tx, int flags, std::vector<int>* prevHeights, const CBlockIndex& block)
+bool SequenceLocks(
+	const CEDCTransaction & tx, 
+						int flags, 
+		 std::vector<int> * prevHeights, 
+		const CBlockIndex & block)
 {
     return EvaluateSequenceLocks(block, CalculateSequenceLocks(tx, flags, prevHeights, block));
 }
@@ -897,10 +913,12 @@ bool edcTestLockPointValidity(const LockPoints* lp)
 
     // If there are relative lock times then the maxInputBlock will be set
     // If there are no relative lock times, the LockPoints don't depend on the chain
-    if (lp->maxInputBlock) {
+    if (lp->maxInputBlock) 
+	{
         // Check whether theApp.chainActive() is an extension of the block at which the LockPoints
         // calculation was valid.  If not LockPoints are no longer valid
-        if (!theApp.chainActive().Contains(lp->maxInputBlock)) {
+        if (!theApp.chainActive().Contains(lp->maxInputBlock)) 
+		{
             return false;
         }
     }
@@ -909,7 +927,11 @@ bool edcTestLockPointValidity(const LockPoints* lp)
     return true;
 }
 
-bool CheckSequenceLocks(const CEDCTransaction &tx, int flags, LockPoints* lp, bool useExistingLockPoints)
+bool CheckSequenceLocks(
+	const CEDCTransaction & tx, 
+						int flags, 
+				LockPoints * lp, 
+						bool useExistingLockPoints)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -1007,7 +1029,9 @@ unsigned int GetLegacySigOpCount(const CEDCTransaction& tx)
     return nSigOps;
 }
 
-unsigned int GetP2SHSigOpCount(const CEDCTransaction& tx, const CEDCCoinsViewCache& inputs)
+unsigned int GetP2SHSigOpCount(
+	   const CEDCTransaction & tx, 
+	const CEDCCoinsViewCache & inputs)
 {
     if (tx.IsCoinBase())
         return 0;
@@ -1084,9 +1108,16 @@ void LimitMempoolSize(CEDCTxMemPool& pool, size_t limit, unsigned long age)
         theApp.coinsTip()->Uncache(removed);
 }
 
-bool AcceptToMemoryPoolWorker(CEDCTxMemPool& pool, CValidationState& state, const CEDCTransaction& tx, bool fLimitFree,
-                              bool* pfMissingInputs, CFeeRate* txFeeRate, bool fOverrideMempoolLimit, const CAmount& nAbsurdFee,
-                              std::vector<uint256>& vHashTxnToUncache)
+bool AcceptToMemoryPoolWorker(
+			CEDCTxMemPool & pool, 
+		 CValidationState & state, 
+	const CEDCTransaction & tx, 
+					   bool fLimitFree,
+					 bool * pfMissingInputs, 
+				 CFeeRate * txFeeRate, 
+					   bool fOverrideMempoolLimit, 
+			const CAmount & nAbsurdFee,
+     std::vector<uint256> & vHashTxnToUncache)
 {
     const uint256 hash = tx.GetHash();
     AssertLockHeld(EDC_cs_main);
@@ -1532,7 +1563,10 @@ bool AcceptToMemoryPoolWorker(CEDCTxMemPool& pool, CValidationState& state, cons
     return true;
 }
 
-FILE* edcOpenDiskFile(const CDiskBlockPos &pos, const char *prefix, bool fReadOnly)
+FILE* edcOpenDiskFile(
+	const CDiskBlockPos & pos, 
+			 const char * prefix, 
+					 bool fReadOnly )
 {
     if (pos.IsNull())
         return NULL;
@@ -1571,8 +1605,15 @@ FILE* edcOpenUndoFile(const CDiskBlockPos &pos, bool fReadOnly = false )
     return edcOpenDiskFile(pos, "rev", fReadOnly);
 }
 
-bool AcceptToMemoryPool(CEDCTxMemPool& pool, CValidationState &state, const CEDCTransaction &tx, bool fLimitFree,
-                        bool* pfMissingInputs, CFeeRate* txFeeRate, bool fOverrideMempoolLimit, const CAmount nAbsurdFee)
+bool AcceptToMemoryPool(
+			CEDCTxMemPool & pool, 
+		 CValidationState & state, 
+	const CEDCTransaction & tx, 
+					   bool fLimitFree,
+    				 bool * pfMissingInputs, 
+				 CFeeRate * txFeeRate, 
+					   bool fOverrideMempoolLimit, 
+			  const CAmount nAbsurdFee)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -1588,7 +1629,12 @@ bool AcceptToMemoryPool(CEDCTxMemPool& pool, CValidationState &state, const CEDC
 }
 
 /** Return transaction in tx, and if it was found inside a block, its hash is placed in hashBlock */
-bool GetTransaction(const uint256 &hash, CEDCTransaction &txOut, const Consensus::Params& consensusParams, uint256 &hashBlock, bool fAllowSlow)
+bool GetTransaction(
+			  const uint256 & hash, 
+			CEDCTransaction & txOut, 
+	const Consensus::Params & consensusParams, 
+					uint256 & hashBlock, 
+						 bool fAllowSlow)
 {
     CBlockIndex *pindexSlow = NULL;
 
@@ -1667,7 +1713,10 @@ bool GetTransaction(const uint256 &hash, CEDCTransaction &txOut, const Consensus
 // CBlock and CBlockIndex
 //
 
-bool WriteBlockToDisk(const CEDCBlock& block, CDiskBlockPos& pos, const CMessageHeader::MessageStartChars& messageStart)
+bool WriteBlockToDisk(
+							const CEDCBlock & block, 
+							  CDiskBlockPos & pos, 
+	const CMessageHeader::MessageStartChars & messageStart)
 {
     // Open history file to append
     CAutoFile fileout(edcOpenBlockFile(pos), SER_DISK, CLIENT_VERSION);
@@ -1688,7 +1737,10 @@ bool WriteBlockToDisk(const CEDCBlock& block, CDiskBlockPos& pos, const CMessage
     return true;
 }
 
-bool ReadBlockFromDisk(CEDCBlock& block, const CDiskBlockPos& pos, const Consensus::Params& consensusParams)
+bool ReadBlockFromDisk(
+				  CEDCBlock & block, 
+		const CDiskBlockPos & pos, 
+	const Consensus::Params & consensusParams)
 {
     block.SetNull();
 
@@ -1714,7 +1766,10 @@ bool ReadBlockFromDisk(CEDCBlock& block, const CDiskBlockPos& pos, const Consens
     return true;
 }
 
-bool ReadBlockFromDisk(CEDCBlock& block, const CBlockIndex* pindex, const Consensus::Params& consensusParams)
+bool ReadBlockFromDisk(
+				  CEDCBlock & block, 
+		  const CBlockIndex * pindex, 
+	const Consensus::Params & consensusParams)
 {
     if (!ReadBlockFromDisk(block, pindex->GetBlockPos(), consensusParams))
         return false;
@@ -1917,7 +1972,11 @@ void edcInvalidBlockFound(CBlockIndex *pindex, const CValidationState &state)
 }
 }
 
-void UpdateCoins(const CEDCTransaction& tx, CEDCCoinsViewCache &inputs, CEDCTxUndo &txundo, int nHeight)
+void UpdateCoins(
+	 const CEDCTransaction & tx, 
+		CEDCCoinsViewCache & inputs, 
+				CEDCTxUndo & txundo, 
+						 int nHeight)
 {
     // mark inputs spent
     if (!tx.IsCoinBase()) 
@@ -1946,7 +2005,10 @@ void UpdateCoins(const CEDCTransaction& tx, CEDCCoinsViewCache &inputs, CEDCTxUn
     inputs.ModifyNewCoins(tx.GetHash(), tx.IsCoinBase())->FromTx(tx, nHeight);
 }
 
-void UpdateCoins(const CEDCTransaction& tx, CEDCCoinsViewCache &inputs, int nHeight)
+void UpdateCoins(
+	 const CEDCTransaction & tx, 
+		CEDCCoinsViewCache & inputs, 
+						 int nHeight)
 {
     CEDCTxUndo txundo;
     UpdateCoins(tx, inputs, txundo, nHeight);
@@ -1975,10 +2037,10 @@ namespace Consensus
 {
 
 bool CheckTxInputs(
-	const CEDCTransaction & tx, 
-	CValidationState & state, 
+	   const CEDCTransaction & tx, 
+			CValidationState & state, 
 	const CEDCCoinsViewCache & inputs, 
-	int nSpendHeight)
+						   int nSpendHeight)
 {
         // This doesn't trigger the DoS code on purpose; if it did, it would make it easier
         // for an attacker to attempt to split the network.
@@ -2024,7 +2086,14 @@ bool CheckTxInputs(
 }
 }
 
-bool CheckInputs(const CEDCTransaction& tx, CValidationState &state, const CEDCCoinsViewCache &inputs, bool fScriptChecks, unsigned int flags, bool cacheStore, std::vector<CEDCScriptCheck> *pvChecks)
+bool CheckInputs(
+	   const CEDCTransaction & tx, 
+		 	CValidationState & state, 
+	const CEDCCoinsViewCache & inputs, 
+						  bool fScriptChecks, 
+				  unsigned int flags, 
+						  bool cacheStore, 
+std::vector<CEDCScriptCheck> * pvChecks)
 {
     if (!tx.IsCoinBase())
     {
@@ -2093,7 +2162,11 @@ bool CheckInputs(const CEDCTransaction& tx, CValidationState &state, const CEDCC
 namespace 
 {
 
-bool UndoWriteToDisk(const CEDCBlockUndo& blockundo, CDiskBlockPos& pos, const uint256& hashBlock, const CMessageHeader::MessageStartChars& messageStart)
+bool UndoWriteToDisk(
+					const CEDCBlockUndo & blockundo, 
+		  				  CDiskBlockPos & pos, 
+		  				  const uint256 & hashBlock, 
+const CMessageHeader::MessageStartChars & messageStart)
 {
     // Open history file to append
     CAutoFile fileout(edcOpenUndoFile(pos), SER_DISK, CLIENT_VERSION);
@@ -2120,7 +2193,10 @@ bool UndoWriteToDisk(const CEDCBlockUndo& blockundo, CDiskBlockPos& pos, const u
     return true;
 }
 
-bool UndoReadFromDisk(CEDCBlockUndo& blockundo, const CDiskBlockPos& pos, const uint256& hashBlock)
+bool UndoReadFromDisk(
+	  CEDCBlockUndo & blockundo, 
+const CDiskBlockPos & pos, 
+	  const uint256 & hashBlock)
 {
     // Open history file to read
     CAutoFile filein(edcOpenUndoFile(pos, true), SER_DISK, CLIENT_VERSION);
@@ -2161,7 +2237,10 @@ bool AbortNode(const std::string& strMessage, const std::string& userMessage="")
     return false;
 }
 
-bool AbortNode(CValidationState& state, const std::string& strMessage, const std::string& userMessage="")
+bool AbortNode(
+	CValidationState & state, 
+   const std::string & strMessage, 
+   const std::string & userMessage="")
 {
     AbortNode(strMessage, userMessage);
     return state.Error(strMessage);
@@ -2175,7 +2254,10 @@ bool AbortNode(CValidationState& state, const std::string& strMessage, const std
  * @param out The out point that corresponds to the tx input.
  * @return True on success.
  */
-bool ApplyTxInUndo(const CEDCTxInUndo& undo, CEDCCoinsViewCache& view, const COutPoint& out)
+bool ApplyTxInUndo(
+	const CEDCTxInUndo & undo, 
+	CEDCCoinsViewCache & view, 
+	   const COutPoint & out)
 {
     bool fClean = true;
 
@@ -2204,7 +2286,12 @@ bool ApplyTxInUndo(const CEDCTxInUndo& undo, CEDCCoinsViewCache& view, const COu
     return fClean;
 }
 
-bool edcDisconnectBlock(const CEDCBlock& block, CValidationState& state, const CBlockIndex* pindex, CEDCCoinsViewCache& view, bool* pfClean)
+bool edcDisconnectBlock(
+	 const CEDCBlock & block, 
+	CValidationState & state, 
+   const CBlockIndex * pindex, 
+  CEDCCoinsViewCache & view, 
+				bool * pfClean)
 {
     assert(pindex->GetBlockHash() == view.GetBestBlock());
 
@@ -2318,10 +2405,10 @@ void edcThreadScriptCheck()
 // too slowly or too quickly).
 //
 void edcPartitionCheck(
-	bool (*initialDownloadCheck)(), 
-	CCriticalSection& cs, 
-	const CBlockIndex *const &bestHeader,
-    int64_t nPowTargetSpacing)
+						bool (* initialDownloadCheck)(), 
+			 CCriticalSection & cs, 
+	const CBlockIndex * const & bestHeader,
+    					int64_t nPowTargetSpacing)
 {
     if (bestHeader == NULL || initialDownloadCheck()) return;
 
@@ -2706,6 +2793,7 @@ enum FlushStateMode
 bool FlushStateToDisk(CValidationState &state, FlushStateMode mode) 
 {
     const CEDCChainParams & chainparams = edcParams();
+
     LOCK2(EDC_cs_main, cs_LastBlockFile);
     static int64_t nLastWrite = 0;
     static int64_t nLastFlush = 0;
@@ -3466,7 +3554,11 @@ CBlockIndex* edcAddToBlockIndex(const CBlockHeader& block)
 }
 
 /** Mark a block as having its data received and checked (up to BLOCK_VALID_TRANSACTIONS). */
-bool ReceivedBlockTransactions(const CEDCBlock &block, CValidationState& state, CBlockIndex *pindexNew, const CDiskBlockPos& pos)
+bool ReceivedBlockTransactions(
+	 const CEDCBlock & block, 
+	CValidationState & state, 
+		 CBlockIndex * pindexNew, 
+ const CDiskBlockPos & pos)
 {
 	EDCapp & theApp = EDCapp::singleton();
     pindexNew->nTx = block.vtx.size();
@@ -3523,10 +3615,10 @@ bool ReceivedBlockTransactions(const CEDCBlock &block, CValidationState& state, 
 }
 
 bool edcFindUndoPos(
-	CValidationState &state, 
-	int nFile, 
-	CDiskBlockPos &pos, 
-	unsigned int nAddSize)
+	CValidationState & state, 
+				   int nFile, 
+	   CDiskBlockPos & pos, 
+		  unsigned int nAddSize)
 {
 	EDCapp & theApp = EDCapp::singleton();
     pos.nFile = nFile;
@@ -3562,9 +3654,9 @@ bool edcFindUndoPos(
 }
 
 bool edcCheckBlockHeader(
-	const CBlockHeader & block, 
+  const CBlockHeader & block, 
 	CValidationState & state, 
-	bool fCheckPOW = true )
+				  bool fCheckPOW = true )
 {
     // Check proof of work matches claimed amount
     if (fCheckPOW && !CheckProofOfWork(block.GetHash(), block.nBits, edcParams().GetConsensus()))
@@ -3581,10 +3673,10 @@ namespace
 {
 
 bool edcCheckBlock(
-	const CEDCBlock& block, 
-	CValidationState& state, 
-	bool fCheckPOW, 
-	bool fCheckMerkleRoot)
+	 const CEDCBlock & block, 
+	CValidationState & state, 
+				  bool fCheckPOW, 
+				  bool fCheckMerkleRoot)
 {
     // These are checks that are independent of context.
     if (block.fChecked)
@@ -3663,7 +3755,10 @@ bool CheckIndexAgainstCheckpoint(
     return true;
 }
 
-bool edcContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& state, CBlockIndex * const pindexPrev)
+bool edcContextualCheckBlockHeader(
+	const CBlockHeader & block, 
+	  CValidationState & state, 
+		   CBlockIndex * const pindexPrev)
 {
     const Consensus::Params& consensusParams = edcParams().GetConsensus();
     // Check proof of work
@@ -3683,7 +3778,10 @@ bool edcContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& 
     return true;
 }
 
-bool edcContextualCheckBlock(const CEDCBlock& block, CValidationState& state, CBlockIndex * const pindexPrev)
+bool edcContextualCheckBlock(
+	 const CEDCBlock & block, 
+	CValidationState & state, 
+		 CBlockIndex * const pindexPrev)
 {
     const int nHeight = pindexPrev == NULL ? 0 : pindexPrev->nHeight + 1;
     const Consensus::Params& consensusParams = edcParams().GetConsensus();
@@ -3862,7 +3960,11 @@ bool AcceptBlock(
     return true;
 }
 
-bool IsSuperMajority(int minVersion, const CBlockIndex* pstart, unsigned nRequired, const Consensus::Params& consensusParams)
+bool IsSuperMajority(
+					  int minVersion, 
+	  const CBlockIndex * pstart, 
+			     unsigned nRequired, 
+const Consensus::Params & consensusParams)
 {
     unsigned int nFound = 0;
     for (int i = 0; i < consensusParams.nMajorityWindow && nFound < nRequired && pstart != NULL; i++)
@@ -4222,8 +4324,8 @@ CEDCVerifyDB::~CEDCVerifyDB()
 }
 
 bool CEDCVerifyDB::VerifyDB(
-	const CEDCChainParams & chainparams, 
-	     	CEDCCoinsView * coinsview, 
+  const CEDCChainParams & chainparams, 
+	      CEDCCoinsView * coinsview, 
 	       	          int nCheckLevel, 
 	       	          int nCheckDepth)
 {
@@ -4575,6 +4677,7 @@ bool edcLoadExternalBlockFile(
 
 namespace
 {
+
 void edcCheckBlockIndex(const Consensus::Params& consensusParams)
 {
 	EDCapp &  theApp = EDCapp::singleton();
@@ -5061,7 +5164,8 @@ bool ProcessMessage(
             vRecv >> LIMITED_STRING(pfrom->strSubVer, MAX_SUBVERSION_LENGTH);
             pfrom->cleanSubVer = SanitizeString(pfrom->strSubVer);
         }
-        if (!vRecv.empty()) {
+        if (!vRecv.empty()) 
+		{
             vRecv >> pfrom->nStartingHeight;
         }
         {
@@ -6400,7 +6504,8 @@ bool SendEDCMessages(CEDCNode* pto)
             BOOST_FOREACH(const uint256& hash, pto->vInventoryBlockToSend) 
 			{
                 vInv.push_back(CInv(MSG_BLOCK, hash));
-                if (vInv.size() == MAX_INV_SZ) {
+                if (vInv.size() == MAX_INV_SZ) 
+				{
                     pto->PushMessage(NetMsgType::INV, vInv);
                     vInv.clear();
                 }
@@ -6418,13 +6523,15 @@ bool SendEDCMessages(CEDCNode* pto)
             }
 
             // Time to send but the peer has requested we not relay transactions.
-            if (fSendTrickle) {
+            if (fSendTrickle) 
+			{
                 LOCK(pto->cs_filter);
                 if (!pto->fRelayTxes) pto->setInventoryTxToSend.clear();
             }
 
             // Respond to BIP35 mempool requests
-            if (fSendTrickle && pto->fSendMempool) {
+            if (fSendTrickle && pto->fSendMempool) 
+			{
                 std::vector<uint256> vtxid;
                 theApp.mempool().queryHashes(vtxid);
                 pto->fSendMempool = false;
@@ -6435,16 +6542,19 @@ bool SendEDCMessages(CEDCNode* pto)
                 }
                 LOCK(pto->cs_filter);
 
-                BOOST_FOREACH(const uint256& hash, vtxid) {
+                BOOST_FOREACH(const uint256& hash, vtxid) 
+				{
                     CInv inv(MSG_TX, hash);
                     pto->setInventoryTxToSend.erase(hash);
-                    if (filterrate) {
+                    if (filterrate) 
+					{
                         CFeeRate feeRate;
                         theApp.mempool().lookupFeeRate(hash, feeRate);
                         if (feeRate.GetFeePerK() < filterrate)
                             continue;
                     }
-                    if (pto->pfilter) {
+                    if (pto->pfilter) 
+					{
                         CEDCTransaction tx;
 						EDCapp & theApp = EDCapp::singleton();
                         bool fInMemPool = theApp.mempool().lookup(hash, tx);
@@ -6453,14 +6563,16 @@ bool SendEDCMessages(CEDCNode* pto)
                     }
                     pto->filterInventoryKnown.insert(hash);
                     vInv.push_back(inv);
-                    if (vInv.size() == MAX_INV_SZ) {
+                    if (vInv.size() == MAX_INV_SZ) 
+					{
                         pto->PushMessage(NetMsgType::INV, vInv);
                         vInv.clear();
                     }
                 }
             }
             // Determine transactions to relay
-            if (fSendTrickle) {
+            if (fSendTrickle) 
+			{
                 // Produce a vector with all candidates for sending
                 vector<std::set<uint256>::iterator> vInvTx;
                 vInvTx.reserve(pto->setInventoryTxToSend.size());
@@ -6473,36 +6585,45 @@ bool SendEDCMessages(CEDCNode* pto)
                     LOCK(pto->cs_feeFilter);
                     filterrate = pto->minFeeFilter;
                 }
+
                 // Topologically and fee-rate sort the inventory we send for privacy and priority reasons.
                 // A heap is used so that not all items need sorting if only a few are being sent.
 				EDCapp & theApp = EDCapp::singleton();
                 CompareInvMempoolOrder compareInvMempoolOrder(&theApp.mempool());
                 std::make_heap(vInvTx.begin(), vInvTx.end(), compareInvMempoolOrder);
+
                 // No reason to drain out at many times the network's capacity,
                 // especially since we have many peers and some will draw much shorter delays.
                 unsigned int nRelayedTransactions = 0;
                 LOCK(pto->cs_filter);
-                while (!vInvTx.empty() && nRelayedTransactions < INVENTORY_BROADCAST_MAX) {
+                while (!vInvTx.empty() && nRelayedTransactions < INVENTORY_BROADCAST_MAX) 
+				{
                     // Fetch the top element from the heap
                     std::pop_heap(vInvTx.begin(), vInvTx.end(), compareInvMempoolOrder);
                     std::set<uint256>::iterator it = vInvTx.back();
                     vInvTx.pop_back();
                     uint256 hash = *it;
+
                     // Remove it from the to-be-sent set
                     pto->setInventoryTxToSend.erase(it);
+
                     // Check if not in the filter already
-                    if (pto->filterInventoryKnown.contains(hash)) {
+                    if (pto->filterInventoryKnown.contains(hash)) 
+					{
                         continue;
                     }
                     // Not in the mempool anymore? don't bother sending it.
                     CFeeRate feeRate;
-                    if (!theApp.mempool().lookupFeeRate(hash, feeRate)) {
+                    if (!theApp.mempool().lookupFeeRate(hash, feeRate)) 
+					{
                         continue;
                     }
-                    if (filterrate && feeRate.GetFeePerK() < filterrate) {
+                    if (filterrate && feeRate.GetFeePerK() < filterrate) 
+					{
                         continue;
                     }
-                    if (pto->pfilter) {
+                    if (pto->pfilter) 
+					{
                         CEDCTransaction tx;
                         if (!theApp.mempool().lookup(hash, tx)) continue;
                         if (!pto->pfilter->IsRelevantAndUpdate(tx)) continue;
@@ -6510,7 +6631,8 @@ bool SendEDCMessages(CEDCNode* pto)
                     // Send
                     vInv.push_back(CInv(MSG_TX, hash));
                     nRelayedTransactions++;
-                    if (vInv.size() == MAX_INV_SZ) {
+                    if (vInv.size() == MAX_INV_SZ) 
+					{
                         pto->PushMessage(NetMsgType::INV, vInv);
                         vInv.clear();
                     }

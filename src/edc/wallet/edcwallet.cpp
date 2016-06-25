@@ -45,6 +45,7 @@ const char * edcDEFAULT_WALLET_DAT = "edcwallet.dat";
  * Override with -mintxfee
  */
 CFeeRate CEDCWallet::minTxFee = CFeeRate(DEFAULT_TRANSACTION_MINFEE);
+
 /**
  * If fee estimation does not have enough data to provide estimates, use this fee instead.
  * Has no effect if not using fee estimation
@@ -100,6 +101,7 @@ CPubKey CEDCWallet::GenerateNewKey()
     // Create new metadata
     int64_t nCreationTime = GetTime();
     mapKeyMetadata[pubkey.GetID()] = CKeyMetadata(nCreationTime);
+
     if (!nTimeFirstKey || nCreationTime < nTimeFirstKey)
         nTimeFirstKey = nCreationTime;
 
@@ -125,20 +127,24 @@ bool CEDCWallet::AddKeyPubKey(const CKey& secret, const CPubKey &pubkey)
 
     if (!fFileBacked)
         return true;
+
     if (!IsCrypted()) 
 	{
-        return CEDCWalletDB(strWalletFile).WriteKey(pubkey,
-                                                 secret.GetPrivKey(),
-                                                 mapKeyMetadata[pubkey.GetID()]);
+        return CEDCWalletDB(strWalletFile).WriteKey(
+			pubkey,
+            secret.GetPrivKey(),
+            mapKeyMetadata[pubkey.GetID()]);
     }
     return true;
 }
 
-bool CEDCWallet::AddCryptedKey(const CPubKey &vchPubKey,
-                            const vector<unsigned char> &vchCryptedSecret)
+bool CEDCWallet::AddCryptedKey(
+				  const CPubKey & vchPubKey,
+	const vector<unsigned char> & vchCryptedSecret)
 {
     if (!CCryptoKeyStore::AddCryptedKey(vchPubKey, vchCryptedSecret))
         return false;
+
     if (!fFileBacked)
         return true;
     {
@@ -165,7 +171,9 @@ bool CEDCWallet::LoadKeyMetadata(const CPubKey &pubkey, const CKeyMetadata &meta
     return true;
 }
 
-bool CEDCWallet::LoadCryptedKey(const CPubKey &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret)
+bool CEDCWallet::LoadCryptedKey(
+					   const CPubKey & vchPubKey, 
+	const std::vector<unsigned char> & vchCryptedSecret)
 {
     return CCryptoKeyStore::AddCryptedKey(vchPubKey, vchCryptedSecret);
 }
@@ -201,8 +209,10 @@ bool CEDCWallet::AddWatchOnly(const CScript &dest)
 {
     if (!CCryptoKeyStore::AddWatchOnly(dest))
         return false;
+
     nTimeFirstKey = 1; // No birthday information for watch-only keys.
     NotifyWatchonlyChanged(true);
+
     if (!fFileBacked)
         return true;
     return CEDCWalletDB(strWalletFile).WriteWatchOnly(dest);
@@ -211,10 +221,13 @@ bool CEDCWallet::AddWatchOnly(const CScript &dest)
 bool CEDCWallet::RemoveWatchOnly(const CScript &dest)
 {
     AssertLockHeld(cs_wallet);
+
     if (!CCryptoKeyStore::RemoveWatchOnly(dest))
         return false;
+
     if (!HaveWatchOnly())
         NotifyWatchonlyChanged(false);
+
     if (fFileBacked)
         if (!CEDCWalletDB(strWalletFile).EraseWatchOnly(dest))
             return false;
@@ -236,8 +249,10 @@ bool CEDCWallet::Unlock(const SecureString& strWalletPassphrase)
         LOCK(cs_wallet);
         BOOST_FOREACH(const MasterKeyMap::value_type& pMasterKey, mapMasterKeys)
         {
-            if(!crypter.SetKeyFromPassphrase(strWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod))
+            if(!crypter.SetKeyFromPassphrase(strWalletPassphrase, pMasterKey.second.vchSalt, 
+			pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod))
                 return false;
+
             if (!crypter.Decrypt(pMasterKey.second.vchCryptedKey, vMasterKey))
                 continue; // try another master key
             if (CCryptoKeyStore::Unlock(vMasterKey))
@@ -247,7 +262,9 @@ bool CEDCWallet::Unlock(const SecureString& strWalletPassphrase)
     return false;
 }
 
-bool CEDCWallet::ChangeWalletPassphrase(const SecureString& strOldWalletPassphrase, const SecureString& strNewWalletPassphrase)
+bool CEDCWallet::ChangeWalletPassphrase(
+	const SecureString& strOldWalletPassphrase, 
+	const SecureString& strNewWalletPassphrase)
 {
     bool fWasLocked = IsLocked();
 
@@ -259,26 +276,40 @@ bool CEDCWallet::ChangeWalletPassphrase(const SecureString& strOldWalletPassphra
         CKeyingMaterial vMasterKey;
         BOOST_FOREACH(MasterKeyMap::value_type& pMasterKey, mapMasterKeys)
         {
-            if(!crypter.SetKeyFromPassphrase(strOldWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod))
+            if(!crypter.SetKeyFromPassphrase(strOldWalletPassphrase, 
+			pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, 
+			pMasterKey.second.nDerivationMethod))
                 return false;
+
             if (!crypter.Decrypt(pMasterKey.second.vchCryptedKey, vMasterKey))
                 return false;
+
             if (CCryptoKeyStore::Unlock(vMasterKey))
             {
                 int64_t nStartTime = GetTimeMillis();
-                crypter.SetKeyFromPassphrase(strNewWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod);
-                pMasterKey.second.nDeriveIterations = pMasterKey.second.nDeriveIterations * (100 / ((double)(GetTimeMillis() - nStartTime)));
+                crypter.SetKeyFromPassphrase(strNewWalletPassphrase, 
+											pMasterKey.second.vchSalt, 
+											pMasterKey.second.nDeriveIterations, 
+											pMasterKey.second.nDerivationMethod);
+
+                pMasterKey.second.nDeriveIterations = pMasterKey.second.nDeriveIterations * 
+					(100 / ((double)(GetTimeMillis() - nStartTime)));
 
                 nStartTime = GetTimeMillis();
-                crypter.SetKeyFromPassphrase(strNewWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod);
-                pMasterKey.second.nDeriveIterations = (pMasterKey.second.nDeriveIterations + pMasterKey.second.nDeriveIterations * 100 / ((double)(GetTimeMillis() - nStartTime))) / 2;
+                crypter.SetKeyFromPassphrase(strNewWalletPassphrase, pMasterKey.second.vchSalt, 
+					pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod);
+
+                pMasterKey.second.nDeriveIterations = (pMasterKey.second.nDeriveIterations + 
+					pMasterKey.second.nDeriveIterations * 100 / ((double)(GetTimeMillis() - nStartTime))) / 2;
 
                 if (pMasterKey.second.nDeriveIterations < 25000)
                     pMasterKey.second.nDeriveIterations = 25000;
 
                 edcLogPrintf("Wallet passphrase changed to an nDeriveIterations of %i\n", pMasterKey.second.nDeriveIterations);
 
-                if (!crypter.SetKeyFromPassphrase(strNewWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod))
+                if (!crypter.SetKeyFromPassphrase(strNewWalletPassphrase, 
+				pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, 
+				pMasterKey.second.nDerivationMethod))
                     return false;
                 if (!crypter.Encrypt(vMasterKey, pMasterKey.second.vchCryptedKey))
                     return false;
@@ -299,7 +330,10 @@ void CEDCWallet::SetBestChain(const CBlockLocator& loc)
     walletdb.WriteBestBlock(loc);
 }
 
-bool CEDCWallet::SetMinVersion(enum WalletFeature nVersion, CEDCWalletDB* pwalletdbIn, bool fExplicit)
+bool CEDCWallet::SetMinVersion(
+	enum WalletFeature nVersion, 
+		CEDCWalletDB * pwalletdbIn, 
+				  bool fExplicit)
 {
     LOCK(cs_wallet); // nWalletVersion
     if (nWalletVersion >= nVersion)
@@ -795,7 +829,10 @@ bool CEDCWallet::AddToWallet(
  * pblock is optional, but should be provided if the transaction is known to be in a block.
  * If fUpdate is true, existing transactions will be updated.
  */
-bool CEDCWallet::AddToWalletIfInvolvingMe(const CEDCTransaction& tx, const CEDCBlock* pblock, bool fUpdate)
+bool CEDCWallet::AddToWalletIfInvolvingMe(
+	const CEDCTransaction & tx, 
+		  const CEDCBlock * pblock, 
+					   bool fUpdate)
 {
     {
         AssertLockHeld(cs_wallet);
@@ -863,11 +900,15 @@ bool CEDCWallet::AbandonTransaction(const uint256& hashTx)
         uint256 now = *todo.begin();
         todo.erase(now);
         done.insert(now);
+
         assert(mapWallet.count(now));
+
         CEDCWalletTx& wtx = mapWallet[now];
         int currentconfirm = wtx.GetDepthInMainChain();
+
         // If the orig tx was not in block, none of its spends can be
         assert(currentconfirm <= 0);
+
         // if (currentconfirm < 0) {Tx and spends are already conflicted, no need to abandon}
         if (currentconfirm == 0 && !wtx.isAbandoned()) 
 		{
@@ -972,7 +1013,10 @@ void CEDCWallet::MarkConflicted(const uint256& hashBlock, const uint256& hashTx)
     }
 }
 
-void CEDCWallet::SyncTransaction(const CEDCTransaction& tx, const CBlockIndex *pindex, const CEDCBlock* pblock)
+void CEDCWallet::SyncTransaction(
+	const CEDCTransaction & tx, 
+	    const CBlockIndex * pindex, 
+		  const CEDCBlock * pblock)
 {
     LOCK2(EDC_cs_main, cs_wallet);
 
@@ -1157,8 +1201,12 @@ int CEDCWalletTx::GetRequestCount() const
     return nRequests;
 }
 
-void CEDCWalletTx::GetAmounts(list<COutputEntry>& listReceived,
-                           list<COutputEntry>& listSent, CAmount& nFee, string& strSentAccount, const isminefilter& filter) const
+void CEDCWalletTx::GetAmounts(
+	list<COutputEntry> & listReceived,
+    list<COutputEntry> & listSent, 
+	           CAmount & nFee, 
+	            string & strSentAccount, 
+	const isminefilter & filter) const
 {
     nFee = 0;
     listReceived.clear();
@@ -1213,8 +1261,12 @@ void CEDCWalletTx::GetAmounts(list<COutputEntry>& listReceived,
 
 }
 
-void CEDCWalletTx::GetAccountAmounts(const string& strAccount, CAmount& nReceived,
-                                  CAmount& nSent, CAmount& nFee, const isminefilter& filter) const
+void CEDCWalletTx::GetAccountAmounts(
+	  const string & strAccount, 
+		   CAmount & nReceived,
+   		   CAmount & nSent, 
+		   CAmount & nFee, 
+const isminefilter & filter) const
 {
     nReceived = nSent = nFee = 0;
 
@@ -1222,6 +1274,7 @@ void CEDCWalletTx::GetAccountAmounts(const string& strAccount, CAmount& nReceive
     string strSentAccount;
     list<COutputEntry> listReceived;
     list<COutputEntry> listSent;
+
     GetAmounts(listReceived, listSent, allFee, strSentAccount, filter);
 
     if (strAccount == strSentAccount)
@@ -1624,9 +1677,6 @@ void CEDCWallet::ResendWalletTransactions(int64_t nBestBlockTime)
 
 /** @} */ // end of mapWallet
 
-
-
-
 /** @defgroup Actions
  *
  * @{
@@ -1638,7 +1688,8 @@ CAmount CEDCWallet::GetBalance() const
     CAmount nTotal = 0;
     {
         LOCK2(EDC_cs_main, cs_wallet);
-        for (map<uint256, CEDCWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
+        for (map<uint256, CEDCWalletTx>::const_iterator it = mapWallet.begin(); 
+		it != mapWallet.end(); ++it)
         {
             const CEDCWalletTx* pcoin = &(*it).second;
             if (pcoin->IsTrusted())
@@ -1723,10 +1774,13 @@ CAmount CEDCWallet::GetImmatureWatchOnlyBalance() const
     return nTotal;
 }
 
-void CEDCWallet::AvailableCoins(vector<CEDCOutput>& vCoins, bool fOnlyConfirmed, const CCoinControl *coinControl, bool fIncludeZeroValue) const
+void CEDCWallet::AvailableCoins(
+	vector<CEDCOutput> & vCoins, 
+					bool fOnlyConfirmed, 
+	const CCoinControl * coinControl, 
+					bool fIncludeZeroValue) const
 {
     vCoins.clear();
-
     {
         LOCK2(EDC_cs_main, cs_wallet);
         for (map<uint256, CEDCWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
@@ -1767,8 +1821,13 @@ void CEDCWallet::AvailableCoins(vector<CEDCOutput>& vCoins, bool fOnlyConfirmed,
     }
 }
 
-static void ApproximateBestSubset(vector<pair<CAmount, pair<const CEDCWalletTx*,unsigned int> > >vValue, const CAmount& nTotalLower, const CAmount& nTargetValue,
-                                  vector<char>& vfBest, CAmount& nBest, int iterations = 1000)
+static void ApproximateBestSubset(
+	vector<pair<CAmount, pair<const CEDCWalletTx*,unsigned int> > > vValue, 
+	const CAmount & nTotalLower, 
+	const CAmount & nTargetValue,
+     vector<char> & vfBest, 
+		  CAmount & nBest, 
+				int iterations = 1000)
 {
     vector<char> vfIncluded;
 
@@ -1812,7 +1871,8 @@ static void ApproximateBestSubset(vector<pair<CAmount, pair<const CEDCWalletTx*,
         }
     }
 
-    //Reduces the approximate best subset by removing any inputs that are smaller than the surplus of nTotal beyond nTargetValue. 
+    // Reduces the approximate best subset by removing any inputs that are 
+	// smaller than the surplus of nTotal beyond nTargetValue. 
     for (unsigned int i = 0; i < vValue.size(); i++)
     {                        
         if (vfBest[i] && (nBest - vValue[i].first) >= nTargetValue )
@@ -1823,8 +1883,13 @@ static void ApproximateBestSubset(vector<pair<CAmount, pair<const CEDCWalletTx*,
     }
 }
 
-bool CEDCWallet::SelectCoinsMinConf(const CAmount& nTargetValue, int nConfMine, int nConfTheirs, vector<CEDCOutput> vCoins,
-                                 set<pair<const CEDCWalletTx*,unsigned int> >& setCoinsRet, CAmount& nValueRet) const
+bool CEDCWallet::SelectCoinsMinConf(
+							   const CAmount & nTargetValue, 
+										   int nConfMine, 
+										   int nConfTheirs, 
+						    vector<CEDCOutput> vCoins,
+set<pair<const CEDCWalletTx*,unsigned int> > & setCoinsRet, 
+									 CAmount & nValueRet) const
 {
     setCoinsRet.clear();
     nValueRet = 0;
@@ -1926,7 +1991,12 @@ bool CEDCWallet::SelectCoinsMinConf(const CAmount& nTargetValue, int nConfMine, 
     return true;
 }
 
-bool CEDCWallet::SelectCoins(const vector<CEDCOutput>& vAvailableCoins, const CAmount& nTargetValue, set<pair<const CEDCWalletTx*,unsigned int> >& setCoinsRet, CAmount& nValueRet, const CCoinControl* coinControl) const
+bool CEDCWallet::SelectCoins(
+					const vector<CEDCOutput> & vAvailableCoins, 
+			   				   const CAmount & nTargetValue, 
+set<pair<const CEDCWalletTx*,unsigned int> > & setCoinsRet, 
+									 CAmount & nValueRet, 
+						  const CCoinControl * coinControl) const
 {
     vector<CEDCOutput> vCoins(vAvailableCoins);
 
@@ -1990,7 +2060,14 @@ bool CEDCWallet::SelectCoins(const vector<CEDCOutput>& vAvailableCoins, const CA
     return res;
 }
 
-bool CEDCWallet::FundTransaction(CEDCMutableTransaction& tx, CAmount& nFeeRet, int& nChangePosInOut, std::string& strFailReason, bool includeWatching, bool lockUnspents, const CTxDestination& destChange)
+bool CEDCWallet::FundTransaction(
+	CEDCMutableTransaction & tx, 
+				   CAmount & nFeeRet, 
+					   int & nChangePosInOut, 
+			   std::string & strFailReason, 
+						bool includeWatching, 
+						bool lockUnspents, 
+	  const CTxDestination & destChange)
 {
     vector<CRecipient> vecSend;
 
@@ -2034,8 +2111,15 @@ bool CEDCWallet::FundTransaction(CEDCMutableTransaction& tx, CAmount& nFeeRet, i
     return true;
 }
 
-bool CEDCWallet::CreateTransaction(const vector<CRecipient>& vecSend, CEDCWalletTx& wtxNew, CEDCReserveKey& reservekey, CAmount& nFeeRet,
-                                int& nChangePosInOut, std::string& strFailReason, const CCoinControl* coinControl, bool sign)
+bool CEDCWallet::CreateTransaction(
+	const vector<CRecipient> & vecSend, 
+				CEDCWalletTx & wtxNew, 
+			  CEDCReserveKey & reservekey, 
+					 CAmount & nFeeRet,
+                         int & nChangePosInOut, 
+				 std::string & strFailReason, 
+		  const CCoinControl * coinControl, 
+						  bool sign)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -2417,7 +2501,10 @@ CAmount CEDCWallet::GetRequiredFee(unsigned int nTxBytes)
     return std::max(minTxFee.GetFee(nTxBytes), theApp.minRelayTxFee().GetFee(nTxBytes));
 }
 
-CAmount CEDCWallet::GetMinimumFee(unsigned int nTxBytes, unsigned int nConfirmTarget, const CEDCTxMemPool& pool)
+CAmount CEDCWallet::GetMinimumFee(
+			unsigned int nTxBytes, 
+			unsigned int nConfirmTarget, 
+   const CEDCTxMemPool & pool)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -2520,7 +2607,10 @@ DBErrors CEDCWallet::ZapWalletTx(std::vector<CEDCWalletTx>& vWtx)
 }
 
 
-bool CEDCWallet::SetAddressBook(const CTxDestination& address, const string& strName, const string& strPurpose)
+bool CEDCWallet::SetAddressBook(
+	const CTxDestination & address, 
+			const string & strName, 
+			const string & strPurpose)
 {
     bool fUpdated = false;
     {
@@ -2535,8 +2625,11 @@ bool CEDCWallet::SetAddressBook(const CTxDestination& address, const string& str
                              strPurpose, (fUpdated ? CT_UPDATED : CT_NEW) );
     if (!fFileBacked)
         return false;
-    if (!strPurpose.empty() && !CEDCWalletDB(strWalletFile).WritePurpose(CEDCBitcoinAddress(address).ToString(), strPurpose))
+
+    if (!strPurpose.empty() && 
+	!CEDCWalletDB(strWalletFile).WritePurpose(CEDCBitcoinAddress(address).ToString(), strPurpose))
         return false;
+
     return CEDCWalletDB(strWalletFile).WriteName(CEDCBitcoinAddress(address).ToString(), strName);
 }
 
@@ -3084,7 +3177,10 @@ void CEDCWallet::GetKeyBirthTimes(std::map<CKeyID, int64_t> &mapKeyBirth) const
         mapKeyBirth[it->first] = it->second->GetBlockTime() - 7200; // block times can be 2h off
 }
 
-bool CEDCWallet::AddDestData(const CTxDestination &dest, const std::string &key, const std::string &value)
+bool CEDCWallet::AddDestData(
+	 const CTxDestination & dest, 
+		const std::string & key, 
+		const std::string & value)
 {
     if (boost::get<CNoDestination>(&dest))
         return false;
@@ -3104,13 +3200,19 @@ bool CEDCWallet::EraseDestData(const CTxDestination &dest, const std::string &ke
     return CEDCWalletDB(strWalletFile).EraseDestData(CEDCBitcoinAddress(dest).ToString(), key);
 }
 
-bool CEDCWallet::LoadDestData(const CTxDestination &dest, const std::string &key, const std::string &value)
+bool CEDCWallet::LoadDestData(
+	const CTxDestination & dest, 
+	   const std::string & key, 
+	   const std::string & value)
 {
     mapAddressBook[dest].destdata.insert(std::make_pair(key, value));
     return true;
 }
 
-bool CEDCWallet::GetDestData(const CTxDestination &dest, const std::string &key, std::string *value) const
+bool CEDCWallet::GetDestData(
+	const CTxDestination & dest, 
+	   const std::string & key, 
+	         std::string * value) const
 {
     std::map<CTxDestination, CAddressBookData>::const_iterator i = mapAddressBook.find(dest);
     if(i != mapAddressBook.end())
@@ -3274,11 +3376,16 @@ bool CEDCWallet::InitLoadWallet()
         if (theApp.pruneMode() )
         {
             CBlockIndex *block = theApp.chainActive().Tip();
-            while (block && block->pprev && (block->pprev->nStatus & BLOCK_HAVE_DATA) && block->pprev->nTx > 0 && pindexRescan != block)
+            while (	block && 
+					block->pprev && 
+					(block->pprev->nStatus & BLOCK_HAVE_DATA) && 
+					block->pprev->nTx > 0 && 
+					pindexRescan != block)
                 block = block->pprev;
 
             if (pindexRescan != block)
-                return InitError(_("Prune: last wallet synchronisation goes beyond pruned data. You need to -reindex (download the whole blockchain again in case of pruned node)"));
+                return InitError(_("Prune: last wallet synchronisation goes beyond pruned data. "
+					"You need to -reindex (download the whole blockchain again in case of pruned node)"));
         }
 
         uiInterface.InitMessage(_("Rescanning..."));

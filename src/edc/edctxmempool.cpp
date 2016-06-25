@@ -21,10 +21,17 @@
 
 using namespace std;
 
-CEDCTxMemPoolEntry::CEDCTxMemPoolEntry(const CEDCTransaction& _tx, const CAmount& _nFee,
-                                 int64_t _nTime, double _entryPriority, unsigned int _entryHeight,
-                                 bool poolHasNoInputsOf, CAmount _inChainInputValue,
-                                 bool _spendsCoinbase, unsigned int _sigOps, LockPoints lp):
+CEDCTxMemPoolEntry::CEDCTxMemPoolEntry(
+	 const CEDCTransaction & _tx, 
+			 const CAmount & _nFee,
+					 int64_t _nTime, 
+					  double _entryPriority, 
+			    unsigned int _entryHeight,
+               			bool poolHasNoInputsOf, 
+					 CAmount _inChainInputValue,
+                        bool _spendsCoinbase, 
+				unsigned int _sigOps, 
+				  LockPoints lp):
     tx(_tx), nFee(_nFee), nTime(_nTime), entryPriority(_entryPriority), entryHeight(_entryHeight),
     hadNoDependencies(poolHasNoInputsOf), inChainInputValue(_inChainInputValue),
     spendsCoinbase(_spendsCoinbase), sigOpCount(_sigOps), lockPoints(lp)
@@ -77,7 +84,10 @@ void CEDCTxMemPoolEntry::UpdateLockPoints(const LockPoints& lp)
 // Update the given tx for any in-mempool descendants.
 // Assumes that setMemPoolChildren is correct for the given tx and all
 // descendants.
-void CEDCTxMemPool::UpdateForDescendants(txiter updateIt, cacheMap &cachedDescendants, const std::set<uint256> &setExclude)
+void CEDCTxMemPool::UpdateForDescendants(
+	    			txiter updateIt, 
+				cacheMap & cachedDescendants, 
+ const std::set<uint256> & setExclude)
 {
     setEntries stageEntries, setAllDescendants;
     stageEntries = GetMemPoolChildren(updateIt);
@@ -180,14 +190,14 @@ void CEDCTxMemPool::UpdateTransactionsFromBlock(const std::vector<uint256> &vHas
 }
 
 bool CEDCTxMemPool::CalculateMemPoolAncestors(
-	const CEDCTxMemPoolEntry &entry, 
-	setEntries &setAncestors, 
-	uint64_t limitAncestorCount, 
-	uint64_t limitAncestorSize, 
-	uint64_t limitDescendantCount, 
-	uint64_t limitDescendantSize, 
-	std::string &errString, 
-	bool fSearchForParents /* = true */) const
+	const CEDCTxMemPoolEntry & entry, 
+				  setEntries & setAncestors, 
+					  uint64_t limitAncestorCount, 
+					  uint64_t limitAncestorSize, 
+					  uint64_t limitDescendantCount, 
+					  uint64_t limitDescendantSize, 
+				 std::string & errString, 
+						  bool fSearchForParents /* = true */) const
 {
     setEntries parentHashes;
     const CEDCTransaction &tx = entry.GetTx();
@@ -266,7 +276,10 @@ bool CEDCTxMemPool::CalculateMemPoolAncestors(
     return true;
 }
 
-void CEDCTxMemPool::UpdateAncestorsOf(bool add, txiter it, setEntries &setAncestors)
+void CEDCTxMemPool::UpdateAncestorsOf(
+			bool add, 
+		  txiter it, 
+	setEntries & setAncestors)
 {
     setEntries parentIters = GetMemPoolParents(it);
     // add or remove this tx as a child of each parent
@@ -370,7 +383,10 @@ void CEDCTxMemPool::UpdateForRemoveFromMempool(const setEntries &entriesToRemove
     }
 }
 
-void CEDCTxMemPoolEntry::UpdateDescendantState(int64_t modifySize, CAmount modifyFee, int64_t modifyCount)
+void CEDCTxMemPoolEntry::UpdateDescendantState(
+	int64_t modifySize, 
+	CAmount modifyFee, 
+	int64_t modifyCount)
 {
     nSizeWithDescendants += modifySize;
     assert(int64_t(nSizeWithDescendants) > 0);
@@ -379,7 +395,11 @@ void CEDCTxMemPoolEntry::UpdateDescendantState(int64_t modifySize, CAmount modif
     assert(int64_t(nCountWithDescendants) > 0);
 }
 
-void CEDCTxMemPoolEntry::UpdateAncestorState(int64_t modifySize, CAmount modifyFee, int64_t modifyCount, int modifySigOps)
+void CEDCTxMemPoolEntry::UpdateAncestorState(
+	int64_t modifySize, 
+	CAmount modifyFee, 
+	int64_t modifyCount, 
+		int modifySigOps)
 {
     nSizeWithAncestors += modifySize;
     assert(int64_t(nSizeWithAncestors) > 0);
@@ -435,7 +455,11 @@ void CEDCTxMemPool::AddTransactionsUpdated(unsigned int n)
     nTransactionsUpdated += n;
 }
 
-bool CEDCTxMemPool::addUnchecked(const uint256& hash, const CEDCTxMemPoolEntry &entry, setEntries &setAncestors, bool fCurrentEstimate)
+bool CEDCTxMemPool::addUnchecked(
+			   const uint256 & hash, 
+	const CEDCTxMemPoolEntry & entry, 
+				  setEntries & setAncestors, 
+						  bool fCurrentEstimate)
 {
     // Add to memory pool without checking anything.
     // Used by main.cpp AcceptToMemoryPool(), which DOES do
@@ -583,7 +607,10 @@ void CEDCTxMemPool::removeRecursive(const CEDCTransaction &origTx, std::list<CED
     }
 }
 
-void CEDCTxMemPool::removeForReorg(const CEDCCoinsViewCache *pcoins, unsigned int nMemPoolHeight, int flags)
+void CEDCTxMemPool::removeForReorg(
+	const CEDCCoinsViewCache * pcoins, 
+				  unsigned int nMemPoolHeight, 
+						   int flags)
 {
     // Remove transactions spending a coinbase which are now immature and no-longer-final transactions
     LOCK(cs);
@@ -651,8 +678,11 @@ void CEDCTxMemPool::removeConflicts(const CEDCTransaction &tx, std::list<CEDCTra
 /**
  * Called when a block is connected. Removes from mempool and updates the miner fee estimator.
  */
-void CEDCTxMemPool::removeForBlock(const std::vector<CEDCTransaction>& vtx, unsigned int nBlockHeight,
-                                std::list<CEDCTransaction>& conflicts, bool fCurrentEstimate)
+void CEDCTxMemPool::removeForBlock(
+	const std::vector<CEDCTransaction> & vtx, 
+							unsigned int nBlockHeight,
+            std::list<CEDCTransaction> & conflicts, 
+									bool fCurrentEstimate)
 {
     LOCK(cs);
     std::vector<CEDCTxMemPoolEntry> entries;
@@ -963,7 +993,11 @@ CEDCTxMemPool::ReadFeeEstimates(CAutoFile& filein)
     return true;
 }
 
-void CEDCTxMemPool::PrioritiseTransaction(const uint256 hash, const string strHash, double dPriorityDelta, const CAmount& nFeeDelta)
+void CEDCTxMemPool::PrioritiseTransaction(
+		  const uint256 hash, 
+		   const string strHash, 
+				 double dPriorityDelta, 
+		const CAmount & nFeeDelta)
 {
     {
         LOCK(cs);
@@ -989,7 +1023,10 @@ void CEDCTxMemPool::PrioritiseTransaction(const uint256 hash, const string strHa
     edcLogPrintf("PrioritiseTransaction: %s priority += %f, fee += %d\n", strHash, dPriorityDelta, FormatMoney(nFeeDelta));
 }
 
-void CEDCTxMemPool::ApplyDeltas(const uint256 hash, double &dPriorityDelta, CAmount &nFeeDelta) const
+void CEDCTxMemPool::ApplyDeltas(
+	const uint256 hash, 
+		 double & dPriorityDelta, 
+		CAmount & nFeeDelta) const
 {
     LOCK(cs);
     std::map<uint256, std::pair<double, CAmount> >::const_iterator pos = mapDeltas.find(hash);
@@ -1014,7 +1051,9 @@ bool CEDCTxMemPool::HasNoInputsOf(const CEDCTransaction &tx) const
     return true;
 }
 
-CEDCCoinsViewMemPool::CEDCCoinsViewMemPool(CEDCCoinsView *baseIn, const CEDCTxMemPool &mempoolIn) : CEDCCoinsViewBacked(baseIn), mempool(mempoolIn) 
+CEDCCoinsViewMemPool::CEDCCoinsViewMemPool(
+		  CEDCCoinsView * baseIn, 
+	const CEDCTxMemPool & mempoolIn) : CEDCCoinsViewBacked(baseIn), mempool(mempoolIn) 
 { }
 
 bool CEDCCoinsViewMemPool::GetCoins(const uint256 &txid, CEDCCoins &coins) const
@@ -1073,7 +1112,10 @@ int CEDCTxMemPool::Expire(int64_t time)
     return stage.size();
 }
 
-bool CEDCTxMemPool::addUnchecked(const uint256&hash, const CEDCTxMemPoolEntry &entry, bool fCurrentEstimate)
+bool CEDCTxMemPool::addUnchecked(
+			   const uint256 & hash, 
+	const CEDCTxMemPoolEntry & entry, 
+						  bool fCurrentEstimate)
 {
     LOCK(cs);
     setEntries setAncestors;
@@ -1083,7 +1125,10 @@ bool CEDCTxMemPool::addUnchecked(const uint256&hash, const CEDCTxMemPoolEntry &e
     return addUnchecked(hash, entry, setAncestors, fCurrentEstimate);
 }
 
-void CEDCTxMemPool::UpdateChild(txiter entry, txiter child, bool add)
+void CEDCTxMemPool::UpdateChild(
+	txiter entry, 
+	txiter child, 
+	  bool add)
 {
     setEntries s;
     if (add && mapLinks[entry].children.insert(child).second) 
@@ -1096,7 +1141,10 @@ void CEDCTxMemPool::UpdateChild(txiter entry, txiter child, bool add)
     }
 }
 
-void CEDCTxMemPool::UpdateParent(txiter entry, txiter parent, bool add)
+void CEDCTxMemPool::UpdateParent(
+	txiter entry, 
+	txiter parent, 
+	  bool add)
 {
     setEntries s;
     if (add && mapLinks[entry].parents.insert(parent).second) 
@@ -1163,8 +1211,8 @@ void CEDCTxMemPool::trackPackageRemoved(const CFeeRate& rate)
 }
 
 void CEDCTxMemPool::TrimToSize(
-	size_t sizelimit, 
-	std::vector<uint256>* pvNoSpendsRemaining) 
+					size_t sizelimit, 
+	std::vector<uint256> * pvNoSpendsRemaining) 
 {
     LOCK(cs);
 

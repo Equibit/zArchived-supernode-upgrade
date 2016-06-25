@@ -453,10 +453,6 @@ void CEDCNode::PushVersion()
 		!params.blocksonly);
 }
 
-
-
-
-
 banmap_t CEDCNode::setBanned;
 CCriticalSection CEDCNode::cs_setBanned;
 bool CEDCNode::setBannedIsDirty;
@@ -501,13 +497,21 @@ bool CEDCNode::IsBanned(CSubNet subnet)
     return fResult;
 }
 
-void CEDCNode::Ban(const CNetAddr& addr, const BanReason &banReason, int64_t bantimeoffset, bool sinceUnixEpoch) 
+void CEDCNode::Ban(
+	 const CNetAddr & addr, 
+	const BanReason & banReason, 
+			  int64_t bantimeoffset, 
+				 bool sinceUnixEpoch) 
 {
     CSubNet subNet(addr);
     Ban(subNet, banReason, bantimeoffset, sinceUnixEpoch);
 }
 
-void CEDCNode::Ban(const CSubNet& subNet, const BanReason &banReason, int64_t bantimeoffset, bool sinceUnixEpoch) 
+void CEDCNode::Ban(
+	  const CSubNet & subNet, 
+	const BanReason & banReason, 
+			  int64_t bantimeoffset, 
+				 bool sinceUnixEpoch) 
 {
     CBanEntry banEntry(GetTime());
     banEntry.banReason = banReason;
@@ -1799,7 +1803,10 @@ void edcThreadMessageHandler()
     }
 }
 
-bool edcBindListenPort(const CService &addrBind, string& strError, bool fWhitelisted)
+bool edcBindListenPort(
+	const CService & addrBind, 
+			string & strError, 
+				bool fWhitelisted)
 {
     strError = "";
     int nOne = 1;
@@ -2412,7 +2419,11 @@ unsigned int edcSendBufferSize()
 	return 1000*params.maxsendbuffer; 
 }
 
-CEDCNode::CEDCNode(SOCKET hSocketIn, const CAddress& addrIn, const std::string& addrNameIn, bool fInboundIn) :
+CEDCNode::CEDCNode(
+			     SOCKET hSocketIn, 
+	   const CAddress & addrIn, 
+	const std::string & addrNameIn, 
+				   bool fInboundIn) :
     ssSend(SER_NETWORK, INIT_PROTO_VERSION),
     addrKnown(5000, 0.001),
     filterInventoryKnown(50000, 0.000001)

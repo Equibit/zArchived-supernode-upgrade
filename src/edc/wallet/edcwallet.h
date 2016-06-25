@@ -46,6 +46,7 @@ class CEDCTxMemPool;
 class CEDCWalletTx;
 class CEDCBlock;
 
+
 /** A transaction with a merkle branch linking it to the block chain. */
 class CEDCMerkleTx : public CEDCTransaction
 {
@@ -112,8 +113,10 @@ public:
 		return GetDepthInMainChain(pindexRet) > 0; 
 	}
     int GetBlocksToMaturity() const;
+
     /** Pass this transaction to the mempool. Fails if absolute fee exceeds absurd fee. */
     bool AcceptToMemoryPool(bool fLimitFree, const CAmount nAbsurdFee);
+
     bool hashUnset() const 
 	{ 
 		return (hashBlock.IsNull() || hashBlock == ABANDON_HASH); 
@@ -135,7 +138,7 @@ public:
 class CEDCWalletTx : public CEDCMerkleTx
 {
 private:
-    const CEDCWallet* pwallet;
+    const CEDCWallet * pwallet;
 
 public:
     mapValue_t mapValue;
@@ -292,10 +295,16 @@ public:
     CAmount GetChange() const;
 
     void GetAmounts(std::list<COutputEntry>& listReceived,
-                    std::list<COutputEntry>& listSent, CAmount& nFee, std::string& strSentAccount, const isminefilter& filter) const;
+                    std::list<COutputEntry>& listSent, 
+					CAmount& nFee, 
+					std::string& strSentAccount, 
+					const isminefilter& filter) const;
 
-    void GetAccountAmounts(const std::string& strAccount, CAmount& nReceived,
-                           CAmount& nSent, CAmount& nFee, const isminefilter& filter) const;
+    void GetAccountAmounts(	const std::string& strAccount, 
+							CAmount& nReceived,
+                           	CAmount& nSent, 
+							CAmount& nFee, 
+							const isminefilter& filter) const;
 
     bool IsFromMe(const isminefilter& filter) const
     {
@@ -325,7 +334,7 @@ public:
     bool fSpendable;
     bool fSolvable;
 
-    CEDCOutput(const CEDCWalletTx *txIn, int iIn, int nDepthIn, bool fSpendableIn, bool fSolvableIn)
+    CEDCOutput(const CEDCWalletTx * txIn, int iIn, int nDepthIn, bool fSpendableIn, bool fSolvableIn)
     {
         tx = txIn; i = iIn; nDepth = nDepthIn; fSpendable = fSpendableIn; fSolvable = fSolvableIn;
     }
@@ -345,7 +354,12 @@ private:
      * all coins from coinControl are selected; Never select unconfirmed coins
      * if they are not ours
      */
-    bool SelectCoins(const std::vector<CEDCOutput>& vAvailableCoins, const CAmount& nTargetValue, std::set<std::pair<const CEDCWalletTx*,unsigned int> >& setCoinsRet, CAmount& nValueRet, const CCoinControl *coinControl = NULL) const;
+    bool SelectCoins(
+		const std::vector<CEDCOutput>& vAvailableCoins, 
+		const CAmount & nTargetValue, 
+		std::set<std::pair<const CEDCWalletTx*,unsigned int> >& setCoinsRet, 
+		CAmount& nValueRet, 
+		const CCoinControl *coinControl = NULL) const;
 
     CEDCWalletDB *pwalletdbEncryption;
 
@@ -365,6 +379,7 @@ private:
      * mutated transactions where the mutant gets mined).
      */
     typedef std::multimap<COutPoint, uint256> TxSpends;
+
     TxSpends mapTxSpends;
     void AddToSpends(const COutPoint& outpoint, const uint256& wtxid);
     void AddToSpends(const uint256& wtxid);
@@ -448,12 +463,20 @@ public:
     const CEDCWalletTx* GetWalletTx(const uint256& hash) const;
 
     //! check whether we are allowed to upgrade (or already support) to the named feature
-    bool CanSupportFeature(enum WalletFeature wf) { AssertLockHeld(cs_wallet); return nWalletMaxVersion >= wf; }
+    bool CanSupportFeature(enum WalletFeature wf) 
+	{ 
+		AssertLockHeld(cs_wallet); 
+		return nWalletMaxVersion >= wf; 
+	}
 
     /**
      * populate vCoins with vector of available CEDCOutputs.
      */
-    void AvailableCoins(std::vector<CEDCOutput>& vCoins, bool fOnlyConfirmed=true, const CCoinControl *coinControl = NULL, bool fIncludeZeroValue=false) const;
+    void AvailableCoins(
+		std::vector<CEDCOutput>& vCoins, 
+		bool fOnlyConfirmed=true, 
+		const CCoinControl *coinControl = NULL, 
+		bool fIncludeZeroValue=false) const;
 
     /**
      * Shuffle and select coins until nTargetValue is reached while avoiding
@@ -461,7 +484,13 @@ public:
      * completion the coin set and corresponding actual target value is
      * assembled
      */
-    bool SelectCoinsMinConf(const CAmount& nTargetValue, int nConfMine, int nConfTheirs, std::vector<CEDCOutput> vCoins, std::set<std::pair<const CEDCWalletTx*,unsigned int> >& setCoinsRet, CAmount& nValueRet) const;
+    bool SelectCoinsMinConf(
+		const CAmount& nTargetValue, 
+		int nConfMine, 
+		int nConfTheirs, 
+		std::vector<CEDCOutput> vCoins, 
+		std::set<std::pair<const CEDCWalletTx*,unsigned int> >& setCoinsRet, 
+		CAmount& nValueRet) const;
 
     bool IsSpent(const uint256& hash, unsigned int n) const;
 
@@ -476,34 +505,52 @@ public:
      * Generate a new key
      */
     CPubKey GenerateNewKey();
+
     //! Adds a key to the store, and saves it to disk.
     bool AddKeyPubKey(const CKey& key, const CPubKey &pubkey);
+
     //! Adds a key to the store, without saving it to disk (used by LoadWallet)
-    bool LoadKey(const CKey& key, const CPubKey &pubkey) { return CCryptoKeyStore::AddKeyPubKey(key, pubkey); }
+    bool LoadKey(const CKey& key, const CPubKey &pubkey) 
+	{ 
+		return CCryptoKeyStore::AddKeyPubKey(key, pubkey); 
+	}
+
     //! Load metadata (used by LoadWallet)
     bool LoadKeyMetadata(const CPubKey &pubkey, const CKeyMetadata &metadata);
 
-    bool LoadMinVersion(int nVersion) { AssertLockHeld(cs_wallet); nWalletVersion = nVersion; nWalletMaxVersion = std::max(nWalletMaxVersion, nVersion); return true; }
+    bool LoadMinVersion(int nVersion) 
+	{ 
+		AssertLockHeld(cs_wallet); 
+		nWalletVersion = nVersion; 
+		nWalletMaxVersion = std::max(nWalletMaxVersion, nVersion); 
+		return true; 
+	}
 
     //! Adds an encrypted key to the store, and saves it to disk.
     bool AddCryptedKey(const CPubKey &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret);
+
     //! Adds an encrypted key to the store, without saving it to disk (used by LoadWallet)
     bool LoadCryptedKey(const CPubKey &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret);
+
     bool AddCScript(const CScript& redeemScript);
     bool LoadCScript(const CScript& redeemScript);
 
     //! Adds a destination data tuple to the store, and saves it to disk
     bool AddDestData(const CTxDestination &dest, const std::string &key, const std::string &value);
+
     //! Erases a destination data tuple in the store and on disk
     bool EraseDestData(const CTxDestination &dest, const std::string &key);
+
     //! Adds a destination data tuple to the store, without saving it to disk
     bool LoadDestData(const CTxDestination &dest, const std::string &key, const std::string &value);
+
     //! Look up a destination data tuple in the store, return true if found false otherwise
     bool GetDestData(const CTxDestination &dest, const std::string &key, std::string *value) const;
 
     //! Adds a watch-only address to the store, and saves it to disk.
     bool AddWatchOnly(const CScript &dest);
     bool RemoveWatchOnly(const CScript &dest);
+
     //! Adds a watch-only address to the store, without saving it to disk (used by LoadWallet)
     bool LoadWatchOnly(const CScript &dest);
 
@@ -538,26 +585,46 @@ public:
      * Insert additional inputs into the transaction by
      * calling CreateTransaction();
      */
-    bool FundTransaction(CEDCMutableTransaction& tx, CAmount& nFeeRet, int& nChangePosInOut, std::string& strFailReason, bool includeWatching, bool lockUnspents, const CTxDestination& destChange = CNoDestination());
+    bool FundTransaction(
+		CEDCMutableTransaction & tx, 
+					   CAmount & nFeeRet, 
+						   int & nChangePosInOut, 
+				   std::string & strFailReason, 
+							bool includeWatching, 
+							bool lockUnspents, 
+		  const CTxDestination & destChange = CNoDestination());
 
     /**
      * Create a new transaction paying the recipients with a set of coins
      * selected by SelectCoins(); Also create the change output, when needed
      * @note passing nChangePosInOut as -1 will result in setting a random position
      */
-    bool CreateTransaction(const std::vector<CRecipient>& vecSend, CEDCWalletTx& wtxNew, CEDCReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosInOut,
-                           std::string& strFailReason, const CCoinControl *coinControl = NULL, bool sign = true);
+    bool CreateTransaction(
+		const std::vector<CRecipient> & vecSend, 
+						 CEDCWalletTx & wtxNew, 
+					   CEDCReserveKey & reservekey, 
+							  CAmount & nFeeRet, 
+								  int & nChangePosInOut,
+        				  std::string & strFailReason, 
+				   const CCoinControl * coinControl = NULL, 
+								   bool sign = true);
+
     bool CommitTransaction(CEDCWalletTx& wtxNew, CEDCReserveKey& reservekey);
 
     bool AddAccountingEntry(const CAccountingEntry&, CEDCWalletDB & pwalletdb);
 
     static CFeeRate minTxFee;
     static CFeeRate fallbackFee;
+
     /**
      * Estimate the minimum fee considering user set parameters
      * and the required fee
      */
-    static CAmount GetMinimumFee(unsigned int nTxBytes, unsigned int nConfirmTarget, const CEDCTxMemPool& pool);
+    static CAmount GetMinimumFee(
+			 unsigned int nTxBytes, 
+			 unsigned int nConfirmTarget, 
+	const CEDCTxMemPool & pool);
+
     /**
      * Return the minimum required fee taking into account the
      * floating relay fee and user set minimum transaction fee
@@ -627,10 +694,12 @@ public:
 
     bool SetDefaultKey(const CPubKey &vchPubKey);
 
-    //! signify that a particular wallet feature is now used. this may change nWalletVersion and nWalletMaxVersion if those are lower
+    //! signify that a particular wallet feature is now used. this may change nWalletVersion and 
+	//  nWalletMaxVersion if those are lower
     bool SetMinVersion(enum WalletFeature, CEDCWalletDB * pwalletdbIn = NULL, bool fExplicit = false);
 
-    //! change which version we're allowed to upgrade to (note that this does not immediately imply upgrading to that format)
+    //! change which version we're allowed to upgrade to (note that this does not immediately 
+	//  imply upgrading to that format)
     bool SetMaxVersion(int nVersion);
 
     //! get the current wallet format (the oldest client version guaranteed to understand this wallet)
@@ -669,16 +738,19 @@ public:
 
     /** Inquire whether this wallet broadcasts transactions. */
     bool GetBroadcastTransactions() const { return fBroadcastTransactions; }
+
     /** Set whether this wallet broadcasts transactions. */
     void SetBroadcastTransactions(bool broadcast) { fBroadcastTransactions = broadcast; }
 
-    /* Mark a transaction (and it in-wallet descendants) as abandoned so its inputs may be respent. */
+    /* Mark a transaction (and it in-wallet descendants) as abandoned so its 
+       inputs may be respent. */
     bool AbandonTransaction(const uint256& hashTx);
 
     /* Returns the wallets help message */
     static std::string GetWalletHelpString(bool showDebug);
 
-    /* Initializes the wallet, returns a new CEDCWallet instance or a null pointer in case of an error */
+    /* Initializes the wallet, returns a new CEDCWallet instance or a null pointer 
+	   in case of an error */
     static bool InitLoadWallet();
 
     /* Wallets parameter interaction */

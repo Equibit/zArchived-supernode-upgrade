@@ -14,7 +14,15 @@ UniValue messageMany( const UniValue & params, bool fHelp )
 {
 	if( fHelp )
 		throw std::runtime_error(
-			"eb_messagemany"
+			"eb_messagemany ( \"message\" \"{ \"address\",...}\" )\n"
+			"\nArguments:\n"
+			"1. \"message\"   (string) The message to be sent to the multiple addresses\n"
+			"2. \"addresses\" (string) A json object with addresses\n"
+			"{\n"
+			"\"address\", ...\n"
+			"}\n"
+			+ HelpExampleCli( "eb_messagemany", "\"A dividend of 0.032 bitcoins will be issued on March 15th\" \"{\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\", \"1353tsE8YMTA4EuV7dgUXGjNFf9KpVvKHz\" }\" " )
+			+ HelpExampleRpc( "eb_messagemany", "\"A dividend of 0.032 bitcoins will be issued on March 15th\" \"{\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\", \"1353tsE8YMTA4EuV7dgUXGjNFf9KpVvKHz\" }\" " )
 		);
 
 	return NullUniValue;
@@ -24,7 +32,12 @@ UniValue message( const UniValue & params, bool fHelp )
 {
 	if( fHelp )
 		throw std::runtime_error(
-			"eb_message"
+			"eb_message ( \"message\" \"address\" )\n"
+			"\nArguments:\n"
+			"1. \"message\"   (string) The message to be sent to the multiple addresses\n"
+			"2. \"address\"   (string) The destination address\n"
+			+ HelpExampleCli( "eb_message", "\"A dividend of 0.032 bitcoins will be issued on March 15th\" \"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\" " )
+			+ HelpExampleRpc( "eb_message", "\"A dividend of 0.032 bitcoins will be issued on March 15th\" \"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\"" )
 		);
 
 	return NullUniValue;

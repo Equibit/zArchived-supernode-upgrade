@@ -52,7 +52,10 @@ void edcUnregisterAllValidationInterfaces()
     g_signals.UpdatedBlockTip.disconnect_all_slots();
 }
 
-void SyncWithWallets(const CEDCTransaction &tx, const CBlockIndex *pindex, const CEDCBlock *pblock) 
+void SyncWithWallets(
+	const CEDCTransaction & tx, 
+		const CBlockIndex * pindex, 
+		  const CEDCBlock * pblock) 
 {
     g_signals.SyncTransaction(tx, pindex, pblock);
 }

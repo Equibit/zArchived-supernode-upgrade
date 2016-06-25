@@ -95,7 +95,10 @@ public:
 
 }
 
-bool EDCCachingTransactionSignatureChecker::VerifySignature(const std::vector<unsigned char>& vchSig, const CPubKey& pubkey, const uint256& sighash) const
+bool EDCCachingTransactionSignatureChecker::VerifySignature(
+	const std::vector<unsigned char> & vchSig, 
+					   const CPubKey & pubkey, 
+					   const uint256 & sighash) const
 {
     static CSignatureCache signatureCache;
 

@@ -365,7 +365,10 @@ bool CEDCCoinsViewCache::HaveInputs(const CEDCTransaction& tx) const
     return true;
 }
 
-double CEDCCoinsViewCache::GetPriority(const CEDCTransaction &tx, int nHeight, CAmount &inChainInputValue) const
+double CEDCCoinsViewCache::GetPriority(
+	const CEDCTransaction & tx, 
+						int nHeight, 
+				  CAmount & inChainInputValue) const
 {
     inChainInputValue = 0;
     if (tx.IsCoinBase())
@@ -387,7 +390,10 @@ double CEDCCoinsViewCache::GetPriority(const CEDCTransaction &tx, int nHeight, C
     return tx.ComputePriority(dResult);
 }
 
-CEDCCoinsModifier::CEDCCoinsModifier(CEDCCoinsViewCache& cache_, CEDCCoinsMap::iterator it_, size_t usage) : cache(cache_), it(it_), cachedCoinUsage(usage) 
+CEDCCoinsModifier::CEDCCoinsModifier(
+	  CEDCCoinsViewCache & cache_, 
+	CEDCCoinsMap::iterator it_, 
+					size_t usage) : cache(cache_), it(it_), cachedCoinUsage(usage) 
 {
     assert(!cache.hasModifier);
     cache.hasModifier = true;

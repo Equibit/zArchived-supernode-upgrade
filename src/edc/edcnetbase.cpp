@@ -61,10 +61,10 @@ const int SOCKS5_RECV_TIMEOUT = 20 * 1000;
  * @note This function requires that hSocket is in non-blocking mode.
  */
 bool static InterruptibleRecv(
-	char* data, 
-	size_t len, 
-	int timeout, 
-	SOCKET& hSocket )
+	  char * data, 
+	  size_t len, 
+		 int timeout, 
+	SOCKET & hSocket )
 {
     int64_t curTime = GetTimeMillis();
     int64_t endTime = curTime + timeout;
@@ -130,10 +130,10 @@ struct ProxyCredentials
 
 /** Connect using SOCKS5 (as described in RFC1928) */
 bool Socks5(
-	const std::string& strDest, 
-	int port, 
-	const ProxyCredentials *auth, 
-	SOCKET& hSocket)
+		 const std::string & strDest, 
+						 int port, 
+	const ProxyCredentials * auth, 
+					SOCKET & hSocket)
 {
     LogPrintf("SOCKS5 connecting %s\n", strDest);
 
@@ -316,9 +316,9 @@ bool Socks5(
 }
 
 bool ConnectSocketDirectly(
-	const CService &addrConnect, 
-	SOCKET& hSocketRet, 
-	int nTimeout)
+	const CService & addrConnect, 
+			SOCKET & hSocketRet, 
+				 int nTimeout)
 {
     hSocketRet = INVALID_SOCKET;
 
@@ -411,12 +411,12 @@ bool ConnectSocketDirectly(
 }
 
 bool ConnectThroughProxy(
-	const proxyType & proxy, 
+	  const proxyType & proxy, 
 	const std::string & strDest, 
-	int port, 
-	SOCKET & hSocketRet, 
-	int nTimeout, 
-	bool * outProxyConnectionFailed)
+					int port, 
+			   SOCKET & hSocketRet, 
+					int nTimeout, 
+				 bool * outProxyConnectionFailed)
 {
     SOCKET hSocket = INVALID_SOCKET;
 
@@ -507,9 +507,9 @@ bool edcIsProxy(const CNetAddr &addr)
 
 bool edcConnectSocket(
 	const CService & addrDest, 
-	SOCKET & hSocketRet, 
-	int nTimeout, 
-	bool * outProxyConnectionFailed)
+			SOCKET & hSocketRet, 
+				 int nTimeout, 
+			  bool * outProxyConnectionFailed)
 {
     proxyType proxy;
     if (outProxyConnectionFailed)
@@ -522,12 +522,12 @@ bool edcConnectSocket(
 }
 
 bool edcConnectSocketByName(
-	CService & addr, 
-	SOCKET & hSocketRet, 
+	  CService & addr, 
+		SOCKET & hSocketRet, 
 	const char * pszDest, 
-	int portDefault, 
-	int nTimeout, 
-	bool * outProxyConnectionFailed)
+			 int portDefault, 
+			 int nTimeout, 
+		  bool * outProxyConnectionFailed)
 {
 	EDCparams & params = EDCparams::singleton();
 

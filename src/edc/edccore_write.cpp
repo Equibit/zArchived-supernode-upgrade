@@ -85,8 +85,9 @@ string EncodeHexTx(const CEDCTransaction& tx)
 }
 
 void edcScriptPubKeyToUniv(
-	const CScript& scriptPubKey,
-         UniValue& out, bool fIncludeHex)
+	const CScript & scriptPubKey,
+         UniValue & out, 
+			   bool fIncludeHex)
 {
     txnouttype type;
     vector<CTxDestination> addresses;
@@ -111,7 +112,10 @@ void edcScriptPubKeyToUniv(
     out.pushKV("addresses", a);
 }
 
-void TxToUniv(const CEDCTransaction& tx, const uint256& hashBlock, UniValue& entry)
+void TxToUniv(
+	const CEDCTransaction & tx, 
+			const uint256 & hashBlock, 
+				 UniValue & entry)
 {
     entry.pushKV("txid", tx.GetHash().GetHex());
     entry.pushKV("version", tx.nVersion);

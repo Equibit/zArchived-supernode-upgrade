@@ -151,7 +151,7 @@ void CEDCDBEnv::MakeMock()
 
 CEDCDBEnv::VerifyResult CEDCDBEnv::Verify(
 	const std::string & strFile, 
-	bool (*recoverFunc)(CEDCDBEnv& dbenv, const std::string& strFile))
+				bool (* recoverFunc)(CEDCDBEnv& dbenv, const std::string& strFile))
 {
     LOCK(cs_db);
     assert(mapFileUseCount.count(strFile) == 0);
@@ -175,8 +175,8 @@ static const char *HEADER_END = "HEADER=END";
 static const char *DATA_END = "DATA=END";
 
 bool CEDCDBEnv::Salvage(
-	const std::string & strFile, 
-	bool fAggressive, 
+					 const std::string & strFile, 
+									bool fAggressive, 
 	std::vector<CEDCDBEnv::KeyValPair> & vResult)
 {
     LOCK(cs_db);
@@ -255,9 +255,9 @@ void CEDCDBEnv::CheckpointLSN(const std::string& strFile)
 
 
 CEDCDB::CEDCDB(
-	const std::string & strFilename, 
-	const char * pszMode, 
-	bool fFlushOnCloseIn) : pdb(NULL), activeTxn(NULL)
+	 const std::string & strFilename, 
+			const char * pszMode, 
+					bool fFlushOnCloseIn) : pdb(NULL), activeTxn(NULL)
 {
 	EDCapp & theApp = EDCapp::singleton();
 

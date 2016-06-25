@@ -97,7 +97,10 @@ UniValue edcblockheaderToJSON(const CBlockIndex* blockindex)
     return result;
 }
 
-UniValue blockToJSON(const CEDCBlock& block, const CBlockIndex* blockindex, bool txDetails = false)
+UniValue blockToJSON(
+	  const CEDCBlock & block, 
+	const CBlockIndex * blockindex, 
+				   bool txDetails = false)
 {
 	EDCapp & theApp = EDCapp::singleton();
 

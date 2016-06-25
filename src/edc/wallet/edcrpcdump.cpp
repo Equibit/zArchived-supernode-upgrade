@@ -171,7 +171,11 @@ UniValue edcimportprivkey(const UniValue& params, bool fHelp)
 }
 
 void edcImportAddress(const CEDCBitcoinAddress& address, const string& strLabel);
-void edcImportScript(const CScript& script, const string& strLabel, bool isRedeemScript)
+
+void edcImportScript(
+	const CScript & script, 
+	 const string & strLabel, 
+			   bool isRedeemScript)
 {
 	EDCapp & theApp = EDCapp::singleton();
 

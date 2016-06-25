@@ -58,7 +58,9 @@ public:
 
 int64_t edcGetAdjustedTime();
 
-CEDCBlockTemplate* CreateNewEDCBlock(const CEDCChainParams& chainparams, const CScript& scriptPubKeyIn)
+CEDCBlockTemplate* CreateNewEDCBlock(
+	const CEDCChainParams & chainparams, 
+			const CScript & scriptPubKeyIn)
 {
     // Create new block
     std::unique_ptr<CEDCBlockTemplate> pblocktemplate(new CEDCBlockTemplate());
@@ -307,7 +309,10 @@ CEDCBlockTemplate* CreateNewEDCBlock(const CEDCChainParams& chainparams, const C
     return pblocktemplate.release();
 }
 
-void IncrementExtraNonce(CEDCBlock* pblock, const CBlockIndex* pindexPrev, unsigned int& nExtraNonce)
+void IncrementExtraNonce(
+			CEDCBlock * pblock, 
+	const CBlockIndex * pindexPrev, 
+		 unsigned int & nExtraNonce)
 {
     // Update nExtraNonce
     static uint256 hashPrevBlock;

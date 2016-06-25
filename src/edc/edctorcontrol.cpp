@@ -217,7 +217,10 @@ void TorControlConnection::readcb(struct bufferevent *bev, void *ctx)
     }
 }
 
-void TorControlConnection::eventcb(struct bufferevent *bev, short what, void *ctx)
+void TorControlConnection::eventcb(
+	struct bufferevent * bev, 
+				   short what, 
+				  void * ctx)
 {
     TorControlConnection *self = (TorControlConnection*)ctx;
     if (what & BEV_EVENT_CONNECTED) 
@@ -237,7 +240,10 @@ void TorControlConnection::eventcb(struct bufferevent *bev, short what, void *ct
     }
 }
 
-bool TorControlConnection::Connect(const std::string &target, const ConnectionCB& connected, const ConnectionCB& disconnected)
+bool TorControlConnection::Connect(
+	 const std::string & target, 
+	const ConnectionCB & connected, 
+	const ConnectionCB & disconnected)
 {
     if (b_conn)
         Disconnect();
@@ -391,7 +397,9 @@ std::map<std::string,std::string> ParseTorReplyMapping(const std::string &s)
  * @param maxsize Puts a maximum size limit on the file that is read. If the file is larger than this, truncated data
  *         (with len > maxsize) will be returned.
  */
-std::pair<bool,std::string> ReadBinaryFile(const std::string &filename, size_t maxsize=std::numeric_limits<size_t>::max())
+std::pair<bool,std::string> ReadBinaryFile(
+	const std::string & filename, 
+				 size_t maxsize=std::numeric_limits<size_t>::max())
 {
     FILE *f = fopen(filename.c_str(), "rb");
     if (f == NULL)
@@ -616,7 +624,11 @@ void TorController::auth_cb(
  *                  CookieString | ClientNonce | ServerNonce)
  *
  */
-static std::vector<uint8_t> ComputeResponse(const std::string &key, const std::vector<uint8_t> &cookie,  const std::vector<uint8_t> &clientNonce, const std::vector<uint8_t> &serverNonce)
+static std::vector<uint8_t> ComputeResponse(
+			 const std::string & key, 
+	const std::vector<uint8_t> & cookie,  
+	const std::vector<uint8_t> & clientNonce, 
+	const std::vector<uint8_t> & serverNonce)
 {
     CHMAC_SHA256 computeHash((const uint8_t*)key.data(), key.size());
 
@@ -823,7 +835,10 @@ std::string TorController::GetPrivateKeyFile()
     return (edcGetDataDir() / "onion_private_key").string();
 }
 
-void TorController::reconnect_cb(evutil_socket_t fd, short what, void *arg)
+void TorController::reconnect_cb(
+	evutil_socket_t fd, 
+			  short what, 
+			 void * arg)
 {
     TorController *self = (TorController*)arg;
     self->Reconnect();

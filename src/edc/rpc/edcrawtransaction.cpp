@@ -39,7 +39,10 @@
 
 using namespace std;
 
-void edcScriptPubKeyToJSON(const CScript& scriptPubKey, UniValue& out, bool fIncludeHex)
+void edcScriptPubKeyToJSON(
+	const CScript & scriptPubKey, 
+		 UniValue & out, 
+			   bool fIncludeHex)
 {
     txnouttype type;
     vector<CTxDestination> addresses;
@@ -64,7 +67,10 @@ void edcScriptPubKeyToJSON(const CScript& scriptPubKey, UniValue& out, bool fInc
     out.push_back(Pair("addresses", a));
 }
 
-void TxToJSON(const CEDCTransaction& tx, const uint256 hashBlock, UniValue& entry)
+void TxToJSON(
+	const CEDCTransaction & tx, 
+			  const uint256 hashBlock, 
+				 UniValue & entry)
 {
 	EDCapp & theApp = EDCapp::singleton();
 

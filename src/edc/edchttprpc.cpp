@@ -73,7 +73,10 @@ std::string strRPCUserColonPass;
 /* Stored RPC timer interface (for unregistration) */
 HTTPRPCTimerInterface * httpRPCTimerInterface = 0;
 
-void JSONErrorReply(EDCHTTPRequest* req, const UniValue& objError, const UniValue& id)
+void JSONErrorReply(
+	EDCHTTPRequest * req, 
+	const UniValue & objError, 
+	const UniValue & id)
 {
     // Send error reply from json-rpc error object
     int nStatus = HTTP_INTERNAL_SERVER_ERROR;

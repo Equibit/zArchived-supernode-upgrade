@@ -184,7 +184,10 @@ bool static IsDefinedHashtypeSignature(const valtype &vchSig)
     return true;
 }
 
-bool edcCheckSignatureEncoding(const vector<unsigned char> &vchSig, unsigned int flags, ScriptError* serror) 
+bool edcCheckSignatureEncoding(
+	const vector<unsigned char> & vchSig, 
+					 unsigned int flags, 
+					ScriptError * serror) 
 {
     // Empty signature. Not strictly DER encoded, but allowed to provide a
     // compact way to provide an invalid signature for use with CHECK(MULTI)SIG
@@ -209,7 +212,10 @@ bool edcCheckSignatureEncoding(const vector<unsigned char> &vchSig, unsigned int
     return true;
 }
 
-bool static CheckPubKeyEncoding(const valtype &vchSig, unsigned int flags, ScriptError* serror) 
+bool static CheckPubKeyEncoding(
+	 const valtype & vchSig, 
+		unsigned int flags, 
+	   ScriptError * serror) 
 {
     if ((flags & SCRIPT_VERIFY_STRICTENC) != 0 && !IsCompressedOrUncompressedPubKey(vchSig)) 
 	{
@@ -255,7 +261,12 @@ bool static CheckMinimalPush(const valtype& data, opcodetype opcode)
 
 bool CastToBool(const valtype& vch);
 
-bool edcEvalScript(vector<vector<unsigned char> >& stack, const CScript& script, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* serror)
+bool edcEvalScript(
+	vector<vector<unsigned char> > & stack, 
+					 const CScript & script, 
+						unsigned int flags, 
+		const BaseSignatureChecker & checker, 
+					   ScriptError * serror)
 {
     static const CScriptNum bnZero(0);
     static const CScriptNum bnOne(1);
@@ -1153,7 +1164,11 @@ public:
 
 } // anon namespace
 
-uint256 SignatureHash(const CScript& scriptCode, const CEDCTransaction& txTo, unsigned int nIn, int nHashType)
+uint256 SignatureHash(
+			const CScript & scriptCode, 
+	const CEDCTransaction & txTo, 
+			   unsigned int nIn, 
+						int nHashType)
 {
     static const uint256 one(uint256S("0000000000000000000000000000000000000000000000000000000000000001"));
     if (nIn >= txTo.vin.size()) 
@@ -1182,17 +1197,17 @@ uint256 SignatureHash(const CScript& scriptCode, const CEDCTransaction& txTo, un
 }
 
 bool EDCTransactionSignatureChecker::VerifySignature(
-	const std::vector<unsigned char>& vchSig, 
-	const CPubKey& pubkey, 
-	const uint256& sighash) const
+	const std::vector<unsigned char> & vchSig, 
+					   const CPubKey & pubkey, 
+					   const uint256 & sighash) const
 {
     return pubkey.Verify(sighash, vchSig);
 }
 
 bool EDCTransactionSignatureChecker::CheckSig(
-	const vector<unsigned char>& vchSigIn, 
-	const vector<unsigned char>& vchPubKey, 
-	const CScript& scriptCode) const
+	const vector<unsigned char> & vchSigIn, 
+	const vector<unsigned char> & vchPubKey, 
+				  const CScript & scriptCode) const
 {
     CPubKey pubkey(vchPubKey);
     if (!pubkey.IsValid())
@@ -1299,11 +1314,11 @@ bool EDCTransactionSignatureChecker::CheckSequence(const CScriptNum& nSequence) 
 }
 
 bool edcVerifyScript(
-	const CScript& scriptSig, 
-	const CScript& scriptPubKey, 
-	unsigned int flags, 
-	const BaseSignatureChecker& checker, 
-	ScriptError* serror)
+				 const CScript & scriptSig, 
+				 const CScript & scriptPubKey, 
+					unsigned int flags, 
+	const BaseSignatureChecker & checker, 
+				   ScriptError * serror)
 {
     set_error(serror, SCRIPT_ERR_UNKNOWN_ERROR);
 

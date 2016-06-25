@@ -170,8 +170,8 @@ void CEDCCoinsViewDBCursor::Next()
 
 bool CEDCBlockTreeDB::WriteBatchSync(
 	const std::vector<std::pair<int, const CBlockFileInfo*> > & fileInfo, 
-	int nLastFile, 
-	const std::vector<const CBlockIndex*> & blockinfo) 
+															int nLastFile, 
+						const std::vector<const CBlockIndex*> & blockinfo) 
 {
     CDBBatch batch(*this);
     for (std::vector<std::pair<int, const CBlockFileInfo*> >::const_iterator 

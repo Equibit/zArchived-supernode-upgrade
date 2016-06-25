@@ -21,7 +21,11 @@
 
 using namespace std;
 
-CEDCBloomFilter::CEDCBloomFilter(unsigned int nElements, double nFPRate, unsigned int nTweakIn, unsigned char nFlagsIn) :
+CEDCBloomFilter::CEDCBloomFilter(
+	unsigned int nElements, 
+		  double nFPRate, 
+	unsigned int nTweakIn, 
+   unsigned char nFlagsIn) :
     /**
      * The ideal size for a bloom filter with a given number of elements and false positive rate is:
      * - nElements * log(fp rate) / ln(2)^2
@@ -42,7 +46,10 @@ CEDCBloomFilter::CEDCBloomFilter(unsigned int nElements, double nFPRate, unsigne
 }
 
 // Private constructor used by CRollingBloomFilter
-CEDCBloomFilter::CEDCBloomFilter(unsigned int nElements, double nFPRate, unsigned int nTweakIn) :
+CEDCBloomFilter::CEDCBloomFilter(
+	unsigned int nElements, 
+		  double nFPRate, 
+	unsigned int nTweakIn) :
     vData((unsigned int)(-1  / LN2SQUARED * nElements * log(nFPRate)) / 8),
     isFull(false),
     isEmpty(true),
@@ -52,7 +59,9 @@ CEDCBloomFilter::CEDCBloomFilter(unsigned int nElements, double nFPRate, unsigne
 {
 }
 
-inline unsigned int CEDCBloomFilter::Hash(unsigned int nHashNum, const std::vector<unsigned char>& vDataToHash) const
+inline unsigned int CEDCBloomFilter::Hash(
+						  unsigned int nHashNum, 
+	const std::vector<unsigned char> & vDataToHash) const
 {
     // 0xFBA4C795 chosen as it guarantees a reasonable bit difference between nHashNum values.
     return MurmurHash3(nHashNum * 0xFBA4C795 + nTweak, vDataToHash) % (vData.size() * 8);
