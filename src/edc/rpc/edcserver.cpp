@@ -173,8 +173,10 @@ std::string CEDCRPCTable::help(const std::string& strCommand) const
         // We already filter duplicates, but these deprecated screw up the sort order
         if (strMethod.find("label") != string::npos)
             continue;
+
         if ((strCommand != "" || pcmd->category == "hidden") && strMethod != strCommand)
             continue;
+
         try
         {
             UniValue params;
@@ -204,9 +206,12 @@ std::string CEDCRPCTable::help(const std::string& strCommand) const
             strRet += strHelp + "\n";
         }
     }
+
     if (strRet == "")
         strRet = strprintf("eb_help: unknown command: %s\n", strCommand);
+
     strRet = strRet.substr(0,strRet.size()-1);
+
     return strRet;
 }
 

@@ -1268,6 +1268,28 @@ bool dumpKey(
 
 			out << ':' << strAddress << ':' << strKey;
         }
+		else if( strType == "bestblock" )
+		{
+			// no-op
+		}
+		else if( strType == "bestblock_nomerkle" )
+		{
+			// no-op
+		}
+		else if( strType == "minversion" )
+		{
+			// no-op
+		}
+		else if( strType == "acc" )
+		{
+            std::string name;
+            ssKey >> name;
+			out << ':' << name;
+		}
+		else
+		{
+			out << "ERROR: Unsupported key [" << strType  << "]" << endl;
+		}
 
 		out << endl;
     } 
@@ -1421,6 +1443,66 @@ dumpValue(
             ssValue >> strValue;
 			out << " " << strValue << endl;
         }
+		else if( strType == "bestblock" )
+		{
+			CBlockLocator locator;
+			ssValue >> locator;
+
+			out << " [\n";
+
+			auto i = locator.vHave.begin();
+			auto e = locator.vHave.end();
+
+			bool first = true;
+			while( i != e )
+			{
+				if(!first)
+					out << ",\n";
+				else
+					first = false;
+	
+				out << HexStr(*i);
+				++i;
+			}
+
+			out << "\n ]\n";
+		}
+		else if( strType == "bestblock_nomerkle" )
+		{
+			CBlockLocator locator;
+			ssValue >> locator;
+
+			out << " [\n";
+
+			auto i = locator.vHave.begin();
+			auto e = locator.vHave.end();
+
+			bool first = true;
+			while( i != e )
+			{
+				if(!first)
+					out << ",\n";
+				else
+					first = false;
+	
+				out << HexStr(*i);
+				++i;
+			}
+
+			out << "\n ]\n";
+		}
+		else if( strType == "minversion" )
+		{
+			int version;
+			ssValue >> version;
+			out << " " << version << endl;
+		}
+		else if( strType == "acc" )
+		{
+            CAccount acct;
+            ssValue >> acct;
+			out << " " << HexStr(acct.vchPubKey) << endl;
+		}
 		else
 		{
 			edcLogPrintf( "Error: Unsupported key in walletdb\n" );
