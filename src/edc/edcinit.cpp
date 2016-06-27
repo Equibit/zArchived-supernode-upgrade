@@ -540,7 +540,7 @@ bool EdcAppInit(
 
     	// ************************************* Step 6: network initialization
 
-	    RegisterNodeSignals(GetEDCNodeSignals());
+	    RegisterNodeSignals(edcGetNodeSignals());
 
     	// sanitize comments per BIP-0014, format user agent and check total siz
     	std::vector<std::string> uacomments;

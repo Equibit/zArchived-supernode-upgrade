@@ -70,5 +70,5 @@ struct CEDCMainSignals
     boost::signals2::signal<void (const uint256 &)> BlockFound;
 };
 
-CEDCMainSignals& GetEDCMainSignals();
+CEDCMainSignals& edcGetMainSignals();
 

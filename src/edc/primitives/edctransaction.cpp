@@ -3,7 +3,8 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "edc/primitives/edctransaction.h"
-
+#include "utilstrencodings.h"
+#include <sstream>
 
 
 void CEDCTransaction::UpdateHash() const
@@ -129,6 +130,60 @@ std::string CEDCTransaction::ToString() const
     return str;
 }
 
+std::string CEDCTransaction::toJSON( const char * margin ) const
+{
+	std::stringstream ans;
+
+    ans << margin << "{\n";
+
+	std::string innerMargin = margin;
+	innerMargin += " ";
+
+	time_t t = nLockTime;
+	ans << innerMargin << "\"lockTime\":" << ctime( &t ) << ",\n";
+	ans << innerMargin << "\"txIn\": [\n";
+
+    auto ii =  vin.begin();
+    auto ie =  vin.end();
+	bool first = true;
+
+	std::string inner2Margin = innerMargin + " ";
+	while( ii != ie )
+	{
+		if(!first)
+			ans << ", ";
+		else
+			first = false;
+
+		ans << ii->toJSON( inner2Margin.c_str() );
+		++ii;
+	}
+	ans << innerMargin << "],\n";
+
+	ans << innerMargin << "\"txOut\": [\n";
+
+    auto oi =  vout.begin();
+    auto oe =  vout.end();
+	first = true;
+
+	while( oi != oe )
+	{
+		if(!first)
+			ans << ", ";
+		else
+			first = false;
+
+		ans << oi->toJSON( inner2Margin.c_str() );
+
+		++oi;
+	}
+	ans << innerMargin << "]\n";
+
+    ans << margin << "}\n";
+
+	return ans.str();
+}
+
 std::string CEDCTxIn::ToString() const
 {
     std::string str;
@@ -145,10 +200,48 @@ std::string CEDCTxIn::ToString() const
     return str;
 }
 
+std::string CEDCTxIn::toJSON( const char * margin ) const
+{
+	std::stringstream ans;
+
+	time_t t = prevout.n;
+	time_t s = nSequence;
+	ans << margin << "{\"prevout\":COutPoint(" << prevout.hash.ToString().substr(0,10) << "..," << ctime( &t ) << ")"
+				  << ",\"scriptSig\":" << HexStr(scriptSig)
+				  << ",\"sequence\":" << ctime( &s )
+				  << "}";
+
+	return ans.str();
+}
+
 std::string CEDCTxOut::ToString() const
 {
 // TODO
 //    return strprintf("CTxOut(nValue=%d.%08d, scriptPubKey=%s)", nValue / COIN, nValue % COIN, HexStr(scriptPubKey).substr(0, 30));
 	return "";
+}
+
+std::string CEDCTxOut::toJSON( const char * margin ) const
+{
+	std::stringstream ans;
+
+	ans << margin << "{\n" 
+		<< margin << "\"value\":" << nValue << ",\n"
+    	<< margin << "\"forSale\":" << forSale << ",\n"
+    	<< margin << "\"receiptTxID\":" << receiptTxID.ToString() << ",\n"
+    	<< margin << "\"ownerPubKey\":" << HexStr(ownerPubKey) << ",\n"
+    	<< margin << "\"ownerBitMsgAddr\":" <<ownerBitMsgAddr.ToString() <<",\n"
+    	<< margin << "\"currency\":" << ownerPayCurr << ",\n"
+    	<< margin << "\"ownerPayAddr\":" << ownerPayAddr.ToString() << ",\n"
+    	<< margin << "\"issuerPubKey\":" << HexStr(issuerPubKey) << ",\n"
+    	<< margin << "\"issuerBitMsgAddr\":"<<issuerBitMsgAddr.ToString()<<",\n"
+    	<< margin << "\"issuerPayCurr\":" << issuerPayCurr << ",\n"
+    	<< margin << "\"issuerPayAddr\":" << issuerPayAddr.ToString() << ",\n"
+    	<< margin << "\"proxyPubKey\":" << HexStr(proxyPubKey) << ",\n"
+    	<< margin << "\"proxyBitMsgAddr\":" << proxyBitMsgAddr.ToString()<<",\n"
+    	<< margin << "\"scriptPubKey\":" << HexStr(scriptPubKey) << ",\n"
+		<< margin << "}";
+
+	return ans.str();
 }
 

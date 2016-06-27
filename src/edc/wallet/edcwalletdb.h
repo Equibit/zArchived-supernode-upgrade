@@ -94,6 +94,8 @@ public:
     static bool Recover(CEDCDBEnv& dbenv, const std::string& filename, bool fOnlyKeys);
     static bool Recover(CEDCDBEnv& dbenv, const std::string& filename);
 
+	void Dump( std::ostream & out );
+
 private:
     CEDCWalletDB(const CEDCWalletDB&);
     void operator=(const CEDCWalletDB&);

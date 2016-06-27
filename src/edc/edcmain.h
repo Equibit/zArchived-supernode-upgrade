@@ -75,14 +75,14 @@ bool edcLoadBlockIndex();
 void edcUnloadBlockIndex();
 
 /** Process protocol messages received from a given node */
-bool ProcessEDCMessages(CEDCNode* pfrom);
+bool edcProcessMessages(CEDCNode* pfrom);
 
 /**
  * Send queued protocol messages to be sent to a give node.
  *
  * @param[in]   pto             The node which we are sending messages to.
  */
-bool SendEDCMessages(CEDCNode* pto);
+bool edcSendMessages(CEDCNode* pto);
 
 /** Run an instance of the script checking thread */
 void edcThreadScriptCheck();
@@ -145,7 +145,7 @@ bool AcceptToMemoryPool(CEDCTxMemPool& pool, CValidationState &state, const CEDC
                         bool* pfMissingInputs, CFeeRate* txFeeRate, bool fOverrideMempoolLimit=false, const CAmount nAbsurdFee=0);
 
 /** Get the BIP9 state for a given deployment at the current tip. */
-ThresholdState EDCVersionBitsTipState(const Consensus::Params& params, Consensus::DeploymentPos pos);
+ThresholdState edcVersionBitsTipState(const Consensus::Params& params, Consensus::DeploymentPos pos);
 
 /** 
  * Count ECDSA signature operations the old-fashioned (pre-0.6) way

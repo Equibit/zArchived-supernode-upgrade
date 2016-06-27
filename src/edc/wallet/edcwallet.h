@@ -129,6 +129,8 @@ public:
 	{ 
 		hashBlock = ABANDON_HASH; 
 	}
+
+	std::string toJSON( const char * ) const;
 };
 
 /** 
@@ -323,6 +325,8 @@ public:
     bool RelayWalletTransaction();
 
     std::set<uint256> GetConflicts() const;
+
+	std::string toJSON( const char * margin ) const;
 };
 
 class CEDCOutput
@@ -363,10 +367,12 @@ private:
 
     CEDCWalletDB *pwalletdbEncryption;
 
-    //! the current wallet version: clients below this version are not able to load the wallet
+    //! the current wallet version: clients below this version are not able to
+	//  load the wallet
     int nWalletVersion;
 
-    //! the maximum wallet format version: memory-only variable that specifies to what version this wallet may be upgraded
+    //! the maximum wallet format version: memory-only variable that specifies 
+	//  to what version this wallet may be upgraded
     int nWalletMaxVersion;
 
     int64_t nNextResend;
@@ -384,7 +390,8 @@ private:
     void AddToSpends(const COutPoint& outpoint, const uint256& wtxid);
     void AddToSpends(const uint256& wtxid);
 
-    /* Mark a transaction (and its in-wallet descendants) as conflicting with a particular block. */
+    /* Mark a transaction (and its in-wallet descendants) as conflicting with 
+	 * a particular block. */
     void MarkConflicted(const uint256& hashBlock, const uint256& hashTx);
 
     void SyncMetaData(std::pair<TxSpends::iterator, TxSpends::iterator>);
@@ -782,3 +789,27 @@ public:
     void KeepScript() { KeepKey(); }
 };
 
+class CIssuer
+{
+public:
+	CPubKey pubKey_;
+
+	CIssuer()
+	{
+		pubKey_ = CPubKey();
+	}
+
+	ADD_SERIALIZE_METHODS;
+
+	template <typename Stream, typename Operation >
+	inline void SerializationOp( 
+		 Stream & s, 
+		Operation ser_action, 
+			  int nType, 
+			  int nVersion )
+	{
+		if(!(nType & SER_GETHASH))
+			READWRITE(nVersion);
+		READWRITE(pubKey_);
+	}
+};

@@ -633,8 +633,8 @@ bool edcGetNodeStateStats(NodeId nodeid, CNodeStateStats &stats)
 void RegisterNodeSignals(CEDCNodeSignals& nodeSignals)
 {
     nodeSignals.GetHeight.connect(&GetHeight);
-    nodeSignals.ProcessMessages.connect(&ProcessEDCMessages);
-    nodeSignals.SendMessages.connect(&SendEDCMessages);
+    nodeSignals.ProcessMessages.connect(&edcProcessMessages);
+    nodeSignals.SendMessages.connect(&edcSendMessages);
     nodeSignals.InitializeNode.connect(&InitializeNode);
     nodeSignals.FinalizeNode.connect(&FinalizeNode);
 }
@@ -642,8 +642,8 @@ void RegisterNodeSignals(CEDCNodeSignals& nodeSignals)
 void UnregisterNodeSignals(CEDCNodeSignals& nodeSignals)
 {
     nodeSignals.GetHeight.disconnect(&GetHeight);
-    nodeSignals.ProcessMessages.disconnect(&ProcessEDCMessages);
-    nodeSignals.SendMessages.disconnect(&SendEDCMessages);
+    nodeSignals.ProcessMessages.disconnect(&edcProcessMessages);
+    nodeSignals.SendMessages.disconnect(&edcSendMessages);
     nodeSignals.InitializeNode.disconnect(&InitializeNode);
     nodeSignals.FinalizeNode.disconnect(&FinalizeNode);
 }
@@ -1143,7 +1143,7 @@ bool AcceptToMemoryPoolWorker(
     const CEDCChainParams& chainparams = edcParams();
     if (!params.acceptnonstdtxn && 
 		tx.nVersion >= 2 && 
-		EDCVersionBitsTipState(chainparams.GetConsensus(), 
+		edcVersionBitsTipState(chainparams.GetConsensus(), 
 			Consensus::DEPLOYMENT_CSV) != THRESHOLD_ACTIVE) 
 	{
         return state.DoS(0, false, REJECT_NONSTANDARD, "premature-version2-tx");
@@ -2767,7 +2767,7 @@ bool edcConnectBlock(
 
     // Watch for changes to the previous coinbase transaction.
     static uint256 hashPrevBestCoinBase;
-    GetEDCMainSignals().UpdatedTransaction(hashPrevBestCoinBase);
+    edcGetMainSignals().UpdatedTransaction(hashPrevBestCoinBase);
     hashPrevBestCoinBase = block.vtx[0].GetHash();
 
     int64_t nTime6 = GetTimeMicros(); nTimeCallbacks += nTime6 - nTime5;
@@ -2901,7 +2901,7 @@ bool FlushStateToDisk(CValidationState &state, FlushStateMode mode)
 		((mode == FLUSH_STATE_ALWAYS || mode == FLUSH_STATE_PERIODIC) && nNow > nLastSetChain + (int64_t)DATABASE_WRITE_INTERVAL * 1000000)) 
 		{
         	// Update best block in wallet (so we can detect restored wallets).
-        	GetEDCMainSignals().SetBestChain(theApp.chainActive().GetLocator());
+        	edcGetMainSignals().SetBestChain(theApp.chainActive().GetLocator());
 	        nLastSetChain = nNow;
    	 	}
     } 
@@ -3094,7 +3094,7 @@ bool ConnectTip(
     {
         CEDCCoinsViewCache view(theApp.coinsTip());
         bool rv = edcConnectBlock(*pblock, state, pindexNew, view, chainparams);
-        GetEDCMainSignals().BlockChecked(*pblock, state);
+        edcGetMainSignals().BlockChecked(*pblock, state);
 
         if (!rv) 
 		{
@@ -3406,7 +3406,7 @@ bool ActivateBestChain(
                 // Notify external listeners about the new tip.
                 if (!vHashes.empty()) 
 				{
-                    GetEDCMainSignals().UpdatedBlockTip(pindexNewTip);
+                    edcGetMainSignals().UpdatedBlockTip(pindexNewTip);
                 }
             }
         }
@@ -5066,7 +5066,7 @@ void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
             }
 
             // Track requests for our stuff.
-            GetEDCMainSignals().Inventory(inv.hash);
+            edcGetMainSignals().Inventory(inv.hash);
 
             if (inv.type == MSG_BLOCK || inv.type == MSG_FILTERED_BLOCK)
                 break;
@@ -5212,13 +5212,13 @@ bool ProcessMessage(
                 CAddress addr = edcGetLocalAddress(&pfrom->addr);
                 if (addr.IsRoutable())
                 {
-                    edcLogPrintf("ProcessEDCMessages: advertising address %s\n", addr.ToString());
+                    edcLogPrintf("edcProcessMessages: advertising address %s\n", addr.ToString());
                     pfrom->PushAddress(addr);
                 } 
 				else if (IsPeerAddrLocalGood(pfrom)) 
 				{
                     addr.SetIP(pfrom->addrLocal);
-                    edcLogPrintf("ProcessEDCMessages: advertising address %s\n", addr.ToString());
+                    edcLogPrintf("edcProcessMessages: advertising address %s\n", addr.ToString());
                     pfrom->PushAddress(addr);
                 }
             }
@@ -5420,7 +5420,7 @@ bool ProcessMessage(
             }
 
             // Track requests for our stuff
-            GetEDCMainSignals().Inventory(inv.hash);
+            edcGetMainSignals().Inventory(inv.hash);
 
             if (pfrom->nSendSize > (edcSendBufferSize() * 2)) 
 			{
@@ -6075,7 +6075,7 @@ bool ProcessMessage(
 }
 
 // requires LOCK(cs_vRecvMsg)
-bool ProcessEDCMessages(CEDCNode* pfrom)
+bool edcProcessMessages(CEDCNode* pfrom)
 {
     const CEDCChainParams& chainparams = edcParams();
     //if (params.debug.size() > 0 )
@@ -6173,7 +6173,7 @@ bool ProcessEDCMessages(CEDCNode* pfrom)
             }
             else
             {
-                edcPrintExceptionContinue(&e, "ProcessEDCMessages()");
+                edcPrintExceptionContinue(&e, "edcProcessMessages()");
             }
         }
         catch (const boost::thread_interrupted&) 
@@ -6182,11 +6182,11 @@ bool ProcessEDCMessages(CEDCNode* pfrom)
         }
         catch (const std::exception& e) 
 		{
-            edcPrintExceptionContinue(&e, "ProcessEDCMessages()");
+            edcPrintExceptionContinue(&e, "edcProcessMessages()");
         } 
 		catch (...) 
 		{
-            edcPrintExceptionContinue(NULL, "ProcessEDCMessages()");
+            edcPrintExceptionContinue(NULL, "edcProcessMessages()");
         }
 
         if (!fRet)
@@ -6219,7 +6219,7 @@ public:
     }
 };
 
-bool SendEDCMessages(CEDCNode* pto)
+bool edcSendMessages(CEDCNode* pto)
 {
 	EDCapp & theApp = EDCapp::singleton();
 	EDCparams & params = EDCparams::singleton();
@@ -6360,7 +6360,7 @@ bool SendEDCMessages(CEDCNode* pto)
         // transactions become unconfirmed and spams other nodes.
         if (!theApp.reindex() && !theApp.importing() && !edcIsInitialBlockDownload())
         {
-            GetEDCMainSignals().Broadcast(edcnTimeBestReceived);
+            edcGetMainSignals().Broadcast(edcnTimeBestReceived);
         }
 
         //
@@ -6757,7 +6757,7 @@ bool SendEDCMessages(CEDCNode* pto)
     return true;
 }
 
-ThresholdState EDCVersionBitsTipState(const Consensus::Params& params, Consensus::DeploymentPos pos)
+ThresholdState edcVersionBitsTipState(const Consensus::Params& params, Consensus::DeploymentPos pos)
 {
 	EDCapp & theApp = EDCapp::singleton();
 

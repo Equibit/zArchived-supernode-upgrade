@@ -610,7 +610,6 @@ UniValue edcdumpprivkey(const UniValue& params, bool fHelp)
     return CBitcoinSecret(vchSecret).ToString();
 }
 
-
 UniValue edcdumpwallet(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
@@ -653,11 +652,13 @@ UniValue edcdumpwallet(const UniValue& params, bool fHelp)
     std::sort(vKeyBirth.begin(), vKeyBirth.end());
 
     // produce output
-    file << strprintf("# Wallet dump created by Bitcoin %s (%s)\n", CLIENT_BUILD, CLIENT_DATE);
+    file << strprintf("# Wallet dump created by Equibit %s (%s)\n", CLIENT_BUILD, CLIENT_DATE);
     file << strprintf("# * Created on %s\n", EncodeDumpTime(GetTime()));
-    file << strprintf("# * Best block at time of backup was %i (%s),\n", theApp.chainActive().Height(), theApp.chainActive().Tip()->GetBlockHash().ToString());
+    file << strprintf("# * Best block at time of backup was %i (%s),\n", theApp.chainActive().Height(), 
+		theApp.chainActive().Tip()->GetBlockHash().ToString());
     file << strprintf("#   mined on %s\n", EncodeDumpTime(theApp.chainActive().Tip()->GetBlockTime()));
     file << "\n";
+
     for (std::vector<std::pair<int64_t, CKeyID> >::const_iterator it = vKeyBirth.begin(); it != vKeyBirth.end(); it++)
 	{
         const CKeyID &keyid = it->second;
@@ -683,6 +684,42 @@ UniValue edcdumpwallet(const UniValue& params, bool fHelp)
 
     file << "\n";
     file << "# End of dump\n";
+    file.close();
+
+    return NullUniValue;
+}
+
+UniValue edcdumpwalletdb(const UniValue& params, bool fHelp)
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+    if (!edcEnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+    
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+            "eb_dumpwalletdb \"filename\"\n"
+            "\nDumps the wallet DB in a human-readable format.\n"
+            "\nArguments:\n"
+            "1. \"filename\"    (string, required) The filename\n"
+            "\nExamples:\n"
+            + HelpExampleCli("eb_dumpwalletdb", "\"walletdb.txt\"")
+            + HelpExampleRpc("eb_dumpwalletdb", "\"walletdb.txt\"")
+        );
+
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
+
+    edcEnsureWalletIsUnlocked();
+
+    ofstream file;
+    file.open(params[0].get_str().c_str());
+    if (!file.is_open())
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Cannot open wallet dump file");
+
+    CEDCWalletDB walletdb(theApp.walletMain()->strWalletFile);
+
+	walletdb.Dump( file );
+
     file.close();
 
     return NullUniValue;

@@ -76,6 +76,8 @@ public:
     }
 
     std::string ToString() const;
+
+	std::string toJSON( const char * ) const;
 };
 
 enum Currency
@@ -166,6 +168,8 @@ public:
     }
 
     std::string ToString() const;
+
+	std::string toJSON( const char * ) const;
 };
 
 struct CEDCMutableTransaction;
@@ -256,6 +260,8 @@ public:
 	}
 
 	std::string ToString() const;
+
+	std::string toJSON( const char * ) const;
 };
 
 /** A mutable version of CEDCTransaction. */

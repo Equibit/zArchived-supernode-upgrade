@@ -123,7 +123,7 @@ UniValue edcgenerateBlocks(
     UniValue blockHashes(UniValue::VARR);
     while (nHeight < nHeightEnd)
     {
-        std::unique_ptr<CEDCBlockTemplate> pblocktemplate(CreateNewEDCBlock(edcParams(), coinbaseScript->reserveScript));
+        std::unique_ptr<CEDCBlockTemplate> pblocktemplate(edcCreateNewBlock(edcParams(), coinbaseScript->reserveScript));
         if (!pblocktemplate.get())
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Couldn't create new block");
 
@@ -187,7 +187,7 @@ UniValue edcgenerate(const UniValue& params, bool fHelp)
     }
 
     boost::shared_ptr<CReserveScript> coinbaseScript;
-    GetEDCMainSignals().ScriptForMining(coinbaseScript);
+    edcGetMainSignals().ScriptForMining(coinbaseScript);
 
     // If the keypool is exhausted, no script is returned at all.  Catch this.
     if (!coinbaseScript)
@@ -521,7 +521,7 @@ UniValue edcgetblocktemplate(const UniValue& params, bool fHelp)
             pblocktemplate = NULL;
         }
         CScript scriptDummy = CScript() << OP_TRUE;
-        pblocktemplate = CreateNewEDCBlock(edcParams(), scriptDummy);
+        pblocktemplate = edcCreateNewBlock(edcParams(), scriptDummy);
         if (!pblocktemplate)
             throw JSONRPCError(RPC_OUT_OF_MEMORY, "Out of memory");
 

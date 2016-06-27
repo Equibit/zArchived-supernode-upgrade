@@ -2695,7 +2695,7 @@ UniValue edcfundrawtransaction(const UniValue& params, bool fHelp)
     if (origTx.vout.size() == 0)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "TX must have at least one output");
 
-    if (changePosition != -1 && (changePosition < 0 || changePosition > origTx.vout.size()))
+    if (changePosition != -1 && (changePosition < 0 || changePosition > static_cast<int>(origTx.vout.size())))
         throw JSONRPCError(RPC_INVALID_PARAMETER, "changePosition out of bounds");
 
     CEDCMutableTransaction tx(origTx);
@@ -2718,6 +2718,7 @@ UniValue edcimportprivkey(const UniValue& params, bool fHelp);
 UniValue edcimportaddress(const UniValue& params, bool fHelp);
 UniValue edcimportpubkey(const UniValue& params, bool fHelp);
 UniValue edcdumpwallet(const UniValue& params, bool fHelp);
+UniValue edcdumpwalletdb(const UniValue& params, bool fHelp);
 UniValue edcimportwallet(const UniValue& params, bool fHelp);
 UniValue edcimportprunedfunds(const UniValue& params, bool fHelp);
 UniValue edcremoveprunedfunds(const UniValue& params, bool fHelp);
@@ -2733,6 +2734,7 @@ static const CRPCCommand edcCommands[] =
     { "wallet",             "eb_backupwallet",             &edcbackupwallet,             true  },
     { "wallet",             "eb_dumpprivkey",              &edcdumpprivkey,              true  },
     { "wallet",             "eb_dumpwallet",               &edcdumpwallet,               true  },
+    { "equibit",            "eb_dumpwalletdb",             &edcdumpwalletdb,             false },
     { "wallet",             "eb_encryptwallet",            &edcencryptwallet,            true  },
     { "wallet",             "eb_getaccountaddress",        &edcgetaccountaddress,        true  },
     { "wallet",             "eb_getaccount",               &edcgetaccount,               true  },

@@ -98,7 +98,7 @@ boost::condition_variable edcmessageHandlerCondition;
 
 // Signals for message handling
 static CEDCNodeSignals g_signals;
-CEDCNodeSignals& GetEDCNodeSignals() { return g_signals; }
+CEDCNodeSignals& edcGetNodeSignals() { return g_signals; }
 
 
 unsigned short edcGetListenPort()
@@ -2493,7 +2493,7 @@ CEDCNode::CEDCNode(
     if (hSocket != INVALID_SOCKET && !fInbound)
         PushVersion();
 
-    GetEDCNodeSignals().InitializeNode(GetId(), this);
+    edcGetNodeSignals().InitializeNode(GetId(), this);
 }
 
 CEDCNode::~CEDCNode()
@@ -2503,7 +2503,7 @@ CEDCNode::~CEDCNode()
     if (pfilter)
         delete pfilter;
 
-    GetEDCNodeSignals().FinalizeNode(GetId());
+    edcGetNodeSignals().FinalizeNode(GetId());
 }
 
 void CEDCNode::AskFor(const CInv& inv)

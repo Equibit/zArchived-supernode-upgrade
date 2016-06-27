@@ -61,7 +61,7 @@ struct CEDCNodeSignals
     boost::signals2::signal<void (NodeId)> FinalizeNode;
 };
 
-CEDCNodeSignals& GetEDCNodeSignals();
+CEDCNodeSignals& edcGetNodeSignals();
 
 bool IsPeerAddrLocalGood(CEDCNode *pnode);
 void AdvertiseLocal(CEDCNode *pnode);

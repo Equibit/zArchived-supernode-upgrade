@@ -1628,6 +1628,100 @@ bool CEDCWalletTx::IsEquivalentTo(const CEDCWalletTx& tx) const
         return CEDCTransaction(tx1) == CEDCTransaction(tx2);
 }
 
+namespace
+{
+inline const char * toBool(bool b)	{ return b?"true":"false"; }
+}
+
+std::string CEDCWalletTx::toJSON( const char * margin ) const
+{
+	std::stringstream ans;
+	ans << margin << "{\n";
+
+	std::string innerMargin = margin;
+	innerMargin += " ";
+
+	ans << innerMargin;
+	ans << "\"merkleTx\":\n";
+	ans << CEDCMerkleTx::toJSON( innerMargin.c_str() );	
+
+	ans << innerMargin << "\"mapValue\":[";
+
+	auto mvi = mapValue.begin();
+	auto mve = mapValue.end();
+	bool first = true;
+
+	while( mvi != mve )
+	{
+		if(!first)
+			ans << ", ";
+		else
+			first = false;
+
+		ans << "{" + mvi->first << "," << mvi->second << "}";
+
+		++mvi;
+	}
+	ans << "],\n";
+
+    ans << innerMargin << "\"timeReceivedIsTxTime\":" << fTimeReceivedIsTxTime << ",\n";
+	time_t t = nTimeReceived;
+	std::string ascT = ctime( &t );
+	ascT = ascT.substr( 0, ascT.size()-1);
+    ans << innerMargin << "\"timeReceived\":" << ascT << ",\n";
+	t = nTimeSmart;
+	ascT = ctime( &t );
+	ascT = ascT.substr( 0, ascT.size()-1);
+    ans << innerMargin << "\"timeSmart\":" << ascT << ",\n";
+    ans << innerMargin << "\"fromMe\":" << toBool(fFromMe) << ",\n";
+    ans << innerMargin << "\"orderPos\":" << nOrderPos<< ",\n";
+    ans << innerMargin << "\"fromAccount\":" << strFromAccount<< ",\n";
+
+	ans << innerMargin << "\"orderForm\":[";
+
+	first = true;
+	auto ofi = vOrderForm.begin();
+	auto ofe = vOrderForm.end();
+
+	while( ofi != ofe )
+	{
+		if(!first)
+			ans << ", ";
+		else
+			first = false;
+
+		ans << "{" + ofi->first << "," << ofi->second << "}";
+
+		++ofi;
+	}
+	ans << "],\n";
+
+	ans << innerMargin << "\"debitCached\":" << toBool(fDebitCached) << ",\n";
+   	ans << innerMargin << "\"creditCached\":" << toBool(fCreditCached) << ",\n";
+   	ans << innerMargin << "\"immatureCreditCached\":" << toBool(fImmatureCreditCached) << ",\n";
+   	ans << innerMargin << "\"availableCreditCached\":" << toBool(fAvailableCreditCached) << ",\n";
+   	ans << innerMargin << "\"watchDebitCached\":" << toBool(fWatchDebitCached) << ",\n";
+   	ans << innerMargin << "\"watchCreditCached\":" << toBool(fWatchCreditCached) << ",\n";
+   	ans << innerMargin << "\"immatureWatchCreditCached\":" << toBool(fImmatureWatchCreditCached) << ",\n";
+   	ans << innerMargin << "\"availableWatchCreditCached\":" << toBool(fAvailableWatchCreditCached) << ",\n";
+   	ans << innerMargin << "\"changeCached\":" << toBool(fChangeCached) << ",\n";
+
+    ans << innerMargin << "\"debitCached\":" << nDebitCached << ",\n";
+    ans << innerMargin << "\"creditCached\":" << nCreditCached << ",\n";
+    ans << innerMargin << "\"immatureCreditCached\":" << nImmatureCreditCached << ",\n";
+    ans << innerMargin << "\"availableCreditCached\":" << nAvailableCreditCached << ",\n";
+    ans << innerMargin << "\"watchDebitCached\":" << nWatchDebitCached << ",\n";
+    ans << innerMargin << "\"watchCreditCached\":" << nWatchCreditCached << ",\n";
+    ans << innerMargin << "\"immatureWatchCreditCached\":" << nImmatureWatchCreditCached << ",\n";
+   	ans << innerMargin << "\"availableWatchCreditCached\":" << nAvailableWatchCreditCached << ",\n";
+   	ans << innerMargin << "\"changeCached\":" << nChangeCached << ",\n";
+
+	ans << margin << "}\n";
+	return ans.str();
+}
+
+////////////////////////////////////////////////////////////////////////
+
 std::vector<uint256> CEDCWallet::ResendWalletTransactionsBefore(int64_t nTime)
 {
     std::vector<uint256> result;
@@ -2326,7 +2420,7 @@ bool CEDCWallet::CreateTransaction(
                             // Insert change txn at random position:
                             nChangePosInOut = GetRandInt(txNew.vout.size()+1);
                         }
-                        else if (nChangePosInOut > txNew.vout.size())
+                        else if (nChangePosInOut > static_cast<int>(txNew.vout.size()))
                         {
                             strFailReason = _("Change index out of range");
                             return false;
@@ -3557,4 +3651,23 @@ bool CEDCMerkleTx::AcceptToMemoryPool(bool fLimitFree, CAmount nAbsurdFee)
     CValidationState state;
 	EDCapp & theApp = EDCapp::singleton();
     return ::AcceptToMemoryPool(theApp.mempool(), state, *this, fLimitFree, NULL, NULL, false, nAbsurdFee);
+}
+
+std::string CEDCMerkleTx::toJSON( const char * margin ) const
+{
+	std::stringstream ans;
+
+	ans << margin << "{\n";
+
+	std::string innerMargin = margin;
+	innerMargin += " ";
+
+	ans << innerMargin << "\"transaction\":\n";
+	ans << CEDCTransaction::toJSON( innerMargin.c_str() );
+
+    ans << innerMargin << "\"hashBlock\":" << hashBlock.ToString() << ",\n";
+    ans << innerMargin << "\"index\":" << nIndex << "\n";
+
+	ans << margin << "}\n";
+	return ans.str();
 }

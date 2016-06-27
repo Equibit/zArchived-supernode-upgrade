@@ -8,7 +8,7 @@
 
 static CEDCMainSignals g_signals;
 
-CEDCMainSignals& GetEDCMainSignals()
+CEDCMainSignals& edcGetMainSignals()
 {
     return g_signals;
 }

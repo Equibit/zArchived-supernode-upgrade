@@ -710,7 +710,7 @@ static UniValue SoftForkDesc(const std::string &name, int version, CBlockIndex* 
 static UniValue BIP9SoftForkDesc(const Consensus::Params& consensusParams, Consensus::DeploymentPos id)
 {
     UniValue rv(UniValue::VOBJ);
-    const ThresholdState thresholdState = EDCVersionBitsTipState(consensusParams, id);
+    const ThresholdState thresholdState = edcVersionBitsTipState(consensusParams, id);
 
     switch (thresholdState) 
 	{

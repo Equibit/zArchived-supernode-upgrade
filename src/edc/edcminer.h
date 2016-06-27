@@ -26,7 +26,7 @@ struct CEDCBlockTemplate
 };
 
 /** Generate a new block, without valid proof-of-work */
-CEDCBlockTemplate* CreateNewEDCBlock(const CEDCChainParams& chainparams, const CScript& scriptPubKeyIn);
+CEDCBlockTemplate* edcCreateNewBlock(const CEDCChainParams& chainparams, const CScript& scriptPubKeyIn);
 
 /** Modify the extranonce in a block */
 void IncrementExtraNonce(CEDCBlock* pblock, const CBlockIndex* pindexPrev, unsigned int& nExtraNonce);

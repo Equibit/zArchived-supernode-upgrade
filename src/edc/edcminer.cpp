@@ -58,7 +58,7 @@ public:
 
 int64_t edcGetAdjustedTime();
 
-CEDCBlockTemplate* CreateNewEDCBlock(
+CEDCBlockTemplate* edcCreateNewBlock(
 	const CEDCChainParams & chainparams, 
 			const CScript & scriptPubKeyIn)
 {

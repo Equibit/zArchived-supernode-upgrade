@@ -1162,3 +1162,321 @@ bool CEDCWalletDB::EraseDestData(const std::string &address, const std::string &
     theApp.incWalletDBUpdated();
     return Erase(std::make_pair(std::string("destdata"), std::make_pair(address, key)));
 }
+
+namespace
+{
+
+bool dumpKey( 
+	    ostream & out,
+	CDataStream & ssKey,
+         string & strType )
+{
+    try 
+	{
+        ssKey >> strType;
+		out << strType;
+
+        if (strType == "name")
+        {
+            string strAddress;
+            ssKey >> strAddress;
+			out << ':' << strAddress;
+        }
+        else if (strType == "purpose")
+        {
+            string strAddress;
+            ssKey >> strAddress;
+			out << ':' << strAddress;
+        }
+        else if (strType == "tx")
+        {
+            uint256 hash;
+            ssKey >> hash;
+			out << ':' << hash.ToString();
+        }
+        else if (strType == "acentry")
+        {
+            string strAccount;
+            uint64_t nNumber;
+
+            ssKey >> strAccount;
+            ssKey >> nNumber;
+
+			out << ':' << strAccount << ':' << nNumber;
+        }
+        else if (strType == "watchs")
+        {
+            CScript script;
+            ssKey >> *static_cast<CScriptBase *>(&script);
+			out << HexStr(script);
+        }
+        else if (strType == "key" || strType == "wkey")
+        {
+            CPubKey vchPubKey;
+            ssKey >> vchPubKey;
+			out << ':' << HexStr( vchPubKey );
+        }
+        else if (strType == "mkey")
+        {
+            unsigned int nID;
+            ssKey >> nID;
+			out << ':' << nID;
+        }
+        else if (strType == "ckey")
+        {
+            CPubKey vchPubKey;
+            ssKey >> vchPubKey;
+			out << ':' << HexStr( vchPubKey );
+        }
+        else if (strType == "keymeta")
+        {
+            CPubKey vchPubKey;
+            ssKey >> vchPubKey;
+			out << ':' << HexStr( vchPubKey );
+        }
+        else if (strType == "defaultkey")
+        {
+			// no-op
+        }
+        else if (strType == "pool")
+        {
+            int64_t nIndex;
+            ssKey >> nIndex;
+			out << ':' << nIndex;
+        }
+        else if (strType == "version")
+        {
+			// no-op
+        }
+        else if (strType == "cscript")
+        {
+            uint160 hash;
+            ssKey >> hash;
+			out << ':' << hash.ToString();
+        }
+        else if (strType == "orderposnext")
+        {
+			// no-op
+        }
+        else if (strType == "destdata")
+        {
+            std::string strAddress;
+            ssKey >> strAddress;
+
+            std::string strKey;
+            ssKey >> strKey;
+
+			out << ':' << strAddress << ':' << strKey;
+        }
+
+		out << endl;
+    } 
+	catch (...)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+bool
+dumpValue(
+			 ostream & out,
+			  string & strType,
+      	 CDataStream & ssValue )
+{
+    try 
+	{
+        if (strType == "name")
+        {
+			string name;
+            ssValue >> name;
+			out << " \"" << name << "\"" << endl;
+        }
+        else if (strType == "purpose")
+        {
+			string purpose;
+            ssValue >> purpose;
+			out << " \"" << purpose << "\"" << endl;
+        }
+        else if (strType == "tx")
+        {
+            CEDCWalletTx wtx;
+            ssValue >> wtx;
+			out << wtx.toJSON( " " );
+        }
+        else if (strType == "acentry")
+        {
+            CAccountingEntry acentry;
+            ssValue >> acentry;
+
+			out << " {\"account\":" << acentry.strAccount 
+				<< " \",creditDebit\":" << acentry.nCreditDebit
+				<< " \",time\":" << acentry.nTime
+				<< " \",otherAccount\":" << acentry.strOtherAccount
+				<< " \",comment\":" << acentry.strComment
+				<< " \",mapValue\":[";
+
+			auto i = acentry.mapValue.begin();
+			auto e = acentry.mapValue.end();
+			bool first = true;
+			while( i != e )
+			{
+				if(!first)
+					out << ",";
+				else
+					first = false;
+
+				out << "[" << i->first << "," << i->second << "]";
+				++i;
+			}
+			out << "]";
+
+			out	<< " \",orderPos\":" << acentry.nOrderPos
+				<< " \",entryNo\":" << acentry.nEntryNo
+				<< "}\n";
+        }
+        else if (strType == "watchs")
+        {
+            char fYes;
+            ssValue >> fYes;
+			out << " " << fYes << endl;
+        }
+        else if (strType == "key" )
+        {
+            CPrivKey pkey;
+            uint256 hash;
+
+            ssValue >> pkey;
+            ssValue >> hash;
+
+			out << " {\"key\":" << HexStr(pkey) << ",\"hash\":" << hash.ToString() << "}\n";
+        }
+        else if (strType == "mkey")
+        {
+            CMasterKey masterKey;
+            ssValue >> masterKey;
+
+			out << " {";
+			out << "  \"cryptedKey\":" << HexStr(masterKey.vchCryptedKey) << "," << endl;
+			out << "  \"salt\":" << HexStr(masterKey.vchSalt) << "," << endl;
+			out << "  \"derivationMethod\":" << masterKey.nDerivationMethod << "," << endl;
+			out << "  \"derivationIterations\":" << masterKey.nDeriveIterations << "," << endl;
+			out << "  \"otherDerivationParamters\":" << HexStr(masterKey.vchOtherDerivationParameters) << endl;
+
+			out << " }\n";
+        }
+        else if (strType == "ckey")
+        {
+            vector<unsigned char> privKey;
+            ssValue >> privKey;
+
+			out << " " << HexStr( privKey ) << endl;
+        }
+        else if (strType == "keymeta")
+        {
+            CKeyMetadata keyMeta;
+            ssValue >> keyMeta;
+
+			std::string t = ctime( &keyMeta.nCreateTime );
+			t = t.substr( 0, t.size() - 1 );
+
+			out << "{\"version\":" << keyMeta.nVersion << ", \"createTime\":" << t << "}" << endl;
+        }
+        else if (strType == "defaultkey")
+        {
+			CPubKey defaultKey;
+            ssValue >> defaultKey;
+			out << " " << HexStr( defaultKey ) << endl;
+        }
+        else if (strType == "pool")
+        {
+            CKeyPool keypool;
+            ssValue >> keypool;
+
+			out << " {\"pool\":" << keypool.nTime << ", \"pubKey\":" << 
+				HexStr(keypool.vchPubKey) << "}" << endl;
+        }
+        else if (strType == "version")
+        {
+			int fileVersion;
+            ssValue >> fileVersion;
+			out << " " << fileVersion << endl;
+        }
+        else if (strType == "cscript")
+        {
+            CScript script;
+            ssValue >> *(CScriptBase*)(&script);
+			out << " " << HexStr(script) << endl;
+        }
+        else if (strType == "orderposnext")
+        {
+			int64_t orderPosNext;
+			ssValue >> orderPosNext;
+			out << " " << orderPosNext << endl;
+        }
+        else if (strType == "destdata")
+        {
+            std::string strValue;
+            ssValue >> strValue;
+			out << " " << strValue << endl;
+        }
+		else
+		{
+			edcLogPrintf( "Error: Unsupported key in walletdb\n" );
+		}
+    } 
+	catch (...)
+    {
+        edcLogPrintf("Error getting value from wallet database cursor\n");
+    }
+
+    return true;
+}
+
+}
+
+void CEDCWalletDB::Dump( ostream & out )
+{
+    try 
+	{
+        // Get cursor
+        Dbc* pcursor = GetCursor();
+        if (!pcursor)
+        {
+            edcLogPrintf("Error getting wallet database cursor\n");
+            return;
+        }
+
+        while (true)
+        {
+            // Read next record
+            CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+            CDataStream ssValue(SER_DISK, CLIENT_VERSION);
+
+            int ret = ReadAtCursor(pcursor, ssKey, ssValue);
+
+            if (ret == DB_NOTFOUND)
+                break;
+            else if (ret != 0)
+            {
+                edcLogPrintf("Error reading next record from wallet database\n");
+                break;
+            }
+
+			string strType;
+			if(!dumpKey( out, ssKey, strType ))
+				break;
+			out << '[' << endl;
+			if(!dumpValue( out, strType, ssValue ))
+				break;
+			out << ']' << endl;
+		}
+
+        pcursor->close();
+    }
+    catch (...) 
+	{
+		// It is just a dump, so do not allow it to affect the process
+    }
+}
