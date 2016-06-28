@@ -20,6 +20,7 @@
 class CAccount;
 class CAccountingEntry;
 struct CBlockLocator;
+class CIssuer;
 class CKeyPool;
 class CMasterKey;
 class CScript;
@@ -76,6 +77,10 @@ public:
     bool WriteAccountingEntry_Backend(const CAccountingEntry& acentry);
     bool ReadAccount(const std::string& strAccount, CAccount& account);
     bool WriteAccount(const std::string& strAccount, const CAccount& account);
+
+	/// Read/Write Issuer
+    bool ReadIssuer(const std::string& strIssuer, CIssuer & issuer );
+    bool WriteIssuer(const std::string& strIssuer, const CIssuer & issuer );
 
     /// Write destination data key,value tuple to database
     bool WriteDestData(const std::string &address, const std::string &key, const std::string &value);

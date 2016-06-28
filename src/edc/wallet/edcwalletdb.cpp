@@ -230,6 +230,17 @@ bool CEDCWalletDB::WriteAccount(const string& strAccount, const CAccount& accoun
     return Write(make_pair(string("acc"), strAccount), account);
 }
 
+bool CEDCWalletDB::ReadIssuer(const string& strIssuer, CIssuer & issuer )
+{
+    issuer.SetNull();
+    return Read(make_pair(string("issuer"), strIssuer), issuer );
+}
+
+bool CEDCWalletDB::WriteIssuer(const string& strIssuer, const CIssuer & issuer )
+{
+    return Write(make_pair(string("issuer"), strIssuer), issuer );
+}
+
 bool CEDCWalletDB::WriteAccountingEntry(const uint64_t nAccEntryNum, const CAccountingEntry& acentry)
 {
     return Write(std::make_pair(std::string("acentry"), 

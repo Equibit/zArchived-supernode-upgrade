@@ -800,6 +800,11 @@ public:
 
 	CIssuer()
 	{
+		SetNull();
+	}
+
+	void SetNull()
+	{
 		pubKey_ = CPubKey();
 	}
 
