@@ -4,14 +4,25 @@
 
 #include <stdexcept>
 #include "edc/rpc/edcserver.h"
+#include "edc/wallet/edcwallet.h"
+#include "edc/edcapp.h"
+#include "edc/edcbase58.h"
+#include "edc/edcmain.h"
 #include "../utilstrencodings.h"
+
+bool edcEnsureWalletIsAvailable(bool avoidException);
 
 namespace
 {
 
 UniValue getNewIssuer( const UniValue & params, bool fHelp )
 {
-	if( fHelp )
+	EDCapp & theApp = EDCapp::singleton();
+
+   if (!edcEnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+	if( fHelp || params.size() < 4 )
 		throw std::runtime_error(
 			"eb_getnewissuer( \"name\" \"location\" \"phone-number\" \"e-mail address\" )\n"
 			"\nCreates a new Issuer.\n"
@@ -19,14 +30,37 @@ UniValue getNewIssuer( const UniValue & params, bool fHelp )
 			"The address associated with the Issuer.\n"
 			"\nArguments:\n"
 			"1. \"Name\"            (string) The name of the Issuer.\n"
-			"2. \"Location\"        (string, optional) The geographic address of the Issuer.\n"
-			"3. \"Phone number\"    (string, optional) The phone number of the Issuer.\n"
-			"4. \"E-mail address\"  (string, optional) The e-mail address of the Issuer.\n"
+			"2. \"Location\"        (string) The geographic address of the Issuer.\n"
+			"3. \"Phone number\"    (string) The phone number of the Issuer.\n"
+			"4. \"E-mail address\"  (string) The e-mail address of the Issuer.\n"
 			+ HelpExampleCli( "eb_getnewissuer", "\"Equibit Issuer\" \"100 University Ave, Toronto\" \"416 233-4753\" \"equibit-issuer.com\"" )
 			+ HelpExampleRpc( "eb_getnewissuer", "\"Equibit Issuer\" \"100 University Ave, Toronto\" \"416 233-4753\" \"equibit-issuer.com\"" )
 		);
 
-	return NullUniValue;
+	std::string name       = params[0].get_str();
+	std::string location   = params[1].get_str();
+	std::string phoneNumber= params[2].get_str();
+	std::string emailAddr  = params[3].get_str();
+
+	CIssuer	issuer(location, phoneNumber, emailAddr);
+
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
+
+    if (!theApp.walletMain()->IsLocked())
+        theApp.walletMain()->TopUpKeyPool();
+
+	if (!theApp.walletMain()->GetKeyFromPool(issuer.pubKey_))
+		throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
+
+    CEDCWalletDB walletdb(theApp.walletMain()->strWalletFile);
+
+	walletdb.WriteIssuer( name, issuer );
+
+	UniValue ret(UniValue::VSTR);
+
+    ret = CEDCBitcoinAddress(issuer.pubKey_.GetID()).ToString();
+
+    return ret;
 }
 
 UniValue listIssuers( const UniValue & params, bool fHelp )

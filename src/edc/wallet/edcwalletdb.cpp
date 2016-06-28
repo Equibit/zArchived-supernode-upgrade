@@ -1297,6 +1297,12 @@ bool dumpKey(
             ssKey >> name;
 			out << ':' << name;
 		}
+		else if( strType == "issuer" )
+		{
+            std::string name;
+            ssKey >> name;
+			out << ':' << name;
+		}
 		else
 		{
 			out << "ERROR: Unsupported key [" << strType  << "]" << endl;
@@ -1513,6 +1519,17 @@ dumpValue(
             CAccount acct;
             ssValue >> acct;
 			out << " " << HexStr(acct.vchPubKey) << endl;
+		}
+		else if( strType == "issuer" )
+		{
+            CIssuer issuer;
+            ssValue >> issuer;
+
+			out << " {\"pubKey\":" << HexStr(issuer.pubKey_)
+				<< ", \"location\":" << issuer.location_
+				<< ", \"email\":" << issuer.emailAddress_
+				<< ", \"phone_number\":" << issuer.phoneNumber_
+				<< "}" << endl;
 		}
 		else
 		{
