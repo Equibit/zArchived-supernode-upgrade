@@ -13,7 +13,7 @@ UniValue getNewIssuer( const UniValue & params, bool fHelp )
 {
 	if( fHelp )
 		throw std::runtime_error(
-			"eb_getnewissuer( \"name\" \"address\" \"phone-number\" \"e-mail address\" )\n"
+			"eb_getnewissuer( \"name\" \"location\" \"phone-number\" \"e-mail address\" )\n"
 			"\nCreates a new Issuer.\n"
 			"\nResult:\n"
 			"The address associated with the Issuer.\n"

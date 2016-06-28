@@ -793,6 +793,10 @@ class CIssuer
 {
 public:
 	CPubKey pubKey_;
+	std::string name_;
+	std::string location_;
+	std::string emailAddress_;
+	std::string phoneNumber_;
 
 	CIssuer()
 	{
@@ -811,5 +815,9 @@ public:
 		if(!(nType & SER_GETHASH))
 			READWRITE(nVersion);
 		READWRITE(pubKey_);
+		READWRITE(name_);
+		READWRITE(location_);
+		READWRITE(emailAddress_);
+		READWRITE(phoneNumber_);
 	}
 };
