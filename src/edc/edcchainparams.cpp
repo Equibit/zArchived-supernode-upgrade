@@ -123,8 +123,9 @@ public:
 
         genesis = edcCreateGenesisBlock(1231006505, 2083236893, 0x1d00ffff, 1, 50 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"));
-        assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
+        assert(consensus.hashGenesisBlock == uint256S("0xcac15d6fa8eaf28d063d86fc2320694dec5daa1b4a32081a8e04263e3cca755c"));
+        assert(genesis.hashMerkleRoot == uint256S("0x10e20e8d5624a851b1e0f33275bfb965ee7a61c99fc7a0f0c822374c11b906a4"));
+
 
 #if BITCOIN_DNSSEEDS
 // Any equibit DNS seeds?
@@ -213,34 +214,51 @@ public:
         nDefaultPort = 18330;
         nPruneAfterHeight = 1000;
 
-/*
+#ifdef MINE_NONCE
 		FILE * fh = fopen( "nonce.trace.txt", "w" );
 
 		arith_uint256 target;
+		arith_uint256 minH;
 		bool b1, b2;
 		target.SetCompact( 486604799, &b1, &b2 );
 		fprintf( fh, "%s:%d %s\n", __FILE__, __LINE__, target.ToString().c_str() );
 
-		uint32_t nonce = 414098450; 
+		uint32_t nonce = 0; 
+   		genesis = edcCreateGenesisBlock(1296688602, nonce, 0x1d00ffff, 1, 50 * COIN);
+   		consensus.hashGenesisBlock = genesis.GetHash();
+		minH = UintToArith256(consensus.hashGenesisBlock);
+
 		for( ; ; ++nonce )
 		{
        		genesis = edcCreateGenesisBlock(1296688602, nonce, 0x1d00ffff, 1, 50 * COIN);
        		consensus.hashGenesisBlock = genesis.GetHash();
-			if( nonce % 200000 == 0 )
-fprintf( fh, "%s:%d %u\n", __FILE__, __LINE__, nonce ); fflush(fh);
-			if(UintToArith256(consensus.hashGenesisBlock) <= target )
+			if( nonce % 200000 == 0 ) 
+			{
+				fprintf( fh, "%s:%d %u %s %s\n", __FILE__, __LINE__, nonce, minH.ToString().c_str(), target.ToString().c_str() ); 
+				fflush(fh);
+			}
+
+			arith_uint256 p = UintToArith256(consensus.hashGenesisBlock);
+
+			if(p <= target )
 				break;
+
+			if(minH > p )
+			{
+				minH = p;
+				fprintf( fh, "%s:%d %u %s\n", __FILE__, __LINE__, nonce, p.ToString().c_str() ); fflush(fh);
+			}
 		}
 fprintf( fh, "%s:%d %u %s\n", __FILE__, __LINE__, nonce, consensus.hashGenesisBlock.ToString().c_str() ); fflush(fh);
 fclose(fh);
 
-// OLD nonce  	    genesis = edcCreateGenesisBlock(1296688602, 2742957622, 0x1d00ffff, 1, 50 * COIN);
-*/
+#endif
+
   	    genesis = edcCreateGenesisBlock(1296688602, 414098458, 0x1d00ffff, 1, 50 * COIN);
       	consensus.hashGenesisBlock = genesis.GetHash();
 
-        assert(consensus.hashGenesisBlock == uint256S("0x000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943"));
-        assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
+        assert(consensus.hashGenesisBlock == uint256S("0xfa15678b6ed580bcc131de1fa1a962d4bc006d2f00275c37daeaa96a7558af03"));
+        assert(genesis.hashMerkleRoot == uint256S("0x10e20e8d5624a851b1e0f33275bfb965ee7a61c99fc7a0f0c822374c11b906a4"));
 
         vFixedSeeds.clear();
         vSeeds.clear();
@@ -313,9 +331,9 @@ public:
 
         genesis = edcCreateGenesisBlock(1296688602, 2, 0x207fffff, 1, 50 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0x0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206"));
-        assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
 
+        assert(consensus.hashGenesisBlock == uint256S("0x1a2cbf8b5ae81e828a6c1c2473fe854b647ef1637de1529b19b443e65dd21dbc" ));
+        assert(genesis.hashMerkleRoot == uint256S("0x10e20e8d5624a851b1e0f33275bfb965ee7a61c99fc7a0f0c822374c11b906a4" ));
 
         vFixedSeeds.clear(); //!< Regtest mode doesn't have any fixed seeds.
         vSeeds.clear();      //!< Regtest mode doesn't have any DNS seeds.

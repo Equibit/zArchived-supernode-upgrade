@@ -92,10 +92,13 @@ uint256 CEDCMutableTransaction::GetHash() const
     return SerializeHash(*this);
 }
 
-CEDCTxOut::CEDCTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn)
+CEDCTxOut::CEDCTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn):
+	nValue(nValueIn), 
+	forSale(false), 
+	ownerPayCurr(BTC), 
+	issuerPayCurr(BTC),
+	scriptPubKey(scriptPubKeyIn)
 {
-    nValue = nValueIn;
-    scriptPubKey = scriptPubKeyIn;
 }
 
 CEDCTxIn::CEDCTxIn(COutPoint prevoutIn, CScript scriptSigIn, uint32_t nSequenceIn)

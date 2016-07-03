@@ -6576,7 +6576,10 @@ bool edcSendMessages(CEDCNode* pto)
                 // Produce a vector with all candidates for sending
                 vector<std::set<uint256>::iterator> vInvTx;
                 vInvTx.reserve(pto->setInventoryTxToSend.size());
-                for (std::set<uint256>::iterator it = pto->setInventoryTxToSend.begin(); it != pto->setInventoryTxToSend.end(); it++) {
+                for(std::set<uint256>::iterator it = pto->setInventoryTxToSend.begin(); 
+					it != pto->setInventoryTxToSend.end(); 
+					it++) 
+				{
                     vInvTx.push_back(it);
                 }
                 CAmount filterrate = 0;
@@ -6675,7 +6678,10 @@ bool edcSendMessages(CEDCNode* pto)
         // Message: getdata (blocks)
         //
         vector<CInv> vGetData;
-        if (!pto->fDisconnect && !pto->fClient && (fFetch || !edcIsInitialBlockDownload()) && state.nBlocksInFlight < MAX_BLOCKS_IN_TRANSIT_PER_PEER) 
+        if (!pto->fDisconnect && 
+		    !pto->fClient && 
+		    (fFetch || !edcIsInitialBlockDownload()) && 
+		    state.nBlocksInFlight < MAX_BLOCKS_IN_TRANSIT_PER_PEER) 
 		{
             vector<CBlockIndex*> vToDownload;
             NodeId staller = -1;

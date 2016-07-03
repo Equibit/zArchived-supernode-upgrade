@@ -92,19 +92,19 @@ public:
 	bool		forSale;			// Equibits are for sale
 	uint256		receiptTxID;		// Related BTC Transaction ID (optional)
 	CPubKey		ownerPubKey;		// Public Key of transaction owner
-	uint256		ownerBitMsgAddr;	// Bitmessage address of transaction owner
+	uint160		ownerBitMsgAddr;	// Bitmessage address of transaction owner
 	Currency	ownerPayCurr;		// Owner's payment currency
-	uint256		ownerPayAddr;		// Owner's payment address
+	uint160		ownerPayAddr;		// Owner's payment address
 	CPubKey		issuerPubKey;		// Public Key of issuer
-	uint256		issuerBitMsgAddr;	// Bitmessage address of issuer
+	uint160		issuerBitMsgAddr;	// Bitmessage address of issuer
 	Currency	issuerPayCurr;		// Issuer's payment currency
-	uint256		issuerPayAddr;		// Issuer's payment address
+	uint160		issuerPayAddr;		// Issuer's payment address
 	CPubKey		proxyPubKey;		// Public Key of proxy agent (optional)
-	uint256		proxyBitMsgAddr;	// Bitmessage address of proxy agent (optional)
+	uint160		proxyBitMsgAddr;	// Bitmessage address of proxy agent (optional)
 	CScript		scriptPubKey;		// Script defining the conditions needed to
 									// spend the output (ie. smart contract)
 
-    CEDCTxOut()
+    CEDCTxOut():nValue(0), forSale(false), ownerPayCurr(BTC), issuerPayCurr(BTC)
     {
         SetNull();
     }
@@ -116,8 +116,34 @@ public:
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) 
 	{
-        READWRITE(nValue);
-        READWRITE(*(CScriptBase*)(&scriptPubKey));
+		READWRITE(nValue);
+		READWRITE(forSale);
+		READWRITE(receiptTxID);
+		READWRITE(ownerPubKey);
+		READWRITE(ownerBitMsgAddr);
+		READWRITE(ownerPayAddr);
+		READWRITE(issuerPubKey);
+		READWRITE(issuerBitMsgAddr);
+		READWRITE(issuerPayAddr);
+		READWRITE(proxyPubKey);
+		READWRITE(proxyBitMsgAddr);
+		READWRITE(*(CScriptBase*)(&scriptPubKey));
+
+		if(ser_action.ForRead())
+		{
+			int curr;
+			READWRITE(curr);
+			ownerPayCurr = static_cast<Currency>(curr);
+			READWRITE(curr);
+			issuerPayCurr = static_cast<Currency>(curr);
+		}
+		else
+		{
+			int curr = ownerPayCurr;
+			READWRITE(curr);
+			curr = issuerPayCurr;
+			READWRITE(curr);
+		}
     }
 
     void SetNull()

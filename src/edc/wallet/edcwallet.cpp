@@ -38,7 +38,7 @@
 
 using namespace std;
 
-const char * edcDEFAULT_WALLET_DAT = "edcwallet.dat";
+const char * EDC_DEFAULT_WALLET_DAT = "wallet.dat";
 
 /**
  * Fees smaller than this (in satoshi) are considered zero fee (for transaction creation)
@@ -3342,7 +3342,7 @@ std::string CEDCWallet::GetWalletHelpString(bool showDebug)
     strUsage += HelpMessageOpt("-eb_spendzeroconfchange", strprintf(_("Spend unconfirmed change when sending transactions (default: %u)"), DEFAULT_SPEND_ZEROCONF_CHANGE));
     strUsage += HelpMessageOpt("-eb_txconfirmtarget=<n>", strprintf(_("If paytxfee is not set, include enough fee so transactions begin confirmation on average within n blocks (default: %u)"), DEFAULT_TX_CONFIRM_TARGET));
     strUsage += HelpMessageOpt("-eb_upgradewallet", _("Upgrade wallet to latest format on startup"));
-    strUsage += HelpMessageOpt("-eb_wallet=<file>", _("Specify wallet file (within data directory)") + " " + strprintf(_("(default: %s)"), edcDEFAULT_WALLET_DAT));
+    strUsage += HelpMessageOpt("-eb_wallet=<file>", _("Specify wallet file (within data directory)") + " " + strprintf(_("(default: %s)"), EDC_DEFAULT_WALLET_DAT));
     strUsage += HelpMessageOpt("-eb_walletbroadcast", _("Make the wallet broadcast transactions") + " " + strprintf(_("(default: %u)"), EDC_DEFAULT_WALLETBROADCAST));
     strUsage += HelpMessageOpt("-eb_walletnotify=<cmd>", _("Execute command when a wallet transaction changes (%s in cmd is replaced by TxID)"));
     strUsage += HelpMessageOpt("-eb_zapwallettxes=<mode>", _("Delete all wallet transactions and only recover those parts of the blockchain through -rescan on startup") +
@@ -3671,3 +3671,82 @@ std::string CEDCMerkleTx::toJSON( const char * margin ) const
 	ans << margin << "}\n";
 	return ans.str();
 }
+
+
+bool CEDCWallet::CreateAuthorizingTransaction(
+               const CIssuer & issuer,
+          const CEDCWalletTx & wtx,
+                        size_t outId,
+				CEDCWalletTx & wtxNew, 
+			  CEDCReserveKey & reservekey, 
+				 std::string & strFailReason )
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+    CAmount nValue = wtx.vout[outId].nValue;
+
+    wtxNew.fTimeReceivedIsTxTime = true;
+    wtxNew.BindWallet(this);
+
+    CEDCMutableTransaction txNew;
+
+    txNew.nLockTime = theApp.chainActive().Height();
+
+    assert(txNew.nLockTime <= (unsigned int)theApp.chainActive().Height());
+    assert(txNew.nLockTime < LOCKTIME_THRESHOLD);
+    {
+        LOCK2(EDC_cs_main, cs_wallet);
+        {
+			EDCapp & theApp = EDCapp::singleton();
+
+            txNew.vin.clear();
+            txNew.vout.clear();
+            wtxNew.fFromMe = true;
+
+            CEDCTxOut txout(nValue, wtx.vout[outId].scriptPubKey);
+
+			CKeyID id = issuer.pubKey_.GetID();
+			CTxDestination address = CEDCBitcoinAddress(id).Get();
+
+			// Mark the output transaction authorized
+			const_cast<CPubKey &>(txout.issuerPubKey) = issuer.pubKey_;
+			const_cast<uint160 &>(txout.issuerPayAddr)= *boost::get<CKeyID>(&address);
+
+            txNew.vout.push_back(txout);
+
+            reservekey.ReturnKey();
+
+            txNew.vin.push_back(CEDCTxIn(wtx.GetHash(), 0, CScript(), 
+				std::numeric_limits<unsigned int>::max()-1));
+
+            CEDCTransaction txNewConst(txNew);
+
+            bool signSuccess;
+            const CScript& scriptPubKey = wtx.vout[outId].scriptPubKey;
+            CScript& scriptSigRes = txNew.vin[0].scriptSig;
+
+			bool sign = true;
+			if(sign)
+            	signSuccess = ProduceSignature(EDCTransactionSignatureCreator(this, &txNewConst, 0, 
+					SIGHASH_ALL), scriptPubKey, scriptSigRes);
+            else
+                signSuccess = ProduceSignature(DummySignatureCreator(this), scriptPubKey, scriptSigRes);
+
+            if (!signSuccess)
+            {
+                strFailReason = _("Signing transaction failed");
+                return false;
+            }
+
+            if (!sign) 
+			{
+                txNew.vin[0].scriptSig = CScript();
+            }
+
+            *static_cast<CEDCTransaction*>(&wtxNew) = CEDCTransaction(txNew);
+        }
+    }
+
+    return true;
+}
+

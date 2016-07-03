@@ -181,6 +181,7 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "eb_prioritisetransaction", 2 },
     { "eb_setban", 2 },
     { "eb_setban", 3 },
+	{ "eb_authorizeequibit", 2 },
 // EDC END
 };
 

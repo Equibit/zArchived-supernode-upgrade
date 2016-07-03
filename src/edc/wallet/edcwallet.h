@@ -616,6 +616,18 @@ public:
 				   const CCoinControl * coinControl = NULL, 
 								   bool sign = true);
 
+    /**
+     * Create a new transaction that is created to authorize the EQB of the
+     * input TxOut.
+     */
+    bool CreateAuthorizingTransaction(
+                        const CIssuer & issuer,
+                   const CEDCWalletTx & wtx,
+                                 size_t outId, 
+						 CEDCWalletTx & wtxNew, 
+					   CEDCReserveKey & reservekey, 
+        				  std::string & strFailReason );
+
     bool CommitTransaction(CEDCWalletTx& wtxNew, CEDCReserveKey& reservekey);
 
     bool AddAccountingEntry(const CAccountingEntry&, CEDCWalletDB & pwalletdb);
