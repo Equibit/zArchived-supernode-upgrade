@@ -261,7 +261,6 @@ libbitcoin_server_a_SOURCES = \
   edc/rpc/edcnet.cpp \
   edc/primitives/edctransaction.cpp \
   edc/primitives/edcblock.cpp \
-  edc/edcvalidationinterface.cpp \
   edc/edcbitcoin-tx.cpp \
   edc/edcbloom.cpp \
   edc/edccoins.cpp \
@@ -273,7 +272,6 @@ libbitcoin_server_a_SOURCES = \
   edc/script/edcsign.cpp \
   edc/script/edcinterpreter.cpp \
   edc/edctxmempool.cpp \
-  edc/edcrest.cpp \
   edc/edcparams.cpp \
   edc/edctimedata.cpp \
   edc/edctxdb.cpp \
@@ -288,6 +286,11 @@ libbitcoin_server_a_SOURCES = \
   validationinterface.cpp \
   versionbits.cpp \
   $(BITCOIN_CORE_H)
+
+# edc/edcui_interface.cpp
+# edc/message/edcrpcmessage.cpp
+# edc/message/edcmessage.cpp
+# edc/message/edcmessagedb.cpp
 
 if ENABLE_ZMQ
 LIBBITCOIN_ZMQ=libbitcoin_zmq.a

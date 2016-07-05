@@ -87,19 +87,57 @@ public:
     CEDCMainParams() 
 	{
         strNetworkID = "main";
+
+        // nSubsidyHalvingInterval controls the amount of Equibits paid to the 
+        // miner for mining a block. See edcGetBlockSubsidy for the algorithm.
+        //
         consensus.nSubsidyHalvingInterval = 210000;
+
+        // This parameter controls script verification processing. See BIP65 and
+        // BIP66. 
+        // TODO: Not applicable to EDC?
         consensus.nMajorityEnforceBlockUpgrade = 750;
+
+        // Controls rejection of out-of-date blocks
+        // TODO: Not applicable to EDC?
         consensus.nMajorityRejectBlockOutdated = 950;
+
+        // This parameter is used in conjunction with 
+        // nMajorityEnforceBlockUpgrade. See IsSuperMajority.
+        // TODO: Not applicable to EDC?
         consensus.nMajorityWindow = 1000;
+
+        // The next two parameters support BIP34 processing. See BIP34 in 
+        // ConnectBlock for further details. 
+        // TODO: These parameters will likely need to be removed from the EDC 
+        // implementation since the BIP34Hash will not match.
+        //
         consensus.BIP34Height = 227931;
         consensus.BIP34Hash = uint256S("0x000000000000024b89b42a942fe0d9fea3bb44ab7bd1b19115dd6a759c0808b8");
+
+        // Minimum proof-of-work value
         consensus.powLimit = uint256S("00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+
+        // The next two parameters control the POW difficulty adjustment
+        // interval
         consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
         consensus.nPowTargetSpacing = 10 * 60;
+
+        // If true, then minimum difficulty (POW) blocks are allowed
         consensus.fPowAllowMinDifficultyBlocks = false;
+
+        // If true, then difficulty of previous block is used for current
+        // block. See CalculateNextWorkRequired.
         consensus.fPowNoRetargeting = false;
+
+        // Triggers POW rule change. See GetStateFor for details
         consensus.nRuleChangeActivationThreshold = 1916; // 95% of 2016
+
+        // This parameter is never referenced. TODO: Remove it?
         consensus.nMinerConfirmationWindow = 2016; // nPowTargetTimespan / nPowTargetSpacing
+
+        // BIP9 deployment parameters. The dates can be in the past
+        // TODO: What dates do we want to use.
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].bit = 28;
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nStartTime = 1199145601; // January 1, 2008
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nTimeout = 1230767999; // December 31, 2008
@@ -110,10 +148,11 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nTimeout = 1493596800; // May 1st, 2017
 
         /**
-         * The message start string is designed to be unlikely to occur in normal data.
-         * The characters are rarely used upper ASCII, not valid as UTF-8, and produce
-         * a large 32-bit integer with any alignment.
+         * The message start string is designed to be unlikely to occur in 
+         * normal data. The characters are rarely used upper ASCII, not valid 
+         * as UTF-8, and produce a large 32-bit integer with any alignment.
          */
+// TODO: Customize for Equibits
         pchMessageStart[0] = 0xf9;
         pchMessageStart[1] = 0xbe;
         pchMessageStart[2] = 0xb4;
@@ -127,6 +166,8 @@ public:
         assert(genesis.hashMerkleRoot == uint256S("0x10e20e8d5624a851b1e0f33275bfb965ee7a61c99fc7a0f0c822374c11b906a4"));
 
 
+// TODO: Equibit DNS seed addresses?
+/*
 #if BITCOIN_DNSSEEDS
 // Any equibit DNS seeds?
         vSeeds.push_back(CDNSSeedData("bitcoin.sipa.be", "seed.bitcoin.sipa.be")); // Pieter Wuille
@@ -136,7 +177,7 @@ public:
         vSeeds.push_back(CDNSSeedData("xf2.org", "bitseed.xf2.org")); // Jeff Garzik
         vSeeds.push_back(CDNSSeedData("bitcoin.jonasschnelli.ch", "seed.bitcoin.jonasschnelli.ch")); // Jonas Schnelli
 #endif
-
+*/
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,0);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,5);
         base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,128);
@@ -185,19 +226,57 @@ public:
     CEDCTestNetParams() 
 	{
         strNetworkID = "test";
+
+        // nSubsidyHalvingInterval controls the amount of Equibits paid to the 
+        // miner for mining a block. See edcGetBlockSubsidy for the algorithm
+        //
         consensus.nSubsidyHalvingInterval = 210000;
+
+        // This parameter controls script verification processing. See BIP65 and
+        // BIP66. 
+        // TODO: Not applicable to EDC?
         consensus.nMajorityEnforceBlockUpgrade = 51;
+
+        // Controls rejection of out-of-date blocks
+        // TODO: Not applicable to EDC?
         consensus.nMajorityRejectBlockOutdated = 75;
+
+        // This parameter is used in conjunction with 
+        // nMajorityEnforceBlockUpgrade. See IsSuperMajority.
+        // TODO: Not applicable to EDC?
         consensus.nMajorityWindow = 100;
+
+        // The next two parameters support BIP34 processing. See BIP34 in 
+        // ConnectBlock for further details. 
+        // TODO: These parameters will likely need to be removed from the EDC 
+        // implementation since the BIP34Hash will not match.
+        //
         consensus.BIP34Height = 21111;
         consensus.BIP34Hash = uint256S("0x0000000023b3a96d3484e5abb3755c413e7d41500f8e2a5c3f0dd01299cd8ef8");
+
+        // Minimum proof-of-work value
         consensus.powLimit = uint256S("00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+
+        // The next two parameters control the POW difficulty adjustment
+        // interval
         consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
         consensus.nPowTargetSpacing = 10 * 60;
+
+        // If true, then minimum difficulty (POW) blocks are allowed
         consensus.fPowAllowMinDifficultyBlocks = true;
+
+        // If true, then difficulty of previous block is used for current
+        // block. See CalculateNextWorkRequired.
         consensus.fPowNoRetargeting = false;
+
+        // Triggers POW rule change. See GetStateFor for details
         consensus.nRuleChangeActivationThreshold = 1512; // 75% for testchains
+
+        // This parameter is never referenced. TODO: Remove it?
         consensus.nMinerConfirmationWindow = 2016; // nPowTargetTimespan / nPowTargetSpacing
+
+        // BIP9 deployment parameters. The dates can be in the past
+        // TODO: What dates do we want to use.
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].bit = 28;
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nStartTime = 1199145601; // January 1, 2008
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nTimeout = 1230767999; // December 31, 2008
@@ -302,22 +381,61 @@ public:
     CEDCRegTestParams() 
 	{
         strNetworkID = "regtest";
+
+        // nSubsidyHalvingInterval controls the amount of Equibits paid to the 
+        // miner for mining a block. See edcGetBlockSubsidy for the algorithm
+        //
         consensus.nSubsidyHalvingInterval = 150;
+
+        // This parameter controls script verification processing. See BIP65 and
+        // BIP66. 
+        // TODO: Not applicable to EDC?
         consensus.nMajorityEnforceBlockUpgrade = 750;
+
+        // Controls rejection of out-of-date blocks
+        // TODO: Not applicable to EDC?
         consensus.nMajorityRejectBlockOutdated = 950;
+
+        // This parameter is used in conjunction with 
+        // nMajorityEnforceBlockUpgrade. See IsSuperMajority.
+        // TODO: Not applicable to EDC?
         consensus.nMajorityWindow = 1000;
+
+        // The next two parameters support BIP34 processing. See BIP34 in 
+        // ConnectBlock for further details. 
+        // TODO: These parameters will likely need to be removed from the EDC 
+        // implementation since the BIP34Hash will not match.
+        //
         consensus.BIP34Height = -1; // BIP34 has not necessarily activated on regtest
         consensus.BIP34Hash = uint256();
+
+        // Minimum proof-of-work value
         consensus.powLimit = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+
+        // The next two parameters control the POW difficulty adjustment
+        // interval
         consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
         consensus.nPowTargetSpacing = 10 * 60;
+
+        // If true, then minimum difficulty (POW) blocks are allowed
         consensus.fPowAllowMinDifficultyBlocks = true;
+
+        // If true, then difficulty of previous block is used for current
+        // block. See CalculateNextWorkRequired.
         consensus.fPowNoRetargeting = true;
+
+        // Triggers POW rule change. See GetStateFor for details
         consensus.nRuleChangeActivationThreshold = 108; // 75% for testchains
+
+        // This parameter is never referenced. TODO: Remove it?
         consensus.nMinerConfirmationWindow = 144; // Faster than normal for regtest (144 instead of 2016)
+
+        // BIP9 deployment parameters. The dates can be in the past
+        // TODO: What dates do we want to use.
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].bit = 28;
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nStartTime = 0;
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nTimeout = 999999999999ULL;
+
         consensus.vDeployments[Consensus::DEPLOYMENT_CSV].bit = 0;
         consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nStartTime = 0;
         consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nTimeout = 999999999999ULL;

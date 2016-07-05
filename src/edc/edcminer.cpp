@@ -58,6 +58,29 @@ public:
 
 int64_t edcGetAdjustedTime();
 
+CAmount edcGetBlockSubsidy(
+	                      int nHeight, 
+	const Consensus::Params & consensusParams )
+{
+    int halvings = nHeight / consensusParams.nSubsidyHalvingInterval;
+
+    // Force block reward to zero when right shift is undefined.
+    if (halvings >= 64)
+        return 0;
+
+    CAmount nSubsidy = 50 * COIN;
+
+    // Subsidy is cut in half every 210,000 blocks which will occur 
+	// approximately every 4 years.
+    nSubsidy >>= halvings;
+
+// TODO: Chris wants EDC to get 1,000,000 EQB for its mining prior to opening
+//       the network to customers. This function will need to be modified to
+//       handle this requirement. 
+//		 For example, if nHeight == 0, nSubsidy = 1000000.
+    return nSubsidy;
+}
+
 CEDCBlockTemplate* edcCreateNewBlock(
 	const CEDCChainParams & chainparams, 
 			const CScript & scriptPubKeyIn)
@@ -287,7 +310,7 @@ CEDCBlockTemplate* edcCreateNewBlock(
         edcLogPrintf("CreateNewBlock(): total size %u txs: %u fees: %ld sigops %d\n", nBlockSize, nBlockTx, nFees, nBlockSigOps);
 
         // Compute final coinbase transaction.
-        txNew.vout[0].nValue = nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
+        txNew.vout[0].nValue = nFees + edcGetBlockSubsidy(nHeight, chainparams.GetConsensus());
         txNew.vin[0].scriptSig = CScript() << nHeight << OP_0;
         pblock->vtx[0] = txNew;
         pblocktemplate->vTxFees[0] = -nFees;

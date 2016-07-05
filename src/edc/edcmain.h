@@ -106,6 +106,7 @@ std::string edcGetWarnings(const std::string& strFor);
 bool GetTransaction(const uint256 &hash, CEDCTransaction &tx, const Consensus::Params& params, uint256 &hashBlock, bool fAllowSlow = false);
 /** Find the best known block, and make it the tip of the block chain */
 bool ActivateBestChain(CValidationState& state, const CEDCChainParams& chainparams, const CEDCBlock* pblock = NULL);
+CAmount edcGetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams);
 
 /**
  * Prune block and undo files (blk???.dat and undo???.dat) so that the disk space used is less than a user-defined target.

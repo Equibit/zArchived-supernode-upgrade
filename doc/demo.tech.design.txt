@@ -47,7 +47,11 @@ eb_setaccount             Assigns an address to an account
     Creates a new issuer. This will update the Issuer DB and transmit it to 
     all of the other nodes.
 
-    eb_signequibit    <issuer-name> <transaction-id> <txout-index>
+	eb_sendtoaddress <issuer-address>
+
+	eb_generate 1
+
+    eb_authorizeequibit    <issuer-name> <transaction-id> <txout-index>
 
     Create a transaction that applies the signature to the equibit located
     at the specified transaction.
