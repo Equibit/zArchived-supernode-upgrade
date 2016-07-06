@@ -542,7 +542,7 @@ ReadKeyValue(
             }
             catch (...) 
 			{
-				// TODO
+            	edcLogPrintf("Warning: Exception thrown during key input processing\n");
 			}
 
             bool fSkipCheck = false;

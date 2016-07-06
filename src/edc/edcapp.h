@@ -19,6 +19,9 @@ class CEDCWallet;
 struct event_base;
 
 
+/**
+ * The application object. It manages all global data.
+ */
 class EDCapp
 {
 public:

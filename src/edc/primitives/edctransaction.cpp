@@ -4,6 +4,7 @@
 
 #include "edc/primitives/edctransaction.h"
 #include "utilstrencodings.h"
+#include "tinyformat.h"
 #include <sstream>
 
 
@@ -29,7 +30,6 @@ CEDCTransaction::CEDCTransaction(const CEDCMutableTransaction &tx) :
 	UpdateHash();
 }
 
-// TODO: Review
 CEDCTransaction& CEDCTransaction::operator=(const CEDCTransaction &tx) 
 {
 	*const_cast<int*>(&nVersion) = tx.nVersion;
@@ -70,13 +70,13 @@ unsigned int CEDCTransaction::CalculateModifiedSize(unsigned int nTxSize) const
     // risk encouraging people to create junk outputs to redeem later.
     if (nTxSize == 0)
         nTxSize = ::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION);
-/* TODO    for (std::vector<CTxIn>::const_iterator it(vin.begin()); it != vin.end(); ++it)
+	for (std::vector<CEDCTxIn>::const_iterator it(vin.begin()); it != vin.end(); ++it)
     {
         unsigned int offset = 41U + std::min(110U, (unsigned int)it->scriptSig.size());
         if (nTxSize > offset)
             nTxSize -= offset;
     }
-*/
+
     return nTxSize;
 }
 
@@ -118,14 +118,14 @@ CEDCTxIn::CEDCTxIn(uint256 hashPrevTx, uint32_t nOut, CScript scriptSigIn, uint3
 std::string CEDCTransaction::ToString() const
 {
     std::string str;
-/* TODO
+
     str += strprintf("CTransaction(hash=%s, ver=%d, vin.size=%u, vout.size=%u, nLockTime=%u)\n",
         GetHash().ToString().substr(0,10),
         nVersion,
         vin.size(),
         vout.size(),
         nLockTime);
-*/
+
     for (unsigned int i = 0; i < vin.size(); i++)
         str += "    " + vin[i].ToString() + "\n";
     for (unsigned int i = 0; i < vout.size(); i++)
@@ -192,13 +192,13 @@ std::string CEDCTxIn::ToString() const
     std::string str;
     str += "CTxIn(";
     str += prevout.ToString();
-/* TODO    if (prevout.IsNull())
+    if (prevout.IsNull())
         str += strprintf(", coinbase %s", HexStr(scriptSig));
     else
         str += strprintf(", scriptSig=%s", HexStr(scriptSig).substr(0, 24));
     if (nSequence != SEQUENCE_FINAL)
         str += strprintf(", nSequence=%u", nSequence);
-*/
+
     str += ")";
     return str;
 }
@@ -217,11 +217,48 @@ std::string CEDCTxIn::toJSON( const char * margin ) const
 	return ans.str();
 }
 
+namespace 
+{
+const char * ToString( Currency c )
+{
+	switch(c)
+	{
+	default:	return "ERROR:Unsupported currency";
+	case BTC:	return "BTC";
+	}
+}
+}
+
 std::string CEDCTxOut::ToString() const
 {
-// TODO
-//    return strprintf("CTxOut(nValue=%d.%08d, scriptPubKey=%s)", nValue / COIN, nValue % COIN, HexStr(scriptPubKey).substr(0, 30));
-	return "";
+    return strprintf("CTxOut(nValue=%d.%08d, "
+					"forSale=%s, "
+					"receiptTxID=%s, "
+					"ownerPubKey=%s, "
+					"ownerBitMsgAddr=%s, "
+					"ownerPayCurr=%s, "
+					"ownerPayAddr=%s, "
+					"issuerPubKey=%s, "
+					"issuerBitMsgAddr=%s, "
+					"issuerPayCurr=%s, "
+					"issuerPayAddr=%s, "
+					"proxyPubKey=%s, "
+					"proxyBitMsgAddr=%s, "
+					 "scriptPubKey=%s ...)", 
+		nValue / COIN, nValue % COIN, 
+		(forSale?"true":"false"),
+		receiptTxID.ToString().c_str(),
+		HexStr(ownerPubKey).c_str(),
+		ownerBitMsgAddr.ToString().c_str(),
+		::ToString(ownerPayCurr),
+		ownerPayAddr.ToString().c_str(),
+		HexStr(issuerPubKey).c_str(),
+		issuerBitMsgAddr.ToString().c_str(),
+		::ToString(issuerPayCurr),
+		issuerPayAddr.ToString().c_str(),
+		HexStr(proxyPubKey).c_str(),
+		proxyBitMsgAddr.ToString().c_str(),
+		HexStr(scriptPubKey).substr(0, 30));
 }
 
 std::string CEDCTxOut::toJSON( const char * margin ) const
@@ -234,11 +271,11 @@ std::string CEDCTxOut::toJSON( const char * margin ) const
     	<< margin << "\"receiptTxID\":" << receiptTxID.ToString() << ",\n"
     	<< margin << "\"ownerPubKey\":" << HexStr(ownerPubKey) << ",\n"
     	<< margin << "\"ownerBitMsgAddr\":" <<ownerBitMsgAddr.ToString() <<",\n"
-    	<< margin << "\"currency\":" << ownerPayCurr << ",\n"
+    	<< margin << "\"currency\":" << ::ToString(ownerPayCurr) << ",\n"
     	<< margin << "\"ownerPayAddr\":" << ownerPayAddr.ToString() << ",\n"
     	<< margin << "\"issuerPubKey\":" << HexStr(issuerPubKey) << ",\n"
     	<< margin << "\"issuerBitMsgAddr\":"<<issuerBitMsgAddr.ToString()<<",\n"
-    	<< margin << "\"issuerPayCurr\":" << issuerPayCurr << ",\n"
+    	<< margin << "\"issuerPayCurr\":" << ::ToString(issuerPayCurr) << ",\n"
     	<< margin << "\"issuerPayAddr\":" << issuerPayAddr.ToString() << ",\n"
     	<< margin << "\"proxyPubKey\":" << HexStr(proxyPubKey) << ",\n"
     	<< margin << "\"proxyBitMsgAddr\":" << proxyBitMsgAddr.ToString()<<",\n"

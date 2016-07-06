@@ -183,9 +183,21 @@ public:
 
     friend bool operator==(const CEDCTxOut& a, const CEDCTxOut& b)
     {
-// TODO
-        return (a.nValue       == b.nValue /* &&
-                a.scriptPubKey == b.scriptPubKey */ );
+        return a.nValue  == b.nValue
+			&& a.forSale == b.forSale
+			&& a.receiptTxID == b.receiptTxID
+			&& a.ownerPubKey == b.ownerPubKey
+			&& a.ownerBitMsgAddr == b.ownerBitMsgAddr
+			&& a.ownerPayCurr == b.ownerPayCurr
+			&& a.ownerPayAddr == b.ownerPayAddr
+			&& a.issuerPubKey == b.issuerPubKey
+			&& a.issuerBitMsgAddr == b.issuerBitMsgAddr
+			&& a.issuerPayCurr == b.issuerPayCurr
+			&& a.issuerPayAddr == b.issuerPayAddr
+			&& a.proxyPubKey == b.proxyPubKey
+			&& a.proxyBitMsgAddr == b.proxyBitMsgAddr
+            && a.scriptPubKey == b.scriptPubKey;
+		;
     }
 
     friend bool operator!=(const CEDCTxOut& a, const CEDCTxOut& b)
