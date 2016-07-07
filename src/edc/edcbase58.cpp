@@ -16,13 +16,6 @@
 #include <boost/variant/apply_visitor.hpp>
 #include <boost/variant/static_visitor.hpp>
 
-namespace
-{
-
-/** All alphanumeric characters except for "0", "I", "O", and "l" */
-const char* pszBase58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-
-}
 
 CEDCBase58Data::CEDCBase58Data()
 {

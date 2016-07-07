@@ -156,14 +156,13 @@ UniValue authorizeEquibit( const UniValue & params, bool fHelp )
     // Create and send the transaction
     CEDCReserveKey reservekey(theApp.walletMain());
     std::string strError;
-	bool	subtractFeeFromAmount = false;
 
 	CEDCWalletTx wtxNew;
 
     if (!theApp.walletMain()->CreateAuthorizingTransaction( issuer, wtx, txOff, wtxNew, reservekey, strError))
     {
 #if HANDLE_FEE
-        if (!fSubtractFeeFromAmount && nValue > theApp.walletMain()->GetBalance())
+        if (nValue > theApp.walletMain()->GetBalance())
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(0));
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
 #endif

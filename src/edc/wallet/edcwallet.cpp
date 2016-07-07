@@ -3707,7 +3707,7 @@ bool CEDCWallet::CreateAuthorizingTransaction(
 
 			// Mark the output transaction authorized
 			const_cast<CPubKey &>(txout.issuerPubKey) = issuer.pubKey_;
-			const_cast<uint160 &>(txout.issuerPayAddr)= *boost::get<CKeyID>(&address);
+			const_cast<CKeyID &>(txout.issuerPayAddr)= *boost::get<CKeyID>(&address);
 
             txNew.vout.push_back(txout);
 

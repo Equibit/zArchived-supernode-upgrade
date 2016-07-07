@@ -92,15 +92,15 @@ public:
 	bool		forSale;			// Equibits are for sale
 	uint256		receiptTxID;		// Related BTC Transaction ID (optional)
 	CPubKey		ownerPubKey;		// Public Key of transaction owner
-	uint160		ownerBitMsgAddr;	// Bitmessage address of transaction owner
+	CKeyID 		ownerBitMsgAddr;	// Bitmessage address of transaction owner
 	Currency	ownerPayCurr;		// Owner's payment currency
-	uint160		ownerPayAddr;		// Owner's payment address
+	CKeyID 		ownerPayAddr;		// Owner's payment address
 	CPubKey		issuerPubKey;		// Public Key of issuer
-	uint160		issuerBitMsgAddr;	// Bitmessage address of issuer
+	CKeyID 		issuerBitMsgAddr;	// Bitmessage address of issuer
 	Currency	issuerPayCurr;		// Issuer's payment currency
-	uint160		issuerPayAddr;		// Issuer's payment address
+	CKeyID 		issuerPayAddr;		// Issuer's payment address
 	CPubKey		proxyPubKey;		// Public Key of proxy agent (optional)
-	uint160		proxyBitMsgAddr;	// Bitmessage address of proxy agent (optional)
+	CKeyID 		proxyBitMsgAddr;	// Bitmessage address of proxy agent (optional)
 	CScript		scriptPubKey;		// Script defining the conditions needed to
 									// spend the output (ie. smart contract)
 
