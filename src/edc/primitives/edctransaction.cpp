@@ -250,15 +250,15 @@ std::string CEDCTxOut::ToString() const
 		(forSale?"true":"false"),
 		receiptTxID.ToString().c_str(),
 		HexStr(ownerPubKey).c_str(),
-		CEDCBitcoinAddress(ownerBitMsgAddr).ToString().c_str(),
+		(ownerBitMsgAddr.IsNull() ? "" : CEDCBitcoinAddress(ownerBitMsgAddr).ToString().c_str()),
 		::ToString(ownerPayCurr),
-		CEDCBitcoinAddress(ownerPayAddr).ToString().c_str(),
+		(ownerPayAddr.IsNull() ? "" : CEDCBitcoinAddress(ownerPayAddr).ToString().c_str()),
 		HexStr(issuerPubKey).c_str(),
-		CEDCBitcoinAddress(issuerBitMsgAddr).ToString().c_str(),
+		(issuerBitMsgAddr.IsNull() ? "" : CEDCBitcoinAddress(issuerBitMsgAddr).ToString().c_str()),
 		::ToString(issuerPayCurr),
-		CEDCBitcoinAddress(issuerPayAddr).ToString().c_str(),
+		(issuerPayAddr.IsNull() ? "" : CEDCBitcoinAddress(issuerPayAddr).ToString().c_str()),
 		HexStr(proxyPubKey).c_str(),
-		CEDCBitcoinAddress(proxyBitMsgAddr).ToString().c_str(),
+		(proxyBitMsgAddr.IsNull() ? "" : CEDCBitcoinAddress(proxyBitMsgAddr).ToString().c_str()),
 		HexStr(scriptPubKey).substr(0, 30));
 }
 
@@ -271,15 +271,20 @@ std::string CEDCTxOut::toJSON( const char * margin ) const
     	<< margin << "\"forSale\":" << forSale << ",\n"
     	<< margin << "\"receiptTxID\":" << receiptTxID.ToString() << ",\n"
     	<< margin << "\"ownerPubKey\":" << HexStr(ownerPubKey) << ",\n"
-    	<< margin << "\"ownerBitMsgAddr\":" << CEDCBitcoinAddress(ownerBitMsgAddr).ToString() <<",\n"
+    	<< margin << "\"ownerBitMsgAddr\":" 
+			<< (ownerBitMsgAddr.IsNull() ? "" : CEDCBitcoinAddress(ownerBitMsgAddr).ToString()) <<",\n"
     	<< margin << "\"currency\":" << ::ToString(ownerPayCurr) << ",\n"
-    	<< margin << "\"ownerPayAddr\":" << CEDCBitcoinAddress(ownerPayAddr).ToString() << ",\n"
+    	<< margin << "\"ownerPayAddr\":" 
+			<< (ownerPayAddr.IsNull() ? "" : CEDCBitcoinAddress(ownerPayAddr).ToString()) << ",\n"
     	<< margin << "\"issuerPubKey\":" << HexStr(issuerPubKey) << ",\n"
-    	<< margin << "\"issuerBitMsgAddr\":"<< CEDCBitcoinAddress(issuerBitMsgAddr).ToString()<<",\n"
+    	<< margin << "\"issuerBitMsgAddr\":"
+			<< (issuerBitMsgAddr.IsNull() ? "" : CEDCBitcoinAddress(issuerBitMsgAddr).ToString()) << ",\n"
     	<< margin << "\"issuerPayCurr\":" << ::ToString(issuerPayCurr) << ",\n"
-    	<< margin << "\"issuerPayAddr\":" << CEDCBitcoinAddress(issuerPayAddr).ToString() << ",\n"
+    	<< margin << "\"issuerPayAddr\":" 
+			<< (issuerPayAddr.IsNull() ? "" : CEDCBitcoinAddress(issuerPayAddr).ToString()) << ",\n"
     	<< margin << "\"proxyPubKey\":" << HexStr(proxyPubKey) << ",\n"
-    	<< margin << "\"proxyBitMsgAddr\":" << CEDCBitcoinAddress(proxyBitMsgAddr).ToString()<<",\n"
+    	<< margin << "\"proxyBitMsgAddr\":" 
+			<< (proxyBitMsgAddr.IsNull() ? "" : CEDCBitcoinAddress(proxyBitMsgAddr).ToString()) << ",\n"
     	<< margin << "\"scriptPubKey\":" << HexStr(scriptPubKey) << ",\n"
 		<< margin << "}";
 
