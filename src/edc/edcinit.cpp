@@ -164,7 +164,7 @@ void edcThreadImport(std::vector<boost::filesystem::path> vImportFiles)
 
             FILE *file = edcOpenBlockFile(pos, true);
             if (!file)
-                break; // This error is logged in OpenBlockFile
+                break; // This error is logged in edcOpenBlockFile
             edcLogPrintf("Reindexing block file blk%05u.dat...\n", (unsigned int)nFile);
             edcLoadExternalBlockFile(chainparams, file, &pos);
             nFile++;

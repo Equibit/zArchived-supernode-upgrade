@@ -1571,7 +1571,7 @@ FILE* edcOpenDiskFile(
     if (pos.IsNull())
         return NULL;
 
-    boost::filesystem::path path = GetBlockPosFilename(pos, prefix);
+    boost::filesystem::path path = edcGetBlockPosFilename(pos, prefix);
     boost::filesystem::create_directories(path.parent_path());
     FILE* file = fopen(path.string().c_str(), "rb+");
 
@@ -4091,8 +4091,8 @@ void edcUnlinkPrunedFiles(std::set<int>& setFilesToPrune)
     for (set<int>::iterator it = setFilesToPrune.begin(); it != setFilesToPrune.end(); ++it) 
 	{
         CDiskBlockPos pos(*it, 0);
-        boost::filesystem::remove(GetBlockPosFilename(pos, "blk"));
-        boost::filesystem::remove(GetBlockPosFilename(pos, "rev"));
+        boost::filesystem::remove(edcGetBlockPosFilename(pos, "blk"));
+        boost::filesystem::remove(edcGetBlockPosFilename(pos, "rev"));
         edcLogPrintf("Prune: %s deleted blk/rev (%05u)\n", __func__, *it);
     }
 }
@@ -6854,7 +6854,7 @@ bool edcFindBlockPos(
                 fCheckForPruning = true;
             if (CheckDiskSpace(nNewChunks * BLOCKFILE_CHUNK_SIZE - pos.nPos)) 
 			{
-                FILE *file = OpenBlockFile(pos);
+                FILE *file = edcOpenBlockFile(pos);
                 if (file) 
 				{
                     edcLogPrintf("Pre-allocating up to position 0x%x in blk%05u.dat\n", nNewChunks * BLOCKFILE_CHUNK_SIZE, pos.nFile);
