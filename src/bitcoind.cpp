@@ -13,6 +13,7 @@
 #include "init.h"
 #include "edc/edcinit.h"		// EDC
 #include "noui.h"
+#include "edc/edcnoui.h"		// EDC
 #include "scheduler.h"
 #include "util.h"
 #include "httpserver.h"
@@ -216,6 +217,9 @@ int main(int argc, char* argv[])
 
     // Connect bitcoind signal handlers
     noui_connect();
+// EDC BEGIN
+    edcnoui_connect();
+// EDC END
 
     return (AppInit(argc, argv) ? 0 : 1);
 }

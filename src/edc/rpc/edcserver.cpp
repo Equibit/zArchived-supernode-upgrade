@@ -10,7 +10,7 @@
 #include "edc/edcinit.h"
 #include "random.h"
 #include "sync.h"
-#include "ui_interface.h"
+#include "edc/edcui_interface.h"
 #include "edc/edcutil.h"
 #include "utilstrencodings.h"
 

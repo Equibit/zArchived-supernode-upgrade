@@ -13,7 +13,7 @@
 #include "protocol.h"
 #include "sync.h"
 #include "timedata.h"
-#include "ui_interface.h"
+#include "edc/edcui_interface.h"
 #include "edc/edcutil.h"
 #include "utilstrencodings.h"
 #include "version.h"
@@ -612,7 +612,7 @@ UniValue edcsetban(const UniValue& params, bool fHelp)
     }
 
     DumpBanlist(); //store banlist to disk
-    uiInterface.BannedListChanged();
+    edcUiInterface.BannedListChanged();
 
     return NullUniValue;
 }
@@ -660,7 +660,7 @@ UniValue edcclearbanned(const UniValue& params, bool fHelp)
 
     CEDCNode::ClearBanned();
     DumpBanlist(); //store banlist to disk
-    uiInterface.BannedListChanged();
+    edcUiInterface.BannedListChanged();
 
     return NullUniValue;
 }

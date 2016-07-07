@@ -21,7 +21,7 @@
 #include "hash.h"
 #include "edc/primitives/edctransaction.h"
 #include "scheduler.h"
-#include "ui_interface.h"
+#include "edcui_interface.h"
 #include "utilstrencodings.h"
 
 #ifdef WIN32
@@ -1087,7 +1087,7 @@ void edcThreadSocketHandler()
         if(theApp.vNodes().size() != nPrevNodeCount) 
 		{
             nPrevNodeCount = theApp.vNodes().size();
-            uiInterface.NotifyNumConnectionsChanged(nPrevNodeCount);
+            edcUiInterface.NotifyNumConnectionsChanged(nPrevNodeCount);
         }
 
         //
@@ -1996,7 +1996,7 @@ void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
-    uiInterface.InitMessage(_("Loading addresses..."));
+    edcUiInterface.InitMessage(_("Loading addresses..."));
     // Load addresses from peers.dat
     int64_t nStart = GetTimeMillis();
     {
@@ -2010,7 +2010,7 @@ void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
         }
     }
 
-    uiInterface.InitMessage(_("Loading banlist..."));
+    edcUiInterface.InitMessage(_("Loading banlist..."));
     // Load addresses from banlist.dat
     nStart = GetTimeMillis();
     CEDCBanDB bandb;

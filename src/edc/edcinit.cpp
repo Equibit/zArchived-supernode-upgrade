@@ -10,7 +10,7 @@
 #include "edcchainparams.h"
 #include "clientversion.h"
 #include "edc/rpc/edcserver.h"
-#include "ui_interface.h"
+#include "edcui_interface.h"
 #include "utilmoneystr.h"
 #include "edc/wallet/edcwallet.h"
 #include "edctxdb.h"
@@ -62,7 +62,7 @@ public:
         } 
 		catch(const std::runtime_error& e) 
 		{
-            uiInterface.ThreadSafeMessageBox(_("Error reading from database, shutting down."), "", CClientUIInterface::MSG_ERROR);
+            edcUiInterface.ThreadSafeMessageBox(_("Error reading from database, shutting down."), "", CClientUIInterface::MSG_ERROR);
             edcLogPrintf("Error reading from database: %s\n", e.what());
             // Starting the shutdown sequence and returning false to the caller
 			// would be interpreted as 'entry not found' (as opposed to unable 
@@ -112,7 +112,7 @@ bool Bind(const CService &addr, unsigned int flags)
     if (!BindListenPort(addr, strError, (flags & BF_WHITELIST) != 0)) 
 	{
         if (flags & BF_REPORT_ERROR)
-            return InitError(strError);
+            return edcInitError(strError);
         return false;
     }
     return true;
@@ -359,7 +359,7 @@ bool EdcAppInit(
 
         // ************************************* Step 1: setup
     	if (!SetupNetworking())
-       	 	return InitError("Initializing networking failed");
+       	 	return edcInitError("Initializing networking failed");
 
     	// ************************************* Step 2: parameter interactions
     
@@ -377,11 +377,11 @@ bool EdcAppInit(
 		int nFD = RaiseFileDescriptorLimit( theApp.maxConnections() + 
 			MIN_CORE_FILEDESCRIPTORS);
     	if (nFD < MIN_CORE_FILEDESCRIPTORS)
-        	return InitError(_("Not enough file descriptors available."));
+        	return edcInitError(_("Not enough file descriptors available."));
 	    theApp.maxConnections( std::min(nFD - MIN_CORE_FILEDESCRIPTORS, theApp.maxConnections() ) );
 
     	if ( theApp.maxConnections() < nUserMaxConnections)
-        	InitWarning(strprintf(_("Reducing -maxconnections from %d to %d,"
+        	edcInitWarning(strprintf(_("Reducing -maxconnections from %d to %d,"
 				" because of system limitations."), 
 				nUserMaxConnections, theApp.maxConnections() ));
 
@@ -443,7 +443,7 @@ bool EdcAppInit(
         	if (ParseMoney(params.minrelaytxfee, n) && n > 0)
             	theApp.minRelayTxFee( CFeeRate(n) );
         	else
-            	return InitError(AmountErrMsg("ebminrelaytxfee", params.minrelaytxfee));
+            	return edcInitError(AmountErrMsg("eb_minrelaytxfee", params.minrelaytxfee));
     	}
 #ifdef ENABLE_WALLET
 	    if (!CEDCWallet::ParameterInteraction())
@@ -471,13 +471,13 @@ bool EdcAppInit(
 				pathLockFile.string().c_str());
 
         	if (!lock.try_lock())
-            	return InitError(strprintf(_("Cannot obtain a lock on data "
+            	return edcInitError(strprintf(_("Cannot obtain a lock on data "
 					"directory %s. %s is probably already running."), 
 					strDataDir, _(PACKAGE_NAME)));
     	} 
 		catch( const boost::interprocess::interprocess_exception & e ) 
 		{
-        	return InitError(strprintf(_("Cannot obtain a lock on data "
+        	return edcInitError(strprintf(_("Cannot obtain a lock on data "
 				"directory %s. %s is probably already running.") + " %s.", 
 				strDataDir, _(PACKAGE_NAME), e.what()));
     	}
@@ -524,9 +524,9 @@ bool EdcAppInit(
          */
         if (params.server)
         {
-            uiInterface.InitMessage.connect(edcSetRPCWarmupStatus);
+            edcUiInterface.InitMessage.connect(edcSetRPCWarmupStatus);
             if (!edcAppInitServers(threadGroup))
-                return InitError(_("Unable to start HTTP server. See debug log for details."));
+                return edcInitError(_("Unable to start HTTP server. See debug log for details."));
         }
 
     	// **************************** Step 5: verify wallet database integrity
@@ -547,13 +547,13 @@ bool EdcAppInit(
 	    BOOST_FOREACH(std::string cmt, params.uacomment)
    	 	{
         	if (cmt != SanitizeString(cmt, SAFE_CHARS_UA_COMMENT))
-            	return InitError(strprintf(_("User Agent comment (%s) contains unsafe characters."), cmt));
+            	return edcInitError(strprintf(_("User Agent comment (%s) contains unsafe characters."), cmt));
         	uacomments.push_back(SanitizeString(cmt, SAFE_CHARS_UA_COMMENT));
     	}
     	theApp.strSubVersion( FormatSubVersion(CLIENT_NAME, CLIENT_VERSION, uacomments) );
     	if (theApp.strSubVersion().size() > MAX_SUBVERSION_LENGTH) 
 		{
-        	return InitError(strprintf(_("Total length of network version "
+        	return edcInitError(strprintf(_("Total length of network version "
 				"string (%i) exceeds maximum length (%i). Reduce the number or "
 				"size of uacomments."),
             	theApp.strSubVersion().size(), MAX_SUBVERSION_LENGTH));
@@ -566,7 +566,7 @@ bool EdcAppInit(
 			{
 	            enum Network net = ParseNetwork(snet);
 	            if (net == NET_UNROUTABLE)
-	                return InitError(strprintf(_("Unknown network specified "
+	                return edcInitError(strprintf(_("Unknown network specified "
 						"in -onlynet: '%s'"), snet));
 	            nets.insert(net);
 	        }
@@ -584,7 +584,7 @@ bool EdcAppInit(
 			{
             	CSubNet subnet(net);
             	if (!subnet.IsValid())
-                	return InitError(strprintf(_("Invalid netmask specified "
+                	return edcInitError(strprintf(_("Invalid netmask specified "
 						"in -whitelist: '%s'"), net));
             	CEDCNode::AddWhitelistedRange(subnet);
         	}
@@ -603,7 +603,7 @@ bool EdcAppInit(
         	proxyType addrProxy = proxyType(CService(proxyArg, 9050), 
 				proxyRandomize);
         	if (!addrProxy.IsValid())
-            	return InitError(strprintf(_("Invalid -proxy address: '%s'"),
+            	return edcInitError(strprintf(_("Invalid -proxy address: '%s'"),
 					proxyArg));
 
         	edcSetProxy(NET_IPV4, addrProxy);
@@ -634,7 +634,7 @@ bool EdcAppInit(
 					proxyRandomize);
 
 	            if (!addrOnion.IsValid())
-	                return InitError(strprintf(_("Invalid -onion address: "
+	                return edcInitError(strprintf(_("Invalid -onion address: "
 						"'%s'"), onionArg));
 	            edcSetProxy(NET_TOR, addrOnion);
 	            edcSetLimited(NET_TOR, false);
@@ -651,16 +651,16 @@ bool EdcAppInit(
 				{
 	                CService addrBind;
 	                if (!Lookup(strBind.c_str(), addrBind, edcGetListenPort(), false))
-	                    return InitError(ResolveErrMsg("bind", strBind));
+	                    return edcInitError(ResolveErrMsg("bind", strBind));
 	                fBound |= Bind(addrBind, (BF_EXPLICIT | BF_REPORT_ERROR));
 	            }
 	            BOOST_FOREACH(const std::string& strBind, params.whitebind) 
 				{
 	                CService addrBind;
 	                if (!Lookup(strBind.c_str(), addrBind, 0, false))
-	                    return InitError(ResolveErrMsg("whitebind", strBind));
+	                    return edcInitError(ResolveErrMsg("whitebind", strBind));
 	                if (addrBind.GetPort() == 0)
-	                    return InitError(strprintf(_("Need to specify a port with -whitebind: '%s'"), strBind));
+	                    return edcInitError(strprintf(_("Need to specify a port with -whitebind: '%s'"), strBind));
 	                fBound |= Bind(addrBind, (BF_EXPLICIT | BF_REPORT_ERROR | BF_WHITELIST));
 	            }
 	        }
@@ -672,7 +672,7 @@ bool EdcAppInit(
 	            fBound |= Bind(CService(inaddr_any, edcGetListenPort()), !fBound ? BF_REPORT_ERROR : BF_NONE);
 	        }
 	        if (!fBound)
-	            return InitError(_("Failed to listen on any port. Use -eb_listen=0 if you want this."));
+	            return edcInitError(_("Failed to listen on any port. Use -eb_listen=0 if you want this."));
 	    }
 	
     	if (params.externalip.size() > 0 ) 
@@ -684,7 +684,7 @@ bool EdcAppInit(
 				params.dns) && addrLocal.IsValid())
                 	edcAddLocal(addrLocal, LOCAL_MANUAL);
             	else
-                	return InitError(ResolveErrMsg("externalip", strAddr));
+                	return edcInitError(ResolveErrMsg("externalip", strAddr));
         	}
     	}
 
@@ -760,7 +760,7 @@ bool EdcAppInit(
 	        bool fReset = theApp.reindex();
 	        std::string strLoadError;
 	
-	        uiInterface.InitMessage(_("Loading block index..."));
+	        edcUiInterface.InitMessage(_("Loading block index..."));
 	
 	        nStart = GetTimeMillis();
 	        do 
@@ -798,7 +798,7 @@ bool EdcAppInit(
 	                if (!theApp.mapBlockIndex().empty() && 
 						theApp.mapBlockIndex().count(chainparams.GetConsensus().
 							hashGenesisBlock) == 0)
-	                    return InitError(_("Incorrect or no genesis block "
+	                    return edcInitError(_("Incorrect or no genesis block "
 							"found. Wrong datadir for network?"));
 	
 	                // Initialize the block index (no-op if non-empty database 
@@ -824,7 +824,7 @@ bool EdcAppInit(
 	                    break;
 	                }
 	
-	                uiInterface.InitMessage(_("Verifying blocks..."));
+	                edcUiInterface.InitMessage(_("Verifying blocks..."));
 	                if (theApp.havePruned() && params.checkblocks > MIN_BLOCKS_TO_KEEP) 
 					{
 	                    edcLogPrintf("Prune: pruned datadir may not have more than %d blocks; -checkblocks=%d may fail\n",
@@ -866,7 +866,7 @@ bool EdcAppInit(
 	            // first suggest a reindex
 	            if (!fReset) 
 				{
-	                bool fRet = uiInterface.ThreadSafeMessageBox(
+	                bool fRet = edcUiInterface.ThreadSafeMessageBox(
 	                    strLoadError + 
 						".\n\n" + 
 						_("Do you want to rebuild the block database now?"),
@@ -885,7 +885,7 @@ bool EdcAppInit(
 	            } 
 				else 
 				{
-	                return InitError(strLoadError);
+	                return edcInitError(strLoadError);
 	            }
 	        }
 	    }
@@ -937,16 +937,16 @@ bool EdcAppInit(
         	theApp.localServices( theApp.localServices()  & ~NODE_NETWORK );
         	if (!theApp.reindex()) 
 			{
-            	uiInterface.InitMessage(_("Pruning blockstore..."));
+            	edcUiInterface.InitMessage(_("Pruning blockstore..."));
             	edcPruneAndFlush();
         	}
     	}
 
     	// ********************************************* Step 10: import blocks
     	if (params.blocknotify.size() > 0 )
-        	uiInterface.NotifyBlockTip.connect(BlockNotifyCallback);
+        	edcUiInterface.NotifyBlockTip.connect(BlockNotifyCallback);
 
-	    uiInterface.InitMessage(_("Activating best chain..."));
+	    edcUiInterface.InitMessage(_("Activating best chain..."));
 
     	// scan for better chains in the block chain database, that are not yet
 		// connected in the active best chain
@@ -975,7 +975,7 @@ bool EdcAppInit(
        		return false;
 
     	if (!strErrors.str().empty())
-        	return InitError(strErrors.str());
+        	return edcInitError(strErrors.str());
 
     	//// debug print
     	edcLogPrintf("mapBlockIndex.size() = %u\n",
@@ -1011,7 +1011,7 @@ bool EdcAppInit(
 		// *************************************************** Step 12: finished
 		edcSetRPCWarmupFinished();
 
-    	uiInterface.InitMessage(_("Done loading"));
+    	edcUiInterface.InitMessage(_("Done loading"));
 
 #ifdef ENABLE_WALLET
     	if (theApp.walletMain()) 
@@ -1085,7 +1085,7 @@ void edcShutdown()
 #endif
     edcStopNode();
     edcStopTorControl();
-// TODO: EDC version?    UnregisterNodeSignals(GetNodeSignals());
+	UnregisterNodeSignals(edcGetNodeSignals());
 
     if (fFeeEstimatesInitialized)
     {
@@ -1151,8 +1151,6 @@ void edcShutdown()
     delete theApp.walletMain();
     theApp.walletMain( NULL );
 #endif
-
-// TODO: EDC version?   globalVerifyHandle.reset();
 
     ECC_Stop();
     edcLogPrintf("%s: done\n", __func__);

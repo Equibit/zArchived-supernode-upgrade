@@ -10,7 +10,7 @@
 #include "amount.h"
 #include "streams.h"
 #include "tinyformat.h"
-#include "ui_interface.h"
+#include "edc/edcui_interface.h"
 #include "utilstrencodings.h"
 #include "edc/edcvalidationinterface.h"
 #include "script/ismine.h"

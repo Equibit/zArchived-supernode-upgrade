@@ -11,7 +11,7 @@
 #include "edcnetbase.h"
 #include "rpc/protocol.h" // For HTTP status codes
 #include "sync.h"
-#include "ui_interface.h"
+#include "edcui_interface.h"
 #include "edcparams.h"
 #include "edcapp.h"
 
@@ -229,8 +229,8 @@ bool InitHTTPAllowList()
             CSubNet subnet(strAllow);
             if (!subnet.IsValid()) 
 			{
-                uiInterface.ThreadSafeMessageBox(
-                    strprintf("Invalid -rpcallowip subnet specification: %s. Valid are a single IP (e.g. 1.2.3.4), a network/netmask (e.g. 1.2.3.4/255.255.255.0) or a network/CIDR (e.g. 1.2.3.4/24).", strAllow),
+                edcUiInterface.ThreadSafeMessageBox(
+                    strprintf("Invalid -eb_rpcallowip subnet specification: %s. Valid are a single IP (e.g. 1.2.3.4), a network/netmask (e.g. 1.2.3.4/255.255.255.0) or a network/CIDR (e.g. 1.2.3.4/24).", strAllow),
                     "", CClientUIInterface::MSG_ERROR);
                 return false;
             }

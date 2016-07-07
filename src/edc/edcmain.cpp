@@ -30,7 +30,7 @@
 #include "tinyformat.h"
 #include "edctxdb.h"
 #include "edctxmempool.h"
-#include "ui_interface.h"
+#include "edcui_interface.h"
 #include "edcundo.h"
 #include "edcutil.h"
 #include "utilmoneystr.h"
@@ -1808,7 +1808,7 @@ namespace
 {
 void AlertNotify(const std::string& strMessage)
 {
-    uiInterface.NotifyAlertChanged();
+    edcUiInterface.NotifyAlertChanged();
  	EDCparams & params = EDCparams::singleton();
     std::string strCmd = params.alertnotify;
     if (strCmd.empty()) return;
@@ -2230,7 +2230,7 @@ bool AbortNode(const std::string& strMessage, const std::string& userMessage="")
 {
     edcstrMiscWarning = strMessage;
     edcLogPrintf("*** %s\n", strMessage);
-    uiInterface.ThreadSafeMessageBox(
+    edcUiInterface.ThreadSafeMessageBox(
         userMessage.empty() ? _("Error: A fatal internal error occurred, see debug.log for details") : userMessage,
         "", CClientUIInterface::MSG_ERROR);
     StartShutdown();
@@ -3367,7 +3367,7 @@ bool ActivateBestChain(
         // Always notify the UI if a new block tip was connected
         if (pindexFork != pindexNewTip) 
 		{
-            uiInterface.NotifyBlockTip(fInitialDownload, pindexNewTip);
+            edcUiInterface.NotifyBlockTip(fInitialDownload, pindexNewTip);
 
             if (!fInitialDownload) 
 			{
@@ -4315,12 +4315,12 @@ bool LoadBlockIndexDB()
 
 CEDCVerifyDB::CEDCVerifyDB()
 {
-    uiInterface.ShowProgress(_("Verifying blocks..."), 0);
+    edcUiInterface.ShowProgress(_("Verifying blocks..."), 0);
 }
 
 CEDCVerifyDB::~CEDCVerifyDB()
 {
-    uiInterface.ShowProgress("", 100);
+    edcUiInterface.ShowProgress("", 100);
 }
 
 bool CEDCVerifyDB::VerifyDB(
@@ -4355,7 +4355,7 @@ bool CEDCVerifyDB::VerifyDB(
     for (CBlockIndex* pindex = theApp.chainActive().Tip(); pindex && pindex->pprev; pindex = pindex->pprev)
     {
         boost::this_thread::interruption_point();
-        uiInterface.ShowProgress(_("Verifying blocks..."), std::max(1, std::min(99, 
+        edcUiInterface.ShowProgress(_("Verifying blocks..."), std::max(1, std::min(99, 
 			(int)(((double)(theApp.chainActive().Height() - pindex->nHeight)) / (double)nCheckDepth * (nCheckLevel >= 4 ? 50 : 100)))));
 
         if (pindex->nHeight < theApp.chainActive().Height()-nCheckDepth)
@@ -4423,7 +4423,7 @@ bool CEDCVerifyDB::VerifyDB(
         while (pindex != theApp.chainActive().Tip()) 
 		{
             boost::this_thread::interruption_point();
-            uiInterface.ShowProgress(_("Verifying blocks..."), 
+            edcUiInterface.ShowProgress(_("Verifying blocks..."), 
 				std::max(1, std::min(99, 
 					100 - (int)(((double)(theApp.chainActive().Height() - pindex->nHeight)) / (double)nCheckDepth * 50))));
 

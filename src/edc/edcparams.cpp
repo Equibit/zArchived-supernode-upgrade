@@ -774,7 +774,7 @@ bool EDCparams::validate()
     {
 #ifdef ENABLE_WALLET
         if (!disablewallet)
-            return InitError("-sysperms is not allowed in combination "
+            return edcInitError("-sysperms is not allowed in combination "
                 "with enabled wallet functionality");
 #endif
     }
@@ -787,11 +787,11 @@ bool EDCparams::validate()
     if ( prune ) 
 	{
         if (txindex)
-            return InitError(_("Prune mode is incompatible with -txindex."));
+            return edcInitError(_("Prune mode is incompatible with -txindex."));
 #ifdef ENABLE_WALLET
         if (rescan) 
 		{
-            return InitError(_("Rescans are not possible in pruned mode. "
+            return edcInitError(_("Rescans are not possible in pruned mode. "
 				"You will need to use -reindex which will download the whole "
 				"blockchain again."));
         }
@@ -802,14 +802,14 @@ bool EDCparams::validate()
     int64_t nMempoolSizeMax = maxmempool * 1000000;
     int64_t nMempoolSizeMin = limitdescendantsize * 1000 * 40;
     if (nMempoolSizeMax < 0 || nMempoolSizeMax < nMempoolSizeMin)
-        return InitError(strprintf(_("-eb_maxmempool must be at least %d MB"), std::ceil(nMempoolSizeMin / 1000000.0)));
+        return edcInitError(strprintf(_("-eb_maxmempool must be at least %d MB"), std::ceil(nMempoolSizeMin / 1000000.0)));
 
     // block pruning; get the amount of disk space (in MiB) to allot for 
 	// block & undo files
     int64_t nSignedPruneTarget = prune * 1024 * 1024;
     if (nSignedPruneTarget < 0) 
 	{
-        return InitError(_("Prune cannot be configured with a negative "
+        return edcInitError(_("Prune cannot be configured with a negative "
 			"value."));
     }
 
@@ -820,7 +820,7 @@ bool EDCparams::validate()
     {
         if ( theApp.pruneTarget() < EDC_MIN_DISK_SPACE_FOR_BLOCK_FILES)
         {
-            return InitError(strprintf(_("Prune configured below the "
+            return edcInitError(strprintf(_("Prune configured below the "
 				"minimum of %d MiB.  Please use a higher number."), 
 				EDC_MIN_DISK_SPACE_FOR_BLOCK_FILES / 1024 / 1024));
         }

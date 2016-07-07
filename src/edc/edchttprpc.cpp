@@ -15,7 +15,7 @@
 #include "sync.h"
 #include "edcutil.h"
 #include "utilstrencodings.h"
-#include "ui_interface.h"
+#include "edcui_interface.h"
 #include "crypto/hmac_sha256.h"
 #include <stdio.h>
 #include "utilstrencodings.h"
@@ -247,7 +247,7 @@ bool InitRPCAuthentication()
         edcLogPrintf("No rpcpassword set for Equibit - using random cookie authentication\n");
         if (!edcGenerateAuthCookie(&strRPCUserColonPass)) 
 		{
-            uiInterface.ThreadSafeMessageBox(
+            edcUiInterface.ThreadSafeMessageBox(
                 _("Error: A fatal internal error occurred, see debug.log for details"), // Same message as AbortNode
                 "", CClientUIInterface::MSG_ERROR);
             return false;
