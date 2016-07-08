@@ -10,6 +10,7 @@
 
 #include "edcnetbase.h"
 #include "edcparams.h"
+#include "edcutil.h"
 
 #include "hash.h"
 #include "sync.h"
@@ -135,7 +136,7 @@ bool Socks5(
 	const ProxyCredentials * auth, 
 					SOCKET & hSocket)
 {
-    LogPrintf("SOCKS5 connecting %s\n", strDest);
+    edcLogPrintf("SOCKS5 connecting %s\n", strDest);
 
     if (strDest.size() > 255) 
 	{
@@ -200,7 +201,7 @@ bool Socks5(
             return error("Error sending authentication to proxy");
         }
 
-        LogPrint("proxy", "SOCKS5 sending proxy authentication %s:%s\n", 
+        edcLogPrint("proxy", "SOCKS5 sending proxy authentication %s:%s\n", 
 			auth->username, auth->password);
 
         char pchRetA[2];
@@ -311,7 +312,7 @@ bool Socks5(
         CloseSocket(hSocket);
         return error("Error reading from proxy");
     }
-    LogPrintf("SOCKS5 connected %s\n", strDest);
+    edcLogPrintf("SOCKS5 connected %s\n", strDest);
     return true;
 }
 
@@ -326,7 +327,7 @@ bool ConnectSocketDirectly(
     socklen_t len = sizeof(sockaddr);
     if (!addrConnect.GetSockAddr((struct sockaddr*)&sockaddr, &len)) 
 	{
-        LogPrintf("Cannot connect to %s: unsupported network\n", 
+        edcLogPrintf("Cannot connect to %s: unsupported network\n", 
 			addrConnect.ToString());
         return false;
     }
@@ -366,13 +367,13 @@ bool ConnectSocketDirectly(
 
             if (nRet == 0)
             {
-                LogPrint("net", "connection to %s timeout\n", addrConnect.ToString());
+                edcLogPrint("net", "connection to %s timeout\n", addrConnect.ToString());
                 CloseSocket(hSocket);
                 return false;
             }
             if (nRet == SOCKET_ERROR)
             {
-                LogPrintf("select() for %s failed: %s\n", addrConnect.ToString(), NetworkErrorString(WSAGetLastError()));
+                edcLogPrintf("select() for %s failed: %s\n", addrConnect.ToString(), NetworkErrorString(WSAGetLastError()));
                 CloseSocket(hSocket);
                 return false;
             }
@@ -383,13 +384,13 @@ bool ConnectSocketDirectly(
             if (getsockopt(hSocket, SOL_SOCKET, SO_ERROR, &nRet, &nRetSize) == SOCKET_ERROR)
 #endif
             {
-                LogPrintf("getsockopt() for %s failed: %s\n", addrConnect.ToString(), NetworkErrorString(WSAGetLastError()));
+                edcLogPrintf("getsockopt() for %s failed: %s\n", addrConnect.ToString(), NetworkErrorString(WSAGetLastError()));
                 CloseSocket(hSocket);
                 return false;
             }
             if (nRet != 0)
             {
-                LogPrintf("connect() to %s failed after select(): %s\n", addrConnect.ToString(), NetworkErrorString(nRet));
+                edcLogPrintf("connect() to %s failed after select(): %s\n", addrConnect.ToString(), NetworkErrorString(nRet));
                 CloseSocket(hSocket);
                 return false;
             }
@@ -400,7 +401,7 @@ bool ConnectSocketDirectly(
         else
 #endif
         {
-            LogPrintf("connect() to %s failed: %s\n", addrConnect.ToString(), NetworkErrorString(WSAGetLastError()));
+            edcLogPrintf("connect() to %s failed: %s\n", addrConnect.ToString(), NetworkErrorString(WSAGetLastError()));
             CloseSocket(hSocket);
             return false;
         }
