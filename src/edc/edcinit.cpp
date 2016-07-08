@@ -180,7 +180,7 @@ void edcThreadImport(std::vector<boost::filesystem::path> vImportFiles)
     }
 
     // hardcoded $DATADIR/bootstrap.dat
-    boost::filesystem::path pathBootstrap = GetDataDir() / "bootstrap.dat";
+    boost::filesystem::path pathBootstrap = edcGetDataDir() / "bootstrap.dat";
     if (boost::filesystem::exists(pathBootstrap)) 
 	{
         FILE *file = fopen(pathBootstrap.string().c_str(), "rb");

@@ -274,7 +274,7 @@ CEDCDB::CEDCDB(
 
     {
         LOCK(theApp.bitdb().cs_db);
-        if (!theApp.bitdb().Open(GetDataDir()))
+        if (!theApp.bitdb().Open(edcGetDataDir()))
             throw runtime_error("CEDCDB: Failed to open database environment.");
 
         strFile = strFilename;
