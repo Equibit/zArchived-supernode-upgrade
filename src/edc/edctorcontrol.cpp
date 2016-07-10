@@ -582,7 +582,7 @@ void TorController::auth_cb(
         edcLogPrint("tor", "tor: Authentication successful\n");
 
         // Now that we know Tor is running setup the proxy for onion addresses
-        // if -onion isn't set to something else.
+        // if -eb_onion isn't set to something else.
         if (params.onion == "") 
 		{
             proxyType addrOnion = proxyType(CService("127.0.0.1", 9050), true);
@@ -776,7 +776,7 @@ void TorController::protocolinfo_cb(TorControlConnection& conn, const TorControl
             } 
 			else 
 			{
-                edcLogPrintf("tor: Password authentication required, but no password provided with -torpassword\n");
+                edcLogPrintf("tor: Password authentication required, but no password provided with -eb_torpassword\n");
             }
         } 
 		else 

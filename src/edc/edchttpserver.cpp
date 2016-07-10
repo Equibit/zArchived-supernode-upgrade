@@ -320,7 +320,7 @@ void http_request_cb(struct evhttp_request * req, void * arg)
             item.release(); /* if true, queue took ownership */
         else 
 		{
-            edcLogPrintf("WARNING: request rejected because http work queue depth exceeded, it can be increased with the -rpcworkqueue= setting\n");
+            edcLogPrintf("WARNING: request rejected because http work queue depth exceeded, it can be increased with the -eb_rpcworkqueue= setting\n");
             item->req->WriteReply(HTTP_INTERNAL, "Work queue depth exceeded");
         }
     } 
@@ -442,7 +442,7 @@ bool edcInitHTTPServer()
     event_set_log_callback(&libevent_log_cb);
 
 #if LIBEVENT_VERSION_NUMBER >= 0x02010100
-    // If -debug=libevent, set full libevent debugging.
+    // If -eb_debug=libevent, set full libevent debugging.
     // Otherwise, disable all libevent debugging.
     if (edcLogAcceptCategory("libevent"))
         event_enable_debug_logging(EVENT_DBG_ALL);

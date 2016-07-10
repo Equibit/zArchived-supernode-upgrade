@@ -178,7 +178,7 @@ bool edcLogAcceptCategory(const char* category)
         if (params.debug.size() == 0)
             return false;
 
-        // Give each thread quick access to -debug settings.
+        // Give each thread quick access to -eb_debug settings.
         // This helps prevent issues debugging global destructors,
         // where mapMultiArgs might be deleted before another
         // global destructor calls edcLogPrint()

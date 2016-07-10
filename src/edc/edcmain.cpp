@@ -1131,7 +1131,7 @@ bool AcceptToMemoryPoolWorker(
     if (tx.IsCoinBase())
         return state.DoS(100, false, REJECT_INVALID, "coinbase");
 
-    // Rather not work on nonstandard transactions (unless -testnet/-regtest)
+    // Rather not work on nonstandard transactions (unless -eb_testnet/-eb_regtest)
     string reason;
 	EDCparams & params = EDCparams::singleton();
     if (!params.acceptnonstdtxn && !IsStandardTx(tx, reason))
@@ -1139,7 +1139,7 @@ bool AcceptToMemoryPoolWorker(
 
     // Don't relay version 2 transactions until CSV is active, and we can be
     // sure that such transactions will be mined (unless we're on
-    // -testnet/-regtest).
+    // -eb_testnet/-eb_regtest).
     const CEDCChainParams& chainparams = edcParams();
     if (!params.acceptnonstdtxn && 
 		tx.nVersion >= 2 && 
@@ -1336,7 +1336,7 @@ bool AcceptToMemoryPoolWorker(
             // Use an exponentially decaying ~10-minute window:
             dFreeCount *= pow(1.0 - 1.0/600.0, (double)(nNow - nLastTime));
             nLastTime = nNow;
-            // -limitfreerelay unit is thousand-bytes-per-minute
+            // -eb_limitfreerelay unit is thousand-bytes-per-minute
             // At default rate it would take over a month to fill 1GB
             if (dFreeCount + nSize >= params.limitfreerelay * 10 * 1000)
                 return state.DoS(0, false, REJECT_INSUFFICIENTFEE, "rate limited free transaction");
@@ -4507,7 +4507,7 @@ bool edcInitBlockIndex( const CEDCChainParams & chainparams )
     if (theApp.chainActive().Genesis() != NULL)
         return true;
 
-    // Use the provided setting for -txindex in the new database
+    // Use the provided setting for -eb_txindex in the new database
  	EDCparams & params = EDCparams::singleton();
 	
     theApp.txIndex( params.txindex );
@@ -6733,7 +6733,7 @@ bool edcSendMessages(CEDCNode* pto)
         //
         // Message: feefilter
         //
-        // We don't want white listed peers to filter txs to us if we have -whitelistforcerelay
+        // We don't want white listed peers to filter txs to us if we have -eb_whitelistforcerelay
 		EDCparams & params = EDCparams::singleton();
         if (pto->nVersion >= FEEFILTER_VERSION && params.feefilter &&
             !(pto->fWhitelisted && params.whitelistforcerelay )) 

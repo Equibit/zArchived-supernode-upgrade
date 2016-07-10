@@ -2061,7 +2061,7 @@ void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
     // Send and receive from sockets, accept connections
     threadGroup.create_thread(boost::bind(&edcTraceThread<void (*)()>, "net", &edcThreadSocketHandler));
 
-    // Initiate outbound connections from -addnode
+    // Initiate outbound connections from -eb_addnode
     threadGroup.create_thread(boost::bind(&edcTraceThread<void (*)()>, 
 		"addcon", &edcThreadOpenAddedConnections));
 

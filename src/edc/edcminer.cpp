@@ -149,8 +149,8 @@ CEDCBlockTemplate* edcCreateNewBlock(
         const int64_t nMedianTimePast = pindexPrev->GetMedianTimePast();
 
         pblock->nVersion = edcComputeBlockVersion(pindexPrev, chainparams.GetConsensus());
-        // -regtest only: allow overriding block.nVersion with
-        // -blockversion=N to test forking scenarios
+        // -eb_regtest only: allow overriding block.nVersion with
+        // -eb_blockversion=N to test forking scenarios
         if (chainparams.MineBlocksOnDemand())
             pblock->nVersion = params.blockversion;
 

@@ -1987,7 +1987,7 @@ UniValue edckeypoolrefill(const UniValue& params, bool fHelp)
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-    // 0 is interpreted by TopUpKeyPool() as the default keypool size given by -keypool
+    // 0 is interpreted by TopUpKeyPool() as the default keypool size given by -eb_keypool
     unsigned int kpSize = 0;
     if (params.size() > 0) 
 	{

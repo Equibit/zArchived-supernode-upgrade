@@ -93,7 +93,7 @@ void JSONErrorReply(
     req->WriteReply(nStatus, strReply);
 }
 
-//This function checks username and password against -rpcauth
+//This function checks username and password against -eb_rpcauth
 //entries from config file.
 bool multiUserAuthorized(std::string strUserPass)
 {    

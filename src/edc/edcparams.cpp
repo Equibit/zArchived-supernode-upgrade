@@ -353,7 +353,7 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-eb_checkparams", 
 		strprintf(_("Verify all command line options are valid (default: %s)"), "true" ));
     strUsage += HelpMessageOpt("-eb_checklevel=<n>", 
-		strprintf(_("How thorough the block verification of -checkblocks is (0-4, default: %u)"), EDC_DEFAULT_CHECKLEVEL));
+		strprintf(_("How thorough the block verification of -eb_checkblocks is (0-4, default: %u)"), EDC_DEFAULT_CHECKLEVEL));
     strUsage += HelpMessageOpt("-eb_conf=<file>", 
 		strprintf(_("Specify configuration file (default: %s)"), BITCOIN_CONF_FILENAME));
     strUsage += HelpMessageOpt("-eb_datadir=<dir>", 
@@ -378,7 +378,7 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
 		strprintf(_("Specify pid file (default: %s)"), BITCOIN_PID_FILENAME));
 #endif
     strUsage += HelpMessageOpt("-eb_prune=<n>", 
-		strprintf(_("Reduce storage requirements by pruning (deleting) old blocks. This mode is incompatible with -txindex and -rescan. "
+		strprintf(_("Reduce storage requirements by pruning (deleting) old blocks. This mode is incompatible with -eb_txindex and -eb_rescan. "
             "Warning: Reverting this setting requires re-downloading the entire blockchain. "
             "(default: 0 = disable pruning blocks, >%u = target size in MiB to use for block files)"), EDC_MIN_DISK_SPACE_FOR_BLOCK_FILES / 1024 / 1024));
     strUsage += HelpMessageOpt("-eb_reindex", 
@@ -400,17 +400,17 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-eb_connect=<ip>", 
 		_("Connect only to the specified node(s)"));
     strUsage += HelpMessageOpt("-eb_discover", 
-		_("Discover own IP addresses (default: 1 when listening and no -externalip or -proxy)"));
-    strUsage += HelpMessageOpt("-eb_dns", _("Allow DNS lookups for -addnode, "
-		"-seednode and -connect") + " " + strprintf(_("(default: %u)"), true));
+		_("Discover own IP addresses (default: 1 when listening and no -eb_externalip or -eb_proxy)"));
+    strUsage += HelpMessageOpt("-eb_dns", _("Allow DNS lookups for -eb_addnode, "
+		"-eb_seednode and -eb_connect") + " " + strprintf(_("(default: %u)"), true));
     strUsage += HelpMessageOpt("-eb_dnsseed", 
-		_("Query for peer addresses via DNS lookup, if low on addresses (default: 1 unless -connect)"));
+		_("Query for peer addresses via DNS lookup, if low on addresses (default: 1 unless -eb_connect)"));
     strUsage += HelpMessageOpt("-eb_externalip=<ip>", 
 		_("Specify your own public address"));
     strUsage += HelpMessageOpt("-eb_forcednsseed", 
 		strprintf(_("Always query for peer addresses via DNS lookup (default: %u)"), EDC_DEFAULT_FORCEDNSSEED));
     strUsage += HelpMessageOpt("-eb_listen", 
-		_("Accept connections from outside (default: 1 if no -proxy or -connect)"));
+		_("Accept connections from outside (default: 1 if no -eb_proxy or -eb_connect)"));
     strUsage += HelpMessageOpt("-eb_listenonion", 
 		strprintf(_("Automatically create Tor hidden service (default: %d)"), EDC_DEFAULT_LISTEN_ONION));
     strUsage += HelpMessageOpt("-eb_maxconnections=<n>", 
@@ -422,7 +422,7 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-eb_maxtimeadjustment", 
 		strprintf(_("Maximum allowed median peer time offset adjustment. Local perspective of time may be influenced by peers forward or backward by this amount. (default: %u seconds)"), EDC_DEFAULT_MAX_TIME_ADJUSTMENT));
     strUsage += HelpMessageOpt("-eb_onion=<ip:port>", 
-		strprintf(_("Use separate SOCKS5 proxy to reach peers via Tor hidden services (default: %s)"), "-proxy"));
+		strprintf(_("Use separate SOCKS5 proxy to reach peers via Tor hidden services (default: %s)"), "-eb_proxy"));
     strUsage += HelpMessageOpt("-eb_onlynet=<net>", 
 		_("Only connect to nodes in network <net> (ipv4, ipv6 or onion)"));
     strUsage += HelpMessageOpt("-eb_permitbaremultisig", 
@@ -446,7 +446,7 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
 #ifdef USE_UPNP
 #if USE_UPNP
     strUsage += HelpMessageOpt("-eb_upnp", 
-		_("Use UPnP to map the listening port (default: 1 when listening and no -proxy)"));
+		_("Use UPnP to map the listening port (default: 1 when listening and no -eb_proxy)"));
 #else
     strUsage += HelpMessageOpt("-eb_upnp", 
 		strprintf(_("Use UPnP to map the listening port (default: %u)"), 0));
@@ -476,7 +476,7 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
     if (showDebug)
     {
         strUsage += HelpMessageOpt("-eb_checkblockindex", 
-			strprintf("Do a full consistency check for mapBlockIndex, setBlockIndexCandidates, chainActive and mapBlocksUnlinked occasionally. Also sets -checkmempool (default: %u)", edcParams(CBaseChainParams::MAIN).DefaultConsistencyChecks()));
+			strprintf("Do a full consistency check for mapBlockIndex, setBlockIndexCandidates, chainActive and mapBlocksUnlinked occasionally. Also sets -eb_checkmempool (default: %u)", edcParams(CBaseChainParams::MAIN).DefaultConsistencyChecks()));
         strUsage += HelpMessageOpt("-eb_checkmempool=<n>", 
 			strprintf("Run checks every <n> transactions (default: %u)", edcParams(CBaseChainParams::MAIN).DefaultConsistencyChecks()));
         strUsage += HelpMessageOpt("-eb_checkpoints", 
@@ -505,7 +505,7 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
 		strprintf(_("Output debugging information (default: %u, supplying <category> is optional)"), 0) + ". " +
         _("If <category> is not supplied or if <category> = 1, output all debugging information.") + _("<category> can be:") + " " + debugCategories + ".");
     if (showDebug)
-        strUsage += HelpMessageOpt("-eb_nodebug", "Turn off debugging messages, same as -debug=0");
+        strUsage += HelpMessageOpt("-eb_nodebug", "Turn off debugging messages, same as -eb_debug=0");
 	strUsage += HelpMessageOpt("-eb_logips", 
 		strprintf(_("Include IP addresses in debug output (default: %u)"), EDC_DEFAULT_LOGIPS));
     strUsage += HelpMessageOpt("-eb_logtimestamps", 
@@ -535,7 +535,7 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
         strUsage += HelpMessageOpt("-eb_printpriority", 
 			strprintf("Log transaction priority and fee per kB when mining blocks (default: %u)", EDC_DEFAULT_PRINTPRIORITY));
     }
-    strUsage += HelpMessageOpt("-eb_shrinkdebugfile", _("Shrink debug.log file on client startup (default: 1 when no -debug)"));
+    strUsage += HelpMessageOpt("-eb_shrinkdebugfile", _("Shrink debug.log file on client startup (default: 1 when no -eb_debug)"));
 
 	////////////////////////////////////////////////////////////////////////
     strUsage += HelpMessageGroup(_("Equibit Chain selection options:"));
@@ -631,7 +631,7 @@ bool EDCparams::validate()
 	}
 
     // when specifying an explicit binding address, you want to listen on it
-    // even when -connect or -proxy is specified
+    // even when -eb_connect or -eb_proxy is specified
     if (bind.size() > 0) 
 	{
 		if( mapArgs.count( "-eb_listen" ) == 0 )
@@ -656,12 +656,12 @@ bool EDCparams::validate()
 		if( mapArgs.count( "-eb_dnsseed" ) == 0 )
 		{
         	dnsseed = false;
-	        edcLogPrintf("%s: parameter interaction: -dbconnect set -> setting -dbdnsseed=false\n", __func__);
+	        edcLogPrintf("%s: parameter interaction: -eb_dbconnect set -> setting -eb_dbdnsseed=false\n", __func__);
 		}
 		if( mapArgs.count( "-eb_listen" ) == 0 )
 		{
         	listen = false;
-        	edcLogPrintf("%s: parameter interaction: -dbconnect set -> setting -dblisten=0\n", __func__);
+        	edcLogPrintf("%s: parameter interaction: -eb_dbconnect set -> setting -eb_dblisten=0\n", __func__);
 		}
     }
 
@@ -675,8 +675,8 @@ bool EDCparams::validate()
         	edcLogPrintf("%s: parameter interaction: -eb_proxy set -> setting -eb_listen=0\n", __func__);
 		}
 
-        // to protect privacy, do not use UPNP when a proxy is set. The user may still specify -listen=1
-        // to listen locally, so don't rely on this happening through -listen below.
+        // to protect privacy, do not use UPNP when a proxy is set. The user may still specify -eb_listen=1
+        // to listen locally, so don't rely on this happening through -eb_listen below.
 		if( mapArgs.count("-eb_upnp") == 0 )
 		{
 			upnp = false;
@@ -733,7 +733,7 @@ bool EDCparams::validate()
 		}
     }
 
-    // -zapwallettx implies a rescan
+    // -eb_zapwallettx implies a rescan
     if (zapwallettxes) 
 	{
 		if( mapArgs.count( "-eb_rescan" ) == 0 )
@@ -787,12 +787,12 @@ bool EDCparams::validate()
     if ( prune ) 
 	{
         if (txindex)
-            return edcInitError(_("Prune mode is incompatible with -txindex."));
+            return edcInitError(_("Prune mode is incompatible with -eb_txindex."));
 #ifdef ENABLE_WALLET
         if (rescan) 
 		{
             return edcInitError(_("Rescans are not possible in pruned mode. "
-				"You will need to use -reindex which will download the whole "
+				"You will need to use -eb_reindex which will download the whole "
 				"blockchain again."));
         }
 #endif

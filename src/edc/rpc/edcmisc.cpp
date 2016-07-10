@@ -438,14 +438,14 @@ UniValue edcsetmocktime(const UniValue& params, bool fHelp)
     if (fHelp || params.size() != 1)
         throw runtime_error(
             "eb_setmocktime timestamp\n"
-            "\nSet the local time to given timestamp (-regtest only)\n"
+            "\nSet the local time to given timestamp (-eb_regtest only)\n"
             "\nArguments:\n"
             "1. timestamp  (integer, required) Unix seconds-since-epoch timestamp\n"
             "   Pass 0 to go back to using the system time."
         );
 
     if (!edcParams().MineBlocksOnDemand())
-        throw runtime_error("eb_setmocktime for regression testing (-regtest mode) only");
+        throw runtime_error("eb_setmocktime for regression testing (-eb_regtest mode) only");
 
     // vNodesCS is locked and node send/receive times are updated
     // atomically with the time change to prevent peers from being

@@ -78,8 +78,8 @@ public:
 	// by the caller.
 };
 
-static CEDCCoinsViewDB *pcoinsdbview = NULL;
-static CEDCCoinsViewErrorCatcher *pcoinscatcher = NULL;
+CEDCCoinsViewDB * pcoinsdbview = NULL;
+CEDCCoinsViewErrorCatcher * pcoinscatcher = NULL;
 
 
 /** Used to pass flags to the Bind() function */
@@ -150,7 +150,7 @@ void edcThreadImport(std::vector<boost::filesystem::path> vImportFiles)
     const CEDCChainParams& chainparams = edcParams();
     RenameThread("bitcoin-loadblk");
 
-    // -reindex
+    // -eb_reindex
 
     if (theApp.reindex()) 
 	{
@@ -202,7 +202,7 @@ void edcThreadImport(std::vector<boost::filesystem::path> vImportFiles)
         }
     }
 
-    // -loadblock=
+    // -eb_loadblock=
     BOOST_FOREACH(const boost::filesystem::path& path, vImportFiles) 
 	{
         FILE *file = fopen(path.string().c_str(), "rb");
@@ -244,7 +244,7 @@ void OnEDCRPCPreCommand(const CRPCCommand& cmd)
         throw JSONRPCError(RPC_FORBIDDEN_BY_SAFE_MODE, std::string("Safe mode: ") + strWarning);
 }
 
-// If we're using -prune with -reindex, then delete block files that will be 
+// If we're using -eb_prune with -eb_reindex, then delete block files that will be 
 // ignored by the reindex.  Since reindexing works by starting at block file 0 
 // and looping until a blockfile is missing, do the same here to delete any 
 // later block files after a gap.  Also delete all rev files since they'll be 
@@ -260,7 +260,7 @@ void edcCleanupBlockRevFiles()
     // Glob all blk?????.dat and rev?????.dat files from the blocks directory.
     // Remove the rev files immediately and insert the blk file paths into an
     // ordered map keyed by block file index.
-    edcLogPrintf("Removing unusable blk?????.dat and rev?????.dat files for -reindex with -prune\n");
+    edcLogPrintf("Removing unusable blk?????.dat and rev?????.dat files for -eb_reindex with -eb_prune\n");
     path blocksdir = edcGetDataDir() / "blocks";
     for (directory_iterator it(blocksdir); it != directory_iterator(); it++) 
 	{
@@ -339,7 +339,7 @@ bool EdcAppInit(
 	if( !rc )
 		return rc;
 
-    // Check for -testnet or -regtest parameter (Params() calls are only valid 
+    // Check for -eb_testnet or -eb_regtest parameter (Params() calls are only valid 
 	// after this clause)
     try 
 	{
@@ -383,7 +383,7 @@ bool EdcAppInit(
 	    theApp.maxConnections( std::min(nFD - MIN_CORE_FILEDESCRIPTORS, theApp.maxConnections() ) );
 
     	if ( theApp.maxConnections() < nUserMaxConnections)
-        	edcInitWarning(strprintf(_("Reducing -maxconnections from %d to %d,"
+        	edcInitWarning(strprintf(_("Reducing -eb_maxconnections from %d to %d,"
 				" because of system limitations."), 
 				nUserMaxConnections, theApp.maxConnections() ));
 
@@ -569,7 +569,7 @@ bool EdcAppInit(
 	            enum Network net = ParseNetwork(snet);
 	            if (net == NET_UNROUTABLE)
 	                return edcInitError(strprintf(_("Unknown network specified "
-						"in -onlynet: '%s'"), snet));
+						"in -eb_onlynet: '%s'"), snet));
 	            nets.insert(net);
 	        }
 	        for (int n = 0; n < NET_MAX; n++) 
@@ -587,7 +587,7 @@ bool EdcAppInit(
             	CSubNet subnet(net);
             	if (!subnet.IsValid())
                 	return edcInitError(strprintf(_("Invalid netmask specified "
-						"in -whitelist: '%s'"), net));
+						"in -eb_whitelist: '%s'"), net));
             	CEDCNode::AddWhitelistedRange(subnet);
         	}
     	}
@@ -595,7 +595,7 @@ bool EdcAppInit(
     	bool proxyRandomize = params.proxyrandomize;
 
     	// -eb_proxy sets a proxy for all outgoing network traffic
-    	// -eb_noproxy (or -proxy=0) as well as the empty string can be used to 
+    	// -eb_noproxy (or -eb_proxy=0) as well as the empty string can be used to 
 		// not set a proxy, this is the default
     	std::string proxyArg = params.proxy;
     	edcSetLimited(NET_TOR, true );
@@ -605,7 +605,7 @@ bool EdcAppInit(
         	proxyType addrProxy = proxyType(CService(proxyArg, 9050), 
 				proxyRandomize);
         	if (!addrProxy.IsValid())
-            	return edcInitError(strprintf(_("Invalid -proxy address: '%s'"),
+            	return edcInitError(strprintf(_("Invalid -eb_proxy address: '%s'"),
 					proxyArg));
 
         	edcSetProxy(NET_IPV4, addrProxy);
@@ -613,21 +613,21 @@ bool EdcAppInit(
         	edcSetProxy(NET_TOR, addrProxy);
         	edcSetNameProxy(addrProxy);
 
-        	edcSetLimited(NET_TOR, false); // by default, -proxy sets onion as 
-										// reachable, unless -noonion later
+        	edcSetLimited(NET_TOR, false); // by default, -eb_proxy sets onion as 
+										// reachable, unless -eb_noonion later
     	}
 
 	    // -eb_onion can be used to set only a proxy for .onion, or override 
 		// normal proxy for .onion addresses
-		// -eb_noonion (or -onion=0) disables connecting to .onion entirely
+		// -eb_noonion (or -eb_onion=0) disables connecting to .onion entirely
 	    // An empty string is used to not override the onion proxy (in which 
-		// case it defaults to -proxy set above, or none)
+		// case it defaults to -eb_proxy set above, or none)
 	    std::string onionArg = params.onion;
 	    if (onionArg != "") 
 		{
 	        if (onionArg == "0") 
 			{ 
-				// Handle -noonion/-onion=0
+				// Handle -eb_noonion/-eb_onion=0
 	            edcSetLimited(NET_TOR, true ); // set onions as unreachable
 	        } 
 			else 
@@ -636,7 +636,7 @@ bool EdcAppInit(
 					proxyRandomize);
 
 	            if (!addrOnion.IsValid())
-	                return edcInitError(strprintf(_("Invalid -onion address: "
+	                return edcInitError(strprintf(_("Invalid -eb_onion address: "
 						"'%s'"), onionArg));
 	            edcSetProxy(NET_TOR, addrOnion);
 	            edcSetLimited(NET_TOR, false);
@@ -662,7 +662,7 @@ bool EdcAppInit(
 	                if (!Lookup(strBind.c_str(), addrBind, 0, false))
 	                    return edcInitError(ResolveErrMsg("whitebind", strBind));
 	                if (addrBind.GetPort() == 0)
-	                    return edcInitError(strprintf(_("Need to specify a port with -whitebind: '%s'"), strBind));
+	                    return edcInitError(strprintf(_("Need to specify a port with -eb_whitebind: '%s'"), strBind));
 	                fBound |= Bind(addrBind, (BF_EXPLICIT | BF_REPORT_ERROR | BF_WHITELIST));
 	            }
 	        }
@@ -811,25 +811,25 @@ bool EdcAppInit(
 	                    break;
 	                }
 	
-	                // Check for changed -txindex state
+	                // Check for changed -eb_txindex state
 	                if ( theApp.txIndex() != params.txindex) 
 					{
-	                    strLoadError = _("You need to rebuild the database using -reindex to change -txindex");
+	                    strLoadError = _("You need to rebuild the database using -eb_reindex to change -eb_txindex");
 	                    break;
 	                }
 	
-	                // Check for changed -prune state.  What we are concerned about is a user who has pruned blocks
+	                // Check for changed -eb_prune state.  What we are concerned about is a user who has pruned blocks
 	                // in the past, but is now trying to run unpruned.
 	                if (theApp.havePruned() && !theApp.pruneMode()) 
 					{
-	                    strLoadError = _("You need to rebuild the database using -reindex to go back to unpruned mode.  This will redownload the entire blockchain");
+	                    strLoadError = _("You need to rebuild the database using -eb_reindex to go back to unpruned mode.  This will redownload the entire blockchain");
 	                    break;
 	                }
 	
 	                edcUiInterface.InitMessage(_("Verifying blocks..."));
 	                if (theApp.havePruned() && params.checkblocks > MIN_BLOCKS_TO_KEEP) 
 					{
-	                    edcLogPrintf("Prune: pruned datadir may not have more than %d blocks; -checkblocks=%d may fail\n",
+	                    edcLogPrintf("Prune: pruned datadir may not have more than %d blocks; -eb_checkblocks=%d may fail\n",
 	                        MIN_BLOCKS_TO_KEEP, params.checkblocks );
 	                }
 	

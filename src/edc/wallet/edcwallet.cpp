@@ -42,14 +42,14 @@ const char * EDC_DEFAULT_WALLET_DAT = "wallet.dat";
 
 /**
  * Fees smaller than this (in satoshi) are considered zero fee (for transaction creation)
- * Override with -mintxfee
+ * Override with -eb_mintxfee
  */
 CFeeRate CEDCWallet::minTxFee = CFeeRate(DEFAULT_TRANSACTION_MINFEE);
 
 /**
  * If fee estimation does not have enough data to provide estimates, use this fee instead.
  * Has no effect if not using fee estimation
- * Override with -fallbackfee
+ * Override with -eb_fallbackfee
  */
 CFeeRate CEDCWallet::fallbackFee = CFeeRate(DEFAULT_FALLBACK_FEE);
 
@@ -1323,7 +1323,7 @@ int CEDCWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate
         while (pindex && nTimeFirstKey && (pindex->GetBlockTime() < (nTimeFirstKey - 7200)))
             pindex = theApp.chainActive().Next(pindex);
 
-        ShowProgress(_("Rescanning..."), 0); // show rescan progress in GUI as dialog or on splashscreen, if -rescan on startup
+        ShowProgress(_("Rescanning..."), 0); // show rescan progress in GUI as dialog or on splashscreen, if -eb_rescan on startup
         double dProgressStart = Checkpoints::GuessVerificationProgress(chainParams.Checkpoints(), pindex, false);
         double dProgressTip = Checkpoints::GuessVerificationProgress(chainParams.Checkpoints(), theApp.chainActive().Tip(), false);
         while (pindex)
@@ -2605,7 +2605,7 @@ CAmount CEDCWallet::GetMinimumFee(
     // payTxFee is user-set "I want to pay this much"
     CAmount nFeeNeeded = theApp.payTxFee().GetFee(nTxBytes);
 
-    // User didn't set: use -txconfirmtarget to estimate...
+    // User didn't set: use -eb_txconfirmtarget to estimate...
     if (nFeeNeeded == 0) 
 	{
         int estimateFoundTarget = nConfirmTarget;
@@ -3344,7 +3344,7 @@ std::string CEDCWallet::GetWalletHelpString(bool showDebug)
     strUsage += HelpMessageOpt("-eb_wallet=<file>", _("Specify wallet file (within data directory)") + " " + strprintf(_("(default: %s)"), EDC_DEFAULT_WALLET_DAT));
     strUsage += HelpMessageOpt("-eb_walletbroadcast", _("Make the wallet broadcast transactions") + " " + strprintf(_("(default: %u)"), EDC_DEFAULT_WALLETBROADCAST));
     strUsage += HelpMessageOpt("-eb_walletnotify=<cmd>", _("Execute command when a wallet transaction changes (%s in cmd is replaced by TxID)"));
-    strUsage += HelpMessageOpt("-eb_zapwallettxes=<mode>", _("Delete all wallet transactions and only recover those parts of the blockchain through -rescan on startup") +
+    strUsage += HelpMessageOpt("-eb_zapwallettxes=<mode>", _("Delete all wallet transactions and only recover those parts of the blockchain through -eb_rescan on startup") +
                                " " + _("(1 = keep tx meta data e.g. account owner and payment request information, 2 = drop tx meta data)"));
 
     if (showDebug)
@@ -3365,7 +3365,7 @@ bool CEDCWallet::InitLoadWallet()
 	EDCparams & params = EDCparams::singleton();
     std::string walletFile = params.wallet;
 
-    // needed to restore wallet transaction meta data after -zapwallettxes
+    // needed to restore wallet transaction meta data after -eb_zapwallettxes
     std::vector<CEDCWalletTx> vWtx;
 
     if ( params.zapwallettxes ) 
@@ -3413,7 +3413,7 @@ bool CEDCWallet::InitLoadWallet()
     if ( params.upgradewallet > 0 )
     {
         int nMaxVersion = params.upgradewallet;
-        if (nMaxVersion == 0) // the -upgradewallet without argument case
+        if (nMaxVersion == 0) // the -eb_upgradewallet without argument case
         {
             edcLogPrintf("Performing wallet upgrade to %i\n", FEATURE_LATEST);
             nMaxVersion = CLIENT_VERSION;
@@ -3464,7 +3464,7 @@ bool CEDCWallet::InitLoadWallet()
     {
         //We can't rescan beyond non-pruned blocks, stop and throw an error
         //this might happen if a user uses a old wallet within a pruned node
-        // or if he ran -disablewallet for a longer time, then decided to re-enable
+        // or if he ran -eb_disablewallet for a longer time, then decided to re-enable
 		EDCapp & theApp = EDCapp::singleton();
         if (theApp.pruneMode() )
         {
@@ -3478,7 +3478,7 @@ bool CEDCWallet::InitLoadWallet()
 
             if (pindexRescan != block)
                 return edcInitError(_("Prune: last wallet synchronisation goes beyond pruned data. "
-					"You need to -reindex (download the whole blockchain again in case of pruned node)"));
+					"You need to -eb_reindex (download the whole blockchain again in case of pruned node)"));
         }
 
         edcUiInterface.InitMessage(_("Rescanning..."));
@@ -3489,7 +3489,7 @@ bool CEDCWallet::InitLoadWallet()
         walletInstance->SetBestChain(theApp.chainActive().GetLocator());
         nWalletDBUpdated++;
 
-        // Restore wallet transaction metadata after -zapwallettxes=1
+        // Restore wallet transaction metadata after -eb_zapwallettxes=1
         if ( params.zapwallettxes != 2 )
         {
             CEDCWalletDB walletdb(walletFile);
@@ -3559,7 +3559,7 @@ bool CEDCWallet::ParameterInteraction()
         if (theApp.payTxFee() < theApp.minRelayTxFee())
         {
             return edcInitError(strprintf(_(
-				"Invalid amount for -paytxfee=<amount>: '%s' (must be at "
+				"Invalid amount for -eb_paytxfee=<amount>: '%s' (must be at "
 				"least %s)"), params.paytxfee, 
 				theApp.minRelayTxFee().ToString()));
         }
