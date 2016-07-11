@@ -402,6 +402,8 @@ CEDCNode* edcConnectNode(CAddress addrConnect, const char *pszDest)
         theApp.addrman().Attempt(addrConnect);
     }
 
+    edcLogPrint("net", "WARNING:FAILED to connect %s\n", pszDest ? pszDest : addrConnect.ToString());
+
     return NULL;
 }
 
@@ -2567,7 +2569,7 @@ void CEDCNode::EndMessage(const char* pszCommand) UNLOCK_FUNCTION(cs_vSend)
     // since they are only used during development to debug the networking code and are
     // not intended for end-users.
 	EDCparams & params = EDCparams::singleton();
-    if (GetRand(params.dropmessagestest) == 0)
+    if ( params.dropmessagestest && GetRand(params.dropmessagestest) == 0)
     {
         edcLogPrint("net", "dropmessages DROPPING SEND MESSAGE\n");
         AbortMessage();

@@ -44,6 +44,7 @@ unsigned int edcSendBufferSize();
 void edcAddressCurrentlyConnected(const CService& addr);
 void edcMapPort(bool fUseUPnP);
 unsigned short edcGetListenPort();
+bool edcBindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
 void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler);
 bool edcStopNode();
 void SocketSendData(CEDCNode *pnode);

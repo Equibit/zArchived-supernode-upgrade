@@ -5117,7 +5117,7 @@ bool ProcessMessage(
     RandAddSeedPerfmon();
     edcLogPrint("net", "received: %s (%u bytes) peer=%d\n", SanitizeString(strCommand), vRecv.size(), pfrom->id);
  	EDCparams & params = EDCparams::singleton();
-    if( GetRand(params.dropmessagestest) == 0)
+    if( params.dropmessagestest && GetRand(params.dropmessagestest) == 0)
     {
         edcLogPrintf("dropmessagestest DROPPING RECV MESSAGE\n");
         return true;
