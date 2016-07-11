@@ -101,6 +101,8 @@ public:
 
 	void Dump( std::ostream & out );
 
+	void ListIssuers( std::vector<std::pair<std::string,CIssuer>> & out );
+
 private:
     CEDCWalletDB(const CEDCWalletDB&);
     void operator=(const CEDCWalletDB&);

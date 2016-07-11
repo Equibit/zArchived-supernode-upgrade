@@ -79,25 +79,63 @@ UniValue getNewIssuer( const UniValue & params, bool fHelp )
 
 UniValue listIssuers( const UniValue & params, bool fHelp )
 {
+	EDCapp & theApp = EDCapp::singleton();
+
 	if( fHelp )
 		throw std::runtime_error(
 			"eb_listissuers\n"
 			"\nLists all known Issuers.\n"
 			"\nResult:\n"
-			"{                                 (json object)\n"
-			"  \"issuer\" : {                  (json object)\n"
+			"[                                 (json object)\n"
+			"  {                               (json object)\n"
 			"    \"name\": name,               (string) name of the issuer\n"
 			"    \"location\": location,       (string) geographic address of the issuer\n"
 			"    \"phone\": phone-number,      (string) phone number of the issuer\n"
 			"    \"e-mail\": e-mail-address,   (string) e-mail address of the issuer\n"
 			"    \"address\": address,         (string) equibit address of the issuer\n"
 			"  }, ...\n"
-			"}\n"
+			"]\n"
 			+ HelpExampleCli( "eb_listissuers", "" )
 			+ HelpExampleRpc( "eb_listissuers", "" )
 		);
 
-	return NullUniValue;
+	CEDCWalletDB walletdb(theApp.walletMain()->strWalletFile);
+
+	std::vector<std::pair<std::string,CIssuer>>	issuers;
+	walletdb.ListIssuers( issuers );
+
+	std::vector<std::pair<std::string, CIssuer>>::iterator i = issuers.begin();
+	std::vector<std::pair<std::string, CIssuer>>::iterator e = issuers.end();
+	
+	std::stringstream out;
+	out << "[\n";
+
+	bool first = true;
+	while( i != e )
+	{
+		const std::string & name = i->first;
+		const CIssuer & issuer = i->second;
+
+		if(!first)
+			out << ",\n";
+		else
+			first = false;
+
+		out << "  {"
+            << "\"name\": \"" << name << "\""
+			<< ", \"pubKey\":\"" << HexStr(issuer.pubKey_) << "\""
+            << ", \"location\":\"" << issuer.location_ << "\""
+            << ", \"email\":\"" << issuer.emailAddress_ << "\""
+            << ", \"phone_number\":\"" << issuer.phoneNumber_ << "\""
+		    << "}";
+
+		++i;
+	}
+	out << "\n]";
+
+	UniValue ret(UniValue::VSTR, out.str());
+
+	return ret;
 }
 
 UniValue authorizeEquibit( const UniValue & params, bool fHelp )

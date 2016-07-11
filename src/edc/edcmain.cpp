@@ -928,10 +928,10 @@ bool edcTestLockPointValidity(const LockPoints* lp)
 }
 
 bool CheckSequenceLocks(
-	const CEDCTransaction & tx, 
-						int flags, 
-				LockPoints * lp, 
-						bool useExistingLockPoints)
+    const CEDCTransaction & tx, 
+					    int flags, 
+               LockPoints * lp, 
+			           bool useExistingLockPoints)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -1015,7 +1015,7 @@ bool CheckSequenceLocks(
     return EvaluateSequenceLocks(index, lockPair);
 }
 
-unsigned int GetLegacySigOpCount(const CEDCTransaction& tx)
+unsigned int GetLegacySigOpCount(const CEDCTransaction & tx)
 {
     unsigned int nSigOps = 0;
     BOOST_FOREACH(const CEDCTxIn& txin, tx.vin)
@@ -1931,6 +1931,7 @@ namespace
 void InvalidChainFound(CBlockIndex* pindexNew)
 {
 	EDCapp & theApp = EDCapp::singleton();
+
     if (!pindexBestInvalid || pindexNew->nChainWork > pindexBestInvalid->nChainWork)
         pindexBestInvalid = pindexNew;
 
@@ -1938,11 +1939,14 @@ void InvalidChainFound(CBlockIndex* pindexNew)
       pindexNew->GetBlockHash().ToString(), pindexNew->nHeight,
       log(pindexNew->nChainWork.getdouble())/log(2.0), DateTimeStrFormat("%Y-%m-%d %H:%M:%S",
       pindexNew->GetBlockTime()));
+
     CBlockIndex *tip = theApp.chainActive().Tip();
     assert (tip);
+
     edcLogPrintf("%s:  current best=%s  height=%d  log2_work=%.8g  date=%s\n", __func__,
       tip->GetBlockHash().ToString(), theApp.chainActive().Height(), log(tip->nChainWork.getdouble())/log(2.0),
       DateTimeStrFormat("%Y-%m-%d %H:%M:%S", tip->GetBlockTime()));
+
     edcCheckForkWarningConditions();
 }
 
@@ -2201,7 +2205,7 @@ const CDiskBlockPos & pos,
     // Open history file to read
     CAutoFile filein(edcOpenUndoFile(pos, true), SER_DISK, CLIENT_VERSION);
     if (filein.IsNull())
-        return edcError("%s: edcOpenBlockFile failed", __func__);
+        return edcError("%s: edcOpenUndoFile failed", __func__);
 
     // Read block
     uint256 hashChecksum;
@@ -3008,10 +3012,12 @@ bool DisconnectTip(
 
     CBlockIndex *pindexDelete = theApp.chainActive().Tip();
     assert(pindexDelete);
+
     // Read block from disk.
     CEDCBlock block;
     if (!ReadBlockFromDisk(block, pindexDelete, chainparams.GetConsensus()))
         return AbortNode(state, "Failed to read block");
+
     // Apply the block atomically to the chain state.
     int64_t nStart = GetTimeMicros();
     {
@@ -3021,9 +3027,11 @@ bool DisconnectTip(
         assert(view.Flush());
     }
     edcLogPrint("bench", "- Disconnect block: %.2fms\n", (GetTimeMicros() - nStart) * 0.001);
+
     // Write the chain state to disk, if necessary.
     if (!FlushStateToDisk(state, FLUSH_STATE_IF_NEEDED))
         return false;
+
     // Resurrect mempool transactions from the disconnected block.
     std::vector<uint256> vHashUpdate;
     BOOST_FOREACH(const CEDCTransaction &tx, block.vtx) 
@@ -3040,14 +3048,17 @@ bool DisconnectTip(
             vHashUpdate.push_back(tx.GetHash());
         }
     }
+
     // AcceptToMemoryPool/addUnchecked all assume that new mempool entries have
     // no in-mempool children, which is generally not true when adding
     // previously-confirmed transactions back to the mempool.
     // UpdateTransactionsFromBlock finds descendants of any transactions in this
     // block that were added back and cleans up the mempool state.
     theApp.mempool().UpdateTransactionsFromBlock(vHashUpdate);
+
     // Update theApp.chainActive() and related variables.
     UpdateTip(pindexDelete->pprev, chainparams);
+
     // Let wallets know transactions went from 1-confirmed to
     // 0-confirmed or conflicted:
     BOOST_FOREACH(const CEDCTransaction &tx, block.vtx) 
@@ -3524,12 +3535,14 @@ CBlockIndex* edcAddToBlockIndex(const CBlockHeader& block)
     // Check for duplicate
     uint256 hash = block.GetHash();
     BlockMap::iterator it = theApp.mapBlockIndex().find(hash);
+
     if (it != theApp.mapBlockIndex().end())
         return it->second;
 
     // Construct new block index object
     CBlockIndex* pindexNew = new CBlockIndex(block);
     assert(pindexNew);
+
     // We assign the sequence id to blocks only when the full data is available,
     // to avoid miners withholding blocks but broadcasting headers, to get a
     // competitive advantage.
@@ -3537,6 +3550,7 @@ CBlockIndex* edcAddToBlockIndex(const CBlockHeader& block)
     BlockMap::iterator mi = theApp.mapBlockIndex().insert(make_pair(hash, pindexNew)).first;
     pindexNew->phashBlock = &((*mi).first);
     BlockMap::iterator miPrev = theApp.mapBlockIndex().find(block.hashPrevBlock);
+
     if (miPrev != theApp.mapBlockIndex().end())
     {
         pindexNew->pprev = (*miPrev).second;
@@ -4897,7 +4911,6 @@ void edcCheckBlockIndex(const Consensus::Params& consensusParams)
 //
 // Messages
 //
-
 
 bool AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(EDC_cs_main)
 {

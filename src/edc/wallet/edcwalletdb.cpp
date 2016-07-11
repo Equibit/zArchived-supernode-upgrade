@@ -1320,9 +1320,9 @@ bool dumpKey(
 
 bool
 dumpValue(
-			 ostream & out,
-			  string & strType,
-      	 CDataStream & ssValue )
+	 ostream & out,      // OUT
+	  string & strType,  // IN
+ CDataStream & ssValue ) // IN
 {
     try 
 	{
@@ -1589,4 +1589,43 @@ void CEDCWalletDB::Dump( ostream & out )
 	{
 		// It is just a dump, so do not allow it to affect the process
     }
+}
+
+void CEDCWalletDB::ListIssuers( vector<pair<string,CIssuer>> & issuers )
+{
+    Dbc* pcursor = GetCursor();
+    if (!pcursor)
+        throw runtime_error("CEDCWalletDB::ListIssuer(): cannot create DB cursor");
+
+    while (true)
+    {
+        // Read next record
+        CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+        CDataStream ssValue(SER_DISK, CLIENT_VERSION);
+        int ret = ReadAtCursor(pcursor, ssKey, ssValue);
+
+        if (ret == DB_NOTFOUND)
+            break;
+        else if (ret != 0)
+        {
+            pcursor->close();
+            throw runtime_error("CEDCWalletDB::ListIssuers(): error scanning DB");
+        }
+
+        // Unserialize
+        string strType;
+        ssKey >> strType;
+        if (strType == "issuer")
+		{
+			string name;
+        	ssKey >> name;
+
+        	CIssuer issuer;
+        	ssValue >> issuer;
+
+        	issuers.push_back( make_pair(name, issuer) );
+		}
+    }
+
+    pcursor->close();
 }
