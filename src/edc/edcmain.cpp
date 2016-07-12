@@ -6075,6 +6075,10 @@ bool ProcessMessage(
             edcLogPrint("net", "received: feefilter of %s from peer=%d\n", CFeeRate(newFeeFilter).ToString(), pfrom->id);
         }
     }
+	else if( strCommand == NetMsgType::USER)
+	{
+		
+	}
     else 
 	{
         // Ignore unknown commands for extensibility
