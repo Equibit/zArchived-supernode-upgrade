@@ -2473,7 +2473,7 @@ CEDCNode::CEDCNode(
     lastSentFeeFilter = 0;
     nextSendTimeFeeFilter = 0;
 
-    BOOST_FOREACH(const std::string &msg, getAllNetMessageTypes())
+    BOOST_FOREACH(const std::string &msg, edcgetAllNetMessageTypes())
         mapRecvBytesPerMsgCmd[msg] = 0;
     mapRecvBytesPerMsgCmd[NET_MESSAGE_COMMAND_OTHER] = 0;
 

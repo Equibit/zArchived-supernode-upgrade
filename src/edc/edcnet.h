@@ -12,7 +12,7 @@
 #include "compat.h"
 #include "limitedmap.h"
 #include "edcnetbase.h"
-#include "protocol.h"
+#include "edcprotocol.h"
 #include "random.h"
 #include "streams.h"
 #include "sync.h"

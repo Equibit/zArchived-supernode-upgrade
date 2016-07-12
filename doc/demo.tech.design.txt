@@ -53,6 +53,8 @@ eb_setaccount             Assigns an address to an account
 
     eb_authorizeequibit    <issuer-name> <transaction-id> <txout-index>
 
+	eb_generate 1
+
     Create a transaction that applies the signature to the equibit located
     at the specified transaction.
 
