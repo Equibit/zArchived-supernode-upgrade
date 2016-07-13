@@ -34,7 +34,7 @@ UniValue message( const UniValue & params, bool fHelp )
 		throw std::runtime_error(
 			"eb_message ( \"message\" \"address\" )\n"
 			"\nArguments:\n"
-			"1. \"message\"   (string) The message to be sent to the multiple addresses\n"
+			"1. \"message\"   (string) The message to be sent to the specified address\n"
 			"2. \"address\"   (string) The destination address\n"
 			+ HelpExampleCli( "eb_message", "\"A dividend of 0.032 bitcoins will be issued on March 15th\" \"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\" " )
 			+ HelpExampleRpc( "eb_message", "\"A dividend of 0.032 bitcoins will be issued on March 15th\" \"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\"" )

@@ -38,6 +38,7 @@
 #include "edcvalidationinterface.h"
 #include "versionbits.h"
 #include "edcapp.h"
+#include "edc/message/edcmessage.h"
 
 #include <sstream>
 
@@ -6077,15 +6078,19 @@ bool ProcessMessage(
     }
 	else if( strCommand == NetMsgType::USER)
 	{
-		
+		string type;
+		vRecv >> type;
+		CUserMessage * msg = CUserMessage::create( type, vRecv );
+
+		// TODO
+
+		delete msg;
 	}
     else 
 	{
         // Ignore unknown commands for extensibility
         edcLogPrint("net", "Unknown command \"%s\" from peer=%d\n", SanitizeString(strCommand), pfrom->id);
     }
-
-
 
     return true;
 }

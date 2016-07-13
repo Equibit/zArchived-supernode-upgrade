@@ -5,6 +5,8 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "edcmessage.h"
+#include "streams.h"
+#include <stdexcept>
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -313,3 +315,130 @@ std::string WarrantIssue::desc() const
 ///////////////////////////////////////////////////////////////////////////////
 
 
+CUserMessage	* CUserMessage::create( const std::string & tag, CDataStream & str )
+{
+	CUserMessage	* result = NULL;
+
+	if( tag[0] == 'A' )
+	{
+		if( tag == "Acquisition" )				result = new Acquisition();
+		else if( tag == "Ask" )					result = new Ask();
+		else if( tag == "Assimilation" )		result = new Assimilation();
+	}
+	else if( tag[0] == 'B' )
+	{
+		if( tag == "Bankruptcy" )				result = new Bankruptcy();
+		else if( tag == "Bid" )					result = new Bid();
+		else if( tag == "BonusIssue" )			result = new BonusIssue();
+		else if( tag == "BonusRights" )			result = new BonusRights();
+		else if( tag == "BuyBackProgram" )		result = new BuyBackProgram();
+	}
+	else if( tag[0] == 'C' )
+	{
+		if( tag == "CashDividend" )				result = new CashDividend();
+		else if( tag == "CashStockOption" )		result = new CashStockOption();
+		else if( tag == "ClassAction" ) 		result = new ClassAction();
+		else if( tag == "ConversionOfConvertibleBonds" )	result = new ConversionOfConvertibleBonds();
+		else if( tag == "CouponPayment" )		result = new CouponPayment();
+	}
+	else if( tag[0] == 'D' )
+	{
+		if( tag == "Delisting" )				result = new Delisting();
+		else if( tag == "DeMerger" )			result = new DeMerger();
+		else if( tag == "DividendReinvestmentPlan" )	result = new DividendReinvestmentPlan();
+		else if( tag == "DutchAuction" )		result = new DutchAuction();
+	}
+	else if( tag[0] == 'E' )
+	{
+		if( tag == "EarlyRedemption" )			result = new EarlyRedemption();
+	}
+	else if( tag[0] == 'F' )
+	{
+		if( tag == "FinalRedemption" )			result = new FinalRedemption();
+	}
+	else if( tag[0] == 'G' )
+	{
+		if( tag == "GeneralAnnouncement" )		result = new GeneralAnnouncement();
+	}
+	else if( tag[0] == 'I' )
+	{
+		if( tag == "InitialPublicOffering" )	result = new InitialPublicOffering();
+	}
+	else if( tag[0] == 'L' )
+	{
+		if( tag == "Liquidation" )				result = new Liquidation();
+		else if( tag == "Lottery" )				result = new Lottery();
+	}
+	else if( tag[0] == 'M' )
+	{
+		if( tag == "MandatoryExchange" )		result = new MandatoryExchange();
+		else if( tag == "Merger" )				result = new Merger();
+		else if( tag == "MergerWithElections" )	result = new MergerWithElections();
+	}
+	else if( tag[0] == 'N' )
+	{
+		if( tag == "NameChange" )				result = new NameChange();
+	}
+	else if( tag[0] == 'O' )
+	{
+		if( tag == "OddLotTender" )				result = new OddLotTender();
+		else if( tag == "OptionalPut" )			result = new OptionalPut();
+		else if( tag == "OtherEvent" )			result = new OtherEvent();
+	}
+	else if( tag[0] == 'P' )
+	{
+		if( tag == "PartialRedemption" )		result = new PartialRedemption();
+		else if( tag == "ParValueChange" )		result = new ParValueChange();
+		else if( tag == "Private" )				result = new Private();
+	}
+	else if( tag[0] == 'R' )
+	{
+		if( tag == "ReturnOfCapital" )			result = new ReturnOfCapital();
+		else if( tag == "ReverseStockSplit" )	result = new ReverseStockSplit();
+		else if( tag == "RightsAuction" )		result = new RightsAuction();
+		else if( tag == "RightsIssue" )			result = new RightsIssue();
+	}
+	else if( tag[0] == 'S' )
+	{
+		if( tag == "SchemeofArrangement" )		result = new SchemeofArrangement();
+		else if( tag == "ScripDividend" )		result = new ScripDividend();
+		else if( tag == "ScripIssue" )			result = new ScripIssue();
+		else if( tag == "Spinoff" )				result = new Spinoff();
+		else if( tag == "SpinOffWithElections" )result = new SpinOffWithElections();
+		else if( tag == "StockDividend" )		result = new StockDividend();
+		else if( tag == "StockSplit" )			result = new StockSplit();
+		else if( tag == "SubscriptionOffer" )	result = new SubscriptionOffer();
+	}
+	else if( tag[0] == 'T' )
+	{
+		if( tag == "Takeover" )					result = new Takeover();
+		else if( tag == "TenderOffer" )			result = new TenderOffer();
+	}
+	else if( tag[0] == 'V' )
+	{
+		if( tag == "VoluntaryExchange" )		result = new VoluntaryExchange();
+		else if( tag == "Vote" )				result = new Vote();
+		else if( tag == "Voting" )				result = new Voting();
+	}
+	else if( tag[0] == 'W' )
+	{
+		if( tag == "WarrantExercise" )			result = new WarrantExercise();
+		else if( tag == "WarrantExpiry" )		result = new WarrantExpiry();
+		else if( tag == "WarrantIssue" )		result = new WarrantIssue();
+	}
+
+	if( !result )
+		throw std::runtime_error( "CUserMessage::create(): unsupported message tag " + tag );
+
+	try
+	{
+		str >> *result;
+	}
+	catch( ... )
+	{
+		delete result;
+		throw;
+	}
+
+	return result;
+}
