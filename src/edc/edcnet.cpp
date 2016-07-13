@@ -2156,6 +2156,17 @@ void RelayTransaction(const CEDCTransaction& tx, CFeeRate feerate)
     }
 }
 
+void RelayUserMessage( CUserMessage * um )
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+	LOCK(theApp.vNodesCS());
+	BOOST_FOREACH(CEDCNode * pnode, theApp.vNodes())
+	{
+		pnode->PushUserMessage(um);
+	}
+}
+
 void CEDCNode::RecordBytesRecv(uint64_t bytes)
 {
     LOCK(cs_totalBytesRecv);

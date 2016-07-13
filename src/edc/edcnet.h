@@ -32,6 +32,7 @@
 class CAddrMan;
 class CScheduler;
 class CEDCNode;
+class CUserMessage;
 
 namespace boost 
 {
@@ -209,6 +210,9 @@ public:
     CAmount lastSentFeeFilter;
     int64_t nextSendTimeFeeFilter;
 
+    CCriticalSection cs_userMessage;
+	std::vector<CUserMessage *>	vUserMessages;
+
     CEDCNode(SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn = "", bool fInboundIn = false);
     ~CEDCNode();
 
@@ -318,6 +322,12 @@ public:
             vInventoryBlockToSend.push_back(inv.hash);
         }
     }
+
+	void PushUserMessage( CUserMessage * um )
+	{
+		LOCK(cs_userMessage);
+		vUserMessages.push_back(um);
+	}
 
     void PushBlockHash(const uint256 &hash)
     {
@@ -567,6 +577,9 @@ public:
 
 class CEDCTransaction;
 void RelayTransaction(const CEDCTransaction& tx, CFeeRate feerate);
+
+class CUserMessage;
+void RelayUserMessage( CUserMessage * );
 
 /** Access to the (IP) address database (peers.dat) */
 class CEDCAddrDB

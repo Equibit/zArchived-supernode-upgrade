@@ -21,6 +21,7 @@ class CDataStream;
 class CUserMessage
 {
 public:
+	CUserMessage() {}
 	virtual ~CUserMessage() {}
 
 	virtual std::string tag() const = 0;
@@ -57,7 +58,11 @@ public:
 
 	static CUserMessage	* create( const std::string & type, CDataStream & );
 
+	void	proofOfWork();
+
 protected:
+	CUserMessage( const CKeyID & sender, const std::string & data );
+
 	struct timespec	timestamp_;
 	std::string		data_;
 	CKeyID			senderAddr_;
@@ -70,9 +75,11 @@ protected:
 //
 // encrypted-message-data
 //
-class PeerToPeer : public CUserMessage
+class CPeerToPeer : public CUserMessage
 {
 public:
+	CPeerToPeer() {}
+
 	ADD_SERIALIZE_METHODS;
 
 	template <typename Stream, typename Operation>
@@ -81,6 +88,14 @@ public:
 		READWRITE(*static_cast<CUserMessage *>(this));
 		READWRITE(receiverAddr_);
 	}
+
+	static CPeerToPeer * create(const std::string & type, 
+								     const CKeyID & sender, 
+								     const CKeyID & receiver, 
+								const std::string & data );
+
+protected:
+	CPeerToPeer( const CKeyID & sender, const std::string & data );
 
 private:
 	CKeyID	receiverAddr_;
@@ -93,20 +108,30 @@ private:
 //
 // security-id:encrypted-message-data
 //
-class Multicast : public CUserMessage
+class CMulticast : public CUserMessage
 {
 public:
+	CMulticast() {}
+
 	ADD_SERIALIZE_METHODS;
 
 	template <typename Stream, typename Operation>
 	inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) 
 	{
 		READWRITE(*static_cast<CUserMessage *>(this));
-		READWRITE(securityId_);
+		READWRITE(assetId_);
 	}
 
+	static CMulticast * create( const std::string & type, 
+								     const CKeyID & sender, 
+								const std::string & assetId, 
+							    const std::string & data );
+
+protected:
+	CMulticast( const CKeyID & sender, const std::string & data );
+
 private:
-	std::string securityId_;
+	std::string assetId_;
 };
 
 // Message to all addresses
@@ -116,389 +141,399 @@ private:
 //
 // security-id:message-data
 //
-class Broadcast : public CUserMessage
+class CBroadcast : public CUserMessage
 {
 public:
+	CBroadcast() {}
+
 	ADD_SERIALIZE_METHODS;
 
 	template <typename Stream, typename Operation>
 	inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) 
 	{
 		READWRITE(*static_cast<CUserMessage *>(this));
-		READWRITE(securityId_);
+		READWRITE(assetId_);
 	}
 
+	static CBroadcast * create( const std::string & type, 
+								     const CKeyID & sender, 
+								const std::string & assetId, 
+							    const std::string & data );
+
+protected:
+	CBroadcast( const CKeyID & sender, const std::string & data );
+
 private:
-	std::string securityId_;
+	std::string assetId_;
 };
 
 ///////////////////////////////////////////////////////////
 
-class Acquisition : public Broadcast
+class Acquisition : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class Ask : public Broadcast
+class Ask : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class Assimilation : public Broadcast
+class Assimilation : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class Bankruptcy : public Broadcast
+class Bankruptcy : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class Bid : public Broadcast
+class Bid : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class BonusIssue : public Broadcast
+class BonusIssue : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class BonusRights : public Broadcast
+class BonusRights : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class BuyBackProgram : public Broadcast
+class BuyBackProgram : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class CashDividend : public Broadcast
+class CashDividend : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class CashStockOption : public Broadcast
+class CashStockOption : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class ClassAction : public Broadcast
+class ClassAction : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class ConversionOfConvertibleBonds : public Broadcast
+class ConversionOfConvertibleBonds : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class CouponPayment : public Broadcast
+class CouponPayment : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class Delisting : public Broadcast
+class Delisting : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class DeMerger : public Broadcast
+class DeMerger : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class DividendReinvestmentPlan : public Broadcast
+class DividendReinvestmentPlan : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class DutchAuction : public Broadcast
+class DutchAuction : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class EarlyRedemption : public Broadcast
+class EarlyRedemption : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class FinalRedemption : public Broadcast
+class FinalRedemption : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class GeneralAnnouncement : public Broadcast
+class GeneralAnnouncement : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class InitialPublicOffering : public Broadcast
+class InitialPublicOffering : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class Liquidation : public Broadcast
+class Liquidation : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class Lottery : public Broadcast
+class Lottery : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class MandatoryExchange : public Broadcast
+class MandatoryExchange : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class Merger : public Broadcast
+class Merger : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class MergerWithElections : public Broadcast
+class MergerWithElections : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class NameChange : public Broadcast
+class NameChange : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class OddLotTender : public Broadcast
+class OddLotTender : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class OptionalPut : public Broadcast
+class OptionalPut : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class OtherEvent : public Broadcast
+class OtherEvent : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class PartialRedemption : public Broadcast
+class PartialRedemption : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class ParValueChange : public Broadcast
+class ParValueChange : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class Poll: public Multicast
+class Poll: public CMulticast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class Private: public PeerToPeer
+class Private: public CPeerToPeer
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class ReturnOfCapital : public Broadcast
+class ReturnOfCapital : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class ReverseStockSplit : public Broadcast
+class ReverseStockSplit : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class RightsAuction : public Broadcast
+class RightsAuction : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class RightsIssue : public Broadcast
+class RightsIssue : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class SchemeofArrangement : public Broadcast
+class SchemeofArrangement : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class ScripDividend : public Broadcast
+class ScripDividend : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class ScripIssue : public Broadcast
+class ScripIssue : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class Spinoff : public Broadcast
+class Spinoff : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class SpinOffWithElections : public Broadcast
+class SpinOffWithElections : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class StockDividend : public Broadcast
+class StockDividend : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class StockSplit : public Broadcast
+class StockSplit : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class SubscriptionOffer : public Broadcast
+class SubscriptionOffer : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class Takeover : public Broadcast
+class Takeover : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class TenderOffer : public Broadcast
+class TenderOffer : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class VoluntaryExchange : public Broadcast
+class VoluntaryExchange : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class Vote: public PeerToPeer
+class Vote: public CPeerToPeer
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class WarrantExercise : public Broadcast
+class WarrantExercise : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class WarrantExpiry : public Broadcast
+class WarrantExpiry : public CBroadcast
 {
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class WarrantIssue : public Broadcast
+class WarrantIssue : public CBroadcast
 {
 public:
 	virtual std::string tag() const;

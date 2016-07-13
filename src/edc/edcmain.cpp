@@ -6781,6 +6781,19 @@ bool edcSendMessages(CEDCNode* pto)
                 pto->nextSendTimeFeeFilter = timeNow + (insecure_rand() % MAX_FEEFILTER_CHANGE_DELAY) * 1000000;
             }
         }
+
+		//
+		// Message: user
+		//
+		LOCK( pto->cs_userMessage);
+		// For each message in the user message collection
+		BOOST_FOREACH(CUserMessage * user, pto->vUserMessages) 
+		{
+			// Push the message onto the net
+			pto->PushMessage( NetMsgType::USER, *user );
+			delete user;
+		}
+		pto->vUserMessages.clear();
     }
     return true;
 }

@@ -442,3 +442,50 @@ CUserMessage	* CUserMessage::create( const std::string & tag, CDataStream & str 
 
 	return result;
 }
+
+void CUserMessage::proofOfWork()
+{
+	// TODO: Set the nonce and timestamp
+}
+
+CPeerToPeer * CPeerToPeer::create(const std::string & type, 
+								       const CKeyID & sender, 
+								       const CKeyID & receiver, 
+								  const std::string & data )
+{
+	// TODO
+	return NULL;
+}
+
+CPeerToPeer::CPeerToPeer( const CKeyID & sender, const std::string & data )
+{
+	// TODO
+}
+
+CMulticast * CMulticast::create(const std::string & type, 
+				         		     const CKeyID & sender, 
+								const std::string & assetId, 
+				    			const std::string & data )
+{
+	// TODO
+	return NULL;
+}
+
+CMulticast::CMulticast( const CKeyID & sender, const std::string & data ) 
+{
+	// TODO
+}
+
+CBroadcast * CBroadcast::create(const std::string & type, 
+					     		const CKeyID & sender, 
+								const std::string & assetId, 
+								const std::string & data )
+{
+	// TODO
+	return NULL;
+}
+
+CBroadcast::CBroadcast( const CKeyID & sender, const std::string & data ) 
+{
+	// TODO
+}

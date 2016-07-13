@@ -5,6 +5,9 @@
 #include <stdexcept>
 #include "edc/rpc/edcserver.h"
 #include "../utilstrencodings.h"
+#include "pubkey.h"
+#include "edc/message/edcmessage.h"
+#include "edc/edcnet.h"
 
 
 namespace
@@ -73,6 +76,15 @@ UniValue broadcastMessage( const UniValue & params, bool fHelp )
 			+ HelpExampleRpc( "eb_broadcastmessage", "ACME StockDividend \"A dividend of 0.032 bitcoins will be issued on March 15th\"" )
 		);
 
+	std::string	type;	// TODO
+	CKeyID		sender;	// TODO
+	std::string	assetId;// TODO
+	std::string	data;	// TODO
+	
+	CBroadcast	* msg = CBroadcast::create( type, sender, assetId, data );
+
+	RelayUserMessage( msg );
+
 	return NullUniValue;
 }
 
@@ -89,6 +101,15 @@ UniValue multicastMessage( const UniValue & params, bool fHelp )
 			+ HelpExampleCli( "eb_messagemany", "ACME Poll \"Board of directors Vote. Choose 1 for John Smith, 2 for Doug Brown\"" )
 			+ HelpExampleRpc( "eb_messagemany", "ACME Poll \"Board of directors Vote. Choose 1 for John Smith, 2 for Doug Brown\"" )
 		);
+
+	std::string	type;	// TODO
+	CKeyID		sender;	// TODO
+	std::string	assetId;// TODO
+	std::string	data;	// TODO
+
+	CMulticast	* msg = CMulticast::create( type, sender, assetId, data );
+
+	RelayUserMessage( msg );
 
 	return NullUniValue;
 }
@@ -108,6 +129,15 @@ UniValue message( const UniValue & params, bool fHelp )
 				"\"What is your position WRT the upcomming merger?\""  )
 			+ HelpExampleRpc( "eb_message", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\" Vote 1" )
 		);
+
+	std::string	type;		// TODO
+	CKeyID		sender;		// TODO
+	CKeyID		receiver;	// TODO
+	std::string	data;		// TODO
+
+	CPeerToPeer	* msg = CPeerToPeer::create( type, sender, receiver, data );
+
+	RelayUserMessage( msg );
 
 	return NullUniValue;
 }
