@@ -358,6 +358,13 @@ public:
 	virtual std::string desc() const;
 };
 
+class Poll: public Multicast
+{
+public:
+	virtual std::string tag() const;
+	virtual std::string desc() const;
+};
+
 class Private: public PeerToPeer
 {
 public:
@@ -471,13 +478,6 @@ public:
 };
 
 class Vote: public PeerToPeer
-{
-public:
-	virtual std::string tag() const;
-	virtual std::string desc() const;
-};
-
-class Voting: public Multicast
 {
 public:
 	virtual std::string tag() const;

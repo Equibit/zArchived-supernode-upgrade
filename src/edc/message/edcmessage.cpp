@@ -57,9 +57,10 @@ std::string OtherEvent::tag() const					{ return "OtherEvent"; }
 
 std::string PartialRedemption::tag() const			{ return "PartialRedemption"; }
 std::string ParValueChange::tag() const				{ return "ParValueChange"; }
+std::string Poll::tag() const						{ return "Poll"; }
 std::string Private::tag() const					{ return "Private"; }
 
-std::string ReturnOfCapital::tag() const			{ return "ReturnOfCapital"; }
+std::string ReturnOfCapital::tag() const			{ return "ReturnOfCapital"; } 
 std::string ReverseStockSplit::tag() const			{ return "ReverseStockSplit"; }
 std::string RightsAuction::tag() const				{ return "RightsAuction"; }
 std::string RightsIssue::tag() const				{ return "RightsIssue"; }
@@ -78,7 +79,6 @@ std::string TenderOffer::tag() const				{ return "TenderOffer"; }
 
 std::string VoluntaryExchange::tag() const			{ return "VoluntaryExchange"; }
 std::string Vote::tag() const						{ return "Vote"; }
-std::string Voting::tag() const						{ return "Voting"; }
 
 std::string WarrantExercise::tag() const			{ return "WarrantExercise"; }
 std::string WarrantExpiry::tag() const				{ return "WarrantExpiry"; }
@@ -295,7 +295,7 @@ std::string Vote::desc() const
 {
 	return "Share holder response to company referendum.";
 }
-std::string Voting::desc() const
+std::string Poll::desc() const
 {
 	return "Every publicly traded company has an annual general meeting where management presents several decisions that need shareholder approval. The approval is given by means of voting for or against each decision. Shareholders may attend the meeting in person or vote by proxy - electronically or by mail via their brokers and custodian.";
 }
@@ -389,6 +389,7 @@ CUserMessage	* CUserMessage::create( const std::string & tag, CDataStream & str 
 	{
 		if( tag == "PartialRedemption" )		result = new PartialRedemption();
 		else if( tag == "ParValueChange" )		result = new ParValueChange();
+		else if( tag == "Poll" )				result = new Poll();
 		else if( tag == "Private" )				result = new Private();
 	}
 	else if( tag[0] == 'R' )
@@ -418,7 +419,6 @@ CUserMessage	* CUserMessage::create( const std::string & tag, CDataStream & str 
 	{
 		if( tag == "VoluntaryExchange" )		result = new VoluntaryExchange();
 		else if( tag == "Vote" )				result = new Vote();
-		else if( tag == "Voting" )				result = new Voting();
 	}
 	else if( tag[0] == 'W' )
 	{
