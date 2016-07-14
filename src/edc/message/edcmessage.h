@@ -101,9 +101,6 @@ public:
 
 	virtual std::string	ToString() const;
 
-protected:
-	CPeerToPeer( const CKeyID & sender, const std::string & data );
-
 private:
 	CKeyID	receiverAddr_;
 };
@@ -136,9 +133,6 @@ public:
 								const std::string & assetId, 
 							    const std::string & data );
 
-protected:
-	CMulticast( const CKeyID & sender, const std::string & data );
-
 private:
 	std::string assetId_;
 };
@@ -170,9 +164,6 @@ public:
 								     const CKeyID & sender, 
 								const std::string & assetId, 
 							    const std::string & data );
-
-protected:
-	CBroadcast( const CKeyID & sender, const std::string & data );
 
 private:
 	std::string assetId_;

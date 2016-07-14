@@ -315,117 +315,136 @@ std::string CWarrantIssue::desc() const
 
 ///////////////////////////////////////////////////////////////////////////////
 
-
-CUserMessage	* CUserMessage::create( const std::string & tag, CDataStream & str )
+namespace
 {
-	CUserMessage	* result = NULL;
-
+CBroadcast * broadcastObj( const std::string & tag )
+{
 	if( tag[0] == 'A' )
 	{
-		if( tag == "Acquisition" )				result = new CAcquisition();
-		else if( tag == "Ask" )					result = new CAsk();
-		else if( tag == "Assimilation" )		result = new CAssimilation();
+		if( tag == "Acquisition" )				return new CAcquisition();
+		else if( tag == "Ask" )					return new CAsk();
+		else if( tag == "Assimilation" )		return new CAssimilation();
 	}
 	else if( tag[0] == 'B' )
 	{
-		if( tag == "Bankruptcy" )				result = new CBankruptcy();
-		else if( tag == "Bid" )					result = new CBid();
-		else if( tag == "BonusIssue" )			result = new CBonusIssue();
-		else if( tag == "BonusRights" )			result = new CBonusRights();
-		else if( tag == "BuyBackProgram" )		result = new CBuyBackProgram();
+		if( tag == "Bankruptcy" )				return new CBankruptcy();
+		else if( tag == "Bid" )					return new CBid();
+		else if( tag == "BonusIssue" )			return new CBonusIssue();
+		else if( tag == "BonusRights" )			return new CBonusRights();
+		else if( tag == "BuyBackProgram" )		return new CBuyBackProgram();
 	}
 	else if( tag[0] == 'C' )
 	{
-		if( tag == "CashDividend" )				result = new CCashDividend();
-		else if( tag == "CashStockOption" )		result = new CCashStockOption();
-		else if( tag == "ClassAction" ) 		result = new CClassAction();
-		else if( tag == "ConversionOfConvertibleBonds" )	result = new CConversionOfConvertibleBonds();
-		else if( tag == "CouponPayment" )		result = new CCouponPayment();
+		if( tag == "CashDividend" )				return new CCashDividend();
+		else if( tag == "CashStockOption" )		return new CCashStockOption();
+		else if( tag == "ClassAction" ) 		return new CClassAction();
+		else if( tag == "ConversionOfConvertibleBonds" )	return new CConversionOfConvertibleBonds();
+		else if( tag == "CouponPayment" )		return new CCouponPayment();
 	}
 	else if( tag[0] == 'D' )
 	{
-		if( tag == "Delisting" )				result = new CDelisting();
-		else if( tag == "DeMerger" )			result = new CDeMerger();
-		else if( tag == "DividendReinvestmentPlan" )	result = new CDividendReinvestmentPlan();
-		else if( tag == "DutchAuction" )		result = new CDutchAuction();
+		if( tag == "Delisting" )				return new CDelisting();
+		else if( tag == "DeMerger" )			return new CDeMerger();
+		else if( tag == "DividendReinvestmentPlan" )	return new CDividendReinvestmentPlan();
+		else if( tag == "DutchAuction" )		return new CDutchAuction();
 	}
 	else if( tag[0] == 'E' )
 	{
-		if( tag == "EarlyRedemption" )			result = new CEarlyRedemption();
+		if( tag == "EarlyRedemption" )			return new CEarlyRedemption();
 	}
 	else if( tag[0] == 'F' )
 	{
-		if( tag == "FinalRedemption" )			result = new CFinalRedemption();
+		if( tag == "FinalRedemption" )			return new CFinalRedemption();
 	}
 	else if( tag[0] == 'G' )
 	{
-		if( tag == "GeneralAnnouncement" )		result = new CGeneralAnnouncement();
+		if( tag == "GeneralAnnouncement" )		return new CGeneralAnnouncement();
 	}
 	else if( tag[0] == 'I' )
 	{
-		if( tag == "InitialPublicOffering" )	result = new CInitialPublicOffering();
+		if( tag == "InitialPublicOffering" )	return new CInitialPublicOffering();
 	}
 	else if( tag[0] == 'L' )
 	{
-		if( tag == "Liquidation" )				result = new CLiquidation();
-		else if( tag == "Lottery" )				result = new CLottery();
+		if( tag == "Liquidation" )				return new CLiquidation();
+		else if( tag == "Lottery" )				return new CLottery();
 	}
 	else if( tag[0] == 'M' )
 	{
-		if( tag == "MandatoryExchange" )		result = new CMandatoryExchange();
-		else if( tag == "Merger" )				result = new CMerger();
-		else if( tag == "MergerWithElections" )	result = new CMergerWithElections();
+		if( tag == "MandatoryExchange" )		return new CMandatoryExchange();
+		else if( tag == "Merger" )				return new CMerger();
+		else if( tag == "MergerWithElections" )	return new CMergerWithElections();
 	}
 	else if( tag[0] == 'N' )
 	{
-		if( tag == "NameChange" )				result = new CNameChange();
+		if( tag == "NameChange" )				return new CNameChange();
 	}
 	else if( tag[0] == 'O' )
 	{
-		if( tag == "OddLotTender" )				result = new COddLotTender();
-		else if( tag == "OptionalPut" )			result = new COptionalPut();
-		else if( tag == "OtherEvent" )			result = new COtherEvent();
+		if( tag == "OddLotTender" )				return new COddLotTender();
+		else if( tag == "OptionalPut" )			return new COptionalPut();
+		else if( tag == "OtherEvent" )			return new COtherEvent();
 	}
 	else if( tag[0] == 'P' )
 	{
-		if( tag == "PartialRedemption" )		result = new CPartialRedemption();
-		else if( tag == "ParValueChange" )		result = new CParValueChange();
-		else if( tag == "Poll" )				result = new CPoll();
-		else if( tag == "Private" )				result = new CPrivate();
+		if( tag == "PartialRedemption" )		return new CPartialRedemption();
+		else if( tag == "ParValueChange" )		return new CParValueChange();
 	}
 	else if( tag[0] == 'R' )
 	{
-		if( tag == "ReturnOfCapital" )			result = new CReturnOfCapital();
-		else if( tag == "ReverseStockSplit" )	result = new CReverseStockSplit();
-		else if( tag == "RightsAuction" )		result = new CRightsAuction();
-		else if( tag == "RightsIssue" )			result = new CRightsIssue();
+		if( tag == "ReturnOfCapital" )			return new CReturnOfCapital();
+		else if( tag == "ReverseStockSplit" )	return new CReverseStockSplit();
+		else if( tag == "RightsAuction" )		return new CRightsAuction();
+		else if( tag == "RightsIssue" )			return new CRightsIssue();
 	}
 	else if( tag[0] == 'S' )
 	{
-		if( tag == "SchemeofArrangement" )		result = new CSchemeofArrangement();
-		else if( tag == "ScripDividend" )		result = new CScripDividend();
-		else if( tag == "ScripIssue" )			result = new CScripIssue();
-		else if( tag == "Spinoff" )				result = new CSpinoff();
-		else if( tag == "SpinOffWithElections" )result = new CSpinOffWithElections();
-		else if( tag == "StockDividend" )		result = new CStockDividend();
-		else if( tag == "StockSplit" )			result = new CStockSplit();
-		else if( tag == "SubscriptionOffer" )	result = new CSubscriptionOffer();
+		if( tag == "SchemeofArrangement" )		return new CSchemeofArrangement();
+		else if( tag == "ScripDividend" )		return new CScripDividend();
+		else if( tag == "ScripIssue" )			return new CScripIssue();
+		else if( tag == "Spinoff" )				return new CSpinoff();
+		else if( tag == "SpinOffWithElections" )return new CSpinOffWithElections();
+		else if( tag == "StockDividend" )		return new CStockDividend();
+		else if( tag == "StockSplit" )			return new CStockSplit();
+		else if( tag == "SubscriptionOffer" )	return new CSubscriptionOffer();
 	}
 	else if( tag[0] == 'T' )
 	{
-		if( tag == "Takeover" )					result = new CTakeover();
-		else if( tag == "TenderOffer" )			result = new CTenderOffer();
+		if( tag == "Takeover" )					return new CTakeover();
+		else if( tag == "TenderOffer" )			return new CTenderOffer();
 	}
 	else if( tag[0] == 'V' )
 	{
-		if( tag == "VoluntaryExchange" )		result = new CVoluntaryExchange();
-		else if( tag == "Vote" )				result = new CVote();
+		if( tag == "VoluntaryExchange" )		return new CVoluntaryExchange();
 	}
 	else if( tag[0] == 'W' )
 	{
-		if( tag == "WarrantExercise" )			result = new CWarrantExercise();
-		else if( tag == "WarrantExpiry" )		result = new CWarrantExpiry();
-		else if( tag == "WarrantIssue" )		result = new CWarrantIssue();
+		if( tag == "WarrantExercise" )			return new CWarrantExercise();
+		else if( tag == "WarrantExpiry" )		return new CWarrantExpiry();
+		else if( tag == "WarrantIssue" )		return new CWarrantIssue();
+	}
+	return NULL;
+}
+}
+
+CUserMessage	* CUserMessage::create( const std::string & tag, CDataStream & str )
+{
+	CUserMessage	* result = broadcastObj( tag );
+
+	if( !result )
+	{
+		if( tag[0] == 'P' )
+		{
+			if( tag == "Poll" )
+				result = new CPoll();
+			else if( tag == "Private" )
+				result = new CPrivate();
+		}
+		else if( tag[0] == 'V' )
+		{
+			if( tag == "Vote" )
+				result = new CVote();
+		}
 	}
 
 	if( !result )
@@ -478,23 +497,29 @@ CPeerToPeer * CPeerToPeer::create(const std::string & type,
 	return ans;
 }
 
-CPeerToPeer::CPeerToPeer( const CKeyID & sender, const std::string & data )
-{
-	// TODO
-}
-
 CMulticast * CMulticast::create(const std::string & type, 
 				         		     const CKeyID & sender, 
 								const std::string & assetId, 
 				    			const std::string & data )
 {
-	// TODO
-	return NULL;
-}
+	CMulticast * ans;
 
-CMulticast::CMulticast( const CKeyID & sender, const std::string & data ) 
-{
-	// TODO
+	if( type == "Poll" )
+	{
+		ans = new CPoll();
+	}
+	else
+	{
+		std::string msg = "Invalid multicast message type:";
+		msg += type;
+		throw std::runtime_error( msg );
+	}
+
+	ans->senderAddr_ = sender;
+	ans->assetId_ = assetId;
+	ans->data_ = data;
+
+	return ans;
 }
 
 CBroadcast * CBroadcast::create(const std::string & type, 
@@ -502,13 +527,20 @@ CBroadcast * CBroadcast::create(const std::string & type,
 								const std::string & assetId, 
 								const std::string & data )
 {
-	// TODO
-	return NULL;
-}
+	CBroadcast * ans = broadcastObj( type );
 
-CBroadcast::CBroadcast( const CKeyID & sender, const std::string & data ) 
-{
-	// TODO
+	if(!ans)
+	{
+		std::string msg = "Invalid broadcast message type:";
+		msg += type;
+		throw std::runtime_error( msg );
+	}
+
+	ans->senderAddr_ = sender;
+	ans->assetId_ = assetId;
+	ans->data_ = data;
+
+	return ans;
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -554,4 +586,3 @@ std::string	CBroadcast::ToString() const
 
 	return ans;
 }
-

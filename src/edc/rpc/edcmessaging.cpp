@@ -8,6 +8,7 @@
 #include "pubkey.h"
 #include "edc/message/edcmessage.h"
 #include "edc/edcnet.h"
+#include "edc/edcbase58.h"
 
 
 namespace
@@ -15,12 +16,11 @@ namespace
 
 UniValue broadcastMessage( const UniValue & params, bool fHelp )
 {
-	if( fHelp )
+	if( fHelp  || params.size() != 4)
 		throw std::runtime_error(
-			"eb_broadcastmessage ( \"asset\" \"type\" \"message\" )\n"
+			"eb_broadcastmessage ( \"type\" \"send-address\" \"asset\" \"message\" )\n"
 			"\nArguments:\n"
-			"1. \"asset\" (string) Owners of the identified asset will receive the message\n"
-			"2. \"type\" (string) Type of message. Type must be one of:\n"
+			"1. \"type\" (string) Type of message. Type must be one of:\n"
 			"      Acquisition\n"
 			"      Ask\n"
 			"      Assimilation\n"
@@ -71,17 +71,27 @@ UniValue broadcastMessage( const UniValue & params, bool fHelp )
 			"      WarrantExercise\n"
 			"      WarrantExpiry\n"
 			"      WarrantIssue\n"
-			"3. \"message\"  (string) The message to be sent to the all addresses\n"
+			"2. \"send-address\"   (string) The sender address\n"
+			"3. \"asset\" (string) Owners of the identified asset will receive the message\n"
+			"4. \"message\"  (string) The message to be sent to the all addresses\n"
 			+ HelpExampleCli( "eb_broadcastmessage", "ACME StockDividend \"A dividend of 0.032 bitcoins will be issued on March 15th\"" )
 			+ HelpExampleRpc( "eb_broadcastmessage", "ACME StockDividend \"A dividend of 0.032 bitcoins will be issued on March 15th\"" )
 		);
 
-	std::string	type;	// TODO
-	CKeyID		sender;	// TODO
-	std::string	assetId;// TODO
-	std::string	data;	// TODO
+	std::string	type   = params[0].get_str();
+	CEDCBitcoinAddress	 sender(params[1].get_str());
+	CKeyID				 senderID;
+	if(!sender.GetKeyID( senderID))
+	{
+		std::string msg = "Invalid sender address:";
+		msg += params[1].get_str();
+		throw std::runtime_error( msg );
+	}
+
+	std::string	assetId= params[2].get_str();
+	std::string	data   = params[3].get_str();
 	
-	CBroadcast	* msg = CBroadcast::create( type, sender, assetId, data );
+	CBroadcast	* msg = CBroadcast::create( type, senderID, assetId, data );
 
 	RelayUserMessage( msg );
 
@@ -90,24 +100,33 @@ UniValue broadcastMessage( const UniValue & params, bool fHelp )
 
 UniValue multicastMessage( const UniValue & params, bool fHelp )
 {
-	if( fHelp )
+	if( fHelp || params.size() != 3 )
 		throw std::runtime_error(
-			"eb_multicastmessage ( \"asset\" \"message\" )\n"
+			"eb_multicastmessage ( \"type\" \"send-address\" \"asset\" \"message\" )\n"
 			"\nArguments:\n"
-			"1. \"asset\" (string) The message applies to the identified asset\n"
-			"2. \"type\" (string) Type of message. Type must be one of:\n"
+			"1. \"type\" (string) Type of message. Type must be one of:\n"
 			"        Poll\n"
-			"3. \"message\"  (string) The message to be sent to the multiple addresses\n"
+			"2. \"send-address\"   (string) The sender address\n"
+			"3. \"asset\" (string) The message applies to the identified asset\n"
+			"4. \"message\"  (string) The message to be sent to the multiple addresses\n"
 			+ HelpExampleCli( "eb_messagemany", "ACME Poll \"Board of directors Vote. Choose 1 for John Smith, 2 for Doug Brown\"" )
 			+ HelpExampleRpc( "eb_messagemany", "ACME Poll \"Board of directors Vote. Choose 1 for John Smith, 2 for Doug Brown\"" )
 		);
 
-	std::string	type;	// TODO
-	CKeyID		sender;	// TODO
-	std::string	assetId;// TODO
-	std::string	data;	// TODO
+	std::string	type   = params[0].get_str();
+	CEDCBitcoinAddress	 sender(params[1].get_str());
+	CKeyID				 senderID;
+	if(!sender.GetKeyID(senderID))
+	{
+		std::string msg = "Invalid sender address:";
+		msg += params[1].get_str();
+		throw std::runtime_error( msg );
+	}
 
-	CMulticast	* msg = CMulticast::create( type, sender, assetId, data );
+	std::string	assetID= params[2].get_str();
+	std::string	data   = params[3].get_str();
+
+	CMulticast	* msg = CMulticast::create( type, senderID, assetID, data );
 
 	RelayUserMessage( msg );
 
@@ -116,26 +135,43 @@ UniValue multicastMessage( const UniValue & params, bool fHelp )
 
 UniValue message( const UniValue & params, bool fHelp )
 {
-	if( fHelp )
+	if( fHelp  || params.size() != 4)
 		throw std::runtime_error(
-			"eb_message ( \"message\" \"address\" )\n"
+			"eb_message ( \"type\" \"send-address\" \"recv-address\" \"message\" )\n"
 			"\nArguments:\n"
-			"1. \"address\"   (string) The destination address\n"
-			"2. \"type\" (string) Type of message. Type must be one of:\n"
+			"1. \"type\" (string) Type of message. Type must be one of:\n"
 			"        Private\n"
 			"        Vote\n"
-			"3. \"message\"   (string) The message to be sent to the specified address\n"
+			"2. \"send-address\"   (string) The sender address\n"
+			"3. \"recv-address\"   (string) The receiver address\n"
+			"4. \"message\"   (string) The message to be sent to the specified address\n"
 			+ HelpExampleCli( "eb_message", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\" Private "
 				"\"What is your position WRT the upcomming merger?\""  )
 			+ HelpExampleRpc( "eb_message", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\" Vote 1" )
 		);
 
-	std::string	type = "Private";		// TODO
-	CKeyID		sender;		// TODO
-	CKeyID		receiver;	// TODO
-	std::string	data;		// TODO
+	std::string	type    = params[0].get_str();
+	CEDCBitcoinAddress	 sender(params[1].get_str());
+	CKeyID				 senderID;
+	if(!sender.GetKeyID(senderID))
+	{
+		std::string msg = "Invalid sender address:";
+		msg += params[1].get_str();
+		throw std::runtime_error( msg );
+	}
 
-	CPeerToPeer	* msg = CPeerToPeer::create( type, sender, receiver, data );
+	CEDCBitcoinAddress	 receiver(params[2].get_str());
+	CKeyID				 receiverID;
+	if(!receiver.GetKeyID(receiverID))
+	{
+		std::string msg = "Invalid receiver address:";
+		msg += params[1].get_str();
+		throw std::runtime_error( msg );
+	}
+
+	std::string	data    = params[3].get_str();
+
+	CPeerToPeer	* msg = CPeerToPeer::create( type, senderID, receiverID, data );
 
 	RelayUserMessage( msg );
 
