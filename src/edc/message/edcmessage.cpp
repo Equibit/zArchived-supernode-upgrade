@@ -429,38 +429,60 @@ CBroadcast * broadcastObj( const std::string & tag )
 
 CUserMessage	* CUserMessage::create( const std::string & tag, CDataStream & str )
 {
-	CUserMessage	* result = broadcastObj( tag );
-
-	if( !result )
+	if( CBroadcast * result = broadcastObj( tag ))
 	{
-		if( tag[0] == 'P' )
+		try
 		{
-			if( tag == "Poll" )
-				result = new CPoll();
-			else if( tag == "Private" )
-				result = new CPrivate();
+			str >> *result;
 		}
-		else if( tag[0] == 'V' )
+		catch( ... )
 		{
-			if( tag == "Vote" )
-				result = new CVote();
+			delete result;
+			throw;
 		}
+
+		return result;
 	}
 
-	if( !result )
-		throw std::runtime_error( "CUserMessage::create(): unsupported message tag " + tag );
+	CPeerToPeer * result = NULL;
 
-	try
+	if( tag == "Vote" )
+		result = new CVote();
+	else if( tag == "Private" )
+		result = new CPrivate();
+
+	if(result)
 	{
-		str >> *result;
+		try
+		{
+			str >> *result;
+		}
+		catch( ... )
+		{
+			delete result;
+			throw;
+		}
+
+		return result;
 	}
-	catch( ... )
+	else if( tag == "Poll" )
 	{
-		delete result;
-		throw;
+		CMulticast * result = new CPoll();
+
+		try
+		{
+			str >> *result;
+		}
+		catch( ... )
+		{
+			delete result;
+			throw;
+		}
+
+		return result;
 	}
 
-	return result;
+	throw std::runtime_error( "CUserMessage::create(): unsupported message tag " + tag );
 }
 
 void CUserMessage::proofOfWork()
