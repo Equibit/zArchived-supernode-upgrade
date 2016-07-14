@@ -6082,6 +6082,7 @@ bool ProcessMessage(
 		vRecv >> type;
 		CUserMessage * msg = CUserMessage::create( type, vRecv );
 
+        edcLogPrint("net", "received: user message %s\n", msg->ToString().c_str() );
 		// TODO
 
 		delete msg;
@@ -6790,11 +6791,12 @@ bool edcSendMessages(CEDCNode* pto)
 		BOOST_FOREACH(CUserMessage * user, pto->vUserMessages) 
 		{
 			// Push the message onto the net
-			pto->PushMessage( NetMsgType::USER, *user );
+			pto->PushMessage( NetMsgType::USER, user->tag(), *user );
 			delete user;
 		}
 		pto->vUserMessages.clear();
     }
+
     return true;
 }
 

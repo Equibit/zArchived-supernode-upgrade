@@ -130,7 +130,7 @@ UniValue message( const UniValue & params, bool fHelp )
 			+ HelpExampleRpc( "eb_message", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\" Vote 1" )
 		);
 
-	std::string	type;		// TODO
+	std::string	type = "Private";		// TODO
 	CKeyID		sender;		// TODO
 	CKeyID		receiver;	// TODO
 	std::string	data;		// TODO

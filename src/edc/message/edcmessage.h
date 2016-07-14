@@ -27,6 +27,9 @@ public:
 	virtual std::string tag() const = 0;
 	virtual std::string desc() const = 0;
 
+	// If true, then the message is placed in a blockchain
+	virtual bool chained() const = 0;
+
 	ADD_SERIALIZE_METHODS;
 
 	template <typename Stream, typename Operation>
@@ -56,9 +59,11 @@ public:
     	READWRITE(nonce_);
 	}
 
-	static CUserMessage	* create( const std::string & type, CDataStream & );
-
 	void	proofOfWork();
+	
+	virtual std::string	ToString() const;
+
+	static CUserMessage	* create( const std::string & type, CDataStream & );
 
 protected:
 	CUserMessage( const CKeyID & sender, const std::string & data );
@@ -94,6 +99,8 @@ public:
 								     const CKeyID & receiver, 
 								const std::string & data );
 
+	virtual std::string	ToString() const;
+
 protected:
 	CPeerToPeer( const CKeyID & sender, const std::string & data );
 
@@ -121,6 +128,8 @@ public:
 		READWRITE(*static_cast<CUserMessage *>(this));
 		READWRITE(assetId_);
 	}
+
+	virtual std::string	ToString() const;
 
 	static CMulticast * create( const std::string & type, 
 								     const CKeyID & sender, 
@@ -155,6 +164,8 @@ public:
 		READWRITE(assetId_);
 	}
 
+	virtual std::string	ToString() const;
+
 	static CBroadcast * create( const std::string & type, 
 								     const CKeyID & sender, 
 								const std::string & assetId, 
@@ -169,373 +180,479 @@ private:
 
 ///////////////////////////////////////////////////////////
 
-class Acquisition : public CBroadcast
+class CAcquisition : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class Ask : public CBroadcast
+class CAsk : public CBroadcast
 {
 public:
+	virtual bool chained() const { return false; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class Assimilation : public CBroadcast
+class CAssimilation : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class Bankruptcy : public CBroadcast
+class CBankruptcy : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class Bid : public CBroadcast
+class CBid : public CBroadcast
 {
 public:
+	virtual bool chained() const { return false; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class BonusIssue : public CBroadcast
+class CBonusIssue : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class BonusRights : public CBroadcast
+class CBonusRights : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class BuyBackProgram : public CBroadcast
+class CBuyBackProgram : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class CashDividend : public CBroadcast
+class CCashDividend : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class CashStockOption : public CBroadcast
+class CCashStockOption : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class ClassAction : public CBroadcast
+class CClassAction : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class ConversionOfConvertibleBonds : public CBroadcast
+class CConversionOfConvertibleBonds : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class CouponPayment : public CBroadcast
+class CCouponPayment : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class Delisting : public CBroadcast
+class CDelisting : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class DeMerger : public CBroadcast
+class CDeMerger : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class DividendReinvestmentPlan : public CBroadcast
+class CDividendReinvestmentPlan : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class DutchAuction : public CBroadcast
+class CDutchAuction : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class EarlyRedemption : public CBroadcast
+class CEarlyRedemption : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class FinalRedemption : public CBroadcast
+class CFinalRedemption : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class GeneralAnnouncement : public CBroadcast
+class CGeneralAnnouncement : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class InitialPublicOffering : public CBroadcast
+class CInitialPublicOffering : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class Liquidation : public CBroadcast
+class CLiquidation : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class Lottery : public CBroadcast
+class CLottery : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class MandatoryExchange : public CBroadcast
+class CMandatoryExchange : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class Merger : public CBroadcast
+class CMerger : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class MergerWithElections : public CBroadcast
+class CMergerWithElections : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class NameChange : public CBroadcast
+class CNameChange : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class OddLotTender : public CBroadcast
+class COddLotTender : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class OptionalPut : public CBroadcast
+class COptionalPut : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class OtherEvent : public CBroadcast
+class COtherEvent : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class PartialRedemption : public CBroadcast
+class CPartialRedemption : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class ParValueChange : public CBroadcast
+class CParValueChange : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class Poll: public CMulticast
+class CPoll: public CMulticast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class Private: public CPeerToPeer
+class CPrivate: public CPeerToPeer
 {
 public:
+	virtual bool chained() const { return false; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class ReturnOfCapital : public CBroadcast
+class CReturnOfCapital : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class ReverseStockSplit : public CBroadcast
+class CReverseStockSplit : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class RightsAuction : public CBroadcast
+class CRightsAuction : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class RightsIssue : public CBroadcast
+class CRightsIssue : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class SchemeofArrangement : public CBroadcast
+class CSchemeofArrangement : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class ScripDividend : public CBroadcast
+class CScripDividend : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class ScripIssue : public CBroadcast
+class CScripIssue : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class Spinoff : public CBroadcast
+class CSpinoff : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class SpinOffWithElections : public CBroadcast
+class CSpinOffWithElections : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class StockDividend : public CBroadcast
+class CStockDividend : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class StockSplit : public CBroadcast
+class CStockSplit : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class SubscriptionOffer : public CBroadcast
+class CSubscriptionOffer : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class Takeover : public CBroadcast
+class CTakeover : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class TenderOffer : public CBroadcast
+class CTenderOffer : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class VoluntaryExchange : public CBroadcast
+class CVoluntaryExchange : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class Vote: public CPeerToPeer
+class CVote: public CPeerToPeer
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class WarrantExercise : public CBroadcast
+class CWarrantExercise : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class WarrantExpiry : public CBroadcast
+class CWarrantExpiry : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
 
-class WarrantIssue : public CBroadcast
+class CWarrantIssue : public CBroadcast
 {
 public:
+	virtual bool chained() const { return true; }
+
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };

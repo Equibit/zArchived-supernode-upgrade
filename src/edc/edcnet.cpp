@@ -23,6 +23,7 @@
 #include "scheduler.h"
 #include "edcui_interface.h"
 #include "utilstrencodings.h"
+#include "edc/message/edcmessage.h"
 
 #ifdef WIN32
 #include <string.h>
