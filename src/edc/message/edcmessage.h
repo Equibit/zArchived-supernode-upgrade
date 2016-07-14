@@ -57,6 +57,7 @@ public:
    
 		READWRITE(senderAddr_);
     	READWRITE(nonce_);
+		READWRITE(data_);
 	}
 
 	void	proofOfWork();

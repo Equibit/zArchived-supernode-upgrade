@@ -552,14 +552,17 @@ std::string	CUserMessage::ToString() const
 	out << "sender=" << senderAddr_.ToString()
 		<< " timestamp=" << timestamp_.tv_sec << ":" << timestamp_.tv_nsec
 		<< " nonce=" << nonce_
-		<< " data=[" << data_;
+		<< " data=[" << data_
+		<< "]";
 
 	return out.str();
 }
 
 std::string	CPeerToPeer::ToString() const
 {
-	std::string ans = CUserMessage::ToString();
+	std::string ans = tag();
+	ans += ":";
+	ans += CUserMessage::ToString();
 
 	ans += " receiver=";
 	ans += receiverAddr_.ToString();
@@ -569,7 +572,9 @@ std::string	CPeerToPeer::ToString() const
 
 std::string	CMulticast::ToString() const
 {
-	std::string ans = CUserMessage::ToString();
+	std::string ans = tag();
+	ans += ":";
+	ans += CUserMessage::ToString();
 
 	ans += " asset=";
 	ans += assetId_;
@@ -579,7 +584,9 @@ std::string	CMulticast::ToString() const
 
 std::string	CBroadcast::ToString() const
 {
-	std::string ans = CUserMessage::ToString();
+	std::string ans = tag();
+	ans += ":";
+	ans += CUserMessage::ToString();
 
 	ans += " asset=";
 	ans += assetId_;
