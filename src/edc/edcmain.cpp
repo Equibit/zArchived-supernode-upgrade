@@ -6791,7 +6791,21 @@ bool edcSendMessages(CEDCNode* pto)
 		BOOST_FOREACH(CUserMessage * user, pto->vUserMessages) 
 		{
 			// Push the message onto the net
-			pto->PushMessage( NetMsgType::USER, user->tag(), *user );
+			if( CBroadcast * bm = dynamic_cast<CBroadcast *>(user))
+			{
+				pto->PushMessage( NetMsgType::USER, user->tag(), *bm );
+			}
+			else if( CMulticast * mm = dynamic_cast<CMulticast *>(user) )
+			{
+				pto->PushMessage( NetMsgType::USER, user->tag(), *mm );
+			}
+			else if( CPeerToPeer * ppm = dynamic_cast<CPeerToPeer *>(user) )
+			{
+				pto->PushMessage( NetMsgType::USER, user->tag(), *ppm );
+			}
+        	else
+				throw runtime_error("edcSendMessage(): invalid user message type");
+
 			delete user;
 		}
 		pto->vUserMessages.clear();

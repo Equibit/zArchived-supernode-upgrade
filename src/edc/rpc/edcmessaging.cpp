@@ -100,7 +100,7 @@ UniValue broadcastMessage( const UniValue & params, bool fHelp )
 
 UniValue multicastMessage( const UniValue & params, bool fHelp )
 {
-	if( fHelp || params.size() != 3 )
+	if( fHelp || params.size() != 4 )
 		throw std::runtime_error(
 			"eb_multicastmessage ( \"type\" \"send-address\" \"asset\" \"message\" )\n"
 			"\nArguments:\n"
