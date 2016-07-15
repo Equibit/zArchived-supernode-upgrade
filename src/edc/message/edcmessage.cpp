@@ -456,6 +456,26 @@ std::vector<unsigned char> & signature // OUT
         throw std::runtime_error("Sign failed");
 }
 
+bool verifyMessage(
+					const CKeyID & keyID,    // IN
+			   const std::string & type,     // IN
+			   const std::string & assetId,  // IN
+			   const std::string & message,  // IN
+const std::vector<unsigned char> & signature // IN
+    )
+{
+    CHashWriter ss(SER_GETHASH, 0);
+    ss << edcstrMessageMagic
+       << type
+       << assetId
+       << message;
+
+	// TODO: add the timestamp and nonce to the input data
+
+	CPubKey	pubkey;
+    return pubkey.RecoverCompact(ss.GetHash(), signature );
+}
+
 }
 
 CUserMessage	* CUserMessage::create( const std::string & tag, CDataStream & str )
@@ -672,16 +692,12 @@ bool CPeerToPeer::verify() const
 {
 	try
 	{
-		std::vector<unsigned char>	signature;
-
-		signMessage(
+		return verifyMessage(
 			senderAddr_,
 		 	tag(),
 		 	receiverAddr_.ToString(),
 		 	data_,
-			signature );
-		
-		return signature_ == signature;
+			signature_ );
 	}
 	catch(...)
 	{
@@ -693,16 +709,12 @@ bool CMulticast::verify() const
 {
 	try
 	{
-		std::vector<unsigned char>	signature;
-
-		signMessage(
+		return verifyMessage(
 			senderAddr_,
 		 	tag(),
 		 	assetId_,
 		 	data_,
-			signature );
-		
-		return signature_ == signature;
+			signature_ );
 	}
 	catch(...)
 	{
@@ -714,16 +726,12 @@ bool CBroadcast::verify() const
 {
 	try
 	{
-		std::vector<unsigned char>	signature;
-
-		signMessage(
+		return verifyMessage(
 			senderAddr_,
 		 	tag(),
 		 	assetId_,
 		 	data_,
-			signature );
-		
-		return signature_ == signature;
+			signature_ );
 	}
 	catch(...)
 	{
