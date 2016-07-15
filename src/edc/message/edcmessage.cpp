@@ -6,6 +6,10 @@
 
 #include "edcmessage.h"
 #include "streams.h"
+#include "edc/edcapp.h"
+#include "key.h"
+#include "edc/wallet/edcwallet.h"
+#include "edc/edcmain.h"
 #include <stdexcept>
 #include <sstream>
 
@@ -425,6 +429,33 @@ CBroadcast * broadcastObj( const std::string & tag )
 	}
 	return NULL;
 }
+
+void signMessage(
+			  const CKeyID & keyID,    // IN
+		 const std::string & type,     // IN
+		 const std::string & assetId,  // IN
+		 const std::string & message,  // IN
+std::vector<unsigned char> & signature // OUT
+    )
+{
+    EDCapp & theApp = EDCapp::singleton();
+
+    CKey key;
+    if (!theApp.walletMain()->GetKey(keyID, key))
+        throw std::runtime_error("Private key not available");
+
+    CHashWriter ss(SER_GETHASH, 0);
+    ss << edcstrMessageMagic
+       << type
+       << assetId
+       << message;
+
+	// TODO: add the timestamp and nonce to the input data
+
+    if (!key.SignCompact(ss.GetHash(), signature ))
+        throw std::runtime_error("Sign failed");
+}
+
 }
 
 CUserMessage	* CUserMessage::create( const std::string & tag, CDataStream & str )
@@ -494,8 +525,7 @@ CPeerToPeer * CPeerToPeer::create(
 			   const std::string & type, 
          			const CKeyID & sender, 
 		 			const CKeyID & receiver, 
-			   const std::string & data,
-const std::vector<unsigned char> & signature )
+			   const std::string & data )
 {
 	CPeerToPeer * ans;
 
@@ -518,6 +548,12 @@ const std::vector<unsigned char> & signature )
 	ans->receiverAddr_ = receiver;
 	ans->data_ = data;
 
+	signMessage(sender,
+		 		type,
+		 		receiver.ToString(),
+		 		data,
+				ans->signature_ );
+
 	return ans;
 }
 
@@ -525,8 +561,7 @@ CMulticast * CMulticast::create(
 			   const std::string & type, 
 			        const CKeyID & sender, 
 			   const std::string & assetId, 
-	   		   const std::string & data,
-const std::vector<unsigned char> & signature )
+	   		   const std::string & data )
 {
 	CMulticast * ans;
 
@@ -545,6 +580,11 @@ const std::vector<unsigned char> & signature )
 	ans->assetId_ = assetId;
 	ans->data_ = data;
 
+	signMessage(sender,
+		 		type,
+		 		assetId,
+		 		data,
+				ans->signature_ );
 	return ans;
 }
 
@@ -552,8 +592,7 @@ CBroadcast * CBroadcast::create(
 			   const std::string & type, 
 	     	        const CKeyID & sender, 
 			   const std::string & assetId, 
-			   const std::string & data,
-const std::vector<unsigned char> & signature )
+			   const std::string & data )
 {
 	CBroadcast * ans = broadcastObj( type );
 
@@ -568,6 +607,11 @@ const std::vector<unsigned char> & signature )
 	ans->assetId_ = assetId;
 	ans->data_ = data;
 
+	signMessage(sender,
+		 		type,
+		 		assetId,
+		 		data,
+				ans->signature_ );
 	return ans;
 }
 
@@ -580,8 +624,8 @@ std::string	CUserMessage::ToString() const
 	out << "sender=" << senderAddr_.ToString()
 		<< " timestamp=" << timestamp_.tv_sec << ":" << timestamp_.tv_nsec
 		<< " nonce=" << nonce_
-		<< " data=[" << data_
-		<< "]";
+		<< " data=[" << data_ << "]"
+		<< " signature=" << HexStr(signature_);
 
 	return out.str();
 }
@@ -621,3 +665,70 @@ std::string	CBroadcast::ToString() const
 
 	return ans;
 }
+
+///////////////////////////////////////////////////////////////////////////
+
+bool CPeerToPeer::verify() const
+{
+	try
+	{
+		std::vector<unsigned char>	signature;
+
+		signMessage(
+			senderAddr_,
+		 	tag(),
+		 	receiverAddr_.ToString(),
+		 	data_,
+			signature );
+		
+		return signature_ == signature;
+	}
+	catch(...)
+	{
+		return false;
+	}
+}
+
+bool CMulticast::verify() const
+{
+	try
+	{
+		std::vector<unsigned char>	signature;
+
+		signMessage(
+			senderAddr_,
+		 	tag(),
+		 	assetId_,
+		 	data_,
+			signature );
+		
+		return signature_ == signature;
+	}
+	catch(...)
+	{
+		return false;
+	}
+}
+
+bool CBroadcast::verify() const
+{
+	try
+	{
+		std::vector<unsigned char>	signature;
+
+		signMessage(
+			senderAddr_,
+		 	tag(),
+		 	assetId_,
+		 	data_,
+			signature );
+		
+		return signature_ == signature;
+	}
+	catch(...)
+	{
+		return false;
+	}
+}
+
+

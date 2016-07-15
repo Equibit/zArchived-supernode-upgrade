@@ -58,21 +58,29 @@ public:
 		READWRITE(senderAddr_);
     	READWRITE(nonce_);
 		READWRITE(data_);
+		READWRITE(signature_);
 	}
 
 	void	proofOfWork();
 	
+	/**
+     * Verify that the signature is valid
+	 */
+	virtual bool	verify() const = 0;
+
 	virtual std::string	ToString() const;
 
 	static CUserMessage	* create( const std::string & type, CDataStream & );
 
 protected:
+
 	CUserMessage( const CKeyID & sender, const std::string & data );
 
-	struct timespec	timestamp_;
-	std::string		data_;
-	CKeyID			senderAddr_;
-	uint64_t		nonce_;
+			struct timespec	timestamp_;
+				std::string data_;
+					 CKeyID senderAddr_;
+				   uint64_t nonce_;
+std::vector<unsigned char>	signature_;
 };
 
 // Message to a single recipient. Encrypted.
@@ -98,9 +106,9 @@ public:
 	static CPeerToPeer * create(const std::string & type, 
 								     const CKeyID & sender, 
 								     const CKeyID & receiver, 
-								const std::string & data,
-				 const std::vector<unsigned char> & signature );
+								const std::string & data );
 
+	virtual bool	verify() const;
 	virtual std::string	ToString() const;
 
 private:
@@ -128,13 +136,13 @@ public:
 		READWRITE(assetId_);
 	}
 
+	virtual bool	verify() const;
 	virtual std::string	ToString() const;
 
 	static CMulticast * create( const std::string & type, 
 								     const CKeyID & sender, 
 								const std::string & assetId, 
-							    const std::string & data,
-				 const std::vector<unsigned char> & signature );
+							    const std::string & data );
 
 private:
 	std::string assetId_;
@@ -161,13 +169,13 @@ public:
 		READWRITE(assetId_);
 	}
 
+	virtual bool	verify() const;
 	virtual std::string	ToString() const;
 
 	static CBroadcast * create( const std::string & type, 
 								     const CKeyID & sender, 
 								const std::string & assetId, 
-							    const std::string & data,
-				 const std::vector<unsigned char> & signature );
+							    const std::string & data );
 
 private:
 	std::string assetId_;

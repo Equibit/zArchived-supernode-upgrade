@@ -6083,7 +6083,16 @@ bool ProcessMessage(
 		CUserMessage * msg = CUserMessage::create( type, vRecv );
 
         edcLogPrint("net", "received: user message %s\n", msg->ToString().c_str() );
-		// TODO
+		bool isGood = msg->verify();
+
+		if( isGood )
+		{
+			// TODO
+		}
+		else
+		{
+            edcLogPrint("net", "ERROR: message failed signature verification. Message discarded." );
+		}
 
 		delete msg;
 	}
