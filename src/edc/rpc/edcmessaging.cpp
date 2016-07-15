@@ -3,16 +3,47 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <stdexcept>
+#include <vector>
 #include "edc/rpc/edcserver.h"
 #include "../utilstrencodings.h"
 #include "pubkey.h"
 #include "edc/message/edcmessage.h"
 #include "edc/edcnet.h"
 #include "edc/edcbase58.h"
+#include "edc/edcapp.h"
+#include "edc/edcmain.h"
+#include "edc/wallet/edcwallet.h"
 
 
 namespace
 {
+
+void signMessage(
+     	CEDCBitcoinAddress & address, // IN
+	     const std::string & type,    // IN
+	     const std::string & assetId, // IN
+	     const std::string & message, // IN
+std::vector<unsigned char> & signature// OUT
+	)
+{
+	EDCapp & theApp = EDCapp::singleton();
+    CKeyID keyID;
+    if (!address.GetKeyID(keyID))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to key");
+
+    CKey key;
+    if (!theApp.walletMain()->GetKey(keyID, key))
+        throw JSONRPCError(RPC_WALLET_ERROR, "Private key not available");
+
+    CHashWriter ss(SER_GETHASH, 0);
+    ss << edcstrMessageMagic
+	   << type
+	   << assetId
+	   << message;
+
+    if (!key.SignCompact(ss.GetHash(), signature ))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Sign failed");
+}
 
 UniValue broadcastMessage( const UniValue & params, bool fHelp )
 {
@@ -80,18 +111,20 @@ UniValue broadcastMessage( const UniValue & params, bool fHelp )
 
 	std::string	type   = params[0].get_str();
 	CEDCBitcoinAddress	 sender(params[1].get_str());
-	CKeyID				 senderID;
-	if(!sender.GetKeyID( senderID))
-	{
-		std::string msg = "Invalid sender address:";
-		msg += params[1].get_str();
-		throw std::runtime_error( msg );
-	}
+    if (!sender.IsValid())
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
+
+	CKeyID senderID;
+	if(!sender.GetKeyID(senderID))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
 
 	std::string	assetId= params[2].get_str();
 	std::string	data   = params[3].get_str();
 	
-	CBroadcast	* msg = CBroadcast::create( type, senderID, assetId, data );
+	std::vector<unsigned char> signature;
+	signMessage( sender, type, assetId, data, signature );
+
+	CBroadcast	* msg = CBroadcast::create( type, senderID, assetId, data, signature );
 
 	RelayUserMessage( msg );
 
@@ -117,16 +150,15 @@ UniValue multicastMessage( const UniValue & params, bool fHelp )
 	CEDCBitcoinAddress	 sender(params[1].get_str());
 	CKeyID				 senderID;
 	if(!sender.GetKeyID(senderID))
-	{
-		std::string msg = "Invalid sender address:";
-		msg += params[1].get_str();
-		throw std::runtime_error( msg );
-	}
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
 
 	std::string	assetID= params[2].get_str();
 	std::string	data   = params[3].get_str();
 
-	CMulticast	* msg = CMulticast::create( type, senderID, assetID, data );
+	std::vector<unsigned char> signature;
+	signMessage( sender, type, assetID, data, signature );
+
+	CMulticast	* msg = CMulticast::create( type, senderID, assetID, data, signature );
 
 	RelayUserMessage( msg );
 
@@ -154,24 +186,19 @@ UniValue message( const UniValue & params, bool fHelp )
 	CEDCBitcoinAddress	 sender(params[1].get_str());
 	CKeyID				 senderID;
 	if(!sender.GetKeyID(senderID))
-	{
-		std::string msg = "Invalid sender address:";
-		msg += params[1].get_str();
-		throw std::runtime_error( msg );
-	}
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid sender address");
 
 	CEDCBitcoinAddress	 receiver(params[2].get_str());
 	CKeyID				 receiverID;
 	if(!receiver.GetKeyID(receiverID))
-	{
-		std::string msg = "Invalid receiver address:";
-		msg += params[1].get_str();
-		throw std::runtime_error( msg );
-	}
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid receiver address");
 
 	std::string	data    = params[3].get_str();
 
-	CPeerToPeer	* msg = CPeerToPeer::create( type, senderID, receiverID, data );
+	std::vector<unsigned char> signature;
+	signMessage( sender, type, params[2].get_str(), data, signature );
+
+	CPeerToPeer	* msg = CPeerToPeer::create( type, senderID, receiverID, data, signature );
 
 	RelayUserMessage( msg );
 

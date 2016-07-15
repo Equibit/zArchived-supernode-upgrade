@@ -490,10 +490,12 @@ void CUserMessage::proofOfWork()
 	// TODO: Set the nonce and timestamp
 }
 
-CPeerToPeer * CPeerToPeer::create(const std::string & type, 
-								       const CKeyID & sender, 
-								       const CKeyID & receiver, 
-								  const std::string & data )
+CPeerToPeer * CPeerToPeer::create(
+			   const std::string & type, 
+         			const CKeyID & sender, 
+		 			const CKeyID & receiver, 
+			   const std::string & data,
+const std::vector<unsigned char> & signature )
 {
 	CPeerToPeer * ans;
 
@@ -519,10 +521,12 @@ CPeerToPeer * CPeerToPeer::create(const std::string & type,
 	return ans;
 }
 
-CMulticast * CMulticast::create(const std::string & type, 
-				         		     const CKeyID & sender, 
-								const std::string & assetId, 
-				    			const std::string & data )
+CMulticast * CMulticast::create(
+			   const std::string & type, 
+			        const CKeyID & sender, 
+			   const std::string & assetId, 
+	   		   const std::string & data,
+const std::vector<unsigned char> & signature )
 {
 	CMulticast * ans;
 
@@ -544,10 +548,12 @@ CMulticast * CMulticast::create(const std::string & type,
 	return ans;
 }
 
-CBroadcast * CBroadcast::create(const std::string & type, 
-					     		const CKeyID & sender, 
-								const std::string & assetId, 
-								const std::string & data )
+CBroadcast * CBroadcast::create(
+			   const std::string & type, 
+	     	        const CKeyID & sender, 
+			   const std::string & assetId, 
+			   const std::string & data,
+const std::vector<unsigned char> & signature )
 {
 	CBroadcast * ans = broadcastObj( type );
 

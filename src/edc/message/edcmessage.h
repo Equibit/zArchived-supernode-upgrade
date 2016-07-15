@@ -98,7 +98,8 @@ public:
 	static CPeerToPeer * create(const std::string & type, 
 								     const CKeyID & sender, 
 								     const CKeyID & receiver, 
-								const std::string & data );
+								const std::string & data,
+				 const std::vector<unsigned char> & signature );
 
 	virtual std::string	ToString() const;
 
@@ -132,7 +133,8 @@ public:
 	static CMulticast * create( const std::string & type, 
 								     const CKeyID & sender, 
 								const std::string & assetId, 
-							    const std::string & data );
+							    const std::string & data,
+				 const std::vector<unsigned char> & signature );
 
 private:
 	std::string assetId_;
@@ -164,7 +166,8 @@ public:
 	static CBroadcast * create( const std::string & type, 
 								     const CKeyID & sender, 
 								const std::string & assetId, 
-							    const std::string & data );
+							    const std::string & data,
+				 const std::vector<unsigned char> & signature );
 
 private:
 	std::string assetId_;
