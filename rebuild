@@ -1,4 +1,4 @@
 ./autogen.sh
-./configure --with-incompatible-bdb
+./configure --with-incompatible-bdb --with-gui=no
 make
 
