@@ -739,4 +739,19 @@ bool CBroadcast::verify() const
 	}
 }
 
+///////////////////////////////////////////////////////////////////////////
 
+uint256 CMulticast::GetHash() const
+{
+	return SerializeHash(*this);
+}
+
+uint256 CBroadcast::GetHash() const
+{
+	return SerializeHash(*this);
+}
+
+uint256 CPeerToPeer::GetHash() const
+{
+	return SerializeHash(*this);
+}

@@ -27,8 +27,8 @@ public:
 	virtual std::string tag() const = 0;
 	virtual std::string desc() const = 0;
 
-	// If true, then the message is placed in a blockchain
-	virtual bool chained() const = 0;
+	// Hash of message
+	virtual uint256 GetHash() const = 0;
 
 	ADD_SERIALIZE_METHODS;
 
@@ -103,6 +103,10 @@ public:
 		READWRITE(receiverAddr_);
 	}
 
+	std::string	receiverAddr() const { return receiverAddr_.ToString();}
+
+	virtual uint256 GetHash() const;
+
 	static CPeerToPeer * create(const std::string & type, 
 								     const CKeyID & sender, 
 								     const CKeyID & receiver, 
@@ -135,6 +139,10 @@ public:
 		READWRITE(*static_cast<CUserMessage *>(this));
 		READWRITE(assetId_);
 	}
+
+	const std::string & assetId() const	{ return assetId_; }
+
+	virtual uint256 GetHash() const;
 
 	virtual bool	verify() const;
 	virtual std::string	ToString() const;
@@ -172,6 +180,10 @@ public:
 	virtual bool	verify() const;
 	virtual std::string	ToString() const;
 
+	const std::string & assetId() const	{ return assetId_; }
+
+	virtual uint256 GetHash() const;
+
 	static CBroadcast * create( const std::string & type, 
 								     const CKeyID & sender, 
 								const std::string & assetId, 
@@ -186,8 +198,6 @@ private:
 class CAcquisition : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -195,8 +205,6 @@ public:
 class CAsk : public CBroadcast
 {
 public:
-	virtual bool chained() const { return false; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -204,8 +212,6 @@ public:
 class CAssimilation : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -213,8 +219,6 @@ public:
 class CBankruptcy : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -222,8 +226,6 @@ public:
 class CBid : public CBroadcast
 {
 public:
-	virtual bool chained() const { return false; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -231,8 +233,6 @@ public:
 class CBonusIssue : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -240,8 +240,6 @@ public:
 class CBonusRights : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -249,8 +247,6 @@ public:
 class CBuyBackProgram : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -258,8 +254,6 @@ public:
 class CCashDividend : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -267,8 +261,6 @@ public:
 class CCashStockOption : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -276,8 +268,6 @@ public:
 class CClassAction : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -285,8 +275,6 @@ public:
 class CConversionOfConvertibleBonds : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -294,8 +282,6 @@ public:
 class CCouponPayment : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -303,8 +289,6 @@ public:
 class CDelisting : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -312,8 +296,6 @@ public:
 class CDeMerger : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -321,8 +303,6 @@ public:
 class CDividendReinvestmentPlan : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -330,8 +310,6 @@ public:
 class CDutchAuction : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -339,8 +317,6 @@ public:
 class CEarlyRedemption : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -348,8 +324,6 @@ public:
 class CFinalRedemption : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -357,8 +331,6 @@ public:
 class CGeneralAnnouncement : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -366,8 +338,6 @@ public:
 class CInitialPublicOffering : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -375,8 +345,6 @@ public:
 class CLiquidation : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -384,8 +352,6 @@ public:
 class CLottery : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -393,8 +359,6 @@ public:
 class CMandatoryExchange : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -402,8 +366,6 @@ public:
 class CMerger : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -411,8 +373,6 @@ public:
 class CMergerWithElections : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -420,8 +380,6 @@ public:
 class CNameChange : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -429,8 +387,6 @@ public:
 class COddLotTender : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -438,8 +394,6 @@ public:
 class COptionalPut : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -447,8 +401,6 @@ public:
 class COtherEvent : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -456,8 +408,6 @@ public:
 class CPartialRedemption : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -465,8 +415,6 @@ public:
 class CParValueChange : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -474,8 +422,6 @@ public:
 class CPoll: public CMulticast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -483,8 +429,6 @@ public:
 class CPrivate: public CPeerToPeer
 {
 public:
-	virtual bool chained() const { return false; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -492,8 +436,6 @@ public:
 class CReturnOfCapital : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -501,8 +443,6 @@ public:
 class CReverseStockSplit : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -510,8 +450,6 @@ public:
 class CRightsAuction : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -519,8 +457,6 @@ public:
 class CRightsIssue : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -528,8 +464,6 @@ public:
 class CSchemeofArrangement : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -537,8 +471,6 @@ public:
 class CScripDividend : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -546,8 +478,6 @@ public:
 class CScripIssue : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -555,8 +485,6 @@ public:
 class CSpinoff : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -564,8 +492,6 @@ public:
 class CSpinOffWithElections : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -573,8 +499,6 @@ public:
 class CStockDividend : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -582,8 +506,6 @@ public:
 class CStockSplit : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -591,8 +513,6 @@ public:
 class CSubscriptionOffer : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -600,8 +520,6 @@ public:
 class CTakeover : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -609,8 +527,6 @@ public:
 class CTenderOffer : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -618,8 +534,6 @@ public:
 class CVoluntaryExchange : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -627,8 +541,6 @@ public:
 class CVote: public CPeerToPeer
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -636,8 +548,6 @@ public:
 class CWarrantExercise : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -645,8 +555,6 @@ public:
 class CWarrantExpiry : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };
@@ -654,8 +562,6 @@ public:
 class CWarrantIssue : public CBroadcast
 {
 public:
-	virtual bool chained() const { return true; }
-
 	virtual std::string tag() const;
 	virtual std::string desc() const;
 };

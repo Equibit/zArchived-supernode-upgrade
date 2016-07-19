@@ -17,6 +17,7 @@
 #include "edc/wallet/edcwallet.h"
 #include "edc/edcparams.h"
 #include "edc/edcapp.h"
+#include "edc/message/edcmessage.h"
 
 #include <boost/version.hpp>
 #include <boost/filesystem.hpp>
@@ -28,13 +29,42 @@ using namespace std;
 
 static uint64_t nAccountingEntryNumber = 0;
 
+namespace
+{
+// Wallet DB Keys:
+//
+const std::string ACC               = "acc";               // acc:account-name
+const std::string ACENTRY           = "acentry";           // acentry:account-name:account-number
+const std::string BESTBLOCK         = "bestblock";         // bestblock
+const std::string BESTBLOCK_NOMERKLE= "bestblock_nomerkle";// bestblock_nomerkle
+const std::string BROADCAST_MSG     = "broadcast_msg";     // broadcast_msg:asset-name:hash
+const std::string CKEY              = "ckey";              // ckey:pub-key
+const std::string CSCRIPT           = "cscript";           // cscript:hash
+const std::string DEFAULTKEY        = "defaultkey";        // defaultkey
+const std::string DESTDATA          = "destdata";          // destdata:address:key
+const std::string ISSUER            = "issuer";            // issuer:issuer-name
+const std::string KEY               = "key";               // key:pub-key
+const std::string KEYMETA           = "keymeta";           // keymeta:pub-key
+const std::string MINVERSION        = "minversion";        // minversion
+const std::string MKEY              = "mkey";              // mkey:id
+const std::string MULTICAST_MSG     = "multicast_msg";     // multicast_msg:asset-name:hash
+const std::string NAME              = "name";              // name:address
+const std::string ORDERPOSNEXT      = "orderposnext";      // orderposnext
+const std::string P2P_MSG           = "p2p_msg";           // p2p_msg:address:hash
+const std::string POOL              = "pool";              // pool:number
+const std::string PURPOSE           = "purpose";           // purpose:address
+const std::string TX                = "tx";                // tx:hash
+const std::string VERSION           = "version";           // version
+const std::string WATCHS            = "watchs";            // watchs:dest
+const std::string WKEY              = "wkey";              // wkey:pub-key
+}
 
 bool CEDCWalletDB::WriteName(const string& strAddress, const string& strName)
 {
 	EDCapp & theApp = EDCapp::singleton();
     theApp.incWalletDBUpdated();
 
-    return Write(make_pair(string("name"), strAddress), strName);
+    return Write(make_pair(NAME, strAddress), strName);
 }
 
 bool CEDCWalletDB::EraseName(const string& strAddress)
@@ -44,7 +74,7 @@ bool CEDCWalletDB::EraseName(const string& strAddress)
 	EDCapp & theApp = EDCapp::singleton();
 
     theApp.incWalletDBUpdated();
-    return Erase(make_pair(string("name"), strAddress));
+    return Erase(make_pair(NAME, strAddress));
 }
 
 bool CEDCWalletDB::WritePurpose(const string& strAddress, const string& strPurpose)
@@ -52,7 +82,7 @@ bool CEDCWalletDB::WritePurpose(const string& strAddress, const string& strPurpo
 	EDCapp & theApp = EDCapp::singleton();
 
     theApp.incWalletDBUpdated();
-    return Write(make_pair(string("purpose"), strAddress), strPurpose);
+    return Write(make_pair(PURPOSE, strAddress), strPurpose);
 }
 
 bool CEDCWalletDB::ErasePurpose(const string& strPurpose)
@@ -60,7 +90,7 @@ bool CEDCWalletDB::ErasePurpose(const string& strPurpose)
 	EDCapp & theApp = EDCapp::singleton();
 
     theApp.incWalletDBUpdated();
-    return Erase(make_pair(string("purpose"), strPurpose));
+    return Erase(make_pair(PURPOSE, strPurpose));
 }
 
 bool CEDCWalletDB::WriteTx(const CEDCWalletTx& wtx)
@@ -68,7 +98,7 @@ bool CEDCWalletDB::WriteTx(const CEDCWalletTx& wtx)
 	EDCapp & theApp = EDCapp::singleton();
 
     theApp.incWalletDBUpdated();
-    return Write(std::make_pair(std::string("tx"), wtx.GetHash()), wtx);
+    return Write(std::make_pair(TX, wtx.GetHash()), wtx);
 }
 
 bool CEDCWalletDB::EraseTx(uint256 hash)
@@ -76,7 +106,7 @@ bool CEDCWalletDB::EraseTx(uint256 hash)
 	EDCapp & theApp = EDCapp::singleton();
 
     theApp.incWalletDBUpdated();
-    return Erase(std::make_pair(std::string("tx"), hash));
+    return Erase(std::make_pair(TX, hash));
 }
 
 bool CEDCWalletDB::WriteKey(
@@ -88,7 +118,7 @@ bool CEDCWalletDB::WriteKey(
 
     theApp.incWalletDBUpdated();
 
-    if (!Write(std::make_pair(std::string("keymeta"), vchPubKey),
+    if (!Write(std::make_pair(KEYMETA, vchPubKey),
                keyMeta, false))
         return false;
 
@@ -98,7 +128,7 @@ bool CEDCWalletDB::WriteKey(
     vchKey.insert(vchKey.end(), vchPubKey.begin(), vchPubKey.end());
     vchKey.insert(vchKey.end(), vchPrivKey.begin(), vchPrivKey.end());
 
-    return Write(std::make_pair(std::string("key"), vchPubKey), 
+    return Write(std::make_pair(KEY, vchPubKey), 
 		std::make_pair(vchPrivKey, Hash(vchKey.begin(), vchKey.end())), false);
 }
 
@@ -112,16 +142,16 @@ bool CEDCWalletDB::WriteCryptedKey(
     const bool fEraseUnencryptedKey = true;
     theApp.incWalletDBUpdated();
 
-    if (!Write(std::make_pair(std::string("keymeta"), vchPubKey), keyMeta))
+    if (!Write(std::make_pair(KEYMETA, vchPubKey), keyMeta))
         return false;
 
-    if (!Write(std::make_pair(std::string("ckey"), vchPubKey), vchCryptedSecret, false))
+    if (!Write(std::make_pair(CKEY, vchPubKey), vchCryptedSecret, false))
         return false;
 
     if (fEraseUnencryptedKey)
     {
-        Erase(std::make_pair(std::string("key"), vchPubKey));
-        Erase(std::make_pair(std::string("wkey"), vchPubKey));
+        Erase(std::make_pair(KEY, vchPubKey));
+        Erase(std::make_pair(WKEY, vchPubKey));
     }
 
     return true;
@@ -132,7 +162,7 @@ bool CEDCWalletDB::WriteMasterKey(unsigned int nID, const CMasterKey& kMasterKey
 	EDCapp & theApp = EDCapp::singleton();
 
     theApp.incWalletDBUpdated();
-    return Write(std::make_pair(std::string("mkey"), nID), kMasterKey, true);
+    return Write(std::make_pair(MKEY, nID), kMasterKey, true);
 }
 
 bool CEDCWalletDB::WriteCScript(const uint160& hash, const CScript& redeemScript)
@@ -140,7 +170,7 @@ bool CEDCWalletDB::WriteCScript(const uint160& hash, const CScript& redeemScript
 	EDCapp & theApp = EDCapp::singleton();
 
     theApp.incWalletDBUpdated();
-    return Write(std::make_pair(std::string("cscript"), hash), *(const CScriptBase*)(&redeemScript), false);
+    return Write(std::make_pair(CSCRIPT, hash), *(const CScriptBase*)(&redeemScript), false);
 }
 
 bool CEDCWalletDB::WriteWatchOnly(const CScript &dest)
@@ -148,7 +178,7 @@ bool CEDCWalletDB::WriteWatchOnly(const CScript &dest)
 	EDCapp & theApp = EDCapp::singleton();
 
     theApp.incWalletDBUpdated();
-    return Write(std::make_pair(std::string("watchs"), *(const CScriptBase*)(&dest)), '1');
+    return Write(std::make_pair(WATCHS, *(const CScriptBase*)(&dest)), '1');
 }
 
 bool CEDCWalletDB::EraseWatchOnly(const CScript &dest)
@@ -156,7 +186,7 @@ bool CEDCWalletDB::EraseWatchOnly(const CScript &dest)
 	EDCapp & theApp = EDCapp::singleton();
 
     theApp.incWalletDBUpdated();
-    return Erase(std::make_pair(std::string("watchs"), *(const CScriptBase*)(&dest)));
+    return Erase(std::make_pair(WATCHS, *(const CScriptBase*)(&dest)));
 }
 
 bool CEDCWalletDB::WriteBestBlock(const CBlockLocator& locator)
@@ -164,17 +194,17 @@ bool CEDCWalletDB::WriteBestBlock(const CBlockLocator& locator)
 	EDCapp & theApp = EDCapp::singleton();
 
     theApp.incWalletDBUpdated();
-    Write(std::string("bestblock"), CBlockLocator()); // Write empty block locator so versions that require a merkle branch automatically rescan
+    Write(BESTBLOCK, CBlockLocator()); // Write empty block locator so versions that require a merkle branch automatically rescan
 
-    return Write(std::string("bestblock_nomerkle"), locator);
+    return Write(BESTBLOCK_NOMERKLE, locator);
 }
 
 bool CEDCWalletDB::ReadBestBlock(CBlockLocator& locator)
 {
-    if (Read(std::string("bestblock"), locator) && !locator.vHave.empty()) 
+    if (Read(BESTBLOCK, locator) && !locator.vHave.empty()) 
 		return true;
 
-    return Read(std::string("bestblock_nomerkle"), locator);
+    return Read(BESTBLOCK_NOMERKLE, locator);
 }
 
 bool CEDCWalletDB::WriteOrderPosNext(int64_t nOrderPosNext)
@@ -182,7 +212,7 @@ bool CEDCWalletDB::WriteOrderPosNext(int64_t nOrderPosNext)
 	EDCapp & theApp = EDCapp::singleton();
 
     theApp.incWalletDBUpdated();
-    return Write(std::string("orderposnext"), nOrderPosNext);
+    return Write(ORDERPOSNEXT, nOrderPosNext);
 }
 
 bool CEDCWalletDB::WriteDefaultKey(const CPubKey& vchPubKey)
@@ -190,12 +220,12 @@ bool CEDCWalletDB::WriteDefaultKey(const CPubKey& vchPubKey)
 	EDCapp & theApp = EDCapp::singleton();
 
     theApp.incWalletDBUpdated();
-    return Write(std::string("defaultkey"), vchPubKey);
+    return Write(DEFAULTKEY, vchPubKey);
 }
 
 bool CEDCWalletDB::ReadPool(int64_t nPool, CKeyPool& keypool)
 {
-    return Read(std::make_pair(std::string("pool"), nPool), keypool);
+    return Read(std::make_pair(POOL, nPool), keypool);
 }
 
 bool CEDCWalletDB::WritePool(int64_t nPool, const CKeyPool& keypool)
@@ -203,7 +233,7 @@ bool CEDCWalletDB::WritePool(int64_t nPool, const CKeyPool& keypool)
 	EDCapp & theApp = EDCapp::singleton();
 
     theApp.incWalletDBUpdated();
-    return Write(std::make_pair(std::string("pool"), nPool), keypool);
+    return Write(std::make_pair(POOL, nPool), keypool);
 }
 
 bool CEDCWalletDB::ErasePool(int64_t nPool)
@@ -211,39 +241,39 @@ bool CEDCWalletDB::ErasePool(int64_t nPool)
 	EDCapp & theApp = EDCapp::singleton();
 
     theApp.incWalletDBUpdated();
-    return Erase(std::make_pair(std::string("pool"), nPool));
+    return Erase(std::make_pair(POOL, nPool));
 }
 
 bool CEDCWalletDB::WriteMinVersion(int nVersion)
 {
-    return Write(std::string("minversion"), nVersion);
+    return Write(MINVERSION, nVersion);
 }
 
 bool CEDCWalletDB::ReadAccount(const string& strAccount, CAccount& account)
 {
     account.SetNull();
-    return Read(make_pair(string("acc"), strAccount), account);
+    return Read(make_pair(ACC, strAccount), account);
 }
 
 bool CEDCWalletDB::WriteAccount(const string& strAccount, const CAccount& account)
 {
-    return Write(make_pair(string("acc"), strAccount), account);
+    return Write(make_pair(ACC, strAccount), account);
 }
 
 bool CEDCWalletDB::ReadIssuer(const string& strIssuer, CIssuer & issuer )
 {
     issuer.SetNull();
-    return Read(make_pair(string("issuer"), strIssuer), issuer );
+    return Read(make_pair(ISSUER, strIssuer), issuer );
 }
 
 bool CEDCWalletDB::WriteIssuer(const string& strIssuer, const CIssuer & issuer )
 {
-    return Write(make_pair(string("issuer"), strIssuer), issuer );
+    return Write(make_pair(ISSUER, strIssuer), issuer );
 }
 
 bool CEDCWalletDB::WriteAccountingEntry(const uint64_t nAccEntryNum, const CAccountingEntry& acentry)
 {
-    return Write(std::make_pair(std::string("acentry"), 
+    return Write(std::make_pair(ACENTRY, 
 		std::make_pair(acentry.strAccount, nAccEntryNum)), acentry);
 }
 
@@ -278,7 +308,7 @@ void CEDCWalletDB::ListAccountCreditDebit(const string& strAccount, list<CAccoun
         // Read next record
         CDataStream ssKey(SER_DISK, CLIENT_VERSION);
         if (fFlags == DB_SET_RANGE)
-            ssKey << std::make_pair(std::string("acentry"), 
+            ssKey << std::make_pair(ACENTRY, 
 				std::make_pair((fAllAccounts ? string("") : strAccount), uint64_t(0)));
 
         CDataStream ssValue(SER_DISK, CLIENT_VERSION);
@@ -296,7 +326,7 @@ void CEDCWalletDB::ListAccountCreditDebit(const string& strAccount, list<CAccoun
         // Unserialize
         string strType;
         ssKey >> strType;
-        if (strType != "acentry")
+        if (strType != ACENTRY)
             break;
 
         CAccountingEntry acentry;
@@ -427,19 +457,19 @@ ReadKeyValue(
         // is just the two items serialized one after the other
         ssKey >> strType;
 
-        if (strType == "name")
+        if (strType == NAME)
         {
             string strAddress;
             ssKey >> strAddress;
             ssValue >> pwallet->mapAddressBook[CEDCBitcoinAddress(strAddress).Get()].name;
         }
-        else if (strType == "purpose")
+        else if (strType == PURPOSE)
         {
             string strAddress;
             ssKey >> strAddress;
             ssValue >> pwallet->mapAddressBook[CEDCBitcoinAddress(strAddress).Get()].purpose;
         }
-        else if (strType == "tx")
+        else if (strType == TX)
         {
             uint256 hash;
             ssKey >> hash;
@@ -475,7 +505,7 @@ ReadKeyValue(
 
             pwallet->AddToWallet(wtx, true, NULL);
         }
-        else if (strType == "acentry")
+        else if (strType == ACENTRY)
         {
             string strAccount;
             ssKey >> strAccount;
@@ -492,7 +522,7 @@ ReadKeyValue(
                     wss.fAnyUnordered = true;
             }
         }
-        else if (strType == "watchs")
+        else if (strType == WATCHS)
         {
             CScript script;
             ssKey >> *(CScriptBase*)(&script);
@@ -505,7 +535,7 @@ ReadKeyValue(
             // so set the wallet birthday to the beginning of time.
             pwallet->nTimeFirstKey = 1;
         }
-        else if (strType == "key" || strType == "wkey")
+        else if (strType == KEY || strType == WKEY)
         {
             CPubKey vchPubKey;
             ssKey >> vchPubKey;
@@ -518,7 +548,7 @@ ReadKeyValue(
             CPrivKey pkey;
             uint256 hash;
 
-            if (strType == "key")
+            if (strType == KEY)
             {
                 wss.nKeys++;
                 ssValue >> pkey;
@@ -575,7 +605,7 @@ ReadKeyValue(
                 return false;
             }
         }
-        else if (strType == "mkey")
+        else if (strType == MKEY)
         {
             unsigned int nID;
             ssKey >> nID;
@@ -590,7 +620,7 @@ ReadKeyValue(
             if (pwallet->nMasterKeyMaxID < nID)
                 pwallet->nMasterKeyMaxID = nID;
         }
-        else if (strType == "ckey")
+        else if (strType == CKEY)
         {
             CPubKey vchPubKey;
             ssKey >> vchPubKey;
@@ -610,7 +640,7 @@ ReadKeyValue(
             }
             wss.fIsEncrypted = true;
         }
-        else if (strType == "keymeta")
+        else if (strType == KEYMETA)
         {
             CPubKey vchPubKey;
             ssKey >> vchPubKey;
@@ -625,11 +655,11 @@ ReadKeyValue(
                 (keyMeta.nCreateTime < pwallet->nTimeFirstKey))
                 pwallet->nTimeFirstKey = keyMeta.nCreateTime;
         }
-        else if (strType == "defaultkey")
+        else if (strType == DEFAULTKEY)
         {
             ssValue >> pwallet->vchDefaultKey;
         }
-        else if (strType == "pool")
+        else if (strType == POOL)
         {
             int64_t nIndex;
             ssKey >> nIndex;
@@ -644,13 +674,13 @@ ReadKeyValue(
             if (pwallet->mapKeyMetadata.count(keyid) == 0)
                 pwallet->mapKeyMetadata[keyid] = CKeyMetadata(keypool.nTime);
         }
-        else if (strType == "version")
+        else if (strType == VERSION)
         {
             ssValue >> wss.nFileVersion;
             if (wss.nFileVersion == 10300)
                 wss.nFileVersion = 300;
         }
-        else if (strType == "cscript")
+        else if (strType == CSCRIPT)
         {
             uint160 hash;
             ssKey >> hash;
@@ -662,11 +692,11 @@ ReadKeyValue(
                 return false;
             }
         }
-        else if (strType == "orderposnext")
+        else if (strType == ORDERPOSNEXT)
         {
             ssValue >> pwallet->nOrderPosNext;
         }
-        else if (strType == "destdata")
+        else if (strType == DESTDATA)
         {
             std::string strAddress, strKey, strValue;
             ssKey >> strAddress;
@@ -687,8 +717,8 @@ ReadKeyValue(
 
 static bool IsKeyType(string strType)
 {
-    return (strType== "key" || strType == "wkey" ||
-            strType == "mkey" || strType == "ckey");
+    return (strType== KEY || strType == WKEY ||
+            strType == MKEY || strType == CKEY);
 }
 
 DBErrors CEDCWalletDB::LoadWallet(CEDCWallet* pwallet)
@@ -702,7 +732,7 @@ DBErrors CEDCWalletDB::LoadWallet(CEDCWallet* pwallet)
 	{
         LOCK(pwallet->cs_wallet);
         int nMinVersion = 0;
-        if (Read((string)"minversion", nMinVersion))
+        if (Read(MINVERSION, nMinVersion))
         {
             if (nMinVersion > CLIENT_VERSION)
                 return DB_TOO_NEW;
@@ -743,7 +773,7 @@ DBErrors CEDCWalletDB::LoadWallet(CEDCWallet* pwallet)
                 {
                     // Leave other errors alone, if we try to fix them we might make things worse.
                     fNoncriticalErrors = true; // ... but do warn the user there is something wrong.
-                    if (strType == "tx")
+                    if (strType == TX)
 					{
 						EDCparams & params = EDCparams::singleton();
                         // Rescan if there is a bad transaction record:
@@ -819,7 +849,7 @@ DBErrors CEDCWalletDB::FindWalletTx(
 	{
         LOCK(pwallet->cs_wallet);
         int nMinVersion = 0;
-        if (Read((string)"minversion", nMinVersion))
+        if (Read(MINVERSION, nMinVersion))
         {
             if (nMinVersion > CLIENT_VERSION)
                 return DB_TOO_NEW;
@@ -850,7 +880,7 @@ DBErrors CEDCWalletDB::FindWalletTx(
 
             string strType;
             ssKey >> strType;
-            if (strType == "tx") 
+            if (strType == TX) 
 			{
                 uint256 hash;
                 ssKey >> hash;
@@ -1162,7 +1192,7 @@ bool CEDCWalletDB::WriteDestData(
 	EDCapp & theApp = EDCapp::singleton();
 
     theApp.incWalletDBUpdated();
-    return Write(std::make_pair(std::string("destdata"), 
+    return Write(std::make_pair(std::string(DESTDATA), 
 		std::make_pair(address, key)), value);
 }
 
@@ -1171,7 +1201,7 @@ bool CEDCWalletDB::EraseDestData(const std::string &address, const std::string &
 	EDCapp & theApp = EDCapp::singleton();
 
     theApp.incWalletDBUpdated();
-    return Erase(std::make_pair(std::string("destdata"), std::make_pair(address, key)));
+    return Erase(std::make_pair(std::string(DESTDATA), std::make_pair(address, key)));
 }
 
 namespace
@@ -1187,25 +1217,25 @@ bool dumpKey(
         ssKey >> strType;
 		out << strType;
 
-        if (strType == "name")
+        if (strType == NAME)
         {
             string strAddress;
             ssKey >> strAddress;
 			out << ':' << strAddress;
         }
-        else if (strType == "purpose")
+        else if (strType == PURPOSE)
         {
             string strAddress;
             ssKey >> strAddress;
 			out << ':' << strAddress;
         }
-        else if (strType == "tx")
+        else if (strType == TX)
         {
             uint256 hash;
             ssKey >> hash;
 			out << ':' << hash.ToString();
         }
-        else if (strType == "acentry")
+        else if (strType == ACENTRY)
         {
             string strAccount;
             uint64_t nNumber;
@@ -1215,61 +1245,61 @@ bool dumpKey(
 
 			out << ':' << strAccount << ':' << nNumber;
         }
-        else if (strType == "watchs")
+        else if (strType == WATCHS)
         {
             CScript script;
             ssKey >> *static_cast<CScriptBase *>(&script);
 			out << HexStr(script);
         }
-        else if (strType == "key" || strType == "wkey")
+        else if (strType == KEY || strType == WKEY)
         {
             CPubKey vchPubKey;
             ssKey >> vchPubKey;
 			out << ':' << HexStr( vchPubKey );
         }
-        else if (strType == "mkey")
+        else if (strType == MKEY)
         {
             unsigned int nID;
             ssKey >> nID;
 			out << ':' << nID;
         }
-        else if (strType == "ckey")
+        else if (strType == CKEY)
         {
             CPubKey vchPubKey;
             ssKey >> vchPubKey;
 			out << ':' << HexStr( vchPubKey );
         }
-        else if (strType == "keymeta")
+        else if (strType == KEYMETA)
         {
             CPubKey vchPubKey;
             ssKey >> vchPubKey;
 			out << ':' << HexStr( vchPubKey );
         }
-        else if (strType == "defaultkey")
+        else if (strType == DEFAULTKEY)
         {
 			// no-op
         }
-        else if (strType == "pool")
+        else if (strType == POOL)
         {
             int64_t nIndex;
             ssKey >> nIndex;
 			out << ':' << nIndex;
         }
-        else if (strType == "version")
+        else if (strType == VERSION)
         {
 			// no-op
         }
-        else if (strType == "cscript")
+        else if (strType == CSCRIPT)
         {
             uint160 hash;
             ssKey >> hash;
 			out << ':' << hash.ToString();
         }
-        else if (strType == "orderposnext")
+        else if (strType == ORDERPOSNEXT)
         {
 			// no-op
         }
-        else if (strType == "destdata")
+        else if (strType == DESTDATA)
         {
             std::string strAddress;
             ssKey >> strAddress;
@@ -1279,25 +1309,25 @@ bool dumpKey(
 
 			out << ':' << strAddress << ':' << strKey;
         }
-		else if( strType == "bestblock" )
+		else if( strType == BESTBLOCK )
 		{
 			// no-op
 		}
-		else if( strType == "bestblock_nomerkle" )
+		else if( strType == BESTBLOCK_NOMERKLE )
 		{
 			// no-op
 		}
-		else if( strType == "minversion" )
+		else if( strType == MINVERSION )
 		{
 			// no-op
 		}
-		else if( strType == "acc" )
+		else if( strType == ACC )
 		{
             std::string name;
             ssKey >> name;
 			out << ':' << name;
 		}
-		else if( strType == "issuer" )
+		else if( strType == ISSUER )
 		{
             std::string name;
             ssKey >> name;
@@ -1326,25 +1356,25 @@ dumpValue(
 {
     try 
 	{
-        if (strType == "name")
+        if (strType == NAME)
         {
 			string name;
             ssValue >> name;
 			out << " \"" << name << "\"" << endl;
         }
-        else if (strType == "purpose")
+        else if (strType == PURPOSE)
         {
 			string purpose;
             ssValue >> purpose;
 			out << " \"" << purpose << "\"" << endl;
         }
-        else if (strType == "tx")
+        else if (strType == TX)
         {
             CEDCWalletTx wtx;
             ssValue >> wtx;
 			out << wtx.toJSON( " " );
         }
-        else if (strType == "acentry")
+        else if (strType == ACENTRY)
         {
             CAccountingEntry acentry;
             ssValue >> acentry;
@@ -1375,13 +1405,13 @@ dumpValue(
 				<< " \",entryNo\":" << acentry.nEntryNo
 				<< "}\n";
         }
-        else if (strType == "watchs")
+        else if (strType == WATCHS)
         {
             char fYes;
             ssValue >> fYes;
 			out << " " << fYes << endl;
         }
-        else if (strType == "key" )
+        else if (strType == KEY )
         {
             CPrivKey pkey;
             uint256 hash;
@@ -1391,7 +1421,7 @@ dumpValue(
 
 			out << " {\"key\":" << HexStr(pkey) << ",\"hash\":" << hash.ToString() << "}\n";
         }
-        else if (strType == "mkey")
+        else if (strType == MKEY)
         {
             CMasterKey masterKey;
             ssValue >> masterKey;
@@ -1405,14 +1435,14 @@ dumpValue(
 
 			out << " }\n";
         }
-        else if (strType == "ckey")
+        else if (strType == CKEY)
         {
             vector<unsigned char> privKey;
             ssValue >> privKey;
 
 			out << " " << HexStr( privKey ) << endl;
         }
-        else if (strType == "keymeta")
+        else if (strType == KEYMETA)
         {
             CKeyMetadata keyMeta;
             ssValue >> keyMeta;
@@ -1422,13 +1452,13 @@ dumpValue(
 
 			out << "{\"version\":" << keyMeta.nVersion << ", \"createTime\":" << t << "}" << endl;
         }
-        else if (strType == "defaultkey")
+        else if (strType == DEFAULTKEY)
         {
 			CPubKey defaultKey;
             ssValue >> defaultKey;
 			out << " " << HexStr( defaultKey ) << endl;
         }
-        else if (strType == "pool")
+        else if (strType == POOL)
         {
             CKeyPool keypool;
             ssValue >> keypool;
@@ -1436,31 +1466,31 @@ dumpValue(
 			out << " {\"pool\":" << keypool.nTime << ", \"pubKey\":" << 
 				HexStr(keypool.vchPubKey) << "}" << endl;
         }
-        else if (strType == "version")
+        else if (strType == VERSION)
         {
 			int fileVersion;
             ssValue >> fileVersion;
 			out << " " << fileVersion << endl;
         }
-        else if (strType == "cscript")
+        else if (strType == CSCRIPT)
         {
             CScript script;
             ssValue >> *(CScriptBase*)(&script);
 			out << " " << HexStr(script) << endl;
         }
-        else if (strType == "orderposnext")
+        else if (strType == ORDERPOSNEXT)
         {
 			int64_t orderPosNext;
 			ssValue >> orderPosNext;
 			out << " " << orderPosNext << endl;
         }
-        else if (strType == "destdata")
+        else if (strType == DESTDATA)
         {
             std::string strValue;
             ssValue >> strValue;
 			out << " " << strValue << endl;
         }
-		else if( strType == "bestblock" )
+		else if( strType == BESTBLOCK )
 		{
 			CBlockLocator locator;
 			ssValue >> locator;
@@ -1484,7 +1514,7 @@ dumpValue(
 
 			out << "\n ]\n";
 		}
-		else if( strType == "bestblock_nomerkle" )
+		else if( strType == BESTBLOCK_NOMERKLE )
 		{
 			CBlockLocator locator;
 			ssValue >> locator;
@@ -1508,19 +1538,19 @@ dumpValue(
 
 			out << "\n ]\n";
 		}
-		else if( strType == "minversion" )
+		else if( strType == MINVERSION )
 		{
 			int version;
 			ssValue >> version;
 			out << " " << version << endl;
 		}
-		else if( strType == "acc" )
+		else if( strType == ACC )
 		{
             CAccount acct;
             ssValue >> acct;
 			out << " " << HexStr(acct.vchPubKey) << endl;
 		}
-		else if( strType == "issuer" )
+		else if( strType == ISSUER )
 		{
             CIssuer issuer;
             ssValue >> issuer;
@@ -1615,7 +1645,7 @@ void CEDCWalletDB::ListIssuers( vector<pair<string,CIssuer>> & issuers )
         // Unserialize
         string strType;
         ssKey >> strType;
-        if (strType == "issuer")
+        if (strType == ISSUER)
 		{
 			string name;
         	ssKey >> name;
@@ -1629,3 +1659,36 @@ void CEDCWalletDB::ListIssuers( vector<pair<string,CIssuer>> & issuers )
 
     pcursor->close();
 }
+
+bool CEDCWalletDB::WriteUserMsg(const CUserMessage * msg )
+{
+	if( const CMulticast * mmsg = dynamic_cast<const CMulticast *>(msg))
+	{
+		return Write( 
+			make_pair( MULTICAST_MSG, 
+				make_pair( mmsg->assetId(), mmsg->GetHash().ToString())), 
+			*mmsg );
+	}
+	else if( const CBroadcast * bmsg = dynamic_cast<const CBroadcast *>(msg))
+	{
+		return Write( 
+			make_pair( BROADCAST_MSG, 
+				make_pair(bmsg->assetId(), bmsg->GetHash().ToString())), 
+			*bmsg );
+	}
+	else if( const CPeerToPeer * p2pmsg = dynamic_cast<const CPeerToPeer *>(msg))
+	{
+		return Write( 
+			make_pair( P2P_MSG, 
+				make_pair(p2pmsg->receiverAddr(), p2pmsg->GetHash().ToString())), 	
+			*p2pmsg );
+	}
+	else
+		assert( false );
+	return false;
+}
+
+bool CEDCWalletDB::EraseUserMsg(const CUserMessage * msg )
+{
+}
+

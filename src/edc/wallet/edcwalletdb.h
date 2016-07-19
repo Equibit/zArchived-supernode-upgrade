@@ -26,6 +26,7 @@ class CMasterKey;
 class CScript;
 class CEDCWallet;
 class CEDCWalletTx;
+class CUserMessage;
 class uint160;
 class uint256;
 
@@ -102,6 +103,9 @@ public:
 	void Dump( std::ostream & out );
 
 	void ListIssuers( std::vector<std::pair<std::string,CIssuer>> & out );
+
+    bool WriteUserMsg(const CUserMessage *);
+    bool EraseUserMsg(const CUserMessage *);
 
 private:
     CEDCWalletDB(const CEDCWalletDB&);
