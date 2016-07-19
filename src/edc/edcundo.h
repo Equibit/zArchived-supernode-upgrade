@@ -73,7 +73,7 @@ public:
     }
 };
 
-/** Undo information for a CBlock */
+/** Undo information for a CEDCBlock */
 class CEDCBlockUndo
 {
 public:

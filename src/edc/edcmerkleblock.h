@@ -142,13 +142,13 @@ public:
     std::vector<std::pair<unsigned int, uint256> > vMatchedTxn;
 
     /**
-     * Create from a CBlock, filtering transactions according to filter
+     * Create from a CEDCBlock, filtering transactions according to filter
      * Note that this will call IsRelevantAndUpdate on the filter for each transaction,
      * thus the filter will likely be modified.
      */
     CEDCMerkleBlock(const CEDCBlock& block, CEDCBloomFilter& filter);
 
-    // Create from a CBlock, matching the txids in the set
+    // Create from a CEDCBlock, matching the txids in the set
     CEDCMerkleBlock(const CEDCBlock& block, const std::set<uint256>& txids);
 
     CEDCMerkleBlock() {}

@@ -787,7 +787,7 @@ bool CheckFinalTx(const CEDCTransaction &tx, int flags)
 
     // CheckFinalTx() uses theApp.chainActive().Height()+1 to evaluate
     // nLockTime because when IsFinalTx() is called within
-    // CBlock::AcceptBlock(), the height of the block *being*
+    // CEDCBlock::AcceptBlock(), the height of the block *being*
     // evaluated is what is used. Thus if we want to know if a
     // transaction can be part of the *next* block, we need to call
     // IsFinalTx() with one more than theApp.chainActive().Height().
@@ -1711,7 +1711,7 @@ bool GetTransaction(
 
 //////////////////////////////////////////////////////////////////////////////
 //
-// CBlock and CBlockIndex
+// CEDCBlock and CBlockIndex
 //
 
 bool WriteBlockToDisk(
@@ -3076,7 +3076,7 @@ int64_t nTimeChainState = 0;
 int64_t nTimePostConnect = 0;
 
 /**
- * Connect a new block to theApp.chainActive(). pblock is either NULL or a pointer to a CBlock
+ * Connect a new block to theApp.chainActive(). pblock is either NULL or a pointer to a CEDCBlock
  * corresponding to pindexNew, to bypass loading it again from disk.
  */
 bool ConnectTip(
@@ -3236,7 +3236,7 @@ void PruneBlockIndexCandidates()
 
 /**
  * Try to make some progress towards making pindexMostWork the active block.
- * pblock is either NULL or a pointer to a CBlock corresponding to pindexMostWork.
+ * pblock is either NULL or a pointer to a CEDCBlock corresponding to pindexMostWork.
  */
 bool ActivateBestChainStep(
 	     CValidationState & state, 
@@ -5538,7 +5538,7 @@ bool ProcessMessage(
                 pindex = theApp.chainActive().Next(pindex);
         }
 
-        // we must use CBlocks, as CBlockHeaders won't include the 0x00 nTx count at the end
+        // we must use CEDCBlocks, as CBlockHeaders won't include the 0x00 nTx count at the end
         vector<CEDCBlock> vHeaders;
         int nLimit = MAX_HEADERS_RESULTS;
         edcLogPrint("net", "getheaders %d to %s from peer=%d\n", (pindex ? pindex->nHeight : -1), hashStop.ToString(), pfrom->id);
