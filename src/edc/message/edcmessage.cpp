@@ -688,6 +688,73 @@ std::string	CBroadcast::ToString() const
 
 ///////////////////////////////////////////////////////////////////////////
 
+std::string	CUserMessage::ToJSON() const
+{
+	std::stringstream out;
+
+	time_t t = timestamp_.tv_sec;
+	struct tm * ts = localtime(&t);
+
+	const int BUF_SIZE = 64;
+	char tbuf[BUF_SIZE];
+	char buf[BUF_SIZE];
+
+	strftime( tbuf, BUF_SIZE, "%Y-%m_%d %H:%M:%S", ts );
+	snprintf( buf, BUF_SIZE, "%s.%06ld", tbuf, timestamp_.tv_nsec );
+
+	out << ", \"sender\":\"" << senderAddr_.ToString() << "\""
+		<< ", \"timestamp\":\"" << buf << "\""
+		<< ", \"nonce\":" << nonce_
+		<< ", \"data\":\"" << data_ << "\""
+		<< ", \"signature\":\"" << HexStr(signature_) << "\"";
+
+	return out.str();
+}
+
+std::string	CPeerToPeer::ToJSON() const
+{
+	std::string ans = "{\"type\":\"";
+	ans += tag();
+	ans += "\"";
+	ans += CUserMessage::ToJSON();
+
+	ans += ", \"receiver\":\"";
+	ans += receiverAddr_.ToString();
+	ans += "\"}";
+
+	return ans;
+}
+
+std::string	CMulticast::ToJSON() const
+{
+	std::string ans = "{\"type\":\"";
+	ans += tag();
+	ans += "\"";
+	ans += CUserMessage::ToJSON();
+
+	ans += ", \"asset\":\"";
+	ans += assetId_;
+	ans += "\"}";
+
+	return ans;
+}
+
+std::string	CBroadcast::ToJSON() const
+{
+	std::string ans = "{\"type\":\"";
+	ans += tag();
+	ans += "\"";
+	ans += CUserMessage::ToJSON();
+
+	ans += ", \"asset\":\"";
+	ans += assetId_;
+	ans += "\"}";
+
+	return ans;
+}
+
+///////////////////////////////////////////////////////////////////////////
+
 bool CPeerToPeer::verify() const
 {
 	try

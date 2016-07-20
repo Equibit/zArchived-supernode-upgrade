@@ -39,6 +39,7 @@
 #include "versionbits.h"
 #include "edcapp.h"
 #include "edc/message/edcmessage.h"
+#include "edc/wallet/edcwallet.h"
 
 #include <sstream>
 
@@ -5117,15 +5118,17 @@ bool ProcessMessage(
 {
     RandAddSeedPerfmon();
     edcLogPrint("net", "received: %s (%u bytes) peer=%d\n", SanitizeString(strCommand), vRecv.size(), pfrom->id);
+
  	EDCparams & params = EDCparams::singleton();
+
     if( params.dropmessagestest && GetRand(params.dropmessagestest) == 0)
     {
         edcLogPrintf("dropmessagestest DROPPING RECV MESSAGE\n");
         return true;
     }
 
-
 	EDCapp & theApp = EDCapp::singleton();
+
     if (!(theApp.localServices() & NODE_BLOOM) &&
        (strCommand == NetMsgType::FILTERLOAD ||
         strCommand == NetMsgType::FILTERADD ||
@@ -5582,7 +5585,6 @@ bool ProcessMessage(
         pfrom->setAskFor.erase(inv.hash);
         theApp.mapAlreadyAskedFor().erase(inv.hash);
 
-		EDCapp & theApp = EDCapp::singleton();
         CFeeRate txFeeRate = CFeeRate(0);
         if (!AlreadyHave(inv) && AcceptToMemoryPool(theApp.mempool(), state, tx, true, &fMissingInputs, &txFeeRate)) 
 		{
@@ -6087,7 +6089,7 @@ bool ProcessMessage(
 
 		if( isGood )
 		{
-			// TODO
+			theApp.walletMain()->AddMessage( type, msg->GetHash(), msg );
 		}
 		else
 		{

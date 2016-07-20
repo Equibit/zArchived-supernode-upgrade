@@ -710,8 +710,10 @@ ReadKeyValue(
 		{
 			std::string tag;
 			ssKey >> tag;
+
 			uint256 hash;
 			ssKey >> hash;
+
 			CUserMessage * msg = CUserMessage::create( tag, ssValue );
 			
 			if(!msg->verify())
@@ -1222,9 +1224,10 @@ namespace
 {
 
 bool dumpKey( 
-	    ostream & out,
-	CDataStream & ssKey,
-         string & strType )
+	    ostream & out,		// IN/OUT
+	CDataStream & ssKey,	// IN
+    	 string & strType,	// OUT
+		 string & msgTag )  // OUT
 {
     try 
 	{
@@ -1349,7 +1352,10 @@ bool dumpKey(
 		}
 		else if( strType == USER_MSG )
 		{
-// TODO:dump message
+			ssKey >> msgTag;
+			uint256	hash;
+			ssKey >> hash;
+			out << ':' << msgTag << ':' << hash.ToString();
 		}
 		else
 		{
@@ -1368,9 +1374,10 @@ bool dumpKey(
 
 bool
 dumpValue(
-	 ostream & out,      // OUT
-	  string & strType,  // IN
- CDataStream & ssValue ) // IN
+	 		  ostream & out,     // OUT
+			   string & strType, // IN
+		  CDataStream & ssValue, // IN
+	const std::string & msgTag ) // IN
 {
     try 
 	{
@@ -1581,7 +1588,9 @@ dumpValue(
 		}
 		else if( strType == USER_MSG )
 		{
-// TODO:dump message
+			CUserMessage * msg = CUserMessage::create( msgTag, ssValue );
+			out << msg->ToJSON() << endl;
+			delete msg;
 		}
 		else
 		{
@@ -1627,10 +1636,11 @@ void CEDCWalletDB::Dump( ostream & out )
             }
 
 			string strType;
-			if(!dumpKey( out, ssKey, strType ))
+			string msgTag;
+			if(!dumpKey( out, ssKey, strType, msgTag ))
 				break;
 			out << '[' << endl;
-			if(!dumpValue( out, strType, ssValue ))
+			if(!dumpValue( out, strType, ssValue, msgTag ))
 				break;
 			out << ']' << endl;
 		}
@@ -1685,12 +1695,12 @@ void CEDCWalletDB::ListIssuers( vector<pair<string,CIssuer>> & issuers )
 bool CEDCWalletDB::WriteUserMsg(const CUserMessage * msg )
 {
 	return Write( 
-			make_pair( USER_MSG, make_pair( msg->tag(), msg->GetHash())), 
+			make_pair( make_pair( USER_MSG, msg->tag() ), msg->GetHash()), 
 			*msg );
 }
 
 bool CEDCWalletDB::EraseUserMsg(const CUserMessage * msg )
 {
-	return Erase( make_pair( USER_MSG, make_pair( msg->tag(), msg->GetHash())));
+	return Erase( make_pair( make_pair( USER_MSG, msg->tag() ), msg->GetHash()));
 }
 

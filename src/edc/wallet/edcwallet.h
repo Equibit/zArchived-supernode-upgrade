@@ -769,6 +769,7 @@ public:
 
 	/** Load Message into the wallet **/
 	void LoadMessage( const std::string & tag, const uint256 & hash, CUserMessage * msg );
+	bool AddMessage( const std::string & tag, const uint256 & hash, CUserMessage * msg );
 
     /* Returns the wallets help message */
     static std::string GetWalletHelpString(bool showDebug);

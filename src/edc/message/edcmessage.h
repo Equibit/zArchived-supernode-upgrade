@@ -12,11 +12,12 @@
 
 class CDataStream;
 
-// Abstract Base class of all User Message classes
+// User Messages are messages created by users for the purpose of communicating 
+// with other users
 //
 // All user messages will have the format:
 //
-// USER:type:timestamp:sender-address:nonce:message-type-specific-data
+// USER_MSG:type:timestamp:sender-address:nonce:message-type-specific-data
 //
 class CUserMessage
 {
@@ -69,6 +70,7 @@ public:
 	virtual bool	verify() const = 0;
 
 	virtual std::string	ToString() const;
+	virtual std::string	ToJSON() const;
 
 	static CUserMessage	* create( const std::string & type, CDataStream & );
 
@@ -114,6 +116,7 @@ public:
 
 	virtual bool	verify() const;
 	virtual std::string	ToString() const;
+	virtual std::string	ToJSON() const;
 
 private:
 	CKeyID	receiverAddr_;
@@ -146,6 +149,7 @@ public:
 
 	virtual bool	verify() const;
 	virtual std::string	ToString() const;
+	virtual std::string	ToJSON() const;
 
 	static CMulticast * create( const std::string & type, 
 								     const CKeyID & sender, 
@@ -179,6 +183,7 @@ public:
 
 	virtual bool	verify() const;
 	virtual std::string	ToString() const;
+	virtual std::string	ToJSON() const;
 
 	const std::string & assetId() const	{ return assetId_; }
 

@@ -3754,3 +3754,16 @@ void CEDCWallet::LoadMessage(
 {
 	messageMap.insert( make_pair( make_pair( tag, hash), msg ) );
 }
+
+bool CEDCWallet::AddMessage( 
+	const std::string & tag, 
+		const uint256 & hash, 
+		 CUserMessage * msg )
+{
+	if(!CEDCWalletDB(strWalletFile).WriteUserMsg( msg ))
+		return false;
+	messageMap.insert( make_pair( make_pair( tag, hash), msg ) );
+	// TODO: Messages must be cached. ie. the size of messageMap must be limited
+	return true;
+}
+
