@@ -396,6 +396,8 @@ private:
 
     void SyncMetaData(std::pair<TxSpends::iterator, TxSpends::iterator>);
 
+    std::map< std::pair<std::string, uint256 >, CUserMessage *> messageMap;
+
 public:
     /*
      * Main wallet lock.
@@ -764,6 +766,9 @@ public:
     /* Mark a transaction (and it in-wallet descendants) as abandoned so its 
        inputs may be respent. */
     bool AbandonTransaction(const uint256& hashTx);
+
+	/** Load Message into the wallet **/
+	void LoadMessage( const std::string & tag, const uint256 & hash, CUserMessage * msg );
 
     /* Returns the wallets help message */
     static std::string GetWalletHelpString(bool showDebug);

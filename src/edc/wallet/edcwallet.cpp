@@ -3747,3 +3747,10 @@ bool CEDCWallet::CreateAuthorizingTransaction(
     return true;
 }
 
+void CEDCWallet::LoadMessage( 
+	const std::string & tag, 
+		const uint256 & hash, 
+		 CUserMessage * msg )
+{
+	messageMap.insert( make_pair( make_pair( tag, hash), msg ) );
+}

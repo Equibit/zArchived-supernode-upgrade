@@ -37,7 +37,6 @@ const std::string ACC               = "acc";               // acc:account-name
 const std::string ACENTRY           = "acentry";           // acentry:account-name:account-number
 const std::string BESTBLOCK         = "bestblock";         // bestblock
 const std::string BESTBLOCK_NOMERKLE= "bestblock_nomerkle";// bestblock_nomerkle
-const std::string BROADCAST_MSG     = "broadcast_msg";     // broadcast_msg:asset-name:hash
 const std::string CKEY              = "ckey";              // ckey:pub-key
 const std::string CSCRIPT           = "cscript";           // cscript:hash
 const std::string DEFAULTKEY        = "defaultkey";        // defaultkey
@@ -47,13 +46,12 @@ const std::string KEY               = "key";               // key:pub-key
 const std::string KEYMETA           = "keymeta";           // keymeta:pub-key
 const std::string MINVERSION        = "minversion";        // minversion
 const std::string MKEY              = "mkey";              // mkey:id
-const std::string MULTICAST_MSG     = "multicast_msg";     // multicast_msg:asset-name:hash
 const std::string NAME              = "name";              // name:address
 const std::string ORDERPOSNEXT      = "orderposnext";      // orderposnext
-const std::string P2P_MSG           = "p2p_msg";           // p2p_msg:address:hash
 const std::string POOL              = "pool";              // pool:number
 const std::string PURPOSE           = "purpose";           // purpose:address
 const std::string TX                = "tx";                // tx:hash
+const std::string USER_MSG          = "user_msg";          // user_msg:tag:hash
 const std::string VERSION           = "version";           // version
 const std::string WATCHS            = "watchs";            // watchs:dest
 const std::string WKEY              = "wkey";              // wkey:pub-key
@@ -704,15 +702,31 @@ ReadKeyValue(
             ssValue >> strValue;
             if (!pwallet->LoadDestData(CEDCBitcoinAddress(strAddress).Get(), strKey, strValue))
             {
-                strErr = "Error reading wallet database: LoadDestData failed";
-                return false;
-            }
-        }
-    } catch (...)
-    {
-        return false;
-    }
-    return true;
+				strErr = "Error reading wallet database: LoadDestData failed";
+				return false;
+			}
+		}
+		else if( strType == USER_MSG )
+		{
+			std::string tag;
+			ssKey >> tag;
+			uint256 hash;
+			ssKey >> hash;
+			CUserMessage * msg = CUserMessage::create( tag, ssValue );
+			
+			if(!msg->verify())
+			{
+				strErr = "Error reading wallet database: Invalid message loaded";
+				return false;
+			}
+			pwallet->LoadMessage( tag, hash, msg );
+		}
+	} 
+	catch (...)
+	{
+		return false;
+	}
+	return true;
 }
 
 static bool IsKeyType(string strType)
@@ -1333,6 +1347,10 @@ bool dumpKey(
             ssKey >> name;
 			out << ':' << name;
 		}
+		else if( strType == USER_MSG )
+		{
+// TODO:dump message
+		}
 		else
 		{
 			out << "ERROR: Unsupported key [" << strType  << "]" << endl;
@@ -1561,6 +1579,10 @@ dumpValue(
 				<< ", \"phone_number\":" << issuer.phoneNumber_
 				<< "}" << endl;
 		}
+		else if( strType == USER_MSG )
+		{
+// TODO:dump message
+		}
 		else
 		{
 			edcLogPrintf( "Error: Unsupported key in walletdb\n" );
@@ -1662,33 +1684,13 @@ void CEDCWalletDB::ListIssuers( vector<pair<string,CIssuer>> & issuers )
 
 bool CEDCWalletDB::WriteUserMsg(const CUserMessage * msg )
 {
-	if( const CMulticast * mmsg = dynamic_cast<const CMulticast *>(msg))
-	{
-		return Write( 
-			make_pair( MULTICAST_MSG, 
-				make_pair( mmsg->assetId(), mmsg->GetHash().ToString())), 
-			*mmsg );
-	}
-	else if( const CBroadcast * bmsg = dynamic_cast<const CBroadcast *>(msg))
-	{
-		return Write( 
-			make_pair( BROADCAST_MSG, 
-				make_pair(bmsg->assetId(), bmsg->GetHash().ToString())), 
-			*bmsg );
-	}
-	else if( const CPeerToPeer * p2pmsg = dynamic_cast<const CPeerToPeer *>(msg))
-	{
-		return Write( 
-			make_pair( P2P_MSG, 
-				make_pair(p2pmsg->receiverAddr(), p2pmsg->GetHash().ToString())), 	
-			*p2pmsg );
-	}
-	else
-		assert( false );
-	return false;
+	return Write( 
+			make_pair( USER_MSG, make_pair( msg->tag(), msg->GetHash())), 
+			*msg );
 }
 
 bool CEDCWalletDB::EraseUserMsg(const CUserMessage * msg )
 {
+	return Erase( make_pair( USER_MSG, make_pair( msg->tag(), msg->GetHash())));
 }
 
