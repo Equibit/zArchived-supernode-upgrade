@@ -1694,9 +1694,21 @@ void CEDCWalletDB::ListIssuers( vector<pair<string,CIssuer>> & issuers )
 
 bool CEDCWalletDB::WriteUserMsg(const CUserMessage * msg )
 {
-	return Write( 
+	if( const CPeerToPeer * p2pmsg = dynamic_cast<const CPeerToPeer *>(msg))
+		return Write( 
 			make_pair( make_pair( USER_MSG, msg->tag() ), msg->GetHash()), 
-			*msg );
+			*p2pmsg );
+	else if( const CBroadcast * bmsg = dynamic_cast<const CBroadcast *>(msg))
+		return Write( 
+			make_pair( make_pair( USER_MSG, msg->tag() ), msg->GetHash()), 
+			*bmsg );
+	else if( const CMulticast * mmsg = dynamic_cast<const CMulticast *>(msg))
+		return Write( 
+			make_pair( make_pair( USER_MSG, msg->tag() ), msg->GetHash()), 
+			*mmsg );
+
+	assert(false);
+	return false;
 }
 
 bool CEDCWalletDB::EraseUserMsg(const CUserMessage * msg )
