@@ -24,6 +24,7 @@
 #include "edcui_interface.h"
 #include "utilstrencodings.h"
 #include "edc/message/edcmessage.h"
+#include "edc/wallet/edcwallet.h"
 
 #ifdef WIN32
 #include <string.h>
@@ -2160,6 +2161,8 @@ void RelayTransaction(const CEDCTransaction& tx, CFeeRate feerate)
 void RelayUserMessage( CUserMessage * um )
 {
 	EDCapp & theApp = EDCapp::singleton();
+
+	theApp.walletMain()->AddMessage( um->tag(), um->GetHash(), um );
 
 	LOCK(theApp.vNodesCS());
 	BOOST_FOREACH(CEDCNode * pnode, theApp.vNodes())
