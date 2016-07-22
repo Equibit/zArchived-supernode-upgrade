@@ -1716,36 +1716,455 @@ bool CEDCWalletDB::EraseUserMsg(const CUserMessage * msg )
 	return Erase( make_pair( make_pair( USER_MSG, msg->tag() ), msg->GetHash()));
 }
 
+namespace
+{
+// They should be ordered in ascening order by the probablity that a message will be that type
+//
+const char * msgTypeTags[] =
+{
+	"Ask",
+	"Bid",
+	"Private",
+	"Vote",
+	"CashDividend",
+	"Poll",
+	"Acquisition",
+	"Assimilation",
+	"Bankruptcy",
+	"BonusIssue",
+	"BonusRights",
+	"BuyBackProgram",
+	"CashStockOption",
+	"ClassAction",
+	"ConversionOfConvertibleBonds",
+	"CouponPayment",
+	"Delisting",
+	"DeMerger",
+	"DividendReinvestmentPlan",
+	"DutchAuction",
+	"EarlyRedemption",
+	"FinalRedemption",
+	"GeneralAnnouncement",
+	"InitialPublicOffering",
+	"Liquidation",
+	"Lottery",
+	"MandatoryExchange",
+	"Merger",
+	"MergerWithElections",
+	"NameChange",
+	"OddLotTender",
+	"OptionalPut",
+	"OtherEvent",
+	"PartialRedemption",
+	"ParValueChange",
+	"ReturnOfCapital",
+	"ReverseStockSplit",
+	"RightsAuction",
+	"RightsIssue",
+	"SchemeofArrangement",
+	"ScripDividend",
+	"ScripIssue",
+	"Spinoff",
+	"SpinOffWithElections",
+	"StockDividend",
+	"StockSplit",
+	"SubscriptionOffer",
+	"Takeover",
+	"TenderOffer",
+	"VoluntaryExchange",
+	"WarrantExercise",
+	"WarrantExpiry",
+	"WarrantIssue",
+};
+}
+
 void CEDCWalletDB::GetMessage( const uint256 & hash, CUserMessage * & msg )
 {
-	// TODO
+    Dbc* pcursor = GetCursor();
+    if (!pcursor)
+        throw runtime_error("CEDCWalletDB::GetMessage(): cannot create DB cursor");
+
+	uint256 readHash = hash;
+
+    for( size_t i = 0; i < (sizeof(msgTypeTags)/sizeof(char *)); ++i )
+    {
+        CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+
+        // Read next record
+        ssKey << std::make_pair( 
+			std::make_pair( USER_MSG, std::string(msgTypeTags[i])), readHash );
+
+        CDataStream ssValue(SER_DISK, CLIENT_VERSION);
+        int ret = ReadAtCursor(pcursor, ssKey, ssValue, DB_SET_RANGE );
+
+        if (ret == DB_NOTFOUND)
+            continue;
+        if (ret != 0)
+        {
+            pcursor->close();
+            throw runtime_error("CEDCWalletDB::GetMessage(): error scanning DB");
+        }
+
+		std::string readType;
+		ssKey >> readType;
+
+		// If we have gone past the USER_MSGs
+		if( readType != USER_MSG )
+			continue;
+
+		ssKey >> readType;
+		ssKey >> readHash;
+
+		if( readHash != hash )
+			continue;
+
+		msg = CUserMessage::create( readType, ssValue );
+		return;
+    }
+
+    pcursor->close();
+	msg = NULL;
 }
 
 void CEDCWalletDB::DeleteMessage( const uint256 & hash )
 {
-	// TODO
+    Dbc* pcursor = GetCursor();
+    if (!pcursor)
+        throw runtime_error("CEDCWalletDB::DeleteMessage(): cannot create DB cursor");
+
+	uint256 readHash = hash;
+
+    for( size_t i = 0; i < (sizeof(msgTypeTags)/sizeof(char *)); ++i )
+    {
+        CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+
+        // Read next record
+        ssKey << std::make_pair( 
+			std::make_pair( USER_MSG, std::string(msgTypeTags[i])), readHash );
+
+        CDataStream ssValue(SER_DISK, CLIENT_VERSION);
+        int ret = ReadAtCursor(pcursor, ssKey, ssValue, DB_SET_RANGE );
+
+        if (ret == DB_NOTFOUND)
+            continue;
+        if (ret != 0)
+        {
+            pcursor->close();
+            throw runtime_error("CEDCWalletDB::GetMessage(): error scanning DB");
+        }
+
+		std::string readType;
+		ssKey >> readType;
+
+		// If we have gone past the USER_MSGs
+		if( readType != USER_MSG )
+			continue;
+
+		ssKey >> readType;
+		ssKey >> readHash;
+
+		if( readHash != hash )
+			continue;
+
+		CUserMessage * msg = CUserMessage::create( readType, ssValue );
+		pcursor->close();
+		EraseUserMsg( msg );
+		delete msg;
+		return;
+	}
+	pcursor->close();
+}
+
+namespace
+{
+bool keep(
+	CPeerToPeer * msg,
+	time_t from,
+   	time_t to,
+   	const std::set<std::string> & senders,
+   	const std::set<std::string> & receivers )
+{
+	if( from && from < msg->second() )
+		return false;
+
+	if( to && to > msg->second() )
+		return false;
+
+	if( senders.size() && 
+	( senders.find( msg->senderAddr() ) == senders.end() ))
+		return false;
+
+	if( receivers.size() &&
+	( receivers.find( msg->receiverAddr() ) == receivers.end() ) )
+		return false;
+
+	return true;
+}
+
+template <typename T>
+bool keep(
+	T * msg,
+	time_t from,
+   	time_t to,
+   	const std::set<std::string> & senders,
+   	const std::set<std::string> & assets )
+{
+	if( from && from < msg->second() )
+		return false;
+
+	if( to && to > msg->second() )
+		return false;
+
+	if( senders.size() && 
+	( senders.find( msg->senderAddr() ) == senders.end() ) )
+		return false;
+
+	if( assets.size() &&
+	( assets.find( msg->assetId() ) == assets.end() ) )
+		return false;
+
+	return true;
+}
+
+}
+
+void CEDCWalletDB::GetMessages( 
+		  const std::string & type,
+    			  		Dbc * pcursor,
+   					   time_t from,
+    				   time_t to,
+const std::set<std::string> & assets,
+const std::set<std::string> & senders,
+const std::set<std::string> & receivers,
+std::vector<CUserMessage *> & out
+)
+{
+	unsigned int fFlags = DB_SET_RANGE;
+
+	uint256	hash;
+
+   	while (true)
+   	{
+   		// Read next record
+   		CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+   		ssKey << std::make_pair( std::make_pair( USER_MSG, type ), hash );
+
+        CDataStream ssValue(SER_DISK, CLIENT_VERSION);
+        int ret = ReadAtCursor(pcursor, ssKey, ssValue, fFlags);
+
+   		if (ret == DB_NOTFOUND)
+       		break;
+   		else if (ret != 0)
+   		{
+       		pcursor->close();
+       		throw runtime_error("CEDCWalletDB::GetMessages(): error scanning DB");
+   		}
+
+		std::string readType;
+		ssKey >> readType;
+
+		// If we have gone past the USER_MSGs
+		if( readType != USER_MSG )
+			break;
+
+		ssKey >> readType;
+
+		// If we the key loaded does not match the requested key
+		if( type != readType )
+			break;
+
+		ssKey >> hash;
+
+		// Get the next one for the rest of the loop
+		fFlags = DB_NEXT;
+
+		CUserMessage * msg = CUserMessage::create( type, ssValue );
+
+		if( CBroadcast * bmsg = dynamic_cast<CBroadcast *>(msg) )
+		{
+			if( keep( bmsg, from, to, senders, assets ))
+				out.push_back(msg);
+			else
+				delete msg;
+		}
+		else if( CMulticast * mmsg = dynamic_cast<CMulticast *>(msg) )
+		{
+			if( keep( mmsg, from, to, senders, assets ))
+				out.push_back(msg);
+			else
+				delete msg;
+		}
+		else
+		{
+			CPeerToPeer * p2pmsg = dynamic_cast<CPeerToPeer *>(msg);
+			assert(p2pmsg);
+			if( keep( p2pmsg, from, to, senders, receivers ))
+				out.push_back(msg);
+			else
+				delete msg;
+		}
+   	}
 }
 
 void CEDCWalletDB::GetMessages( 
    		time_t from,
     	time_t to,
-    	const std::vector<std::string> & assets,
-    	const std::vector<std::string> & types,
-    	const std::vector<std::string> & senders,
-    	const std::vector<std::string> & receivers,
+    	const std::set<std::string> & assets,
+    	const std::set<std::string> & types,
+    	const std::set<std::string> & senders,
+    	const std::set<std::string> & receivers,
 		   std::vector<CUserMessage *> & out
 	)
 {
-	// TODO
+    Dbc* pcursor = GetCursor();
+    if (!pcursor)
+        throw runtime_error("CEDCWalletDB::GetMessages(): cannot create DB cursor");
+
+	if( types.size() )
+	{
+		auto i = types.begin();
+		auto e = types.end();
+		while( i != e )
+		{
+			GetMessages( *i, pcursor, from, to, assets, senders, receivers, out );
+			++i;
+		}
+	}
+	else
+	{
+    	for( size_t i = 0; i < (sizeof(msgTypeTags)/sizeof(char *)); ++i )
+		{
+			GetMessages( msgTypeTags[i], pcursor, from, to, assets, senders, receivers, out );
+		}
+	}
+
+	pcursor->close();
+}
+
+void CEDCWalletDB::DeleteMessages( 
+		  const std::string & type,
+   					   time_t from,
+    				   time_t to,
+const std::set<std::string> & assets,
+const std::set<std::string> & senders,
+const std::set<std::string> & receivers
+)
+{
+    Dbc * pcursor = NULL;
+
+	unsigned int fFlags;
+	uint256	hash;
+
+   	while (true)
+   	{
+		if(!pcursor)
+		{
+    		pcursor = GetCursor();
+		    if (!pcursor)
+       			throw runtime_error("CEDCWalletDB::DeleteMessages(): cannot create DB cursor");
+			fFlags = DB_SET_RANGE;
+			hash.SetNull();
+		}
+
+   		// Read next record
+   		CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+   		ssKey << std::make_pair( std::make_pair( USER_MSG, type ), hash );
+
+        CDataStream ssValue(SER_DISK, CLIENT_VERSION);
+        int ret = ReadAtCursor(pcursor, ssKey, ssValue, fFlags);
+
+   		if (ret == DB_NOTFOUND)
+       		break;
+   		else if (ret != 0)
+   		{
+       		pcursor->close();
+       		throw runtime_error("CEDCWalletDB::GetMessages(): error scanning DB");
+   		}
+
+        std::string readType;
+        ssKey >> readType;
+
+        // If we have gone past the USER_MSGs
+        if( readType != USER_MSG )
+            break;
+
+        ssKey >> readType;
+
+        // If we the key loaded does not match the requested key
+        if( type != readType )
+            break;
+
+        ssKey >> hash;
+
+		// Get the next one for the rest of the loop
+		fFlags = DB_NEXT;
+
+		CUserMessage * msg = CUserMessage::create( type, ssValue );
+
+		if( CBroadcast * bmsg = dynamic_cast<CBroadcast *>(msg) )
+		{
+			if( keep( bmsg, from, to, senders, assets ))
+			{
+       			pcursor->close();	// TODO: Read cursor must be closed prior to update. Use write cursor
+				pcursor = NULL;
+				EraseUserMsg( msg );
+			}
+
+			delete msg;
+		}
+		else if( CMulticast * mmsg = dynamic_cast<CMulticast *>(msg) )
+		{
+			if( keep( mmsg, from, to, senders, assets ))
+			{
+       			pcursor->close();	// TODO: Read cursor must be closed prior to update. Use write cursor
+				pcursor = NULL;
+				EraseUserMsg( msg );
+			}
+
+			delete msg;
+		}
+		else
+		{
+			CPeerToPeer * p2pmsg = dynamic_cast<CPeerToPeer *>(msg);
+			assert(p2pmsg);
+			if( keep( p2pmsg, from, to, senders, receivers ))
+			{
+       			pcursor->close();	// TODO: Read cursor must be closed prior to update. Use write cursor
+				pcursor = NULL;
+				EraseUserMsg( msg );
+			}
+
+			delete msg;
+		}
+   	}
+
+	if(pcursor)
+		pcursor->close();
 }
 
 void CEDCWalletDB::DeleteMessages( 
 	time_t from,
    	time_t to,
-   	const std::vector<std::string> & assets,
-   	const std::vector<std::string> & types,
-   	const std::vector<std::string> & senders,
-   	const std::vector<std::string> & receivers )
+   	const std::set<std::string> & assets,
+   	const std::set<std::string> & types,
+   	const std::set<std::string> & senders,
+   	const std::set<std::string> & receivers )
 {
-	// TODO
+	if( types.size() )
+	{
+		auto i = types.begin();
+		auto e = types.end();
+		while( i != e )
+		{
+			DeleteMessages( *i, from, to, assets, senders, receivers );
+			++i;
+		}
+	}
+	else
+	{
+    	for( size_t i = 0; i < (sizeof(msgTypeTags)/sizeof(char *)); ++i )
+		{
+			DeleteMessages( msgTypeTags[i], from, to, assets, senders, receivers );
+		}
+	}
 }

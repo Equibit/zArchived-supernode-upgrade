@@ -3780,10 +3780,10 @@ void CEDCWallet::DeleteMessage( const uint256 & hash )
 void CEDCWallet::GetMessages( 
 	time_t from,
    	time_t to,
-   	const std::vector<std::string> & assets,
-   	const std::vector<std::string> & types,
-   	const std::vector<std::string> & senders,
-   	const std::vector<std::string> & receivers,
+   	const std::set<std::string> & assets,
+   	const std::set<std::string> & types,
+   	const std::set<std::string> & senders,
+   	const std::set<std::string> & receivers,
 	   std::vector<CUserMessage *> & out
 	)
 {
@@ -3794,10 +3794,10 @@ void CEDCWallet::GetMessages(
 void CEDCWallet::DeleteMessages( 
 	time_t from,
    	time_t to,
-   	const std::vector<std::string> & assets,
-   	const std::vector<std::string> & types,
-   	const std::vector<std::string> & senders,
-   	const std::vector<std::string> & receivers )
+   	const std::set<std::string> & assets,
+   	const std::set<std::string> & types,
+   	const std::set<std::string> & senders,
+   	const std::set<std::string> & receivers )
 {
 	CEDCWalletDB(strWalletFile).DeleteMessages(
 		from, to, assets, types, senders, receivers );

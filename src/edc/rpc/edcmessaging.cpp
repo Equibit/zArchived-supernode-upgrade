@@ -244,7 +244,7 @@ inline std::string trim(const std::string &s)
 // Expected input syntax:
 // (name1,name2,...)
 //
-bool getList( const std::string & param, std::vector<std::string> & l )
+bool getSet( const std::string & param, std::set<std::string> & l )
 {
 	size_t bPos = param.find( "(" );
 	size_t ePos = param.find( ")" );
@@ -263,16 +263,16 @@ bool getList( const std::string & param, std::vector<std::string> & l )
 		{
 			if(inner.size() > 0 )
 			{
-				l.push_back(trim(inner));
+				l.insert(trim(inner));
 			}
 			break;
 		}	
 		else if( cPos > 0 )
 		{
 			// ... , ...
-			std::string p = trim(inner.substr(0,cPos-1));
+			std::string p = trim(inner.substr(0,cPos));
 			
-			l.push_back(p);
+			l.insert(p);
 			
 			inner = inner.substr(cPos+1);
 		}
@@ -286,13 +286,13 @@ bool getList( const std::string & param, std::vector<std::string> & l )
 }
 
 void getParamValues(
-			  const UniValue & params,   // IN
-					  time_t & from,	 // OUT
-					  time_t & to,	     // OUT
-	std::vector<std::string> & assets,	 // OUT
-	std::vector<std::string> & types,	 // OUT
-	std::vector<std::string> & senders,	 // OUT
-	std::vector<std::string> & receivers // OUT
+		   const UniValue & params,  // IN
+				   time_t & from,	 // OUT
+				   time_t & to,	     // OUT
+	std::set<std::string> & assets,	 // OUT
+	std::set<std::string> & types,	 // OUT
+	std::set<std::string> & senders, // OUT
+	std::set<std::string> & receivers// OUT
 )
 {
 	for( size_t i = 0; i < params.size(); ++i )
@@ -310,25 +310,26 @@ void getParamValues(
 		}
 		else if( param.substr(0,5) == "asset" )
 		{
-			rc = getList(param.substr(5), assets );
+			rc = getSet(param.substr(5), assets );
 		}
 		else if( param.substr(0,4) == "type" )
 		{
-			rc = getList(param.substr(5), types );
+			rc = getSet(param.substr(4), types );
 		}
 		else if( param.substr(0,6) == "sender" )
 		{
-			rc = getList(param.substr(6), senders );
+			rc = getSet(param.substr(6), senders );
 		}
 		else if( param.substr(0,8) == "receiver" )
 		{
-			rc = getList(param.substr(8), receivers );
+			rc = getSet(param.substr(8), receivers );
 		}
 
 		if(!rc)
 		{
 			std::string msg = "Unrecognized parameter [";
 			msg += param;
+			msg += "]";
 			throw std::runtime_error( msg );
 		}
 	}
@@ -377,12 +378,12 @@ UniValue getMessages( const UniValue & params, bool fHelp )
 			+ HelpExampleRpc( "eb_getmessages", "\"from(2016-02-01)\", \"asset(ACME,MSYZ)\"" )
 		);
 
-	time_t from;
-	time_t to;
-	std::vector<std::string> assets;
-	std::vector<std::string> types;
-	std::vector<std::string> senders;
-	std::vector<std::string> receivers;
+	time_t from = 0;
+	time_t to = 0;
+	std::set<std::string> assets;
+	std::set<std::string> types;
+	std::set<std::string> senders;
+	std::set<std::string> receivers;
 
 	getParamValues(
 			params,
@@ -462,8 +463,11 @@ UniValue getMessage( const UniValue & params, bool fHelp )
 	CUserMessage * message;
 	theApp.walletMain()->GetMessage( hash, message );
 
-	obj.setStr(message->ToJSON());
-	delete message;
+	if( message )
+	{
+		obj.setStr(message->ToJSON());
+		delete message;
+	}
 	return obj;
 }
 
@@ -505,12 +509,12 @@ UniValue deleteMessages( const UniValue & params, bool fHelp )
 			+ HelpExampleRpc( "eb_deletemessages", "\"from(2016-02-01)\", \"asset(ACME,MSYZ)\"" )
 		);
 
-	time_t from;
-	time_t to;
-	std::vector<std::string> assets;
-	std::vector<std::string> types;
-	std::vector<std::string> senders;
-	std::vector<std::string> receivers;
+	time_t from = 0;
+	time_t to = 0;
+	std::set<std::string> assets;
+	std::set<std::string> types;
+	std::set<std::string> senders;
+	std::set<std::string> receivers;
 
 	getParamValues(
 			params,

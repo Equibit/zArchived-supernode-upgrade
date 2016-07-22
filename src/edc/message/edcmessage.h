@@ -72,6 +72,9 @@ public:
 	virtual std::string	ToString() const;
 	virtual std::string	ToJSON() const;
 
+	std::string	senderAddr() const { return senderAddr_.ToString();}
+	time_t second() const	{ return timestamp_.tv_sec; }
+
 	static CUserMessage	* create( const std::string & type, CDataStream & );
 
 protected:

@@ -113,25 +113,44 @@ public:
 	void	GetMessages( 
    		time_t from,
     	time_t to,
-    	const std::vector<std::string> & assets,
-    	const std::vector<std::string> & types,
-    	const std::vector<std::string> & senders,
-    	const std::vector<std::string> & receivers,
+    	const std::set<std::string> & assets,
+    	const std::set<std::string> & types,
+    	const std::set<std::string> & senders,
+    	const std::set<std::string> & receivers,
 		   std::vector<CUserMessage *> & out
 	);
 	void	DeleteMessages( 
    		time_t from,
     	time_t to,
-    	const std::vector<std::string> & assets,
-    	const std::vector<std::string> & types,
-    	const std::vector<std::string> & senders,
-    	const std::vector<std::string> & receivers );
+    	const std::set<std::string> & assets,
+    	const std::set<std::string> & types,
+    	const std::set<std::string> & senders,
+    	const std::set<std::string> & receivers );
 
 private:
     CEDCWalletDB(const CEDCWalletDB&);
     void operator=(const CEDCWalletDB&);
 
     bool WriteAccountingEntry(const uint64_t nAccEntryNum, const CAccountingEntry& acentry);
+
+	void	GetMessages( 
+    	const std::string & types,
+		Dbc * cursor,
+   		time_t from,
+    	time_t to,
+    	const std::set<std::string> & assets,
+    	const std::set<std::string> & senders,
+    	const std::set<std::string> & receivers,
+	    std::vector<CUserMessage *> & out
+	);
+	void	DeleteMessages( 
+    	const std::string & types,
+   		time_t from,
+    	time_t to,
+    	const std::set<std::string> & assets,
+    	const std::set<std::string> & senders,
+    	const std::set<std::string> & receivers
+	);
 };
 
 bool BackupWallet(const CEDCWallet& wallet, const std::string& strDest);

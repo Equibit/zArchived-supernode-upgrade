@@ -777,19 +777,19 @@ public:
 	void	GetMessages( 
    		time_t from,
     	time_t to,
-    	const std::vector<std::string> & assets,
-    	const std::vector<std::string> & types,
-    	const std::vector<std::string> & senders,
-    	const std::vector<std::string> & receivers,
+    	const std::set<std::string> & assets,
+    	const std::set<std::string> & types,
+    	const std::set<std::string> & senders,
+    	const std::set<std::string> & receivers,
 		   std::vector<CUserMessage *> & out
 	);
 	void	DeleteMessages( 
    		time_t from,
     	time_t to,
-    	const std::vector<std::string> & assets,
-    	const std::vector<std::string> & types,
-    	const std::vector<std::string> & senders,
-    	const std::vector<std::string> & receivers );
+    	const std::set<std::string> & assets,
+    	const std::set<std::string> & types,
+    	const std::set<std::string> & senders,
+    	const std::set<std::string> & receivers );
 
     /* Returns the wallets help message */
     static std::string GetWalletHelpString(bool showDebug);
