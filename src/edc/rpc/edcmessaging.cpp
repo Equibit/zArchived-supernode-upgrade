@@ -349,9 +349,9 @@ UniValue getMessages( const UniValue & params, bool fHelp )
 			"effect on peer-to-peer messages.\n"
 			"sender(hash[,...]) Filters messages which are sent by the specified senders.\n"
 			"receiver(hash[,...]) Filters peer-to-peer messages which are sent to the specified receivers.\n"
-			"\nResult:\n"
-			"[\n"
-			"  {\n"
+			"\nResult:"
+			"\n["
+			"\n  {"
 				"\n    \"type\":\"Poll\","
 				"\n    \"sender\":\"ab320ac...2098aced\","
 				"\n    \"timestamp\":\"2016-09-13:12:20:02\","
@@ -359,8 +359,8 @@ UniValue getMessages( const UniValue & params, bool fHelp )
 				"\n    \"data\":\"Vote for board member positions\","
 				"\n    \"signature\":\"c03deb50...2498ade\"," 
 				"\n    \"asset\":\"ACME Co.\"" 
-			"  },\n"
-			"  {\n"
+			"\n  },"
+			"\n  {"
 				"\n    \"type\":\"Poll\","
 				"\n    \"sender\":\"ab320ac...2098aced\","
 				"\n    \"timestamp\":\"2016-09-13:12:20:02\","
@@ -368,9 +368,9 @@ UniValue getMessages( const UniValue & params, bool fHelp )
 				"\n    \"data\":\"Vote for board member positions\","
 				"\n    \"signature\":\"c03deb50...2498ade\"," 
 				"\n    \"receiver\":\"432b0...d0e029ae\"" 
-			"  },\n"
-			"  ...\n"
-			"]\n"
+			"\n  },"
+			"\n  ..."
+			"\n]\n"
 			+ HelpExampleCli( "eb_getmessages", "\"from(2016-01-01:10:10:10)\" \"asset(ACME,MSXY)\"" )
 			+ HelpExampleRpc( "eb_getmessages", "\"from(2016-02-01)\", \"asset(ACME,MSYZ)\"" )
 		);
@@ -428,8 +428,8 @@ UniValue getMessage( const UniValue & params, bool fHelp )
 			"eb_getmessage ( hash )\n"
 			"\nArguments:\n"
 			"\n1. hash - the hash of the message to be loaded\n"
-			"\nResult: (for Broadcast and Multicast messages)\n"
-			"{\n"
+			"\nResult: (for Broadcast and Multicast messages)"
+			"\n{"
 				"\n  \"type\":\"Poll\","
 				"\n  \"sender\":\"ab320ac...2098aced\","
 				"\n  \"timestamp\":\"2016-09-13:12:20:02\","
@@ -437,9 +437,9 @@ UniValue getMessage( const UniValue & params, bool fHelp )
 				"\n  \"data\":\"Vote for board member positions\","
 				"\n  \"signature\":\"c03deb50...2498ade\"," 
 				"\n  \"asset\":\"ACME Co.\"" 
-			"}\n"
-			"Result: (for Peer-to-Peer messages)\n"
-			"{\n"
+			"\n}"
+			"\nResult: (for Peer-to-Peer messages)"
+			"\n{"
 				"\n  \"type\":\"Poll\","
 				"\n  \"sender\":\"ab320ac...2098aced\","
 				"\n  \"timestamp\":\"2016-09-13:12:20:02\","
@@ -447,7 +447,7 @@ UniValue getMessage( const UniValue & params, bool fHelp )
 				"\n  \"data\":\"Vote for board member positions\","
 				"\n  \"signature\":\"c03deb50...2498ade\"," 
 				"\n  \"receiver\":\"432b0...d0e029ae\"" 
-			"}\n"
+			"\n}\n"
 			+ HelpExampleCli( "eb_getmessage", "\"c1c1d256...0983fed\"" )
 			+ HelpExampleRpc( "eb_getmessage", "\"70292cde...a890192\"" )
 		);
@@ -500,10 +500,9 @@ UniValue deleteMessages( const UniValue & params, bool fHelp )
 			"\nfrom(date[:time]) Deletes messages whose time stamp is greater than or equal to the specified date/time.\n"
 			"to(date[:time]) Deletes messages whose time stamp is less than the specified date/time.\n"
 			"type(name[,...]) Deletes messages which have the specified types.\n"
-			"asset(name[,..]) Deletes messages which are not associated with the specified assets. This filter has no\n"
-			"effect on peer-to-peer messages.\n"
+			"asset(name[,..]) Deletes messages which are not associated with the specified assets. This filter has no effect on peer-to-peer messages.\n"
 			"sender(hash[,...]) Deletes messages which are sent by the specified senders.\n"
-			"receiver(hash[,...]) Deletes peer-to-peer messages which are sent to the specified receivers.\n"
+			"receiver(hash[,...]) Deletes peer-to-peer messages which are sent to the specified receivers. This filter has no effect on broadcast and multicast messages.\n"
 			+ HelpExampleCli( "eb_deletemessages", "\"from(2016-01-01:10:10:10)\" \"asset(ACME,MSXY)\"" )
 			+ HelpExampleRpc( "eb_deletemessages", "\"from(2016-02-01)\", \"asset(ACME,MSYZ)\"" )
 		);
