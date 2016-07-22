@@ -107,6 +107,26 @@ public:
     bool WriteUserMsg(const CUserMessage *);
     bool EraseUserMsg(const CUserMessage *);
 
+	void	GetMessage( const uint256 &, CUserMessage * & msg );
+	void	DeleteMessage( const uint256 & );
+
+	void	GetMessages( 
+   		time_t from,
+    	time_t to,
+    	const std::vector<std::string> & assets,
+    	const std::vector<std::string> & types,
+    	const std::vector<std::string> & senders,
+    	const std::vector<std::string> & receivers,
+		   std::vector<CUserMessage *> & out
+	);
+	void	DeleteMessages( 
+   		time_t from,
+    	time_t to,
+    	const std::vector<std::string> & assets,
+    	const std::vector<std::string> & types,
+    	const std::vector<std::string> & senders,
+    	const std::vector<std::string> & receivers );
+
 private:
     CEDCWalletDB(const CEDCWalletDB&);
     void operator=(const CEDCWalletDB&);

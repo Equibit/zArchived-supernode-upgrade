@@ -353,6 +353,7 @@ UniValue getMessages( const UniValue & params, bool fHelp )
 			"\n["
 			"\n  {"
 				"\n    \"type\":\"Poll\","
+				"\n    \"hash\":\"ced192a...ced192ad\","
 				"\n    \"sender\":\"ab320ac...2098aced\","
 				"\n    \"timestamp\":\"2016-09-13:12:20:02\","
 				"\n    \"nonce\":121344792," 
@@ -362,6 +363,7 @@ UniValue getMessages( const UniValue & params, bool fHelp )
 			"\n  },"
 			"\n  {"
 				"\n    \"type\":\"Poll\","
+				"\n    \"hash\":\"4ad192a...ce4a92ad\","
 				"\n    \"sender\":\"ab320ac...2098aced\","
 				"\n    \"timestamp\":\"2016-09-13:12:20:02\","
 				"\n    \"nonce\":121344792," 
@@ -395,30 +397,28 @@ UniValue getMessages( const UniValue & params, bool fHelp )
 
 	UniValue result(UniValue::VSTR);
 	std::vector<CUserMessage *> messages;
-	if(theApp.walletMain()->GetMessages( from, to, assets, types, 
-		senders, receivers, messages ))
+	theApp.walletMain()->GetMessages( from, to, assets, types, 
+		senders, receivers, messages );
+
+	std::string json = "[";
+
+	std::vector<CUserMessage *>::iterator i = messages.begin();
+	std::vector<CUserMessage *>::iterator e = messages.end();
+	bool first = true;
+	while( i != e )
 	{
-		std::string json = "[";
-
-		std::vector<CUserMessage *>::iterator i = messages.begin();
-		std::vector<CUserMessage *>::iterator e = messages.end();
-		bool first = true;
-		while( i != e )
-		{
-			if(!first )
-				json += ",";
-			else
-				first = false;
-			json += (*i)->ToJSON();			
-			++i;
-		}
-
-		json += "]";
-		result.setStr(json);
-		return result;
+		if(!first )
+			json += ",";
+		else
+			first = false;
+		json += (*i)->ToJSON();			
+		++i;
 	}
-	else
-		throw std::runtime_error( "ERROR:Failed to load messages" );
+
+	json += "]";
+	result.setStr(json);
+
+	return result;
 }
 
 UniValue getMessage( const UniValue & params, bool fHelp )
@@ -431,6 +431,7 @@ UniValue getMessage( const UniValue & params, bool fHelp )
 			"\nResult: (for Broadcast and Multicast messages)"
 			"\n{"
 				"\n  \"type\":\"Poll\","
+				"\n  \"hash\":\"4ad192a...ce4a92ad\","
 				"\n  \"sender\":\"ab320ac...2098aced\","
 				"\n  \"timestamp\":\"2016-09-13:12:20:02\","
 				"\n  \"nonce\":121344792," 
@@ -441,6 +442,7 @@ UniValue getMessage( const UniValue & params, bool fHelp )
 			"\nResult: (for Peer-to-Peer messages)"
 			"\n{"
 				"\n  \"type\":\"Poll\","
+				"\n  \"hash\":\"4ad1efa...ce4a9efd\","
 				"\n  \"sender\":\"ab320ac...2098aced\","
 				"\n  \"timestamp\":\"2016-09-13:12:20:02\","
 				"\n  \"nonce\":121344792," 
@@ -458,14 +460,11 @@ UniValue getMessage( const UniValue & params, bool fHelp )
 
 	UniValue obj(UniValue::VSTR);
 	CUserMessage * message;
-	if(theApp.walletMain()->GetMessage( hash, message ))
-	{
-		obj.setStr(message->ToJSON());
-		delete message;
-		return obj;
-	}
-	else
-		throw std::runtime_error( "ERROR:Failed to load message" );
+	theApp.walletMain()->GetMessage( hash, message );
+
+	obj.setStr(message->ToJSON());
+	delete message;
+	return obj;
 }
 
 UniValue deleteMessage( const UniValue & params, bool fHelp )
@@ -483,10 +482,9 @@ UniValue deleteMessage( const UniValue & params, bool fHelp )
 
 	EDCapp & theApp = EDCapp::singleton();
 
-	if(theApp.walletMain()->DeleteMessage( hash ))
-		return NullUniValue;
-	else
-		throw std::runtime_error( "ERROR:Failed to delete message" );
+	theApp.walletMain()->DeleteMessage( hash );
+
+	return NullUniValue;
 }
 
 UniValue deleteMessages( const UniValue & params, bool fHelp )
@@ -525,10 +523,9 @@ UniValue deleteMessages( const UniValue & params, bool fHelp )
 
 	EDCapp & theApp = EDCapp::singleton();
 
-	if(theApp.walletMain()->DeleteMessages( from, to, assets, types, senders, receivers ))
-		return NullUniValue;
-	else
-		throw std::runtime_error( "ERROR:Failed to delete messages" );
+	theApp.walletMain()->DeleteMessages( from, to, assets, types, senders, receivers );
+
+	return NullUniValue;
 }
 
 const CRPCCommand commands[] =

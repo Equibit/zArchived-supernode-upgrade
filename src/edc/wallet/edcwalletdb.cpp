@@ -1716,3 +1716,36 @@ bool CEDCWalletDB::EraseUserMsg(const CUserMessage * msg )
 	return Erase( make_pair( make_pair( USER_MSG, msg->tag() ), msg->GetHash()));
 }
 
+void CEDCWalletDB::GetMessage( const uint256 & hash, CUserMessage * & msg )
+{
+	// TODO
+}
+
+void CEDCWalletDB::DeleteMessage( const uint256 & hash )
+{
+	// TODO
+}
+
+void CEDCWalletDB::GetMessages( 
+   		time_t from,
+    	time_t to,
+    	const std::vector<std::string> & assets,
+    	const std::vector<std::string> & types,
+    	const std::vector<std::string> & senders,
+    	const std::vector<std::string> & receivers,
+		   std::vector<CUserMessage *> & out
+	)
+{
+	// TODO
+}
+
+void CEDCWalletDB::DeleteMessages( 
+	time_t from,
+   	time_t to,
+   	const std::vector<std::string> & assets,
+   	const std::vector<std::string> & types,
+   	const std::vector<std::string> & senders,
+   	const std::vector<std::string> & receivers )
+{
+	// TODO
+}

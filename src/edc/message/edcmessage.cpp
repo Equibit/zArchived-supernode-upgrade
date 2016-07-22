@@ -702,7 +702,8 @@ std::string	CUserMessage::ToJSON() const
 	strftime( tbuf, BUF_SIZE, "%Y-%m_%d %H:%M:%S", ts );
 	snprintf( buf, BUF_SIZE, "%s.%06ld", tbuf, timestamp_.tv_nsec );
 
-	out << ", \"sender\":\"" << senderAddr_.ToString() << "\""
+	out << ", \"hash\":\"" << GetHash().ToString() << "\""
+		<< ", \"sender\":\"" << senderAddr_.ToString() << "\""
 		<< ", \"timestamp\":\"" << buf << "\""
 		<< ", \"nonce\":" << nonce_
 		<< ", \"data\":\"" << data_ << "\""

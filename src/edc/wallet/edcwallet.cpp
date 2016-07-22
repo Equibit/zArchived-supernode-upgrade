@@ -3767,19 +3767,17 @@ bool CEDCWallet::AddMessage(
 	return true;
 }
 
-bool CEDCWallet::GetMessage( const uint256 & hash, CUserMessage * & msg )
+void CEDCWallet::GetMessage( const uint256 & hash, CUserMessage * & msg )
 {
-	// TODO
-	return false;
+	CEDCWalletDB(strWalletFile).GetMessage(hash, msg );
 }
 
-bool CEDCWallet::DeleteMessage( const uint256 & hash )
+void CEDCWallet::DeleteMessage( const uint256 & hash )
 {
-	// TODO
-	return false;
+	CEDCWalletDB(strWalletFile).DeleteMessage(hash );
 }
 
-bool CEDCWallet::GetMessages( 
+void CEDCWallet::GetMessages( 
 	time_t from,
    	time_t to,
    	const std::vector<std::string> & assets,
@@ -3789,11 +3787,11 @@ bool CEDCWallet::GetMessages(
 	   std::vector<CUserMessage *> & out
 	)
 {
-	// TODO
-	return false;
+	CEDCWalletDB(strWalletFile).GetMessages(
+		from, to, assets, types, senders, receivers, out );
 }
 
-bool CEDCWallet::DeleteMessages( 
+void CEDCWallet::DeleteMessages( 
 	time_t from,
    	time_t to,
    	const std::vector<std::string> & assets,
@@ -3801,6 +3799,6 @@ bool CEDCWallet::DeleteMessages(
    	const std::vector<std::string> & senders,
    	const std::vector<std::string> & receivers )
 {
-	// TODO
-	return false;
+	CEDCWalletDB(strWalletFile).DeleteMessages(
+		from, to, assets, types, senders, receivers );
 }

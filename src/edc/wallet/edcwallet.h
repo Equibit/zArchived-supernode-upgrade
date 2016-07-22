@@ -771,10 +771,10 @@ public:
 	void LoadMessage( const std::string & tag, const uint256 & hash, CUserMessage * msg );
 	bool AddMessage( const std::string & tag, const uint256 & hash, CUserMessage * msg );
 
-	bool	GetMessage( const uint256 &, CUserMessage * & msg );
-	bool	DeleteMessage( const uint256 & );
+	void	GetMessage( const uint256 &, CUserMessage * & msg );
+	void	DeleteMessage( const uint256 & );
 
-	bool	GetMessages( 
+	void	GetMessages( 
    		time_t from,
     	time_t to,
     	const std::vector<std::string> & assets,
@@ -783,7 +783,7 @@ public:
     	const std::vector<std::string> & receivers,
 		   std::vector<CUserMessage *> & out
 	);
-	bool	DeleteMessages( 
+	void	DeleteMessages( 
    		time_t from,
     	time_t to,
     	const std::vector<std::string> & assets,
