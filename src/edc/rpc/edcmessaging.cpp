@@ -9,6 +9,8 @@
 #include "edc/message/edcmessage.h"
 #include "edc/edcnet.h"
 #include "edc/edcbase58.h"
+#include "edc/edcapp.h"
+#include "edc/wallet/edcwallet.h"
 
 
 namespace
@@ -347,8 +349,30 @@ UniValue getMessages( const UniValue & params, bool fHelp )
 			"effect on peer-to-peer messages.\n"
 			"sender(hash[,...]) Filters messages which are sent by the specified senders.\n"
 			"receiver(hash[,...]) Filters peer-to-peer messages which are sent to the specified receivers.\n"
-			+ HelpExampleCli( "eb_listmessages", "\"from(2016-01-01:10:10:10)\" \"asset(ACME,MSXY)\"" )
-			+ HelpExampleRpc( "eb_listmessages", "\"from(2016-02-01)\", \"asset(ACME,MSYZ)\"" )
+			"\nResult:\n"
+			"[\n"
+			"  {\n"
+				"\n    \"type\":\"Poll\","
+				"\n    \"sender\":\"ab320ac...2098aced\","
+				"\n    \"timestamp\":\"2016-09-13:12:20:02\","
+				"\n    \"nonce\":121344792," 
+				"\n    \"data\":\"Vote for board member positions\","
+				"\n    \"signature\":\"c03deb50...2498ade\"," 
+				"\n    \"asset\":\"ACME Co.\"" 
+			"  },\n"
+			"  {\n"
+				"\n    \"type\":\"Poll\","
+				"\n    \"sender\":\"ab320ac...2098aced\","
+				"\n    \"timestamp\":\"2016-09-13:12:20:02\","
+				"\n    \"nonce\":121344792," 
+				"\n    \"data\":\"Vote for board member positions\","
+				"\n    \"signature\":\"c03deb50...2498ade\"," 
+				"\n    \"receiver\":\"432b0...d0e029ae\"" 
+			"  },\n"
+			"  ...\n"
+			"]\n"
+			+ HelpExampleCli( "eb_getmessages", "\"from(2016-01-01:10:10:10)\" \"asset(ACME,MSXY)\"" )
+			+ HelpExampleRpc( "eb_getmessages", "\"from(2016-02-01)\", \"asset(ACME,MSYZ)\"" )
 		);
 
 	time_t from;
@@ -367,9 +391,34 @@ UniValue getMessages( const UniValue & params, bool fHelp )
 			senders,
 			receivers );
 
-// TODO
-	
-	return NullUniValue;
+	EDCapp & theApp = EDCapp::singleton();
+
+	UniValue result(UniValue::VSTR);
+	std::vector<CUserMessage *> messages;
+	if(theApp.walletMain()->GetMessages( from, to, assets, types, 
+		senders, receivers, messages ))
+	{
+		std::string json = "[";
+
+		std::vector<CUserMessage *>::iterator i = messages.begin();
+		std::vector<CUserMessage *>::iterator e = messages.end();
+		bool first = true;
+		while( i != e )
+		{
+			if(!first )
+				json += ",";
+			else
+				first = false;
+			json += (*i)->ToJSON();			
+			++i;
+		}
+
+		json += "]";
+		result.setStr(json);
+		return result;
+	}
+	else
+		throw std::runtime_error( "ERROR:Failed to load messages" );
 }
 
 UniValue getMessage( const UniValue & params, bool fHelp )
@@ -379,15 +428,44 @@ UniValue getMessage( const UniValue & params, bool fHelp )
 			"eb_getmessage ( hash )\n"
 			"\nArguments:\n"
 			"\n1. hash - the hash of the message to be loaded\n"
+			"\nResult: (for Broadcast and Multicast messages)\n"
+			"{\n"
+				"\n  \"type\":\"Poll\","
+				"\n  \"sender\":\"ab320ac...2098aced\","
+				"\n  \"timestamp\":\"2016-09-13:12:20:02\","
+				"\n  \"nonce\":121344792," 
+				"\n  \"data\":\"Vote for board member positions\","
+				"\n  \"signature\":\"c03deb50...2498ade\"," 
+				"\n  \"asset\":\"ACME Co.\"" 
+			"}\n"
+			"Result: (for Peer-to-Peer messages)\n"
+			"{\n"
+				"\n  \"type\":\"Poll\","
+				"\n  \"sender\":\"ab320ac...2098aced\","
+				"\n  \"timestamp\":\"2016-09-13:12:20:02\","
+				"\n  \"nonce\":121344792," 
+				"\n  \"data\":\"Vote for board member positions\","
+				"\n  \"signature\":\"c03deb50...2498ade\"," 
+				"\n  \"receiver\":\"432b0...d0e029ae\"" 
+			"}\n"
 			+ HelpExampleCli( "eb_getmessage", "\"c1c1d256...0983fed\"" )
 			+ HelpExampleRpc( "eb_getmessage", "\"70292cde...a890192\"" )
 		);
 
-	std::string hash = params[0].get_str();
+	uint256 hash = uint256S(params[0].get_str());
 
-// TODO
-	
-	return NullUniValue;
+	EDCapp & theApp = EDCapp::singleton();
+
+	UniValue obj(UniValue::VSTR);
+	CUserMessage * message;
+	if(theApp.walletMain()->GetMessage( hash, message ))
+	{
+		obj.setStr(message->ToJSON());
+		delete message;
+		return obj;
+	}
+	else
+		throw std::runtime_error( "ERROR:Failed to load message" );
 }
 
 UniValue deleteMessage( const UniValue & params, bool fHelp )
@@ -401,11 +479,14 @@ UniValue deleteMessage( const UniValue & params, bool fHelp )
 			+ HelpExampleRpc( "eb_deletemessage", "\"70292cde...a890192\"" )
 		);
 
-	std::string hash = params[0].get_str();
+	uint256 hash = uint256S(params[0].get_str());
 
-// TODO
-	
-	return NullUniValue;
+	EDCapp & theApp = EDCapp::singleton();
+
+	if(theApp.walletMain()->DeleteMessage( hash ))
+		return NullUniValue;
+	else
+		throw std::runtime_error( "ERROR:Failed to delete message" );
 }
 
 UniValue deleteMessages( const UniValue & params, bool fHelp )
@@ -443,9 +524,12 @@ UniValue deleteMessages( const UniValue & params, bool fHelp )
 			senders,
 			receivers );
 
-// TODO
-	
-	return NullUniValue;
+	EDCapp & theApp = EDCapp::singleton();
+
+	if(theApp.walletMain()->DeleteMessages( from, to, assets, types, senders, receivers ))
+		return NullUniValue;
+	else
+		throw std::runtime_error( "ERROR:Failed to delete messages" );
 }
 
 const CRPCCommand commands[] =

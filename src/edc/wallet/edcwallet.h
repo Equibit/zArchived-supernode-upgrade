@@ -771,6 +771,26 @@ public:
 	void LoadMessage( const std::string & tag, const uint256 & hash, CUserMessage * msg );
 	bool AddMessage( const std::string & tag, const uint256 & hash, CUserMessage * msg );
 
+	bool	GetMessage( const uint256 &, CUserMessage * & msg );
+	bool	DeleteMessage( const uint256 & );
+
+	bool	GetMessages( 
+   		time_t from,
+    	time_t to,
+    	const std::vector<std::string> & assets,
+    	const std::vector<std::string> & types,
+    	const std::vector<std::string> & senders,
+    	const std::vector<std::string> & receivers,
+		   std::vector<CUserMessage *> & out
+	);
+	bool	DeleteMessages( 
+   		time_t from,
+    	time_t to,
+    	const std::vector<std::string> & assets,
+    	const std::vector<std::string> & types,
+    	const std::vector<std::string> & senders,
+    	const std::vector<std::string> & receivers );
+
     /* Returns the wallets help message */
     static std::string GetWalletHelpString(bool showDebug);
 

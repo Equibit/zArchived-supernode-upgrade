@@ -3767,3 +3767,40 @@ bool CEDCWallet::AddMessage(
 	return true;
 }
 
+bool CEDCWallet::GetMessage( const uint256 & hash, CUserMessage * & msg )
+{
+	// TODO
+	return false;
+}
+
+bool CEDCWallet::DeleteMessage( const uint256 & hash )
+{
+	// TODO
+	return false;
+}
+
+bool CEDCWallet::GetMessages( 
+	time_t from,
+   	time_t to,
+   	const std::vector<std::string> & assets,
+   	const std::vector<std::string> & types,
+   	const std::vector<std::string> & senders,
+   	const std::vector<std::string> & receivers,
+	   std::vector<CUserMessage *> & out
+	)
+{
+	// TODO
+	return false;
+}
+
+bool CEDCWallet::DeleteMessages( 
+	time_t from,
+   	time_t to,
+   	const std::vector<std::string> & assets,
+   	const std::vector<std::string> & types,
+   	const std::vector<std::string> & senders,
+   	const std::vector<std::string> & receivers )
+{
+	// TODO
+	return false;
+}
