@@ -109,8 +109,8 @@ UniValue multicastMessage( const UniValue & params, bool fHelp )
 			"2. \"send-address\"   (string) The sender address\n"
 			"3. \"asset\" (string) The message applies to the identified asset\n"
 			"4. \"message\"  (string) The message to be sent to the multiple addresses\n"
-			+ HelpExampleCli( "eb_messagemany", "ACME Poll \"Board of directors Vote. Choose 1 for John Smith, 2 for Doug Brown\"" )
-			+ HelpExampleRpc( "eb_messagemany", "ACME Poll \"Board of directors Vote. Choose 1 for John Smith, 2 for Doug Brown\"" )
+			+ HelpExampleCli( "eb_multicastmessage", "ACME Poll \"Board of directors Vote. Choose 1 for John Smith, 2 for Doug Brown\"" )
+			+ HelpExampleRpc( "eb_multicastmessage", "ACME Poll \"Board of directors Vote. Choose 1 for John Smith, 2 for Doug Brown\"" )
 		);
 
 	std::string	type   = params[0].get_str();
@@ -136,7 +136,7 @@ UniValue message( const UniValue & params, bool fHelp )
 {
 	if( fHelp  || params.size() != 4)
 		throw std::runtime_error(
-			"eb_message ( \"type\" \"send-address\" \"recv-address\" \"message\" )\n"
+			"eb_p2pmessage ( \"type\" \"send-address\" \"recv-address\" \"message\" )\n"
 			"\nArguments:\n"
 			"1. \"type\" (string) Type of message. Type must be one of:\n"
 			"        Private\n"
@@ -144,9 +144,9 @@ UniValue message( const UniValue & params, bool fHelp )
 			"2. \"send-address\"   (string) The sender address\n"
 			"3. \"recv-address\"   (string) The receiver address\n"
 			"4. \"message\"   (string) The message to be sent to the specified address\n"
-			+ HelpExampleCli( "eb_message", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\" Private "
+			+ HelpExampleCli( "eb_p2pmessage", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\" Private "
 				"\"What is your position WRT the upcomming merger?\""  )
-			+ HelpExampleRpc( "eb_message", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\" Vote 1" )
+			+ HelpExampleRpc( "eb_p2pmessage", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\" Vote 1" )
 		);
 
 	std::string	type    = params[0].get_str();
@@ -339,7 +339,7 @@ UniValue getMessages( const UniValue & params, bool fHelp )
 {
 	if( fHelp )
 		throw std::runtime_error(
-			"eb_listmessages ( from(date[:time]) to(date[:time]) type(name[,...]) asset(name[,...]) sender(hash[,...]) receiver(hash[,...])\n"
+			"eb_getmessages ( from(date[:time]) to(date[:time]) type(name[,...]) asset(name[,...]) sender(hash[,...]) receiver(hash[,...])\n"
 			"\nArguments:\n"
 			"\nAll arguments are optional and can be specified in any order. The date format is of the form YYYY-MM-DD.\n"
 			"The optional time format is of the form HH:MM:SS.\n" 
@@ -524,6 +524,11 @@ UniValue deleteMessages( const UniValue & params, bool fHelp )
 			types,
 			senders,
 			receivers );
+
+	// The default behavoir is to delete no messages
+	if( from == 0 && to == 0 && 
+	assets.size() == 0 && types.size() == 0 && senders.size() == 0 && receivers.size() == 0 )
+		return NullUniValue;
 
 	EDCapp & theApp = EDCapp::singleton();
 

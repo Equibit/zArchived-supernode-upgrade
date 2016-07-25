@@ -335,7 +335,7 @@ EDCparams::EDCparams()
 
 std::string EDCparams::helpMessage(HelpMessageMode mode)
 {
-    const bool showDebug = GetBoolArg("-help-debug", false);
+    const bool showDebug = GetBoolArg("-eb_help-debug", false );
 
 	////////////////////////////////////////////////////////////////////////
     std::string strUsage = HelpMessageGroup(_("Equibit Options:"));
@@ -506,6 +506,7 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
         _("If <category> is not supplied or if <category> = 1, output all debugging information.") + _("<category> can be:") + " " + debugCategories + ".");
     if (showDebug)
         strUsage += HelpMessageOpt("-eb_nodebug", "Turn off debugging messages, same as -eb_debug=0");
+	strUsage += HelpMessageOpt("-eb_help-debug", _("Show all debugging options (usage: -eb_help -eb_help-debug)"));
 	strUsage += HelpMessageOpt("-eb_logips", 
 		strprintf(_("Include IP addresses in debug output (default: %u)"), EDC_DEFAULT_LOGIPS));
     strUsage += HelpMessageOpt("-eb_logtimestamps", 

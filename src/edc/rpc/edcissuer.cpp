@@ -83,7 +83,7 @@ UniValue listIssuers( const UniValue & params, bool fHelp )
 
 	if( fHelp )
 		throw std::runtime_error(
-			"eb_listissuers\n"
+			"eb_getissuers\n"
 			"\nLists all known Issuers.\n"
 			"\nResult:\n"
 			"[                                 (json object)\n"
@@ -95,8 +95,8 @@ UniValue listIssuers( const UniValue & params, bool fHelp )
 			"    \"address\": address,         (string) equibit address of the issuer\n"
 			"  }, ...\n"
 			"]\n"
-			+ HelpExampleCli( "eb_listissuers", "" )
-			+ HelpExampleRpc( "eb_listissuers", "" )
+			+ HelpExampleCli( "eb_getissuers", "" )
+			+ HelpExampleRpc( "eb_getissuers", "" )
 		);
 
 	CEDCWalletDB walletdb(theApp.walletMain()->strWalletFile);
@@ -219,7 +219,7 @@ const CRPCCommand commands[] =
   // ---------- ------------------- ------------------ -------------
 
 	{ "equibit", "eb_getnewissuer",		 &getNewIssuer,      true },
-	{ "equibit", "eb_listissuers",		 &listIssuers,       true },
+	{ "equibit", "eb_getissuers",		 &listIssuers,       true },
 	{ "equibit", "eb_authorizeequibit",  &authorizeEquibit,  true },
 };
 

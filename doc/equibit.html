@@ -1,63 +1,83 @@
+<!DOCTYPE html>
 <html>
 
 <head>
 <title>Equibit User Guide</title>
+<style>
+td { vertical-align:top; }
+</style>
 </head>
 
 <body>
 
 <h1>Equibit User Guide</h1>
 
-<p>This document describes how to use a Equibit Node.</p>
+<p>This document describes how to use a Equibit Node and the RPC client.</p>
 <p>An Equibit Node consists of a full Bitcoin Core implementation and a Equibit Core implementation.</p>
 
 <h2>Getting Help</h2>
-<p>The Equibit programs can be used to get a list of the options / RPC commands.</p>
 
-<h3>Equibit Node Command Line Options Help</h3>
+<h3>bitcoin-cli help</h3>
 
-<p>To get a list of all command line options supported by the node, run the command:</p>
+<p>Currently there is one RPC client program (bitcoin-cli) that is used to connect to both the Bitcoin Core and the Equibit Core. To get a list of command line options for bitcoin-cli, use</p>
+<xmp>
+./bitcoin-cli -help
+</xmp>
+
+<h3>Equibit Node Command Line Options</h3>
+
+<p>To get a list of all command line options supported by the Bitcoin Core and Equibit Core, run the command:</p>
 
 <xmp>
 ./bitcoind -help
 </xmp>
 
-<p>To also get a list of the debugging command line options supported by the node, run the command:</p>
+<p>To also get a list of the Bitcoin Core debugging command line options, run the command:</p>
 
 <xmp>
 ./bitcoind -help -help-debug
 </xmp>
+<p>The -eb_* versions of these commands will also work. That is,</p>
+<xmp>
+./bitcoind -eb_help -eb_help-debug
+</xmp>
 
-<p>If the node is running, the RPC (Remote Procedure Call) client program (bitcoin-cli) can be used to communicate with it provided it is configured appropriately.</p>
+<p>See below for getting help for RPC commands.</p>
 
 <h3>Configuring the Node to support RPC processing</h3>
+
+<p>
+If a node is running, the RPC (Remote Procedure Call) client program (bitcoin-cli) can be used to communicate with it provided it is configured appropriately. HTTP client programs such as curl can also be used to communicate with an Equibit node.
+</p>
 
 <p>In order for an Equibit node to handle RPC requests, the following steps must be done.</p>
 
 <ol>
-<li>Start the node with the -server option</li>
-<li>Define the rpcpassword in the bitcoin.conf files for Bitcoin Core RPC processing</li>
-<li>Define the eb_rpcpassword in the equibit.conf files for Equibit Core RPC processing</li>
+<li>Start the node with the -server option for Bitcoin Core RPC communication.</li>
+<li>Start the node with the -eb_server option for Equibit Core RPC communication.</li>
+<li>Define the rpcuser and rpcpassword options in the bitcoin.conf file</li>
 </ol>
 
-<p>The bitcoin.conf file is located in the Bitcoin Core data directory. The default value is <xmp>~/.bitcoin</xmp> It can be set with the -datadir option.</p>
+<p>The bitcoin.conf file is located in the Bitcoin Core data directory. The default value is <xmp>~/.bitcoin</xmp>. It can be set with the -datadir option. Therefore, the default location of bitconn.conf is <xmp>~/.bitcoin/bitcoin.confg</xmp></p>
 
 <p>The equibit.conf file is located in the Equibit Core data directory. The default value is <xmp>~/.equibit</xmp> It can be set with the -eb_datadir option.</p>
 
 <p>The syntax of the rpcpassword definition (to be placed in the bitcoin.conf file) is:</p>
-<xmp>
+<code>
 rpcpassword=<em>any-sequence-of-characters</em>
-</xmp>
+</code>
 
-<p>The syntax of the rpcpassword definition (to be placed in the equibit.conf files) is:</p>
-<xmp>
+<p>The syntax of the eb_rpcpassword definition (to be placed in the equibit.conf file) is:</p>
+<code>
 eb_rpcpassword=<em>any-sequence-of-characters</em>
-</xmp>
+</code>
+
 
 <h3>Equibit Node RPC Help</h3>
 
-<p>Assuming the Node is running, the RPC client program can request a list of supported using the help RPC for Bitcoin RPCs and eb_help RPC for Equibit RPCs.</p>
-<p>The Equibit RPC listening port is different from the Bitcoin RPC listening port. Since the RPC client will default to using the Bitcoin RPC listening port, the Equibit RPC requests also require the -rpcport option to be specified with the Equibit RPC port, which defaults to 18331.</p>
+<p>Assuming the Node is running, a RPC client program can request a list of supported RPCs using the <em>help</em> RPC for Bitcoin RPCs and <em>eb_help</em> RPC for Equibit RPCs.</p>
+<p>The Equibit RPC listening port is different from the Bitcoin RPC listening port. Since the RPC client will default to using the Bitcoin RPC listening port, the Equibit RPC requests also require the -rpcport option to be specified with the Equibit RPC port.</p>
+<p>If another client program is used to connect to the Node, then the port specified will determine which RPCs should be used.</p>
 
 <p>Therefore, the following commands will list the Bitcoin Core RPCs and the Equibit RPCs respectively:</p>
 
@@ -69,7 +89,7 @@ eb_rpcpassword=<em>any-sequence-of-characters</em>
 ./bitcoin-cli -rpcport=18331 eb_help
 </xmp>
 
-<p>Getting detailed help on individual RPCs can be done by specifying help (resp. eb_help) followed by the name of the command. For example:
+<p>Getting detailed help on individual RPCs can be done by specifying help (resp. eb_help) followed by the name of the command. For example, to get detailed help on the getinfo (resp. eb_getinfo) RPC, use the following commands:
 </p>
 
 <xmp>
@@ -139,7 +159,7 @@ used by each Core as follows:</p>
 <tr><th>Bitcoin Option</th><th>Equibit Option</th><th>Description</th></tr>
 
 <tr>
-<td>-dblogsize=<n></td>
+<td>-dblogsize=<em>n</em></td>
 <td>-eb_dblogsize=<em>n</em></td>
 <td>Flush wallet database activity from memory to disk log every <em>n</em> megabytes (default: 100)</td>
 
@@ -149,9 +169,27 @@ used by each Core as follows:</p>
 <td>
 Output debugging information (default: 0, supplying <em>category</em> is
 optional). If <em>category</em> is not supplied or if <em>category</em> = 1,
-output all debugging information.<em>category</em> can be: addrman,
-alert, bench, coindb, db, lock, rand, rpc, selectcoins, mempool,
-mempoolrej, net, proxy, prune, http, libevent, tor, zmq.
+output all debugging information.<em>category</em> can be: 
+<ul>
+<li>addrman</li>
+<li>alert </li>
+<li>bench</li>
+<li>coindb </li>
+<li>db</li>
+<li>lock </li>
+<li>rand </li>
+<li>rpc</li>
+<li>selectcoins </li>
+<li>mempool</li>
+<li>mempoolrej </li>
+<li>net</li>
+<li>proxy </li>
+<li>prune </li>
+<li>http</li>
+<li>libevent </li>
+<li>tor </li>
+<li>zmq</li>
+</ul>
 </td></tr>
 
 <tr>
@@ -200,8 +238,8 @@ mempoolrej, net, proxy, prune, http, libevent, tor, zmq.
 
 <h2>Configuring Node Connectitivity</h2>
 
-<p>The following options can be used to control which Equibit nodes that a given node will connect. 
-The options that control which Equibit node connectivity are:</p>
+<p>The following options can be used to control to which Equibit Nodes a given node will connect. 
+The options that control Equibit Node connectivity are:</p>
 
 <dl>
 <dt>-eb_addnode=<em>ip-list</em></dt>
@@ -229,7 +267,131 @@ discovered by all other means.</p>
 to discover other peers. Once the peer node information has been transmitted
 to the node, the connection is ended.</p>
 
-<p>onlynet should be set to one or more of ipv4, ipv6 and onion. Connections will be limited to the specified network(s).</p> 
+<p>eb_onlynet should be set to one or more of ipv4, ipv6 and onion. Connections will be limited to the specified network(s).</p> 
+
+<h2>RPC Commands</h2>
+
+<p>For each Bitcoin Core RPC, there is a corresponding Equibit Core RPC. The Equibit Core RPC name is the Bitcoin Core RPC name with a eb_ prefix. For example, Bitcoin Core RPC getmininginfo corresponds to Equibit Core RPC eb_getmininginfo. In addition, several new RPCs have been added to the Equibit Core interface in order to support Equibit Core functionality.
+</p>
+<p>Bitcoin RPCs are documented at <a href='https://bitcoin.org/en/developer-reference#remote-procedure-calls-rpcs'>Bitcoin Developer Reference</a></p>
+<p>This documentation can be used for the corresponding Equibit RPCs, with the knowledge that:</p>
+<ul>
+<li>The Equibit Core uses separate TCP/IP networks</li>
+<li>The Equibit Core wallet and blockchain data is stored to separate files</li>
+</ul>
+
+<h3>Equibit Specific RPCs</h3>
+<p>The RPCs listed in the Equibit category of the eb_help output have no corresponding Bitcoin RPC.</p>
+<p>They can be sub-categorized as follows:</p>
+
+<h4>Equibit Issuer Commands</h4>
+
+<ul>
+<li>eb_getnewissuer - Creates a new issuer</li>
+<li>eb_getissuers - Lists the issuers added to the wallet</li>
+<li>eb_authorizeequibit - Authorizes Equibits by the specified issuer</li>
+</ul>
+
+<h4>Equibit Messaging Commands</h4>
+
+<p>Three types of messages can be sent between Equibit Core users:
+
+<ul>
+<li>Peer-to-Peer Sent to a single peer user</li>
+<li>Multicast    Sent to all issuers who are owners of specified Equibit asset</li>
+<li>Broadcasr    Sent to all users</li>
+</ul>
+
+<table cellspacing=0 border=1>
+<tr><th>Message</th><th>Types</th><th>Description</th></tr>
+<tr><td>Acquisition </td><td>Broadcast</td><td>A company adopting a growth strategy, can use several means in order to seize control of other companies.</td></tr>
+<tr><td>Ask</td><td>Broadcast</td><td>The price at which the owner of Equibit(s) is willing to sell the specified number of Equibits.</td></tr>
+<tr><td>Assimilation</td><td>Broadcast</td><td>Absorption of a new issue of stock into the parent security where the original shares did not fully rank pari passu with the parent shares.  After the event, the assimilated shares rank pari passu with the parent.  Also referred to as funging of shares.</td></tr>
+<tr><td>Bankruptcy</td><td>Broadcast</td><td>The company announces bankruptcy protection and the legal proceedings start in which it will be decided what pay-outs will be paid to stakeholders.</td></tr>
+<tr><td>Bid</td><td>Broadcast</td><td>The price at which the market participant is will to pay for the specified number of Equibits.</td></tr>
+<tr><td>BonusIssue</td><td>Broadcast</td><td>Shareholders are awarded additional securities (shares, rights or warrants) free of payment.The nominal value of shares does not change.</td></tr>
+<tr><td>BonusRights</td><td>Broadcast</td><td>Distribution of rights which provide existing shareholders the privilege to subscribe to additional shares at a discounted rate. This corporate action has similar features to a bonus and rights issue.</td></tr>
+<tr><td>BuyBackProgram</td><td>Broadcast</td><td>Offer by the issuing company to existing shareholders to repurchase the company’s own shares or other securities convertible into shares.  This results in a reduction in the number of outstanding shares.</td></tr>
+<tr><td>CashDividend</td><td>Broadcast</td><td>The company pays out a cash amount to distribute its profits to shareholders.</td></tr>
+<tr><td>CashStockOption</td><td>Broadcast</td><td>Shareholders are offered the choice to receive the dividend in cash or in additional new shares of the company (at a discount to market). Reinvesting often carries a tax shield.</td></tr>
+<tr><td>ClassAction</td><td>Broadcast</td><td>A lawsuit is being made against the company (usually by a large group of shareholders or by a representative person or organisation) that may result in a payment to the shareholders.</td></tr>
+<tr><td>ConversionOfConvertibleBonds</td><td>Broadcast</td><td>Convertible bonds are being converted in the underlying shares.  </td></tr>
+<tr><td>CouponPayment</td><td>Broadcast</td><td>The issuer of the bond pays interst according to the terms and conditions of the bond, ie interest rate and intervals of payment.</td></tr>
+<tr><td>Delisting</td><td>Broadcast</td><td>The company announces that it securities will no longer be listed on a stock exchange and that they will be booked out.</td></tr>
+<tr><td>DeMerger</td><td>Broadcast</td><td>One company de-merges itself into 2 or more companies. The shares of the old company are booked out and the shares of the new companies will be booked in according to a set ratio.</td></tr>
+<tr><td>DividendReinvestmentPlan</td><td>Broadcast</td><td>Similar to cash stock option. In this case however, the company first pays the cash dividend after which shareholders are offered the possibility to reinvest the cash dividend in new shares.</td></tr>
+<tr><td>DutchAuction</td><td>Broadcast</td><td>A Dutch Auction Offer specifies a price range within which a fixed number of shares will ultimately be purchased. Shareholders are asked to submit instructions as to what price they are willing to sell. Once all instructions have been counted, the shares of the shareholders who voted to sell at the lowest prices will be bought untill either the fixed number of shares is reached or the upper limit of the price range is reached.</td></tr>
+<tr><td>EarlyRedemption</td><td>Broadcast</td><td>The issuer of the bond repays the nominal prior to the maturity date of the bond, normally with accrued interest.</td></tr>
+<tr><td>FinalRedemption</td><td>Broadcast</td><td>The issuer of the bond repays the nominal of the bond, normally with accrued interest.</td></tr>
+<tr><td>GeneralAnnouncement</td><td>Broadcast</td><td>An event used by the company to notify its shareholders of any events that take place. This event type is used to communicate several types of information to the shareholders.</td></tr>
+<tr><td>InitialPublicOffering</td><td>Broadcast</td><td>This is the first corporate actions event in the history of any company. The first time that a company gets listed on a stock exchange is regarded as an event in itself. Underwriters will try to get as many buyers for the newly listed shares for a price as high as possible. Any shares they can not sell, will be bought by the underwriters.</td></tr>
+<tr><td>Liquidation</td><td>Broadcast</td><td>Liquidation proceedings consist of a distribution of cash and/or assets. Debt may be paid in order of priority based on preferred claims to assets specified by the security e.g. ordinary shares versus preferred shares.</td></tr>
+<tr><td>Lottery</td><td>Broadcast</td><td>The issuer redeems selected holdings before the maturity date of the bond (early redemption).</td></tr>
+<tr><td>MandatoryExchange</td><td>Broadcast</td><td>Conversion of securities (generally convertible bonds or preferred shares) into a set number of other forms of securities (usually common shares).</td></tr>
+<tr><td>Merger</td><td>Broadcast</td><td>Merger of 2 or more companies into one new company. The shares of the old companies are consequently exchanged into shares in the new company according to a set ratio.</td></tr>
+<tr><td>MergerWithElections</td><td>Broadcast</td><td>Merger of 2 or more companies into one new company. The shares of the old companies are consequently exchanged into shares in the new company according to a set ratio. Shareholders of both companies are offered choices regarding the securities they receive</td></tr>
+<tr><td>NameChange</td><td>Broadcast</td><td>Name changes are normally proposed and approved at the Company's General meeting.  This has no effect on the capital and shareholder's of the company.</td></tr>
+<tr><td>OddLotTender</td><td>Broadcast</td><td>In case shares are tradeable in so called board lots of for example 100 shares only and a shareholder has an amount of shares that is not a multiple of the board lot, then this additional quantity is called odd lot. An odd lot tender is an offer to shareholders with odd lots to sell the shares in the odd lot at a given price. So for example, if the board lot is 100 and a shareholder holds 150 shares, an odd lot tender will give the shareholder to dispose of 50 shares at a given price. The board lot of 100 will still be tradable as normal.</td></tr>
+<tr><td>OptionalPut</td><td>Broadcast</td><td>An event in which the holder of the put options has the option to exercise the put option in order to sell the underlying security at a given price.</td></tr>
+<tr><td>OtherEvent</td><td>Broadcast</td><td>Any event that does not fit any of the other descriptions.</td></tr>
+<tr><td>PartialRedemption</td><td>Broadcast</td><td>The issuer of the bond repays part of the nominal prior to maturity, normally with accrued interest.</td></tr>
+<tr><td>ParValueChange</td><td>Broadcast</td><td>Similar to stock splits where the share nominal value is changed which normally results in a change in the number of shares held.</td></tr>
+<tr><td>Poll</td><td>Multicast</td><td>Every publicly traded company has an annual general meeting where management presents several decisions that need shareholder approval. The approval is given by means of voting for or against each decision. Shareholders may attend the meeting in person or vote by proxy - electronically or by mail via their brokers and custodian.</td></tr>
+<tr><td>Private</td><td>Peer-to-Peer</td><td>A private message</td></tr>
+<tr><td>ReturnOfCapital</td><td>Broadcast</td><td>A cash amount will be paid to investors in combination with a nominal value change of the shares.</td></tr>
+<tr><td>ReverseStockSplit</td><td>Broadcast</td><td>The number of outstanding shares of the company gets reduced by an 'X' number while the nominal value of the shares increases by 'X'. For example a 'BMW' 1 for 2 reverse stock split, where the BMW shares’ nominal value increases from EUR 0.50 to EUR 1.00. The total value of the outstanding shares remains the same.</td></tr>
+<tr><td>RightsAuction</td><td>Broadcast</td><td>Rights to buy new shares are being auctioned - shareholders who submit the highest prices at which they are willing to buy new shares will get the new shares.</td></tr>
+<tr><td>RightsIssue</td><td>Broadcast</td><td>Rights are issued to entitled shareholders of the underlying stock.  They allow the rights holder to subscribe to additional shares of either the same stock or another stock or convertible bond, at the predetermined rate/ratio and price (usually at a discount to the market rate). Rights are normally tradable and can be sold/bought in the market, exercised or lapsed.</td></tr>
+<tr><td>SchemeofArrangement</td><td>Broadcast</td><td>Occurs when a parent company takes over its subsidiaries and distributes proceeds to its shareholders.</td></tr>
+<tr><td>ScripDividend</td><td>Broadcast</td><td>The UK version of an optional dividend.  No stock dividends / coupons are issued but the shareholder can elect to receive either cash or new shares based on the ratio or by the net dividend divided by the re-investment price.  The default is always cash.</td></tr>
+<tr><td>ScripIssue</td><td>Broadcast</td><td>Shareholders are awarded additional securities (shares, rights or warrants) free of payment.  The nominal value of shares does not change</td></tr>
+<tr><td>Spinoff</td><td>Broadcast</td><td>A distribution of subsidiary stock to the shareholders of the parent corporation without having cost to the shareholder of the parent issue.</td></tr>
+<tr><td>SpinOffWithElections</td><td>Broadcast</td><td>A distribution of subsidiary stock to the shareholders of the parent corporation without having cost to the shareholder of the parent issue whereby the shareholders are offered choices regarding the resultant stock.</td></tr>
+<tr><td>StockDividend</td><td>Broadcast</td><td>Almost identical to bonus issues where additional shares in either the same or different stock is issued to shareholders of the underlying stock. </td></tr>
+<tr><td>StockSplit</td><td>Broadcast</td><td>A stock split is a division of the company shares into 'X' number of new shares with a nominal value of '1/X' of the original share.  For example a 'BMW' 2 for 1 stock split, where a BMW share par value decreases to EUR 0.50 from EUR 1.00, whilst the number of share doubles. The total value of the outstanding shares remains the same.</td></tr>
+<tr><td>SubscriptionOffer</td><td>Broadcast</td><td>Offer to existing shareholders to subscribe to new stock or convertible bonds</td></tr>
+<tr><td>Takeover</td><td>Broadcast</td><td>One company taking control over another company (usually by acquiring the majority of outstanding share voting rights.</td></tr>
+<tr><td>TenderOffer</td><td>Broadcast</td><td>Offer from Company A to shareholders of Company B to tender their shares to company A at a given price. The given price can be payable in cash only, stock in Company B only or a combination of cash and stock.</td></tr>
+<tr><td>VoluntaryExchange</td><td>Broadcast</td><td>Offer to exchange shares of security A into cash or into Security B.</td></tr>
+<tr><td>Vote</td><td>Peer-to-Peer</td><td>Share holder response to company referendum.</td></tr>
+<tr><td>WarrantExercise</td><td>Broadcast</td><td>An event in which the holder of the warrants has the option to exercise the warrant in accordance with the terms and conditions of the warrant.</td></tr>
+<tr><td>WarrantExpiry</td><td>Broadcast</td><td>An event that notifies the holder of the warrant that the warrant is about to expire and the holder of the warrant is given the option to exercise the warrant.</td></tr>
+<tr><td>WarrantIssue</td><td>Broadcast</td><td>Per share an amount of warrants is issued according to a specific ratio. The warrant can entitle to sell or buy the underlying security at a given price within a given timeframe.</td></tr>
+</table>
+
+<h5>Creating Messages</h5>
+<p>The RPCs to create the messages are:</p>
+<ul>
+<li>eb_p2pmessage</li>
+<li>eb_multicastmessage</li>
+<li>eb_broadcastmessage</li>
+</ul>
+
+<h5>Uploading Messages</h5>
+<p>The following RPCs can be used to load message up to the client:</p>
+
+<p>eb_getmessage can be used to load the message corresponding to the specified hash.</p>
+<p>eb_getmessages can be used to load messages that satisfy the specified selection criteria. The select criteria parameters are:</p>
+<table cellspacing=0 border=1>
+<tr><td>from(date[:time])</td>   <td>Filters out messages that are newer than the from date</td></tr>
+<tr><td>to(date[:time])</td>     <td>Filters out messages that are older than the to data</td></tr>
+<tr><td>type(name[,...])</td>    <td>Loads messages that have a type equal to one of those specified by the type parameter</td></tr>
+<tr><td>asset(name[,...])</td>   <td>Loads messages that have an asset equal to one of those specified by the asset parameters. This parameter has no effect on Peer-to-Peer messages.</td></tr>
+<tr><td>sender(hash[,...])</td>  <td>Loads messages whose sender is equal to one of those specified by the sender parameter</td></tr>
+<tr><td>receiver(hash[,...])</td><td>Loads messages whose receiver is equal to one of those specified by the receiver parameter. This parameter has no effect on Multicast and Broadcast messages</td></tr>
+</table>
+<p>If no filtering parameters are specified, then all messages are loaded.</p>
+
+<h5>Deleting Messages</h5>
+<p>The following RPCs can be used to delete messages from a wallet:</p>
+
+<p>eb_deletemessage can be used to delete the message corresponding to the specified hash.</p>
+<p>eb_deletemessages can be used to delete messagethat satisty the specified selection criteria.</p>
+<p>As a safety measure, if no filtering parameters are specified, then no messages will be deleted.</p>
+
+<h4>Equibit Debugging Commands</h4>
+
+<p>The eb_dumpwallet (resp. dumpwallet) only dump a sub-set of the data stored in the Equibit (resp. Bitcoin) wallet. The Equibit RPC eb_dumpwalletdb dumps all of the wallet's contents.</p>
 
 </body>
 
