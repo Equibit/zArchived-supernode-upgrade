@@ -1,0 +1,82 @@
+Hardware Security Module
+
+The following document is derived from nShield_Edge_installation_Guide.pdf.
+
+===============================================================================
+Unix Install
+
+Installation
+
+After you have installed the software and connected an nShield Edge to your 
+computer, you must complete further Security World creation, configuration and 
+setup tasks before you can use your nShield environment to protect and manage 
+your keys. See the User Guide for more about creating a Security World and the 
+appropriate card sets, and further configuration or setup tasks.
+
+
+ 1) Java Install (http://www.webupd8.org/2012/09/install-oracle-java-8-in-ubuntu-via-ppa.html)
+
+sudo add-apt-repository ppa:webupd8team/java
+sudo apt-get update
+sudo apt-get install oracle-java8-installer
+
+Accept License
+
+echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | sudo /usr/bin/debconf-set-selections
+
+Set Env Vars
+
+sudo apt-get install oracle-java8-set-default
+
+ 2) Place optical disk in drive and mount drive
+
+	sudo mkdir /media/opt_disk	-- if no path is available
+	sudo mount /dev/sdb1 /media/opt_disk
+
+ 3) cd /
+ 4) sudo tar xf /media/opt_disk/SecWorld-linux64-user-12.10.00/linux/libc6_11/amd64/nfast/ctls/agg.tar
+   sudo tar xf /media/opt_disk/SecWorld-linux64-user-12.10.00/linux/libc6_11/amd64/nfast/ctls/agg.tar
+
+ 5) cd /opt/nfast/sbin
+ 6) sudo ./install
+ 7) Add /opt/nfast/bin to the PATH
+ 8) Make sure the computer will not go to sleep because it will cause the
+    nShieldEdge to restart.
+ 9) Connect the nSheild Edge USB to the computer
+10) sudo tailf /opt/nfast/log/hardserver.log
+11) Run /opt/nfast/bin/enquiry to verify that the install was successful.
+    The output should display mode equal to operational.
+    If output says module is not found, try re-starting the computer.
+12) See Chapter 8 for explaination of nSheild Edge buttons, lights and so on.
+13) See Chapter 9 for trouble shooting.
+
+Lights on left hand side:
+
+red   (top)     In maintenance mode
+amber (middle)  In initialization mode
+green (bottom)  In operational mode
+
+(Blue) Light on right hand side:
+
+Long blue flashes	operational mode
+Short blue flashes  initialization mode
+Irregular flashes	changing mode or processing data
+
+To change the mode:
+
+1. Use the Mode button to highlight the required mode.
+2. Within a few seconds, press and hold the Clear button for a couple of 
+   seconds. If the mode changes, the new mode’s LED stops flashing and remains 
+   lit. The Status LED might flash irregularly for a few seconds and then 
+   flashes regularly when the nShield Edge is ready. Otherwise, the nShield 
+   Edge remains in the current mode, with the appropriate mode LED lit.
+
+==============================================================================
+NOTES
+==============================================================================
+
+- Smart card reader is used for securely store and access high-value occasional-use keys (certificcate signing keys)
+- One HSM per computer
+- nShield Solo User Guide: how to use the Security World Software
+- Never store or carry smart cards with the nShild Edge
+ 

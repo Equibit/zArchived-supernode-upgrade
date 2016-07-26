@@ -280,6 +280,21 @@ to the node, the connection is ended.</p>
 <li>The Equibit Core wallet and blockchain data is stored to separate files</li>
 </ul>
 
+<p>The help system can be used to get a</p>
+<ul>
+<li>Description of the command semantics</li>
+<li>Description of the commands parameters</li>
+<li>Examples of how to call the command using bitcoin-cli client and curl</li>
+</ul>
+<p>For example, for bitcoin RPCs:</p>
+<xmp>
+bitcoin-cli help getnewaddress
+</xmp>
+<p>For equibit RPCs:</p>
+<xmp>
+bitcoin-cli -rpcport=18331 eb_help eb_getnewaddress
+</xmp>
+
 <h3>Equibit Specific RPCs</h3>
 <p>The RPCs listed in the Equibit category of the eb_help output have no corresponding Bitcoin RPC.</p>
 <p>They can be sub-categorized as follows:</p>
