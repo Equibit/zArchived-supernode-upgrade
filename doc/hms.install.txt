@@ -34,8 +34,18 @@ sudo apt-get install oracle-java8-set-default
 	sudo mount /dev/sdb1 /media/opt_disk
 
  3) cd /
- 4) sudo tar xf /media/opt_disk/SecWorld-linux64-user-12.10.00/linux/libc6_11/amd64/nfast/ctls/agg.tar
-   sudo tar xf /media/opt_disk/SecWorld-linux64-user-12.10.00/linux/libc6_11/amd64/nfast/ctls/agg.tar
+ 4) sudo tar xf /media/opt_disk/SecWorld-linux64-user-12.10.00/linux/libc6_11/amd64/nfast/ctls/agg.tar  (for Core tools)
+   sudo tar xf /media/opt_disk/SecWorld-linux64-user-12.10.00/linux/libc6_11/amd64/nfast/dsserv/user.tar (for Remote Administration Service)
+   sudo tar xf /media/opt_disk/SecWorld-linux64-user-12.10.00/linux/libc6_11/amd64/nfast/hwcrhk/user.tar (for Crypto Hardware Interface (CHIL) plugin)
+   sudo tar xf /media/opt_disk/SecWorld-linux64-user-12.10.00/linux/libc6_11/amd64/nfast/hwcrhk/gnupg.tar (for Crypto Hardware Interface (CHIL) plugin)
+   sudo tar xf /media/opt_disk/SecWorld-linux64-user-12.10.00/linux/libc6_11/amd64/nfast/hwsp/agg.tar (for Hardware support)
+   sudo tar xf /media/opt_disk/SecWorld-linux64-user-12.10.00/linux/libc6_11/amd64/nfast/javasp/agg.tar (for Java Support (including KeySafe))
+   sudo tar xf /media/opt_disk/SecWorld-linux64-user-12.10.00/linux/libc6_11/amd64/nfast/jcecsp/user.tar (for nCipherKM JCA/JCE provider classes)
+   sudo tar xf /media/opt_disk/SecWorld-linux64-user-12.10.00/linux/libc6_11/amd64/nfast/ncsnmp/user.tar (for nCipher SNMP monitoring agent)
+   sudo tar xf /media/opt_disk/SecWorld-linux64-user-12.10.00/linux/libc6_11/amd64/nfast/nhfw/agg.tar (for nShield Connect firmware files)
+   sudo tar xf /media/opt_disk/SecWorld-linux64-user-12.10.00/linux/libc6_11/amd64/nfast/pkcs11/user.tar (for nCipher pkcs11 library)
+
+   sudo tar xf /media/opt_disk/SecWorld-linux64-user-12.10.00/linux/libc6_11/amd64/nfast/ratls/agg.tar (for Remote Administration Client)
 
  5) cd /opt/nfast/sbin
  6) sudo ./install
