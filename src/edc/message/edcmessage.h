@@ -22,7 +22,7 @@ class CDataStream;
 class CUserMessage
 {
 public:
-	CUserMessage() {}
+	CUserMessage();
 	virtual ~CUserMessage() {}
 
 	virtual std::string tag() const = 0;
@@ -78,14 +78,11 @@ public:
 	static CUserMessage	* create( const std::string & type, CDataStream & );
 
 protected:
-
-	CUserMessage( const CKeyID & sender, const std::string & data );
-
-			struct timespec	timestamp_;
-				std::string data_;
-					 CKeyID senderAddr_;
-				   uint64_t nonce_;
-std::vector<unsigned char>	signature_;
+		   struct timespec timestamp_;
+			   std::string data_;
+					CKeyID senderAddr_;
+				  uint64_t nonce_;
+std::vector<unsigned char> signature_;
 };
 
 // Message to a single recipient. Encrypted.
@@ -97,8 +94,6 @@ std::vector<unsigned char>	signature_;
 class CPeerToPeer : public CUserMessage
 {
 public:
-	CPeerToPeer() {}
-
 	ADD_SERIALIZE_METHODS;
 
 	template <typename Stream, typename Operation>
@@ -135,8 +130,6 @@ private:
 class CMulticast : public CUserMessage
 {
 public:
-	CMulticast() {}
-
 	ADD_SERIALIZE_METHODS;
 
 	template <typename Stream, typename Operation>
@@ -173,8 +166,6 @@ private:
 class CBroadcast : public CUserMessage
 {
 public:
-	CBroadcast() {}
-
 	ADD_SERIALIZE_METHODS;
 
 	template <typename Stream, typename Operation>

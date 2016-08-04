@@ -432,6 +432,8 @@ CBroadcast * broadcastObj( const std::string & tag )
 
 void signMessage(
 			  const CKeyID & keyID,    // IN
+			const timespec & ts, 	   // IN
+					uint64_t nonce,	   // IN
 		 const std::string & type,     // IN
 		 const std::string & assetId,  // IN
 		 const std::string & message,  // IN
@@ -446,11 +448,12 @@ std::vector<unsigned char> & signature // OUT
 
     CHashWriter ss(SER_GETHASH, 0);
     ss << edcstrMessageMagic
+	   << ts.tv_sec
+	   << ts.tv_nsec
+	   << nonce
        << type
        << assetId
        << message;
-
-	// TODO: add the timestamp and nonce to the input data
 
     if (!key.SignCompact(ss.GetHash(), signature ))
         throw std::runtime_error("Sign failed");
@@ -458,6 +461,8 @@ std::vector<unsigned char> & signature // OUT
 
 bool verifyMessage(
 					const CKeyID & keyID,    // IN
+				  const timespec & ts, 	   	 // IN
+						  uint64_t nonce,	 // IN
 			   const std::string & type,     // IN
 			   const std::string & assetId,  // IN
 			   const std::string & message,  // IN
@@ -466,11 +471,12 @@ const std::vector<unsigned char> & signature // IN
 {
     CHashWriter ss(SER_GETHASH, 0);
     ss << edcstrMessageMagic
+	   << ts.tv_sec
+	   << ts.tv_nsec
+	   << nonce
        << type
        << assetId
        << message;
-
-	// TODO: add the timestamp and nonce to the input data
 
 	CPubKey	pubkey;
     return pubkey.RecoverCompact(ss.GetHash(), signature );
@@ -478,7 +484,12 @@ const std::vector<unsigned char> & signature // IN
 
 }
 
-CUserMessage	* CUserMessage::create( const std::string & tag, CDataStream & str )
+CUserMessage::CUserMessage():nonce_(0)
+{
+	clock_gettime( CLOCK_REALTIME, &timestamp_ );
+}
+
+CUserMessage * CUserMessage::create( const std::string & tag, CDataStream & str )
 {
 	if( CBroadcast * result = broadcastObj( tag ))
 	{
@@ -496,7 +507,6 @@ CUserMessage	* CUserMessage::create( const std::string & tag, CDataStream & str 
 	}
 
 	CPeerToPeer * result = NULL;
-
 	if( tag == "Vote" )
 		result = new CVote();
 	else if( tag == "Private" )
@@ -538,7 +548,45 @@ CUserMessage	* CUserMessage::create( const std::string & tag, CDataStream & str 
 
 void CUserMessage::proofOfWork()
 {
-	// TODO: Set the nonce and timestamp
+	arith_uint256	target;
+	bool	neg;
+	bool	over;
+
+	// The first parameter sets the target value. The value is 256 bits or 
+	// 128-nibbles long, where each nibble is 4-bits wide. A digit corresponds to 
+	// a nibble of the number. The first two digits of the first parameter determine 
+	// the number of leading 0s (or leading nibbles) in the value. The next 6 digits
+	// are the leading digits of the target. The remaining digits are all 0s.
+	//
+	// The number of leading digits (where each digit corresponds to 4 bits) is:
+	//
+	// 20	0
+	// 1F	2
+	// 1E	4
+	// 1D	6
+	//
+	// and so on.
+	//
+	// So, for example, 0x1D3FFFFF corresponds to 0000003FFFFF00000...0000.
+	//
+	// The smaller the target, the longer the search.
+	//
+	target.SetCompact( 0x1E2FFFFF, &neg, &over );
+
+	while(true)
+	{
+		uint256 value = GetHash();
+		
+		arith_uint256	v256 = UintToArith256( value );
+
+#if TRACE_MSG_POW
+if(nonce_ % 1000 == 0 )
+printf( "message POW: %lu:value=%s target=%s\n", nonce_, v256.ToString().c_str(), target.ToString().c_str() );
+#endif
+		if( v256 < target )
+			break;
+		++nonce_;
+	}
 }
 
 CPeerToPeer * CPeerToPeer::create(
@@ -564,11 +612,15 @@ CPeerToPeer * CPeerToPeer::create(
 		throw std::runtime_error( msg );
 	}
 
+	ans->proofOfWork();
+
 	ans->senderAddr_ = sender;
 	ans->receiverAddr_ = receiver;
 	ans->data_ = data;
 
 	signMessage(sender,
+				ans->timestamp_,
+				ans->nonce_,
 		 		type,
 		 		receiver.ToString(),
 		 		data,
@@ -596,11 +648,15 @@ CMulticast * CMulticast::create(
 		throw std::runtime_error( msg );
 	}
 
+	ans->proofOfWork();
+
 	ans->senderAddr_ = sender;
 	ans->assetId_ = assetId;
 	ans->data_ = data;
 
 	signMessage(sender,
+				ans->timestamp_,
+				ans->nonce_,
 		 		type,
 		 		assetId,
 		 		data,
@@ -623,11 +679,15 @@ CBroadcast * CBroadcast::create(
 		throw std::runtime_error( msg );
 	}
 
+	ans->proofOfWork();
+
 	ans->senderAddr_ = sender;
 	ans->assetId_ = assetId;
 	ans->data_ = data;
 
 	signMessage(sender,
+				ans->timestamp_,
+				ans->nonce_,
 		 		type,
 		 		assetId,
 		 		data,
@@ -762,6 +822,8 @@ bool CPeerToPeer::verify() const
 	{
 		return verifyMessage(
 			senderAddr_,
+			timestamp_,
+			nonce_,
 		 	tag(),
 		 	receiverAddr_.ToString(),
 		 	data_,
@@ -779,6 +841,8 @@ bool CMulticast::verify() const
 	{
 		return verifyMessage(
 			senderAddr_,
+			timestamp_,
+			nonce_,
 		 	tag(),
 		 	assetId_,
 		 	data_,
@@ -796,6 +860,8 @@ bool CBroadcast::verify() const
 	{
 		return verifyMessage(
 			senderAddr_,
+			timestamp_,
+			nonce_,
 		 	tag(),
 		 	assetId_,
 		 	data_,
@@ -823,3 +889,4 @@ uint256 CPeerToPeer::GetHash() const
 {
 	return SerializeHash(*this);
 }
+
