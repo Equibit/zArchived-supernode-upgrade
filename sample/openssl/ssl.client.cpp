@@ -3,6 +3,9 @@
  * - OpenSSL 1.1
  *
  *    To run this example program:
+ *    0) Create certificates and key files. See ../doc/config.notes.txt for
+ *       instructions. If a local/private root CA is going to be used then
+ *       then it must be created first.
  *    1) Start the server program,
  *       $ run server on this system
  *    2) Start the client program on this same system,
@@ -28,9 +31,9 @@
 #define RETURN_ERR(err,s) if ((err)==-1) { perror(s); exit(1); }
 #define RETURN_SSL(err)   if ((err)==-1) { ERR_print_errors_fp(stderr); exit(1); }
  
-#define RSA_CLIENT_CERT       	"/home/david/EDC/root-ca/client.crt"
-#define RSA_CLIENT_KEY  		"/home/david/EDC/root-ca/client.key"
-#define RSA_CLIENT_CA_CERT      "/home/david/EDC/root-ca/root-ca.crt"
+#define RSA_CLIENT_CERT       	"./client.crt"
+#define RSA_CLIENT_KEY  		"./client.key"
+#define RSA_CLIENT_CA_CERT      "./root-ca.crt"
  
 #define ON   1
 #define OFF  0
@@ -38,17 +41,7 @@
 
 int main( int c, char * a[] )
 {
-	int err;
-
 	int verify_client = (c > 1 && *a[1] == 'Y' ) ? ON : OFF; /* To verify a client certificate, set ON */
-	int sock;
-	struct sockaddr_in server_addr;
-	char * str;
-	char buf [4096];
-
-	SSL  * ssl;
-	X509 * server_cert;
-	EVP_PKEY * pkey;
 
 	short int  s_port = 5555;
 	const char * s_ipaddr = "127.0.0.1";
@@ -105,10 +98,11 @@ int main( int c, char * a[] )
 	SSL_CTX_set_verify_depth(ctx,1);
 
 	/* Set up a TCP socket */
-	sock = socket (PF_INET, SOCK_STREAM, IPPROTO_TCP);       
+	int sock = socket (PF_INET, SOCK_STREAM, IPPROTO_TCP);       
 	
 	RETURN_ERR(sock, "socket");
 	
+	struct sockaddr_in server_addr;
 	memset (&server_addr, '\0', sizeof(server_addr));
 	server_addr.sin_family = AF_INET;
 	
@@ -117,12 +111,12 @@ int main( int c, char * a[] )
 	server_addr.sin_addr.s_addr = inet_addr(s_ipaddr); /* Server IP */
 	
 	/* Establish a TCP/IP connection to the SSL client */
-	err = connect(sock, (struct sockaddr*) &server_addr, sizeof(server_addr)); 
+	int err = connect(sock, (struct sockaddr*) &server_addr, sizeof(server_addr)); 
 	
 	RETURN_ERR(err, "connect");
 
 	/* An SSL structure is created */
-	ssl = SSL_new (ctx);
+	SSL * ssl = SSL_new (ctx);
 	
 	RETURN_NULL(ssl);
 	
@@ -138,13 +132,13 @@ int main( int c, char * a[] )
 	printf ("SSL connection using %s\n", SSL_get_cipher (ssl));
 	
 	/* Get the server's certificate (optional) */
-	server_cert = SSL_get_peer_certificate (ssl);    
+	X509 * server_cert = SSL_get_peer_certificate (ssl);    
 	
 	if (server_cert != NULL)
 	{
 		printf ("Server certificate:\n");
 
-		str = X509_NAME_oneline(X509_get_subject_name(server_cert),0,0);
+		char * str = X509_NAME_oneline(X509_get_subject_name(server_cert),0,0);
 		RETURN_NULL(str);
 		printf ("\t subject: %s\n", str);
 		free (str);
@@ -172,6 +166,7 @@ int main( int c, char * a[] )
 		RETURN_SSL(err);
 	
 		/* Receive data from the SSL server */
+		char buf [4096];
 		err = SSL_read(ssl, buf, sizeof(buf)-1);                     
 	
 		RETURN_SSL(err);

@@ -4,6 +4,9 @@
  *
  * RUN INSTRUCTIONS:
  *    To run this example program:
+ *    0) Create certificates and key files. See ../doc/config.notes.txt for
+ *       instructions. If a local/private root CA is going to be used then
+ *       then it must be created first.
  *    1) Start the server program,
  *       $ run server
  *    2) Start the client program on this same system,
@@ -17,27 +20,18 @@
 #include <netdb.h>
 #include <unistd.h>
  
-#ifdef __VMS
-#include <types.h>
-#include <socket.h>
-#include <in.h>
-#include <inet.h>
- 
-#else
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#endif
  
 #include <openssl/crypto.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
  
-#define RSA_SERVER_CERT     "/home/david/EDC/root-ca/ec.crt"
-#define RSA_SERVER_KEY      "/home/david/EDC/root-ca/ec.key"
- 
-#define RSA_SERVER_CA_CERT  "/home/david/EDC/root-ca/root-ca.crt"
+#define RSA_SERVER_CERT     "./ec.crt"
+#define RSA_SERVER_KEY      "./ec.key"
+#define RSA_SERVER_CA_CERT  "./root-ca.crt"
  
 #define ON   1
 #define OFF  0
@@ -49,20 +43,7 @@
 
 int main( int c, char * a[] )
 {
-	int err;
 	int verify_client = (c > 1 && *a[1] == 'Y' )?ON:OFF; /* To verify a client certificate, set ON */
-	
-	int listen_sock;
-	int sock;
-	struct sockaddr_in sa_serv;
-	struct sockaddr_in sa_cli;
-	socklen_t client_len;
-	char * str;
-	char buf[4096];
-	
-	SSL * ssl;
-
-	X509 * client_cert = NULL;
 	
 	short int s_port = 5555;
 
@@ -126,14 +107,18 @@ int main( int c, char * a[] )
 	}
 
 	/* Set up a TCP socket */
-	listen_sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);   
+	int listen_sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);   
 	
 	RETURN_ERR(listen_sock, "socket");
+
+	struct sockaddr_in sa_serv;
+
 	memset (&sa_serv, '\0', sizeof(sa_serv));
 	sa_serv.sin_family      = AF_INET;
 	sa_serv.sin_addr.s_addr = INADDR_ANY;
 	sa_serv.sin_port        = htons (s_port);          /* Server Port number */
-	err = bind(listen_sock, (struct sockaddr*)&sa_serv,sizeof(sa_serv));
+
+	int err = bind(listen_sock, (struct sockaddr*)&sa_serv,sizeof(sa_serv));
 	
 	RETURN_ERR(err, "bind");
 	
@@ -141,10 +126,12 @@ int main( int c, char * a[] )
 	err = listen(listen_sock, 5);                    
 	
 	RETURN_ERR(err, "listen");
-	client_len = sizeof(sa_cli);
+
+	struct sockaddr_in sa_cli;
+	socklen_t client_len = sizeof(sa_cli);
 	
 	/* Socket for a TCP/IP connection is created */
-	sock = accept(listen_sock, (struct sockaddr*)&sa_cli, &client_len);
+	int sock = accept(listen_sock, (struct sockaddr*)&sa_cli, &client_len);
 	
 	RETURN_ERR(sock, "accept");
 	close (listen_sock);
@@ -153,7 +140,7 @@ int main( int c, char * a[] )
 	
 	/* TCP connection is ready. */
 	/* A SSL structure is created */
-	ssl = SSL_new(ctx);
+	SSL * ssl = SSL_new(ctx);
 	
 	RETURN_NULL(ssl);
 	
@@ -171,16 +158,20 @@ int main( int c, char * a[] )
 	if (verify_client == ON)
 	{
 		/* Get the client's certificate (optional) */
-		client_cert = SSL_get_peer_certificate(ssl);
+		X509 * client_cert = SSL_get_peer_certificate(ssl);
+
 		if (client_cert != NULL) 
 		{
 			printf ("Client certificate:\n");     
-			str = X509_NAME_oneline(X509_get_subject_name(client_cert), 0, 0);
+
+			char * str = X509_NAME_oneline(X509_get_subject_name(client_cert), 0, 0);
 			RETURN_NULL(str);
+
 			printf ("\t subject: %s\n", str);
 			free (str);
 			str = X509_NAME_oneline(X509_get_issuer_name(client_cert), 0, 0);
 			RETURN_NULL(str);
+
 			printf ("\t issuer: %s\n", str);
 			free (str);
 			X509_free(client_cert);
@@ -192,6 +183,8 @@ int main( int c, char * a[] )
 	/*------- DATA EXCHANGE - Receive message and send reply. -------*/
 	while(true)
 	{
+		char buf[4096];
+
 		err = SSL_read(ssl, buf, sizeof(buf) - 1);
 		RETURN_SSL(err);
 	
