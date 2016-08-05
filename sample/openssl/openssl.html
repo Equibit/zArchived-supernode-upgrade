@@ -1,0 +1,1465 @@
+<html>
+<head>
+<title>OpenSSL User Guide</title>
+<style>
+td { vertical-align:top; }
+</style>
+</head>
+
+<body>
+
+<h1>OpenSSL User Guide</h1>
+
+<ol>
+<li><a href="#02">Bitcoin References</a></li>
+<li><a href="#07">Certificates</a></li>
+<li><a href="#05">Commands</a></li>
+<li><a href="#12">Creating a Private Certification Authority</a></li>
+<li><a href="#10">Examining Certificates</a></li>
+<li><a href="#06">Glossary</a></li>
+<li><a href="#03">History</a></li>
+<li><a href="#11">Key and Certificate Conversion</a></li>
+<li><a href="#08">Key and Certificate Management</a></li>
+<li><a href="#01">OpenSSL Links</a></li>
+<li><a href="#09">SSL Programming</a></li>
+<li><a href="#04">Version</a></li>
+</ol>
+
+<hr>
+<h2 id="01">OpenSSL Links</h2>
+
+<ul> 
+<li><a href="https://www.openssl.org">OpenSSL Web Site</a></li> 
+<li><a href="https://www.openssl.org/docs/manmaster/apps/">Commands</a></li> 
+<li><a href="https://www.openssl.org/docs/manmaster/ssl/">SSL library</a></li> 
+<li><a href="https://www.openssl.org/docs/manmaster/crypto/">Crypto library</a></li> 
+</ul> 
+
+<hr>
+<h2 id="02">Bitcoin references to OpenSSL</h2>
+
+<table border="1" cellspacing="0">
+<tbody><tr><th>Name</th><th>References</th><th>Description</th></tr>
+<tr><td>CRYPTO_set_locking_callback</td><td>util.cpp</td><td>
+Sets locking function to ensure thread safe processing.
+</td></tr>
+
+<tr><td>EVP_aes_256_cbc</td><td>wallet/crypter.cpp</td><td>
+EVP_CIPHER: AES with a 256-bit key in CBC mode
+</td></tr>
+
+<tr><td>EVP_BytesToKey</td><td>wallet/crypter.cpp</td><td>
+Derives a key from input parameters.
+</td></tr>
+
+<tr><td>EVP_CIPHER_CTX_cleanup</td><td>wallet/crypter.cpp</td><td>
+Clears all information from a cipher context and free up any allocated memory associate with it, except the ctx itself. This function should be called anytime ctx is to be reused.
+</td></tr>
+
+<tr><td>EVP_CIPHER_CTX</td><td>wallet/crypter.cpp</td><td>
+A cipher processing context. Passed between cipher functions during processing.
+</td></tr>
+
+<tr><td>EVP_CIPHER_CTX_init</td><td>wallet/crypter.cpp</td><td>
+Clears all information from a cipher context and free up any allocated memory associate with it, except the ctx itself. This function should be called anytime ctx is to be reused.
+</td></tr>
+
+<tr><td>EVP_DecryptFinal_ex</td><td>wallet/crypter.cpp</td><td>
+Finalize a decryption.
+</td></tr>
+
+<tr><td>EVP_DecryptInit_ex</td><td>wallet/crypter.cpp</td><td>
+Initialize a decryption.
+</td></tr>
+
+<tr><td>EVP_DecryptUpdate</td><td>wallet/crypter.cpp</td><td>
+Decryts a block of data.
+</td></tr>
+
+<tr><td>EVP_EncryptFinal_ex</td><td>wallet/crypter.cpp</td><td>
+Finalize an encryption.
+</td></tr>
+
+<tr><td>EVP_EncryptInit_ex</td><td>wallet/crypter.cpp</td><td>
+Initialize an encryption.
+</td></tr>
+
+<tr><td>EVP_EncryptUpdate</td><td>wallet/crypter.cpp</td><td>
+Encrypts inl bytes from the buffer in and writes the encrypted version to out. This function can be called multiple times to encrypt successive blocks of data. The amount of data written depends on the block alignment of the encrypted data: as a result the amount of data written may be anything from zero bytes to (inl + cipher_block_size - 1) so out should contain sufficient room. The actual number of bytes written is placed in outl. It also checks if in and out are partially overlapping, and if they are 0 is returned to indicate failure.
+</td></tr>
+
+<tr><td>EVP_MD_CTX</td><td>./qt/paymentrequestplus.cpp</td><td>
+Message Digest context data
+</td></tr>
+
+<tr><td>EVP_MD_CTX_init</td><td>./qt/paymentrequestplus.cpp</td><td>
+Initialize a Message Digest object
+</td></tr>
+
+<tr><td>EVP_PKEY</td><td>./qt/paymentrequestplus.cpp</td><td>
+Public Key object
+</td></tr>
+
+<tr><td>EVP_sha1</td><td>./qt/paymentrequestplus.cpp</td><td>
+EVP_MD: SHA-1
+</td></tr>
+
+<tr><td>EVP_sha256</td><td>./qt/paymentrequestplus.cpp</td><td>
+EVP_MD: SHA-256
+</td></tr>
+
+<tr><td>EVP_sha512</td><td>wallet/crypter.cpp</td><td>
+EVP_MD: SHA-512
+</td></tr>
+
+<tr><td>EVP_VerifyFinal</td><td>./qt/paymentrequestplus.cpp</td><td>
+Signature verification finalization function
+</td></tr>
+
+<tr><td>EVP_VerifyInit_ex</td><td>./qt/paymentrequestplus.cpp</td><td>
+Signature verification initialization function
+</td></tr>
+
+<tr><td>EVP_VerifyUpdate</td><td>./qt/paymentrequestplus.cpp</td><td>
+Signature verification block processing function
+</td></tr>
+
+<tr><td>OPENSSL_cleanse</td><td>support/cleanse.cpp</td><td>
+Fills a buffer with zeros to ensure secure data is removed.
+</td></tr>
+
+<tr><td>OPENSSL_free</td><td>util.cpp</td><td>
+Frees storage allocated with OPENSSL_malloc
+</td></tr>
+
+<tr><td>OPENSSL_malloc</td><td>util.cpp</td><td>
+Allocates storage controlled by the openssl library.
+</td></tr>
+
+<tr><td>OPENSSL_no_config</td><td>util.cpp</td><td>
+Initializes openssl lib without a configuration file
+</td></tr>
+
+<tr><td>RAND_add</td><td>random.cpp</td><td>
+Mixes the num bytes at buf into the PRNG state. Thus, if the data at buf are unpredictable to an adversary, this increases the uncertainty about the state and makes the PRNG output less predictable. 
+</td></tr>
+
+<tr><td>RAND_cleanup</td><td>util.cpp</td><td>
+Erase the PRNG state for security reasons.
+</td></tr>
+
+<tr><td>RAND_screen</td><td>util.cpp</td><td>
+Depricated. Should use RAND_poll. Returns the status of the PRNG state.
+</td></tr>
+
+</tbody></table>
+
+<h3>Call Trees</h3>
+
+<p>Wallet data is encrypted/decrypted using a pass phrase at start up</p>
+<p>No changes needed for HSM</p>
+
+<p>
+</p><xmp>
+CCrypter::SetKeyFromPassphrase
+	<= CWallet::Unlock
+	<= CWallet::ChangeWalletPassphrase
+	<= CWallet::EncryptWallet
+</xmp>
+
+<p></p>
+
+<p>
+</p><xmp>
+CCrypter::Encrypt
+	<= CWallet::ChangeWalletPassphrase
+	<= CWallet::EncryptWallet
+</xmp>
+<p></p>
+
+<p>
+</p><xmp>
+CCrypter::Decrypt
+	<= CWallket::Unlock
+	<= DecryptSecret
+	<= CWallet::ChangeWalletPassphrase
+</xmp>
+<p></p>
+
+<p>
+</p><xmp>
+PaymentRequestPlus::getMerchant					Get merchant name from certificate
+	<= PaymentServer::processPaymentRequest
+		<= PaymentServer::handleURIOrFile
+			<= PaymentServer::eventFilter
+			<= PaymentServer::uiReady
+			<= PaymentServer::handleURIConnection
+			<= BitcoinApplication::initializeResult
+			<= PaymentServer::qt_static_metacall
+		<= PaymentServer::netRequestFinished
+			<= PaymentServer::initNetManager
+	<= TransactionDesc::toHTML
+</xmp>
+<p></p>
+
+
+<hr>
+<h2 id="03">History</h2>
+<ul>
+<li>Initially created in 1995. Called SSLeay.</li>
+<li>Renamed to OpenSSL in 1998.</li>
+<li>Ubiquitous on the server side and in many client tools. The command line tools are also the most common choice for key and certificate management and testing.</li>
+<li>Google branch of OpenSSL is called BoringSSL</li>
+</ul>
+
+<hr>
+<h2 id="04">Version</h2>
+<xmp>
+$ openssl version
+</xmp>
+OR for complete info
+<xmp>
+$ openssl version -a
+</xmp>
+<p>The OPENSSLDIR is where OpenSSL will look for its configuration and certificates.</p>
+
+<hr>
+<h2 id="05">Commands</h2>
+
+<h3>Standard commands</h3>
+
+<table border="1" cellspacing="0">
+<tbody><tr><td><a href="https://www.openssl.org/docs/manmaster/apps/asn1parse.html">asn1parse</a></td><td>ASN.1 content parsing tool</td></tr>
+
+<tr><td><a href="https://www.openssl.org/docs/manmaster/apps/ca.html">ca</a></td><td>The ca command is a minimal CA application. It can be used to sign certificate requests in a variety of forms and generate CRLs it also maintains a text database of issued certificates and their status.</td></tr>
+
+<tr><td><a href="https://www.openssl.org/docs/manmaster/apps/ciphers.html">ciphers</a></td><td>The ciphers command converts textual OpenSSL cipher lists into ordered SSL cipher preference lists. It can be used as a test tool to determine the appropriate cipherlist. Use the command <em>openssl ciphers -v 'ALL:COMPLEMENTOFALL'</em> to get a complete list.</td></tr>
+
+<tr><td><a href="https://www.openssl.org/docs/manmaster/apps/cms.html">cms</a></td><td>The cms command handles S/MIME v3.1 mail. It can encrypt, decrypt, sign and verify, compress and uncompress S/MIME messages.</td></tr>
+
+<tr><td><a href="https://www.openssl.org/docs/manmaster/apps/crl.html">crl</a></td><td>The crl command processes CRL files in DER or PEM format.</td></tr>
+
+<tr><td>crl2pkcs7</td><td>
+</td></tr><tr><td>dgst</td><td>
+</td></tr><tr><td>dh</td><td>
+</td></tr><tr><td>dhparam</td><td>
+</td></tr><tr><td>dsa</td><td>
+</td></tr><tr><td>dsaparam</td><td>
+</td></tr><tr><td>ec</td><td>
+</td></tr><tr><td>ecparam</td><td>
+</td></tr><tr><td>enc</td><td>
+</td></tr><tr><td>engine</td><td>
+</td></tr><tr><td>errstr</td><td>
+</td></tr><tr><td>gendh</td><td>
+</td></tr><tr><td>gendsa</td><td>
+</td></tr><tr><td>genpkey</td><td>
+</td></tr><tr><td>genrsa</td><td>
+</td></tr><tr><td>nseq</td><td>
+</td></tr><tr><td>ocsp</td><td>
+</td></tr><tr><td>passwd</td><td>
+</td></tr><tr><td>pkcs12</td><td>
+</td></tr><tr><td>pkcs7</td><td>
+</td></tr><tr><td>pkcs8</td><td>
+</td></tr><tr><td>pkey</td><td>
+</td></tr><tr><td>pkeyparam</td><td>
+</td></tr><tr><td>pkeyutl</td><td>
+</td></tr><tr><td>prime</td><td>
+</td></tr><tr><td>rand</td><td>
+</td></tr><tr><td>req</td><td>
+</td></tr><tr><td>rsa</td><td>
+</td></tr><tr><td>rsautl</td><td>
+</td></tr><tr><td>s_client</td><td>
+</td></tr><tr><td>s_server</td><td>
+</td></tr><tr><td>s_time</td><td>
+</td></tr><tr><td>sess_id</td><td>
+</td></tr><tr><td>smime</td><td>
+
+</td></tr><tr><td><a href="https://www.openssl.org/docs/manmaster/apps/speed.html">speed</a></td><td>
+This command is used to test the performance of cryptographic algorithms.
+</td></tr>
+
+<tr><td>spkac</td><td>
+</td></tr><tr><td>srp</td><td>
+</td></tr><tr><td>ts</td><td>
+</td></tr><tr><td>verify</td><td>
+</td></tr><tr><td>version</td><td>
+</td></tr><tr><td>x509</td><td>
+</td></tr></tbody></table>
+
+<h3>Message Digest Commands</h3>
+
+<table border="1" cellspacing="0">
+<tbody><tr><td>md4</td><td>
+</td></tr>
+
+<tr><td>md5</td><td>
+</td></tr>
+
+<tr><td>rmd160</td><td>
+</td></tr>
+
+<tr><td>sha</td><td>
+</td></tr>
+
+<tr><td>sha1</td><td>
+</td></tr>
+
+</tbody></table>
+
+<h3>Cipher Commands</h3>
+
+<table border="1" cellspacing="0">
+<tbody><tr><td>aes-128-cbc</td><td>
+</td></tr>
+
+<tr><td>aes-128-ecb</td><td>
+</td></tr>
+
+<tr><td>aes-192-cbc</td><td>
+</td></tr>
+
+<tr><td>aes-192-ecb</td><td>
+</td></tr>
+
+<tr><td>aes-256-cbc</td><td>
+</td></tr>
+
+<tr><td>aes-256-ecb</td><td>
+</td></tr>
+
+<tr><td>base64</td><td>
+</td></tr>
+
+<tr><td>bf</td><td>
+</td></tr>
+
+<tr><td>bf-cbc</td><td>
+</td></tr>
+
+<tr><td>bf-cfb</td><td>
+</td></tr>
+
+<tr><td>bf-ecb</td><td>
+</td></tr>
+
+<tr><td>bf-ofb</td><td>
+</td></tr>
+
+<tr><td>camellia-128-cbc</td><td>
+</td></tr>
+
+<tr><td>camellia-128-ecb</td><td>
+</td></tr>
+
+<tr><td>camellia-192-cbc</td><td>
+</td></tr>
+
+<tr><td>camellia-192-ecb</td><td>
+</td></tr>
+
+<tr><td>camellia-256-cbc</td><td>
+</td></tr>
+
+<tr><td>camellia-256-ecb</td><td>
+</td></tr>
+
+<tr><td>cast</td><td>
+</td></tr>
+
+<tr><td>cast-cbc</td><td>
+</td></tr>
+
+<tr><td>cast5-cbc</td><td>
+</td></tr>
+
+<tr><td>cast5-cfb</td><td>
+</td></tr>
+
+<tr><td>cast5-ecb</td><td>
+</td></tr>
+
+<tr><td>cast5-ofb</td><td>
+</td></tr>
+
+<tr><td>des</td><td>
+</td></tr>
+
+<tr><td>des-cbc</td><td>
+</td></tr>
+
+<tr><td>des-cfb</td><td>
+</td></tr>
+
+<tr><td>des-ecb</td><td>
+</td></tr>
+
+<tr><td>des-ede</td><td>
+</td></tr>
+
+<tr><td>des-ede-cbc</td><td>
+</td></tr>
+
+<tr><td>des-ede-cfb</td><td>
+</td></tr>
+
+<tr><td>des-ede-ofb</td><td>
+</td></tr>
+
+<tr><td>des-ede3</td><td>
+</td></tr>
+
+<tr><td>des-ede3-cbc</td><td>
+</td></tr>
+
+<tr><td>des-ede3-cfb</td><td>
+</td></tr>
+
+<tr><td>des-ede3-ofb</td><td>
+</td></tr>
+
+<tr><td>des-ofb</td><td>
+</td></tr>
+
+<tr><td>des3</td><td>
+</td></tr>
+
+<tr><td>desx</td><td>
+</td></tr>
+
+<tr><td>rc2</td><td>
+</td></tr>
+
+<tr><td>rc2-40-cbc</td><td>
+</td></tr>
+
+<tr><td>rc2-64-cbc</td><td>
+</td></tr>
+
+<tr><td>rc2-cbc</td><td>
+</td></tr>
+
+<tr><td>rc2-cfb</td><td>
+</td></tr>
+
+<tr><td>rc2-ecb</td><td>
+</td></tr>
+
+<tr><td>rc2-ofb</td><td>
+</td></tr>
+
+<tr><td>rc4</td><td>
+</td></tr>
+
+<tr><td>rc4-40</td><td>
+</td></tr>
+
+<tr><td>seed</td><td>
+</td></tr>
+
+<tr><td>seed-cbc</td><td>
+</td></tr>
+
+<tr><td>seed-cfb</td><td>
+</td></tr>
+
+<tr><td>seed-ecb</td><td>
+</td></tr>
+
+<tr><td>seed-ofb</td><td>
+</td></tr>
+
+</tbody></table>
+
+<hr>
+<h2 id="06">Glossary</h2>
+
+<table border="1" cellspacing="0">
+<tbody><tr><th>Term</th><th>Definition</th></tr>
+<tr><td>PEM</td><td>(Privacy-enhanced Electronic Mail) Base64 encoded DER certificiate, enclosed between "-----BEGIN CERTIFICATE-----" and "-----END CERTIFICATE-----"</td></tr>
+</tbody></table>
+
+<hr>
+<h2 id="07">Certificates</h2>
+
+<p>Mozilla certificates are located in /usr/share/ca-certificates/mozilla</p>
+<p>Use openssl asn1parse -in <em>certificate-file</em> to view their contents.</p>
+
+
+<h2 id="08">Key and Certificate Management</h2>
+
+<p>OpenSSL can be used to configure and run a web server that supports SSL. That process consists of three steps:</p>
+<ol>
+<li>generate a strong private key</li>
+<li>create a Certificate Signing Request (CSR) and send it to a CA</li>
+<li>install the CA-provided certificate in your web server</li>
+</ol>
+
+<h3>Key Generation</h3>
+<p>The first step in preparing for the use of public encryption is to generate a private key. Before you begin, you must make several decisions:
+</p>
+
+<h4>Key algorithm</h4>
+<p>
+OpenSSL supports RSA, DSA, and ECDSA keys. For web server keys everyone uses RSA. For SSH, DSA and RSA are widely used, whereas ECDSA might not be supported by all clients.
+</p>
+
+<h4>Key size</h4>
+<p>
+Use 2,048-bit RSA keys are considered secure. Aim also to use 2,048 bits for DSA keys and at least 256 bits for ECDSA.
+</p>
+
+<h4>Passphrase</h4>
+<p>
+Using a passphrase with a key is optional, but strongly recommended. Protected keys can be safely stored, transported, and backed up. On the other hand, such keys are inconvenient, because they canâ€™t be used without their passphrases. In addition, using protected keys in production does not actually increase the security much, if at all. This is because, once activated, private keys are kept unprotected in program memory; an attacker who can get to the server can get the keys from there with just a little more effort. Thus, passphrases should be viewed only as a mechanism for protecting private keys when they are not installed on production systems. If you need better security in production, you should invest in a hardware solution.
+</p>
+
+<h4>To generate an RSA key</h4>
+
+<xmp>
+$ openssl genrsa -aes128 -out fd.key 2048
+</xmp>
+<p>
+Here, I specified that the key be protected with AES-128. You can also use AES-192 or AES-256 (switches -aes192 and -aes256 , respectively), but itâ€™s best to stay away from the other algorithms (DES, 3DES, and SEED).
+</p>
+<p>It will be stored in PEM format. View it with:</p>
+<xmp>
+openssl rsa -text -in fd.key
+</xmp>
+<p>Also see genpkey command.</p>
+
+<h4>To generate a DSA key</h4>
+
+<xmp>
+$ openssl dsaparam -genkey 2048 | openssl dsa -out dsa.key -aes128
+</xmp>
+<p>Also see genpkey command.</p>
+
+<h4>To generate a ECDSA key</h4>
+<xmp>
+$ openssl ecparam -genkey -name secp256r1 | openssl ec -out ec.key -aes128
+</xmp>
+
+<p>OpenSSL supports many named curves (you can get a full list with the -list_curves switch), but, for web server keys, you're limited to only two curves that are supported by all major browsers: secp256r1 (OpenSSL uses the name prime256v1 ) and secp384r1 .
+</p>
+<p>Also see genpkey command.</p>
+
+<h3>Creating Certificate Signing Requests</h3>
+<p>
+Creating a Certificate Signing Request (CSR) is a formal request asking a CA to sign a certificate, and it contains the public key of the entity requesting the certificate and some information about the entity. This data will all be part of the certificate. A CSR is always signed with the private key corresponding to the public key it carries.
+</p><p>
+CSR creation involves providing the elements of the certificate distinguished name. 
+If you want a field to be empty, you must enter a single dot ( . ) on the line. If you do the latter, OpenSSL will populate the corresponding CSR field with the
+default value. 
+</p>
+<xmp>
+$ openssl req -new -key fd.key -out fd.csr
+</xmp>
+<p>
+According to Section 5.4.1 of RFC 2985, challenge password is an optional field that
+was intended for use during certificate revocation as a way of identifying the original
+entity that had requested the certificate. If entered, the password will be included
+verbatim in the CSR and communicated to the CA. Itâ€™s rare to find a CA that relies on
+this field; all instructions Iâ€™ve seen recommend leaving it alone. Having a challenge
+password does not increase the security of the CSR in any way. Further, this field
+should not be confused with the key passphrase, which is a separate feature.
+</p>
+<p>
+After a CSR is generated, use it to sign your own certificate and/or send it to a public CA and
+ask him or her to sign the certificate. 
+</p>
+<p>
+But before you do that, it's a good idea to double-check that the CSR is correct. Here's how:
+</p>
+<xmp>
+$ openssl req -text -in fd.csr -noout
+</xmp>
+
+<h4>Creating CSRs from Existing Certificates</h4>
+<p>
+You can save yourself some typing if you're renewing a certificate and don't want to make any changes to the information presented in it. With the following command, you can create a brand-new CSR from an existing certificate:
+</p>
+<xmp>
+$ openssl x509 -x509toreq -in fd.crt -out fd.csr -signkey fd.key
+</xmp>
+
+<h4>Unattended CSR Generation</h4>
+<p>Using a custom OpenSSL configuration file, you can both automate the process and do certain things that
+are not possible interactively.</p>
+
+For example, create a file fd.cnf with the following contents:
+<xmp>
+[req]
+prompt = no
+distinguished_name = dn
+req_extensions = ext
+input_password = PASSPHRASE
+[dn]
+CN = www.feistyduck.com
+emailAddress = webmaster@feistyduck.com
+O = Feisty Duck Ltd
+L = London
+C = GB
+[ext]
+subjectAltName = DNS:www.feistyduck.com,DNS:feistyduck.com
+</xmp>
+<p>
+Now you can create the CSR directly from the command line:
+</p>
+<xmp>
+$ openssl req -new -config fd.cnf -key fd.key -out fd.csr
+</xmp>
+
+<h4>Signing Your Own Certificates</h4>
+
+<p>The fastest way to do this is to generate a self-signed certificate. </p>
+
+<p>If you already have a CSR, create a certificate using the following command:</p>
+<xmp>
+$ openssl x509 -req -days 365 -in fd.csr -signkey fd.key -out fd.crt
+</xmp>
+<p>
+You don't actually have to create a CSR in a separate step. The following command creates a
+self-signed certificate starting with a key alone:
+</p>
+<xmp>
+$ openssl req -new -x509 -days 365 -key fd.key -out fd.crt
+</xmp>
+<p>If you don't wish to be asked any questions, use the -subj switch to provide the certificate
+subject information on the command line:
+</p>
+<xmp>
+$ openssl req -new -x509 -days 365 -key fd.key -out fd.crt -subj "/C=GB/L=London/O=Feisty Duck Ltd/CN=www.feistyduck.com"
+</xmp>
+
+<h4>Creating Certificates Valid for Multiple Hostnames</h4>
+
+<p>By default, certificates produced by OpenSSL have only one common name and are valid for only one hostname. 
+There are two mechanisms for supporting multiple hostnames in a certificate. The first is to
+list all desired hostnames using an X.509 extension called Subject Alternative Name (SAN).
+The second is to use wildcards. You can also use a combination of the two approaches when
+it's more convenient. In practice, for most sites, you can specify a bare domain name and a
+wildcard to cover all the subdomains (e.g., feistyduck.com and *.feistyduck.com ).
+</p><p>
+When a certificate contains alternative names, all common names are ignored. Newer
+certificates produced by CAs may not even include any common names. For that
+reason, include all desired hostnames on the alternative names list.
+</p><p>
+First, place the extension information in a separate text file. I'm going to call it fd.ext . In the
+file, specify the name of the extension ( subjectAltName ) and list the desired hostnames, as in
+the following example:
+</p>
+<code>
+subjectAltName = DNS:*.feistyduck.com, DNS:feistyduck.com
+</code>
+<p>
+Then, when using the x509 command to issue a certificate, refer to the file using the -extfile switch:
+</p>
+<pre>$ openssl x509 -req -days 365 -in fd.csr -signkey fd.key -out fd.crt -extfile fd.ext
+</pre>
+<p>
+The rest of the process is no different from before.
+</p>
+
+<h2 id="09">SSL Programming</h2>
+
+<h3>Data Structures</h3>
+
+<p><a href="http://h71000.www7.hp.com/doc/83final/ba554_90007/ch04s01.html?btnPrev=%EF%BF%BD%C2%A0prev">Data Structures</a></p>
+
+<p>The most important structures are SSL_CTX and SSL. Usually, one SSL_CTX structure exists per SSL application. An SSL structure is created every time a new SSL connection is created. An SSL structure inherits configuration information from the SSL_CTX structure when it is created.</p>
+
+<table border="1" cellspacing="0">
+<tbody><tr><th>Data Structure</th><th>API for Creation</th><th>API for Deallocation</th></tr>
+<tr><td>SSL_CTX</td><td>SSL_CTX_new()</td><td>SSL_CTX_free()</td></tr>
+<tr><td>SSL</td><td>SSL_new()</td><td>SSL_free()</td></tr>
+<tr><td>SSL_SESSION</td><td>SSL_SESSION_new()</td><td>SSL_SESSION_free()</td></tr>
+<tr><td>BIO</td><td>BIO_new()</td><td>BIO_free()</td></tr>
+<tr><td>X509</td><td>X509_new()</td><td>X509_free()</td></tr>
+<tr><td>RSA</td><td>RSA_new()</td><td>RSA_free()</td></tr>
+<tr><td>DH</td><td>DH_new()</td><td>DH_free()</td></tr>
+</tbody></table>
+ 
+<h3>SSL_CTX</h3>
+
+<p>SSL_CTX is defined in ssl.h. An SSL_CTX structure stores default values for SSL structures. (The SSL structures are created after the SSL_CTX structure is created and configured.) The SSL_CTX structure also holds information about SSL connections and sessions (the numbers of new SSL connections, renegotiations, session resumptions, and so on).</p>
+
+<p>The SSL_CTX structure is created at the beginning of the SSL application. The SSL_CTX structure is configured with the default values that will be inherited by the SSL structures. For example, a CA certificate loaded in the SSL_CTX structure is also loaded into an SSL structure when that SSL structure is created.</p>
+	
+<h3>SSL Structure</h3>
+
+<p>An SSL structure is created for every SSL connection in the SSL client or server program. It is possible to change the values inherited from the SSL_CTX in a specific SSL structure.</p>
+
+<p>SSL Members</p>
+
+<table border="1" cellspacing="0">	
+<tbody><tr><th>Member</th><th>Header</th><th>Description</th></tr>
+<tr><td>SSL_CTX</td><td>ssl.h</td><td>The creating SSL_CTX</td></tr>
+<tr><td>SSL_METHOD</td><td>ssl.h</td><td>SSL protocol version. Pointers to the functions that implement the SSL protocol version specified</td></tr>
+<tr><td>SSL_SESSION</td><td>ssl.h</td><td> </td></tr>
+<tr><td>SSL_CIPHER</td><td>ssl.h</td><td> Information about the cipher suite used for SSL connections and sessions
+</td></tr>
+<tr><td>CERT/X509</td><td>ssl_locl.h and x509.h</td><td>certificate information extracted from an X.509 structure</td></tr>
+<tr><td>BIO</td><td>bio.h</td><td>A BIO structure is an I/O abstraction in an SSL application with SSL APIs. The BIO structure encapsulates an underlying I/O secured by SSL, and all the communication between the client and server is conducted through this structure</td></tr>
+</tbody></table>
+	
+<h3>Programming Tutorial</h3>
+
+<p><a href="http://h71000.www7.hp.com/doc/83final/ba554_90007/ch04s03.html">Programming Tutorial</a></p>
+
+<p>This section demonstrates the implementation of a simple SSL client and server program using OpenSSL APIs.
+
+</p><h4>Overview of SSL Application with OpenSSL APIs</h4>
+<xmp>
+start 
+initialization
+Create SSL_METHOD (choose SSLv2, SSLv3 or TLSv1)
+Create and configure SSL_CTX (certificates, keys, etc )
+
+for each SSL session
+	Create SSL (from SSL_CTX)
+	Set up TCP/IP socket
+	Create and Configure BIO
+	SSL Handshake
+	For each block of data
+		SSL Data Communication
+		SSL Rehandshake (optional)
+	SSL Closure
+	SSL Session Reuse (optional)
+End
+</xmp>
+
+<h4>Initializing the SSL Library</h4>
+
+<xmp>
+SSL_library_init(); 		// load encryption & hash algorithms for SSL
+SSL_load_error_strings(); 	// load the error strings for good error reporting
+</xmp>
+
+<h4>Creating SSL_METHOD</h4>
+<p>
+For every SSL/TLS version, there are three types of APIs to create an SSL_METHOD structure: one for both client and server, one for server only, and one for client only.
+
+<table border="1" cellspacing="0">
+<tbody><tr><th>Protocol type</th><th>Combined client and server</th><th>Dedicated server</th><th>Dedicated client</th></tr>
+<tr><td>SSLv2</td><td>SSLv2_method()</td><td>SSLv2_server_method()</td><td>SSLv2_client_method()</td></tr>
+<tr><td>SSLv3</td><td>SSLv3_method()</td><td>SSLv3_server_method()</td><td>SSLv3_client_method()</td></tr>
+<tr><td>TLSv1</td><td>TLSv1_method()</td><td>TLSv1_server_method()</td><td>TLSv1_client_method()</td></tr>
+<tr><td>SSLv23</td><td>SSLv23_method()</td><td>SSLv23_server_method()</td><td>SSLv23_client_method()</td></tr>
+</tbody></table>
+ 
+</p><p>There is no SSL protocol version named SSLv23. The SSLv23_method() API and its variants choose SSLv2, SSLv3, or TLSv1 for compatibility with the peer.</p>
+	
+<p>
+The SSLv23_method() API and its variants may be used when the compatibility with the peer is important. An SSL server with the SSLv23 method can understand any of the SSLv2, SSLv3, and TLSv1 hello messages. However, the SSL client using the SSLv23 method cannot establish connection with the SSL server with the SSLv3/TLSv1 method because SSLv2 hello message is sent by the client.
+</p>
+
+<h4>Creating SSL_CTX</h4>
+<xmp>
+auto meth = SSLv3_method();
+auto ctx = SSL_CTX_new(meth);
+</xmp>
+
+<h4>Setting Up the Certificate and Key</h4>
+
+<p>The mandatory and optional certificates are as follows:</p>
+
+<xmp>
+For the SSL server:
+    Server's own certificate (mandatory)
+    CA certificate (optional)
+
+For the SSL client:
+    CA certificate (mandatory)
+    Client's own certificate (optional)
+</xmp>
+
+
+<p>Use SSL_CTX_use_certificate_file() to load a certificate into an SSL_CTX structure.</p>
+<p>Use SSL_use_certificate_file() to load a certificate into an SSL structure. The SSL structure automatically loads the same certificate that is contained in the SSL_CTX structure. Therefore, you onlyneed to call the SSL_use_certificate_file() API for the SSL structure only if it needs to load a different certificate than the default certificate contained in the SSL_CTX structure.
+</p>
+
+<h4>Loading a Private Key</h4>
+<p>
+The next step is to set a private key that corresponds to the server or client certificate. In the SSL handshake, a certificate (which contains the public key) is transmitted to allow the peer to use it for encryption. The encrypted message sent from the peer can be decrypted only using the private key. You must preload the private key that was created with the public key into the SSL structure.
+</p>
+<p>
+The following APIs load a private key into an SSL or SSL_CTX structure:
+</p>
+<ul>
+<li>SSL_CTX_use_PrivateKey()</li>
+<li>SSL_CTX_use_PrivateKey_ASN1()</li>
+<li>SSL_CTX_use_PrivateKey_file()</li>
+<li>SSL_CTX_use_RSAPrivateKey()</li>
+<li>SSL_CTX_use_RSAPrivateKey_ASN1()</li>
+<li>SSL_CTX_use_RSAPrivateKey_file()</li>
+<li>SSL_use_PrivateKey()</li>
+<li>SSL_use_PrivateKey_ASN1()</li>
+<li>SSL_use_PrivateKey_file()</li>
+<li>SSL_use_RSAPrivateKey()</li>
+<li>SSL_use_RSAPrivateKey_ASN1()</li>
+<li>SSL_use_RSAPrivateKey_file()</li>
+</ul>
+
+<h4>Loading a CA Certificate</h4>
+
+<p>To verify a certificate, you must first load a CA certificate (because the peer certificate is verified against a CA certificate). The SSL_CTX_load_verify_locations() API loads a CA certificate into the SSL_CTX structure.</p>
+
+<xmp>
+int SSL_CTX_load_verify_locations( SSL_CTX * ctx, const char *CAfile, const char *CApath);
+</xmp>
+
+<p>
+Arguments CAfile and CApath, are used to specify the location of the CA certificate. When looking up CA certificates, the OpenSSL library first searches the certificates in CAfile, then those in CApath.
+</p>
+
+<p>If the certificate is specified by CAfile (the certificate must exist in the same directory as the SSL application), specify NULL for CApath.</p>
+
+<p>To use the third argument, CApath, specify NULL for CAfile. You must also hash the CA certificates in the directory specified by CApath. Use the Certificate Tool to perform the hashing operation.</p>
+
+<h4>Setting Up Peer Certificate Verification</h4>
+
+<p>The CA certificate loaded in the SSL_CTX structure is used for peer certificate verification.</p>
+
+<p>For successful verification, the peer certificate must be signed with the CA certificate directly or indirectly (a proper certificate chain exists). The certificate chain length from the CA certificate to the peer certificate can be set in the verify_depth field of the SSL_CTXand SSL structures. (The value in SSL is inherited from SSL_CTX when you create an SSL structure using the SSL_new()). Setting verify_depth to 1 means that the peer certificate must be directly signed by the CA certificate.</p>
+
+<p>
+The SSL_CTX_set_verify() API allows you to set the verification flags in the SSL_CTX structure and a callback function for customized verification as its third argument. (Setting NULL to the callback function means the built-in default verification function is used.) In the second argument of SSL_CTX_set_verify(), you can set the following macros:
+</p>
+
+<ul>
+<li>SSL_VERIFY_NONE</li>
+<li>SSL_VERIFY_PEER Can be used on both SSL client and server to enable the verification. However, the subsequent behaviors depend on whether the macro is set on a client or a server.</li>
+<li>SSL_VERIFY_FAIL_IF_NO_PEER_CERT</li>
+<li>SSL_VERIFY_CLIENT_ONCE</li>
+</ul>
+
+<p>For example:</p>
+<xmp>
+/* Set a callback function (verify_callback) for peer certificate */
+ * verification 
+ */
+SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, verify_callback);
+
+/* Set the verification depth to 1 */
+SSL_CTX_set_verify_depth(ctx,1);
+</xmp>
+
+<p>
+You can verify a peer certificate by using the SSL_get_verify_result(). This method allows you to obtain the peer certificate verification result without using the SSL_CTX_set_verify().
+</p><p>
+Call the following APIs before you call the SSL_get_verify_result():
+</p><p>
+Call SSL_connect() in the client and SSL_accept() in the server to perform the SSL handshake. Certificate verification is performed during the handshake. 
+</p><p>
+Call SSL_get_peer_certificate() to obtain the peer certificate. 
+</p><p>
+For example,
+</p>
+<pre>SSL_CTX_set_verify_depth(ctx, 1);
+err = SSL_connect(ssl);
+if(SSL_get_peer_certificate(ssl) != NULL)
+{
+   if(SSL_get_verify_result(ssl) == X509_V_OK)
+   	  BIO_printf(bio_c_out, "client verification with SSL_get_verify_result() succeeded.\n");                
+   else
+   {
+     BIO_printf(bio_err, "client verification with SSL_get_verify_result() failed.\n");
+     exit(1);
+   }
+}
+else
+   BIO_printf(bio_c_out, -the peer certificate was not presented.\n-);
+</pre>
+
+<h3>Setting Up Certificates for the SSL Server</h3>
+<p>
+The SSL protocol requires that the server set its own certificate and key. If you want the server to conduct client authentication with the client certificate, the server must load a CA certificate so that it can verify the client-s certificate.
+</p>
+<p>
+The following example shows how to set up certificates for the SSL server:
+</p>
+<pre> /* Load server certificate into the SSL context */
+ if (SSL_CTX_use_certificate_file(ctx, SERVER_CERT, SSL_FILETYPE_PEM) &lt;= 0)  
+ {
+    ERR_print_errors(bio_err);  /* == 
+    ERR_print_errors_fp(stderr); */
+    exit(1);
+ }
+ 
+ /* Load the server private-key into the SSL context */
+ if (SSL_CTX_use_PrivateKey_file(ctx, SERVER_KEY, SSL_FILETYPE_PEM) &lt;= 0) 
+ {
+    ERR_print_errors(bio_err);  /* == 
+    ERR_print_errors_fp(stderr); */
+    exit(1);
+ }
+/* Load trusted CA. */
+ if (!SSL_CTX_load_verify_locations(ctx,CA_CERT,NULL)) 
+ {
+    ERR_print_errors(bio_err);  /* == 
+    ERR_print_errors_fp(stderr); */
+    exit(1);
+ }
+ 
+ /* Set to require peer (client) certificate verification */
+ SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, verify_callback);
+
+ /* Set the verification depth to 1 */
+ SSL_CTX_set_verify_depth(ctx,1);
+</pre>
+
+<h3>Setting Up Certificates for the SSL Client</h3>
+<p>
+Generally, the SSL client verifies the server certificate in the process of the SSL handshake. This verification requires the SSL client to set up its trusting CA certificate. The server certificate must be signed with the CA certificate loaded in the SSL client in order for the server certificate verification to succeed.
+</p>
+<p>
+The following example shows how to set up certificates for the SSL client:
+</p>
+<pre>/*----- Load a client certificate into the SSL_CTX structure -----*/
+  if(SSL_CTX_use_certificate_file(ctx,CLIENT_CERT, SSL_FILETYPE_PEM) &lt;= 0){
+      ERR_print_errors_fp(stderr);
+      exit(1);
+  }
+ 
+/*----- Load a private-key into the SSL_CTX structure -----*/
+  if(SSL_CTX_use_PrivateKey_file(ctx,CLIENT_KEY, SSL_FILETYPE_PEM) &lt;= 0){
+      ERR_print_errors_fp(stderr);
+      exit(1);
+  }
+ 
+/* Load trusted CA. */
+  if (!SSL_CTX_load_verify_locations(ctx,CA_CERT,NULL)) {
+      ERR_print_errors_fp(stderr);
+      exit(1);
+  }
+</pre>
+
+<h3>Creating and Setting Up the SSL Structure</h3>
+<p>
+Call SSL_new() to create an SSL structure. Information for an SSL connection is stored in the SSL structure. 
+</p>
+<pre>ssl = SSL_new(ctx);
+</pre>
+<p>
+A SSL structure inherits the following information from the SSL_CTX structure: types of connection methods, options, verification settings, and timeout settings. 
+</p>
+<p>
+You can modify the default values in the SSL structure using SSL APIs. For example, you can use SSL_CTX_use_certificate() to load a certificate into an SSL_CTX structure, and you can use SSL_use_certificate() to load a certificate into an SSL structure.
+</p>
+
+<h3>Setting Up the TCP/IP Connection</h3>
+
+<h4>Creating and Setting Up the Server Socket</h4>
+
+<pre><code>
+ listen_sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+ CHK_ERR(listen_sock, "socket");
+ 
+ memset(&amp;sa_serv, 0, sizeof(sa_serv));
+ sa_serv.sin_family      = AF_INET;
+ sa_serv.sin_addr.s_addr = INADDR_ANY;
+ sa_serv.sin_port        = htons(s_port);      /* Server Port number */
+ 
+ err = bind(listen_sock, (struct sockaddr*)&amp;sa_serv,sizeof(sa_serv));
+ CHK_ERR(err, "bind");
+ 
+ /* Receive a TCP connection. */
+ err = listen(listen_sock, 5);
+ CHK_ERR(err, "listen");
+</code>
+</pre>
+
+<h4>Creating and Setting Up the Client Socket</h4>
+
+<pre><code>
+ sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+ CHK_ERR(sock, "socket");
+
+ memset (&amp;server_addr, '\0', sizeof(server_addr));
+ server_addr.sin_family      = AF_INET;
+ server_addr.sin_port        = htons(s_port);       /* Server Port number */
+ server_addr.sin_addr.s_addr = inet_addr(s_ipaddr); /* Server IP */
+ 
+ err = connect(sock, (struct sockaddr*) &amp;server_addr, sizeof(server_addr));
+ CHK_ERR(err, "connect");
+</code>
+</pre>
+
+<h4>Establishing a TCP/IP Connection on the SSL Server</h4>
+
+<pre><code>
+ sock = accept(listen_sock, (struct sockaddr*)&amp;sa_cli, &amp;client_len);
+ BIO_printf(bio_c_out, "Connection from %lx, port %x\n", 
+ sa_cli.sin_addr.s_addr, sa_cli.sin_port);
+</code>
+</pre>
+
+<h4>Setting Up the Socket/Socket BIO in the SSL Structure</h4>
+
+<p>
+After you create the SSL structure and the TCP/IP socket (sock), you must configure them so that SSL data communication with the SSL structure can be performed automatically through the socket.
+</p>
+<p>
+The simplest way is to set the socket directly into the SSL structure, as follows:
+</p>
+<code>
+SSL_set_fd(ssl, sock);
+</code>
+
+<p>
+A better way is to use a BIO structure, which is the I/O abstraction provided by OpenSSL. 
+</p><p>
+The following two examples demonstrate how to create a socket BIO and set it into the SSL structure.
+</p>
+<pre><code>
+ sbio=BIO_new(BIO_s_socket());
+ BIO_set_fd(sbio, sock, BIO_NOCLOSE);
+ SSL_set_bio(ssl, sbio, sbio);
+</code>
+</pre>
+<p>
+In the following example, the BIO_new_socket() API creates a socket BIO in which the TCP/IP socket is assigned, and the SSL_set_bio() API assigns the socket BIO into the SSL structure. The following two lines of code are equivalent to the preceding three lines:
+</p>
+<pre><code>
+ sbio = BIO_new_socket(socket, BIO_NOCLOSE);
+ SSL_set_bio(ssl, sbio, sbio);
+</code>
+</pre>
+<p>
+NOTE: If there is already a BIO connected to ssl, BIO_free() is called (for both the reading and writing side, if different).
+</p>
+	
+<h3>SSL Handshake</h3>
+
+<p>
+The handshake can be completed by calling SSL_accept() on the SSL server and SSL_connect() on the SSL client.
+</p>
+
+<pre> // Server
+ err = SSL_accept(ssl);
+</pre>
+
+<pre> // Client
+ err = SSL_connect(ssl);
+</pre>
+
+<h3>Performing an SSL Handshake with SSL_read and SSL_write (Optional)</h3>
+<p>
+Optionally, you can call SSL_write() and SSL_read() to complete the SSL handshake as well as perform SSL data exchange. With this approach, you must call SSL_set_accept_state() before you call SSL_read() on the SSL server. You must also call SSL_set_connect_state() before you call SSL_write() on the client. For example:
+</p>
+<pre> /* When SSL_accept() is not called, SSL_set_accept_state() */ 
+ /* must be called prior to SSL_read() */
+ SSL_set_accept_state(ssl);
+ 
+ /* When SSL_connect() is not called, SSL_set_connect_state() */ 
+ /* must be called prior to SSL_write() */
+ SSL_set_connect_state(ssl);
+</pre>
+
+<h3>Obtaining a Peer Certificate (Optional)</h3>
+<p>
+Optionally, after the SSL handshake, you can obtain a peer certificate by calling SSL_get_peer_certificate().
+</p>
+<pre> peer_cert = SSL_get_peer_certificate(ssl);
+</pre>
+
+<h3>Transmitting SSL Data</h3>
+<p>
+After the SSL handshake is completed, data can be transmitted securely over the established SSL connection.
+</p>
+
+<h4>Sending Data</h4>
+
+<pre> err = SSL_write(ssl, wbuf, strlen(wbuf));
+</pre>
+
+<h4>Receiving Data</h4>
+
+<pre> err = SSL_read(ssl, rbuf, sizeof(rbuf)-1);
+</pre>
+
+<h4>Using BIOs for SSL Data Transmission (Optional)</h4>
+<p>
+Instead of using SSL_write() and SSL_read(), you can transmit data by calling BIO_puts() and BIO_gets(), and BIO_write() and BIO_read(), provided that a buffer BIO is created and set up as follows:
+</p>
+
+<pre><code>
+ BIO   *buf_io, *ssl_bio;
+ char  rbuf[READBUF_SIZE];
+ char  wbuf[WRITEBUF_SIZE]
+ 
+ buf_io = BIO_new(BIO_f_buffer());     /* create a buffer BIO */
+ ssl_bio = BIO_new(BIO_f_ssl());       /* create an ssl BIO */
+ BIO_set_ssl(ssl_bio, ssl, BIO_CLOSE); /* assign the ssl BIO to SSL */
+ BIO_push(buf_io, ssl_bio);            /* add ssl_bio to buf_io */                     
+ 
+ ret = BIO_puts(buf_io, wbuf);         
+ /* Write contents of wbuf[] into buf_io */
+
+ ret = BIO_write(buf_io, wbuf, wlen);        
+ /* Write wlen-byte contents of wbuf[] into buf_io */
+ 
+ ret = BIO_gets(buf_io, rbuf, READBUF_SIZE);  
+ /* Read data from buf_io and store in rbuf[] */
+
+ ret = BIO_read(buf_io, rbuf, rlen);            
+ /* Read rlen-byte data from buf_io and store rbuf[] */
+</code>
+</pre>
+
+<h3>Closing an SSL Connection</h3>
+
+<p>
+When you close an SSL connection, the SSL client and server send close_notify messages to notify each other of the SSL closure. You use the SSL_shutdown() API to send the close_notify alert to the peer.
+</p>
+<p>
+The shutdown procedure consists of two steps:
+</p>
+<ul>
+<li>Sending a close_notify shutdown alert</li>
+<li>Receiving a close_notify shutdown alert from the peer</li>
+</ul>
+<p>
+The following rules apply to closing an SSL connection:
+</p>
+<ul>
+<li>Either party can initiate a close by sending a close_notify alert</li>
+<li>Any data received after sending a closure alert is ignored</li>
+<li>Each party is required to send a close_notify alert before closing the write side of the connection</li>
+<li>The other party is required both to respond with a close_notify alert of its own and to close down the connection immediately, discarding any pending writes</li>
+<li>The initiator of the close is not required to wait for the responding close_notify alert before closing the read side of the connection</li>
+</ul>
+<p>
+The SSL client or server that initiates the SSL closure calls SSL_shutdown() either once or twice. If it calls the API twice, one call sends the close_notify alert and one call receives the response from the peer. If the initator calls the API only once, the initiator does not receive the close_notify alert from the peer. (The initiator is not required to wait for the responding alert.)
+</p>
+<p>
+The peer that receives the alert calls SSL_shutdown() once to send the alert to the initiating party.
+</p>
+
+<h3>Resuming an SSL Connection</h3>
+
+<p>
+You can reuse the information from an already established SSL session to create a new SSL connection. Because the new SSL connection is reusing the same master secret, the SSL handshake can be performed more quickly. As a result, SSL session resumption can reduce the load of a server that is accepting many SSL connections.
+</p>
+
+<ol>
+<li>Start the first SSL connection. This also creates an SSL session.
+<pre>    ret = SSL_connect(ssl)
+    (Use SSL_read() / SSL_write() for data communication over the SSL connection)
+</pre>
+</li>
+<li>Save the SSL session information.
+<pre>    sess = SSL_get1_session(ssl);  
+    /* sess is an SSL_SESSION, and ssl is an SSL */
+</pre>
+</li>
+<li>Shut down the first SSL connection.
+<pre>    SSL_shutdown(ssl);
+</pre>
+</li>
+<li>Create a new SSL structure.
+<pre>    ssl = SSL_new(ctx);
+</pre>
+</li>
+<li>Set the SSL session to a new SSL session before calling SSL_connect().
+<pre>    SSL_set_session(ssl, sess);
+    err = SSL_connect(ssl);
+</pre>
+</li>
+<li>Start the second SSL connection with resumption of the session.
+<pre>    ret = SSL_connect(ssl)
+    (Use SSL_read() / SSL_write() for data communication over the SSL connection)
+</pre>
+</li>
+</ol>
+<p>
+If the SSL client calls SSL_get1_session() and SSL_set_session(), the SSL server can accept a new SSL connection using the same session without calling special APIs to resume the session. The server does this by following the steps discussed in â€œCreating and Setting Up the SSL Structure â€, â€œSetting Up the TCP/IP Connectionâ€, â€œSetting Up the Socket/Socket BIO in the SSL Structureâ€, â€œSSL Handshakeâ€, and â€œTransmitting SSL Dataâ€.
+</p>
+<p>	
+NOTE: Calling SSL_free() results in the failure of the SSL session to resume, even if you saved the SSL session with SSL_get1_session().
+</p>
+	
+<h3>Renegotiating the SSL Handshake</h3>
+<p>
+SSL renegotiation is a new SSL handshake over an already established SSL connection. Because the renegotiation messages (including types of ciphers and encryption keys) are encrypted and then sent over the existing SSL connection, SSL renegotiation can establish another SSL session securely. SSL renegotiation is useful in the following situations, once you have established an ordinary SSL session:
+</p>
+<ul>
+<li>When you require client authentication</li>
+<li>When you are using a different set of encryption and decryption keys</li>
+<li>When you are using a different set of encryption and hashing algorithms</li>
+</ul>
+<p>
+SSL renegotiation can be initiated by either the SSL client or the SSL server. 
+</p>
+
+<h4>SSL Renegotiation Initiated by the SSL Server</h4>
+
+<pre><code>
+ printf("Starting SSL renegotiation on SSL server (initiating by SSL server)");
+ if(SSL_renegotiate(ssl) &lt;= 0){
+     printf("SSL_renegotiate() failed\n");
+     exit(1);
+ }
+ 
+ if(SSL_do_handshake(ssl) &lt;= 0){
+     printf("SSL_do_handshake() failed\n");
+     exit(1);
+ }
+ 
+ ssl-&gt;state = SSL_ST_ACCEPT;
+ 
+ if(SSL_do_handshake(ssl) &lt;= 0){
+     printf("SSL_do_handshake() failed\n");
+     exit(1);
+ }
+</code>
+</pre>
+
+<p>
+The following code shows the APIs called by the SSL client when the renegotiation is initiated by the server:
+</p>
+<pre> printf("Starting SSL renegotiation on SSL client (initiating by SSL server)");       
+ /* SSL   renegotiation */
+      err = SSL_read(ssl, buf, sizeof(buf)-1);
+</pre>
+
+<h4>SSL Renegotiation Initiated by the SSL Client</h4>
+
+<pre> printf("Starting SSL renegotiation on SSL client (initiating by SSL client)");
+ if(SSL_renegotiate(ssl) &lt;= 0){
+        printf("SSL_renegotiate() failed\n");
+        exit(1);
+ }
+ if(SSL_do_handshake(ssl) &lt;= 0){
+        printf("SSL_do_handshake() failed\n");
+            exit(1);
+ }
+</pre>
+<p>
+The following code shows the APIs called by the SSL server when the renegotiation is initiated by the client. (These are the same APIs that are called by the SSL client when the renegotiation is initiated by the server.)
+</p>
+<pre> printf("Starting SSL renegotiation on SSL server (initiating by SSL client)");
+   /* SSL renegotiation */
+      err = SSL_read(ssl, buf, sizeof(buf)-1);
+</pre>
+
+<h3>Finishing the SSL Application</h3>
+<p>
+You must free data structures that you explicitly created in the SSL application program. Data structures that were created inside another structure with an xxx_new() API are automatically deallocated when the structure is deallocated with the corresponding xxx_free() API. For example, a BIO structure created with SSL_new() is freed when you call SSL_free(); you do not need to call BIO_free() to free the BIO inside the SSL structure. However, if the application program called BIO_new() to allocate a BIO structure, you must free that structure with BIO_free().  You must call SSL_shutdown() before you call SSL_free().
+</p>
+
+<h2 id="10">Examining Certificates</h2>
+
+<p>
+In the following example, I use the -text switch to print certificate contents and -noout to
+reduce clutter by not printing the encoded certificate itself (which is the default behavior):
+</p>
+<pre>$ openssl x509 -text -in fd.crt -noout
+</pre>
+
+<p>
+The <em>Basic Constraints</em> extension is used to mark certificates as belonging to a CA, giving them
+the ability to sign other certificates. Non-CA certificates will either have this extension omitted or will have 
+the value of CA set to FALSE . This extension is critical, which means that all software-consuming certificates must understand its meaning.
+</p>
+<p>
+The <em>Key Usage (KU)</em> and <em>Extended Key Usage (EKU)</em> extensions restrict what a certificate can
+be used for. If these extensions are present, then only the listed uses are allowed. If the extensions are not present, there are no use restrictions. 
+</p>
+<p>
+The <em>CRL Distribution Points</em> extension lists the addresses where the CA's <em>Certificate 
+Revocation List (CRL)</em> information can be found. This information is important in cases in which
+certificates need to be revoked. CRLs are CA-signed lists of revoked certificates, published at
+regular time intervals (e.g., seven days).
+</p>
+<p>
+The <em>Certificate Policies</em> extension is used to indicate the policy under which the 
+certificate was issued. For example, this is where <em>extended validation</em> (EV) 
+indicators can be found (as in the example that follows). The indicators are in the form of 
+unique object identifiers (OIDs), and they are unique to the issuing CA. In addition, this 
+extension often contains one or more <em>Certificate Policy Statement</em> (CPS) points, 
+which are usually web pages or PDF documents.
+</p>
+<p>
+The <em>Authority Information Access</em> (AIA) extension usually contains two important pieces of
+information. First, it lists the address of the CAâ€™s Online Certificate Status Protocol (OCSP)
+responder, which can be used to check for certificate revocation in real time. The exten-
+sion may also contain a link to where the issuerâ€™s certificate (the next certificate in the
+chain) can be found. These days, server certificates are rarely signed directly by trusted root
+certificates, which means that users must include one or more intermediate certificates in their
+configuration. Mistakes are easy to make and will invalidate the certificates. Some clients (e.g.,
+Internet Explorer) will use the information provided in this extension to fix an incomplete
+certificate chain, but many clients wonâ€™t.
+</p>
+<p>
+The <em>Subject Key Identifier and Authority Key Identifier</em> extensions establish unique subject and
+authority key identifiers, respectively. The value specified in the Authority Key Identifier ex-
+tension of a certificate must match the value specified in the Subject Key Identifier extension
+in the issuing certificate. This information is very useful during the certification path-build-
+ing process, in which a client is trying to find all possible paths from a leaf (server) certificate 
+to a trusted root. Certification authorities will often use one private key with more than one
+certificate, and this field allows software to reliably identify which certificate can be matched
+to which key. 
+</p>
+<p>
+Finally, the <em>Subject Alternative Name</em> extension is used to list all the hostnames for which the
+certificate is valid. This extension used to be optional; if it isn't present, clients fall back to
+using the information provided in the Common Name (CN), which is part of the Subject field.
+If the extension is present, then the content of the CN field is ignored during validation.
+</p>
+
+<h2 id="11">Key and Certificate Conversion</h2>
+
+<p>Common formats:</p>
+
+<table border="1" cellspacing="0">
+<tbody><tr><td>Binary (DER) certificate</td><td>Contains an X.509 certificate in its raw form, using DER ASN.1 encoding.</td></tr>
+
+<tr><td>ASCII (PEM) certificate(s)</td><td>Contains a base64-encoded DER certificate, with -----BEGIN CERTIFICATE----- used as the header and -----END CERTIFICATE----- as the footer.</td></tr>
+
+<tr><td>Binary (DER) key</td><td>Contains a private key in its raw form, using DER ASN.1 encoding. OpenSSL creates keys in its own traditional (SSLeay) format. There's also an alternative format called PKCS#8 (defined in RFC 5208), but it's not widely used. OpenSSL can convert to and from PKCS#8 format using the pkcs8 command.</td></tr>
+<tr><td>ASCII (PEM) key</td><td>Contains a base64-encoded DER key, sometimes with additional metadata (e.g., the algorithm used for password protection).</td></tr>
+
+<tr><td>PKCS#7 certificate(s)</td><td>A complex format designed for the transport of signed or encrypted data, defined in RFC 2315. It's usually seen with .p7b and .p7c extensions and can include the entire certificate chain as needed. This format is supported by Java's keytool utility.</td></tr>
+<tr><td>PKCS#12 (PFX) key and certificate(s)</td><td>A complex format that can store and protect a server key along with an entire certificate chain. It's commonly seen with .p12 and .pfx extensions. This format is commonly used in Microsoft products, but is also used for client certificates. These days, the PFX name is used as a synonym for PKCS#12.</td></tr>
+</tbody></table>
+
+<h3>PEM and DER Conversion</h3>
+
+<p>To convert a certificate from PEM to DER format:</p>
+<pre>$ openssl x509 -inform PEM -in fd.pem -outform DER -out fd.der
+</pre>
+
+<p>To convert a certificate from DER to PEM format:</p>
+<pre>$ openssl x509 -inform DER -in fd.der -outform PEM -out fd.pem
+</pre>
+<p>The syntax is identical if you need to convert private keys between DER and PEM formats, but different commands are used: rsa for RSA keys, and dsa for DSA keys.
+</p>
+
+<h3>PKCS#12 (PFX) Conversion</h3>
+<p>One command is all that's needed to convert the key and certificates in PEM format to PKCS#12. The following example converts a key ( fd.key ), certificate ( fd.crt ), and intermediate certificates ( fd-chain.crt ) into an equivalent single PKCS#12 file:
+</p>
+<pre>$ openssl pkcs12 -export -name "My Certificate" -out fd.p12 -inkey fd.key -in fd.crt -certfile fd-chain.crt
+</pre>
+<p>
+The reverse conversion isn't as straightforward. You can use a single command, but in that case youâ€™ll get the entire contents in a single file:
+</p>
+<pre>$ openssl pkcs12 -in fd.p12 -out fd.pem -nodes
+</pre>
+<p>
+It's possible to get OpenSSL to split the components for you, but doing so requires multiple
+invocations of the pkcs12 command (including typing the bundle password each time):
+</p>
+<pre>$ openssl pkcs12 -in fd.p12 -nocerts -out fd.key -nodes
+$ openssl pkcs12 -in fd.p12 -nokeys -clcerts -out fd.crt
+$ openssl pkcs12 -in fd.p12 -nokeys -cacerts -out fd-chain.crt
+</pre>
+
+<h3>PKCS#7 Conversion</h3>
+<p> To convert from PEM to PKCS#7, use the crl2pkcs7 command:
+</p>
+<pre>$ openssl crl2pkcs7 -nocrl -out fd.p7b -certfile fd.crt -certfile fd-chain.crt
+</pre>
+<p>To convert from PKCS#7 to PEM, use the pkcs7 command with the -print_certs switch:</p>
+<pre>openssl pkcs7 -in fd.p7b -print_certs -out fd.pem
+</pre>
+
+<h2 id="12">Creating a Private Certification Authority</h2>
+
+<p>Creating a new CA involves several steps:</p>
+<ul>
+<li>Configuration</li>
+<li>Creation of a directory structure</li>
+<li>Initialization of the key files</li>
+<li>Generation of the root key and certificate</li>
+</ul>
+
+<h3>Configuration</h3>
+
+<p>See ~/EDC/edc.openssl.conf</p>
+
+<h3>Creation of a directory structure</h3>
+<pre>$ mkdir root-ca
+$ cd root-ca
+$ mkdir certs db private
+$ chmod 700 private
+$ touch db/index
+$ openssl rand -hex 16 &gt; db/serial
+$ echo 1001 &gt; db/crlnumber
+</pre>
+<p>
+The following subdirectories are used:
+</p>
+
+<dl>
+<dt>certs/</dt>
+<dd>Certificate storage; new certificates will be placed here as they are issued.</dd>
+<dt>db/</dt>
+<dd>This directory is used for the certificate database (index) and the files that hold the next certificate and CRL serial numbers. OpenSSL will create some additional files as needed.</dd>
+<dt>private/</dt>
+<dd>This directory will store the private keys, one for the CA and the other for the OCSP responder. It's important that no other user has access to it. (In fact, if you're going to be serious about the CA, the machine on which the root material is stored should have only a minimal number of user accounts.)</dd>
+</dl>
+
+<h4>Structure of the Database File</h4>
+<p>
+The database in db/index is a plaintext file that contains certificate information, one certificate
+per line. Immediately after the root CA creation, it should contain only one line:
+</p>
+<p>Each line contains six values separated by tabs:</p>
+<ol>
+<li>Status flag ( V for valid, R for revoked, E for expired)</li>
+<li>Expiration date (in YYMMDDHHMMSSZ format)</li>
+<li>Revocation date or empty if not revoked</li>
+<li>Serial number (hexadecimal)</li>
+<li>File location or unknown if not known</li>
+<li>Distinguished name</li>
+</ol>
+
+<h3>Initialization of the key files</h3>
+
+<p>Generate the key and the CSR:</p>
+<pre>$ openssl req -new -config edc.openssl.conf -out root-ca.csr -keyout private/root-ca.key
+</pre>
+
+<p>In the second step, we create a self-signed certificate. The -extensions switch points to the ca_ext section in the configuration file, which activates the extensions that are appropriate for a root CA:</p>
+
+<pre>$ touch db/index
+$ openssl ca -selfsign -config edc.openssl.conf -in root-ca.csr -out root-ca.crt -extensions ca_ext
+</pre>
+
+<h3>Generation of the root key and certificate</h3>
+
+<p>
+To generate a CRL from the new CA:
+</p>
+
+$ openssl ca -gencrl -config edc.openssl.conf -out root-ca.crl
+
+<p>To issue a certificate, invoke the ca command:</p>
+
+<pre>$ openssl ca -config edc.openssl.conf -in <em>MyCertificate</em>.csr -out sub-ca.crt -extensions sub_ca_ext
+</pre>
+
+<p>
+To revoke a certificate, use the -revoke switch of the ca command; youâ€™ll need to have a copy
+of the certificate you wish to revoke. Because all certificates are stored in the certs/ directory,
+you only need to know the serial number. If you have a distinguished name, you can look for
+the serial number in the database.  Choose the correct reason for the value in the -crl_reason switch. The value can 
+be one of the following: 
+</p>
+<ul>
+<li>unspecified</li>
+<li>keyCompromise</li>
+<li>CACompromise</li>
+<li>affiliationChanged</li>
+<li>superseded</li>
+<li>cessationOfOperation</li>
+<li>certificateHold</li>
+<li>removeFromCRL</li>
+</ul>
+
+<xmp>
+$ openssl ca -config root-ca.conf -revoke certs/1002.pem -crl_reason keyCompromise
+</xmp>
+
+</body></html>

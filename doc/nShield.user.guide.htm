@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>nShield User Guide</title>
+</head>
+
+<body>
+<h1>nShield User Guide</h1>
+
+<p>Tech support is available <a href='http://www.thales-esecurity.com/support-landing-page'>here</a>.</p>
+
+<h2>Hardserver</h2>
+
+<p>The hardserver software controls communication between applications and Thales nShield products. It runs as a daemon process.</p>
+
+<p>Paths:</p>
+
+<table cellspacing=0 border=1>
+<tr><th>Directory</th><th>Default Path</th></tr>
+<tr><td>nShield Installation</td><td>/opt/nfast/</td></tr>
+<tr><td>Key Management Data</td><td>/opt/nfast/kmdata</td></tr>
+<tr><td>Dynamic Feature Certificates</td><td>/opt/nfast/femcerts</td></tr>
+<tr><td>Static Feature Certificates</td><td>/opt/nfast/kmdata/features</td></tr>
+<tr><td>Log Files</td><td>/opt/nfast/log</td></tr>
+</table>
+
+<p>
+Each card set consists of a number of smart cards, N, of which a smaller number, K, is required to authorize an action. The required number K is known as the quorum.  Note: The value for K should be less than N. We do not recommend creating card sets in which K is equal to N because an error on one card would render the whole card set unusable.  An ACS is used to authorize several different actions, each of which can require a different value for K.</p>
+
+<h2>Security Worlds</h2>
+
+<p>The Security World infrastructure gives you control over the
+procedures and protocols you need to create, manage, distribute and recover keys.</p>
+<p>
+A Security World comprises:</p>
+
+<ul>
+<li>One or more Thales nShield HSMs</li>
+<li>An Administrator Card Set (ACS): set of smart cards used to control access to the Security World configuration, as well as in recovery and replacement operations.</li>
+<li>Optionally, one or more Operator Card Sets (OCSs): set or sets of Operator smart cards used to control access to application keys.</li>
+<li>Some cryptographic key and certificate data that is encrypted using the Security World key and stored on a host computer or computers.</li>
+</ul>
+
+<p>
+You can add or remove cards, keys, and even HSM (hardware security module)s at any time. These
+components are linked by the Security World key, which is unique to each world.
+</p>
+
+<p>Each card set consists of a number of smart cards, N, of which a smaller number, K, is required to authorize an action. The required number K is known as the quorum. The value for K should be less than N because an error on one card would render the whole card set unusable. </p>
+<p>
+A smart card can only belong to the ACS or to one OCS.
+</p>
+<p>
+Operator Cards are only useable by an HSM that belongs to the same Security World.
+</p>
+
+<h3>Remote Operator</h3>
+<p>
+The Remote Operator feature is used to load a key protected by an OCS (Operator Card Sets) onto a machine to which you do not have physical access.
+</p>
+<p>
+The Remote Operator feature enables the secure transmission of the contents of a smart card inserted into the slot of one module (the attended module) to another module (the unattended module).
+</p>
+<p>
+To achieve secure communication channels between the attended and unattended modules, the hardserver uses an impath (an abbreviation of intermodule path), a secure protocol for communication over IP networks. 
+</p>
+
+<h3>Remote Administration</h3>
+
+<p>The Remote Administration feature enables:</p>
+
+<ul>
+<li>Card holders to present smart cards to an HSM that is in a different location</li>
+<li>All smart card operations to be carried out (apart from loading feature certificates) Unlike the Remote Operator feature, Remote Administration supports the ACS and non-persistent OCS cards.</li>
+<li>Security World programs and utilities to be run and authorized remotely, without accessing an HSM card slot, when used in combination with a standard remote access solution.</li>
+</ul>
+<p>See page 20 of <b>nShield Solo Edge User Guide Unix.pdf</b> for more information</p>
+
+<h3>Security Card Best Practices</h3>
+
+<p>Create a Security World protected by a suitable ACS for which:</p>
+<ul>
+<li>The total number of cards in the ACS (N) must be greater than 1</li>
+<li>The quorum (K) must be less than the total number of cards (N)</li>
+<li>The quorum (K) must be greater than half the total number (N)</li>
+</ul>
+<p>
+Note: ACSs for which K/N is 3/5 or 4/7 both meet the criteria for the Security Target. A 3/5 ACS is sufficient in many cases. A 4/7 ACS provides additional security.
+</p><p>
+Choose whether to enable the OCS/softcard replacement and pass phrase replacement options as appropriate to the data to be protected by the Security World.
+</p><p>Choose whether to enable the Remote Operator, Real-time clock (RTC), NVRAM, SEE, and Foreign Token operation options for the Security World as necessary.
+</p><p>
+<b>Note:</b> Whether or not these options are enabled for the Security World does not affect the security of keys.
+</p><p>
+<b>Note:</b> You do not need to create a FIPS 140-2 level 3 compliant Security World to meet the requirements of this Security Target.
+</p><p>
+After you have created the Security World, you must ensure that:
+</p>
+<ul>
+<li>Each card of the ACS is held by a separate individual</li>
+<li>No separate individual can access more than 1 card of the ACS</li>
+<li>All the cards comprising the ACS are stored securely at all times.</li>
+</ul>
+
+<h3>Using the Security World key: module-protected keys</h3>
+<p>
+You can use the Security World key to protect an application key that you must make available. This key is called a module-protected key. Module-protected keys:
+
+<ul>
+<li>Have no pass phrase</li>
+<li>Are usable by any instance of the application for which they were created, provided that this application is running on a server fitted with a HSM belonging to the correct Security World.</li>
+</ul>
+
+<h3>Using Operator Card Sets: OCS-protected keys</h3>
+
+<p>
+An OCS belongs to a specific Security World. Only a HSM within the Security
+World to which the OCS belongs can read or erase the OCS. There is no limit to the number of OCSs that you can create.
+</p>
+<p>
+An OCS stores a number of symmetric keys that are used to protect the application keys. These keys are of the same type as the Security World key.
+</p>
+<p>
+Each card in an OCS stores only a fragment of the OCS keys. You can only re-create these keys if you have access to enough of their fragments. Because cards sometimes fail or are lost, the number of fragments required to re-create the key (K) are usually less than the total number of fragments (N).
+</p>
+
+<h3>Using Operator Card Sets for high availability</h3>
+<p>
+If you cannot risk the failure of a smart card, but some keys must remain accessible at all times, you can create a 1/2 OCS.
+</p>
+<p>
+Use the first card as the working card and store the second card in a completely secure environment. If the working card fails, retrieve the spare second card from storage, and use it until you re-create a new set of 2 cards.
+</p>
+<p>
+<b>Note:</b> You can only replace OCSs that were created by Security Worlds that have the OCS/softcard replacement option enabled. 
+</p>
+
+<h3>Using persistent Operator Card Sets</h3>
+<p>
+If you create a standard (non-persistent) OCS, you can only use the keys protected by that OCS while the last required card of the quorum remains loaded in the card reader. The keys protected by this card are removed from the memory of the HSM as soon as the card is removed from the card reader, which provides added security.
+</p>
+<p>
+If you create a persistent OCS, the keys protected by a card from that OCS persist after the card is removed from the smart card reader. 
+</p>
+
+<p>Keys protected by a persistent card are automatically removed from the HSM: 
+</p>
+<ul>
+<li>When the application that loaded the OCS closes the connection to the HSM</li>
+<li>After a time limit that is specified when the card set is created</li>
+<li>When an application chooses to remove a key</li>
+<li>When the HSM is cleared</li>
+<li>If there is a power loss to the module</li>
+</ul>
+<p>
+You can choose whether or not to make an OCS persistent at the time of its creation, but you cannot change a persistent OCS into a non-persistent OCS, or a non-persistent OCS into a persistent OCS.
+</p>
+<p>
+A Security World can contain a mix of persistent and non-persistent card sets.
+</p>
+
+<h3>Using pass phrases for extra security</h3>
+<p>
+You can set individual pass phrases for some or all the cards in an OCS.  You can change the pass phrase for a card at any time provided that you have access to the card, the existing pass phrase, and a HSM that belongs to the Security World to which the card belongs.</p>
+<p>Thales recommends that your password only contains 7-bit ASCII characters:</p>
+<xmp>
+A-Z, a-z, 0-9, ! @ # $ % ^ & * - _ + = [ ] { } | \ : ' , . ? / ` ~ " < > ( ) ;
+</xmp>
+
+<h3>Using softcard-protected keys</h3>
+<p>
+If you want to use pass phrases to restrict key access but avoid using physical tokens (as required by smart-card protection), you can create a softcard-protected key.
+</p>
+<p>
+A softcard is a file containing a logical token that you cannot load without a pass phrase. You must load the logical token to authorize the loading of any key that is protected by the softcard. Softcard files:
+</p>
+<ul>
+<li>Are stored in the /opt/nfast/kmdata/local directory</li>
+<li>Have names of the form softcard_<em>hash</em> (where <em>hash</em> is the hash of the logical token share).</li>
+</ul>
+
+<h3>Scalability</h3>
+<p>
+A Security World is scalable. You can add multiple HSMs to a server and share a Security World across multiple servers. You can also add OCSs and application keys at any time.  To share a Security World across multiple servers:
+</p>
+<ul>
+<li>Ensure each server has at least one HSM fitted</li>
+<li>Copy the host data to each server, or make it available on a shared disk</li>
+<li>Use the recovery and replacement data with the ACS to load the required cryptographic keys securely onto every HSM</li>
+</ul>
+<p>
+If you create cards or keys in a Security World from a client rather than on the HSM (using the command line or KeySafe), you must transfer the files from the client to the remote file system, unless the client is already on the same computer as a remote file system.
+</p>
+<p>
+To provide access to the same keys on every server, you must ensure that all changes to the data are propagated to the remaining servers. 
+</p>
+<p>
+There is no risk of an attacker obtaining information by snooping on the network, as the data is only ever decrypted inside a hardware security module. 
+</p>
+<p>
+You can configure the host computer of an nShield HSM to:
+</p>
+<ul>
+<li>Access a Remote File System (RFS) as used by nShield Connects. See the nShield Connect User Guide for more about the RFS.</li>
+<li>Share Security World and key data stored in the /opt/nfast/kmdata/local directory.</li>
+</ul>
+
+<h2>Software installation</h2>
+<p>
+Complete the following steps to finish preparing your HSM for use:
+</p>
+<ol>
+<li>Ensure that your public firewall is set up correctly.</li>
+<li>Perform additional software and HSM configuration tasks:
+<ul>
+<li><a href='#CC'>Set up client configuration</a></li>
+<li><a href='#nSEV'>Set nShield specific environment variables</a></li>
+<li><a href='#JKS'>Configure Java support for KeySafe</a></li>
+<li><a href='#HS'>Configure the hardserver</a></li>
+</ul></li>
+<li><a href='#SW'>Create and configure a Security World</a></li>
+<li><a href='#OCS'>Create an OCS</a></li>
+</ol>
+
+<h3 id=CC>Client Configuration</h3>
+
+<p>
+You can allow an nShield HSM to automatically access the remote file system (RFS) belonging to another nShield HSM and share the Security World and key data stored in the Key Management Data directory. Client hardware security modules that access data in this way are described as cooperating clients.
+</p>
+<p>See page 34 of <b>nShield Solo Edge User Guide Unix.pdf</b> for more information</p>
+
+<h3 id=nSEV>Set nShield specific environment variables</h3>
+
+<p>Set Security World Software-specific environment variables in the file /etc/nfast.conf.</p>
+
+<p>See pages 180 to 189 of <b>nShield Solo Edge User Guide Unix.pdf</b> for more information</p>
+
+
+<h3 id=JKS>Configure Java support for KeySafe</h3>
+
+<p>See pages 159 of <b>nShield Solo Edge User Guide Unix.pdf</b> for more information</p>
+
+<h3 id=HS>Configure the hardserver</h3>
+
+The hardserver handles secure transactions between the HSMs connected to the host computer and
+applications that run on the host computer. In addition,
+
+<ul>
+<li>Controls any Remote Operator slots that the HSM uses</li>
+<li>Loads any SEE (Secure Execution Engine) machines that are to run on the HSM</li>
+<li>Enables Remote Administration and provides the communication channel between the Remote Administration Service and the HSM</li>
+<li>The hardserver can handle transactions for multiple HSMs</li>
+</ul>
+
+<p>The hardserver configuration file is stored in the /opt/nfast/kmdata/config directory. You must load the configuration file for the changes to the configuration to take effect.</p>
+<p>Run the <b>cfg-reread</b> command-line utility to load the new configuration. If you changed the server_startup section of the hardserver configuration file, you must restart the hardserver.</p>
+<p>Test that the hardserver is configured correctly by running the enquiry command-line utility. Test that the client has access to the Security World data by running the nfkminfo command-line utility.  Check that an HSM with the correct ESN appears in the output and has the state 0x2 Usable.</p>
+
+<p>Start and stop the hardserver with the commands:</p>
+
+<xmp>
+opt/nfast/sbin/init.d-ncipher start
+opt/nfast/sbin/init.d-ncipher stop
+</xmp>
+
+
+<h3 id=SW>Create and configure a Security World</h3>
+
+<p>You must create a Security World before using the HSM to manage keys.</p>
+<p>Use utilities <b>new-world</b> or <b>KeySage</b> to create a Security World.</p>
+<p>When you create a Security World:</p>
+<ul>
+<li>The HSM is erased</li>
+<li>A new HSM key for this Security World is generated</li>
+<li>A new ACS to protect this HSM key is created</li>
+<li>The Security World information is stored on hard disk of the host computer.  The information is encrypted using the secrets stored on the ACS.</li>
+</ul>
+<p>Any Operator Cards created in a previous Security World, cannot be used in a new Security World. If you are replacing a Security World, you must erase all Operator Cards, except for nShield Remote Administration Cards, while the previous Security World still exists.</p>
+
+<h4>Files</h4>
+<p>SW files are placed in /opt/nfast/kmdata/local by default. Can be controlled with environment variable NFAST_KMLOCAL. The files are:</p>
+<table cellspacing=0 border=1>
+<tr><td>world</td><td></td></tr>
+<tr><td>module_<em>ESN</em></td><td>File for each HSM that this host uses. ESN is the electronic serial number of the HSM on which the Security World is created.</td></tr>
+<tr><td>cards_<em>IDENT</em></td><td>File for each card set that is to be loaded from the host. IDENT of a card set is a 40-character string that represents the hash of the card set's logical token.</td></tr>
+<tr><td>card_<em>IDENT_NUMBER</em></td><td>File for each card in each card set that is to be loaded from this host.</td></tr>
+<tr><td>key_<em>APPNAME_IDENT</em></td><td>File for each key that is to be loaded from this host. The IDENT of a key is either user supplied or a hash of the key's logical token, depending on
+the application that created the key.</td></tr>
+</table>
+
+<h4>Options</h4>
+
+<table cellspacing=0 border=1>
+<tr><th>Option</th><th>Description</th></tr>
+
+<tr><td>Cipher Suite</td><td>Choose the cipher suite. For example, DES, AES or AES(SP800-131).</td></tr>
+
+<tr><td>K and N</td><td>You must decide the total number of cards (N) in a Security World's ACS and must have that many blank cards available before you start to create the Security World. You must also decide how many cards from the ACS must be present (K) when performing administrative functions on the Security World.</td></tr>
+
+<tr><td>FIPS 140-2 level 3 compliance</td><td>By default, Security Worlds are created to comply with the roles and services, key management, and self-test sections of the FIPS 140-2 standard at level 2. However, you can choose to enable compliance with the FIPS 140-2 standard at level 3.</td></tr>
+
+<tr><td>UseStrongPrimes</td><td>Enabling UseStrongPrimes increases the RSA key generation time by approximately 10 times</td></tr>
+
+<tr><td>Remote Operator</td><td>
+To use a HSM without needing physical access to present Operator Cards, you must enable the Remote Operator feature on the module.  By default, modules are initialized into Security Worlds with remote card set reading enabled. If you add a module for which remote card reading is disabled to a Security World for which remote card reading is enabled, the module remains disabled.
+</td></tr>
+
+<tr><td>OCS and softcard replacement</td><td>By default, Security Worlds are created with the ability to replace one OCS or softcard with another.  This feature enables you to transfer keys from the protection of the old OCS of softcard to a new OCS or softcard.  You can choose to disable OCS and softcard replacement for a Security World when you create it.  However, in a Security World without this feature, you can never replace lost or damaged OCSs; therefore, you could never recover the keys protected by lost or damaged OCSs, even if the keys themselves were generated as recoverable.</td></tr>
+
+<tr><td>Pass phrase replacement</td><td>
+By default, Security Worlds are created so that you cannot replace the pass phrase of a card or
+softcard without knowing the existing pass phrase.
+However, you can choose to enable pass phrase replacement at the time you create a Security World.
+This option makes it possible to replace a the pass phrase of a card or softcard even if you do not know
+the existing pass phrase. Performing such an operation requires authorization from the Security
+World’s ACS.
+</td></tr>
+
+<tr><td>Nonvolatile memory (NVRAM) options</td><td>
+nabling nonvolatile memory (NVRAM) options allows keys to be stored in the module’s NVRAM
+instead of in the Key Management Data directory of the host computer.
+</td></tr>
+
+<tr><td>SEE options</td><td>
+You must configure SEE options if you are using the nShield Secure Execution Engine (SEE)
+</td></tr>
+
+<tr><td>SEE debugging</td><td>
+EE debugging is disabled by default, but you can choose whether to enable it for all users or whether
+to make it available only through use of an ACS. In many circumstances, it is useful to enable SEE
+debugging for all users in a development Security World but to disable SEE debugging in a
+production Security World.
+</td></tr>
+
+<tr><td>Real-time clock (RTC) options</td><td>
+Relevant only if you have purchased and installed the CodeSafe Developer kit.
+</td></tr>
+
+<tr><td>Security World replacement options</td><td>
+Relevant only if you are replacing a Security World.
+</td></tr>
+
+</table>
+
+<h4>Before you start to create a SW</h4>
+
+<ul>
+<li>The HSM must be in pre-initialization mode</li>
+<li>Log into host as root or as a user in ther group nfast</li>
+<li>When you have finished, restart the  HSM in operational mode</li>
+</ul>
+
+<h4>new-world usage:</h4>
+
+<h3 id=OCS>Create an OCS</h3>
+
+
+</body>
+</html>
