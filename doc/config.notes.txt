@@ -127,3 +127,15 @@ sudo rm -rf openssl
 sudo ln -s /usr/local/bin/openssl /usr/bin/openssl
 openssl version
 apt-cache show openssl
+
+-----------------------------------------------------------------------------------
+Working with .iso files
+-----------------------------------------------------------------------------------
+sudo mkdir /media/iso (or /media/isoN)
+sudo mount -o loop PATH/file.iso /media/iso
+
+- contents are located at /media/iso
+
+sudo unmount /media/iso
+
+

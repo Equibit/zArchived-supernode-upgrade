@@ -119,7 +119,7 @@ public:
 	CEDCCoinsViewCache * coinsTip()			{ return coinsTip_; }
 	void coinsTip( CEDCCoinsViewCache * p ) { coinsTip_ = p; }
 
-	CBlockIndex * indexBestHeader()			{ return indexBestHeader_; }
+	CBlockIndex * & indexBestHeader()		{ return indexBestHeader_; }
 	void indexBestHeader( CBlockIndex * i )	{ indexBestHeader_ = i; }
 
 	CEDCWallet * walletMain()			{ return walletMain_; }

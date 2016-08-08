@@ -20,6 +20,7 @@
 #include "edctorcontrol.h"
 #include "consensus/validation.h"
 #include <boost/interprocess/sync/file_lock.hpp>
+#include <boost/algorithm/string/replace.hpp>
 
 
 void edcRegisterAllCoreRPCCommands( CEDCRPCTable & edcTableRPC );
