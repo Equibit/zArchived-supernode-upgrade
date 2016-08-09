@@ -281,6 +281,7 @@ EDCparams::EDCparams()
 	rpcservertimeout    = GetArg( "-eb_rpcservertimeout", EDC_DEFAULT_HTTP_SERVER_TIMEOUT );
 	rpcthreads          = GetArg( "-eb_rpcthreads", EDC_DEFAULT_HTTP_THREADS );
 	rpcworkqueue        = GetArg( "-eb_rpcworkqueue", EDC_DEFAULT_HTTP_WORKQUEUE );
+	sport               = GetArg( "-eb_sport", edcParams(network).GetDefaultSecurePort() );
 	timeout             = GetArg( "-eb_timeout", EDC_DEFAULT_CONNECT_TIMEOUT );
 	txconfirmtarget     = GetArg( "-eb_txconfirmtarget", EDC_DEFAULT_TX_CONFIRM_TARGET );
 
@@ -437,6 +438,8 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
 		strprintf(_("Randomize credentials for every proxy connection. This enables Tor stream isolation (default: %u)"), EDC_DEFAULT_PROXYRANDOMIZE));
     strUsage += HelpMessageOpt("-eb_seednode=<ip>", 
 		_("Connect to a node to retrieve peer addresses, and disconnect"));
+    strUsage += HelpMessageOpt("-eb_sport=<port>", 
+		strprintf(_("Listen for secure connections on <sport> (default: %u or testnet: %u)"), edcParams(CBaseChainParams::MAIN).GetDefaultSecurePort(), edcParams(CBaseChainParams::TESTNET).GetDefaultSecurePort()));
     strUsage += HelpMessageOpt("-eb_timeout=<n>", 
 		strprintf(_("Specify connection timeout in milliseconds (minimum: 1, default: %d)"), EDC_DEFAULT_CONNECT_TIMEOUT));
     strUsage += HelpMessageOpt("-eb_torcontrol=<ip>:<port>", 
@@ -974,6 +977,7 @@ void EDCparams::dumpToLog() const
 	edcLogPrintf( "eb_server               %s\n", toString(server) );
 	edcLogPrintf( "eb_shrinkdebugfile      %s\n", toString( shrinkdebugfile) );
 	edcLogPrintf( "eb_spendzeroconfchange  %s\n", toString( spendzeroconfchange) );
+	edcLogPrintf( "eb_sport                %lld\n", sport );
 	edcLogPrintf( "eb_stopafterblockimport %s\n", toString( stopafterblockimport));
 
 	edcLogPrintf( "eb_testnet              %s\n", toString(testnet) );
@@ -1229,6 +1233,7 @@ void EDCparams::checkParams() const
 	validparams.insert("-eb_server");
 	validparams.insert("-eb_shrinkdebugfile");
 	validparams.insert("-eb_spendzeroconfchange");
+	validparams.insert("-eb_sport");
 	validparams.insert("-eb_stopafterblockimport");
 	validparams.insert("-eb_testnet");
 	validparams.insert("-eb_testsafemode");

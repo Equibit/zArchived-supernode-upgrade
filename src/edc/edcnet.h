@@ -28,6 +28,10 @@
 #include <boost/filesystem/path.hpp>
 #include <boost/foreach.hpp>
 #include <boost/signals2/signal.hpp>
+#include <openssl/crypto.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+
 
 class CAddrMan;
 class CScheduler;
@@ -87,7 +91,6 @@ class CEDCNode
 public:
     // socket
     uint64_t nServices;
-    SOCKET hSocket;
     CDataStream ssSend;
     size_t nSendSize; // total size of all vSendMsg entries
     size_t nSendOffset; // offset inside the first vSendMsg already sent
@@ -214,9 +217,22 @@ public:
 	std::vector<CUserMessage *>	vUserMessages;
 
     CEDCNode(SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn = "", bool fInboundIn = false);
-    ~CEDCNode();
+    virtual ~CEDCNode();
+
+	SOCKET	socket() const 			{ return hSocket; }
+	bool	invalidSocket() const	{ return hSocket == INVALID_SOCKET; }
+
+	virtual void	closeSocket();
+	virtual ssize_t send(const void *buf, size_t len, int flags);
+	virtual ssize_t recv(void *buf, size_t len, int flags);
+
+
+protected:
+
+    SOCKET hSocket;
 
 private:
+
     // Network usage totals
     static CCriticalSection cs_totalBytesRecv;
     static CCriticalSection cs_totalBytesSent;
@@ -574,6 +590,20 @@ public:
     static uint64_t GetMaxOutboundTimeLeftInCycle();
 };
 
+
+class CEDCSSLNode : public CEDCNode
+{
+public:
+    CEDCSSLNode(SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn = "", bool fInboundIn = false):CEDCNode( hSocketIn, addrIn, addrNameIn, fInboundIn )
+	{}
+
+	virtual void	closeSocket();
+	virtual ssize_t send(const void *buf, size_t len, int flags );
+	virtual ssize_t recv(void *buf, size_t len, int flags);
+
+private:
+	SSL * ssl_;
+};
 
 class CEDCTransaction;
 void RelayTransaction(const CEDCTransaction& tx, CFeeRate feerate);

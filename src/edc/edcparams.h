@@ -121,6 +121,7 @@ public:
 	int64_t rpcservertimeout;
 	int64_t rpcthreads;
 	int64_t rpcworkqueue;
+	int64_t sport;
 	int64_t timeout;
 	int64_t txconfirmtarget;
 	int64_t zapwallettxes;

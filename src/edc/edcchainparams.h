@@ -43,11 +43,15 @@ public:
 	{ 
 		return nDefaultPort; 
 	}
-
+    int GetDefaultSecurePort() const 
+	{ 
+		return nDefaultSecurePort; 
+	}
     const CEDCBlock& GenesisBlock() const 
 	{ 
 		return genesis; 
 	}
+
     /** Make miner wait to have peers to avoid wasting work */
     bool MiningRequiresPeers() const 
 	{ 
@@ -104,6 +108,7 @@ protected:
     Consensus::Params consensus;
     CMessageHeader::MessageStartChars pchMessageStart;
     int nDefaultPort;
+    int nDefaultSecurePort;
     uint64_t nPruneAfterHeight;
     std::vector<CDNSSeedData> vSeeds;
     std::vector<unsigned char> base58Prefixes[MAX_BASE58_TYPES];

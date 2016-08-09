@@ -157,7 +157,10 @@ public:
         pchMessageStart[1] = 0xbe;
         pchMessageStart[2] = 0xb4;
         pchMessageStart[3] = 0xd9;
+
         nDefaultPort = 8330;
+        nDefaultSecurePort = 8335;
+
         nPruneAfterHeight = 100000;
 
         genesis = edcCreateGenesisBlock(1231006505, 2083236893, 0x1d00ffff, 1, 50 * COIN);
@@ -291,7 +294,10 @@ public:
         pchMessageStart[1] = 0x11;
         pchMessageStart[2] = 0x09;
         pchMessageStart[3] = 0x07;
+
         nDefaultPort = 18330;
+        nDefaultSecurePort = 18335;
+
         nPruneAfterHeight = 1000;
 
 #ifdef MINE_NONCE
@@ -447,7 +453,10 @@ public:
         pchMessageStart[1] = 0xbf;
         pchMessageStart[2] = 0xb5;
         pchMessageStart[3] = 0xda;
+
         nDefaultPort = 18442;
+        nDefaultSecurePort = 18445;
+
         nPruneAfterHeight = 1000;
 
         genesis = edcCreateGenesisBlock(1296688602, 2, 0x207fffff, 1, 50 * COIN);

@@ -412,10 +412,11 @@ CEDCNode* edcConnectNode(CAddress addrConnect, const char *pszDest)
 void CEDCNode::CloseSocketDisconnect()
 {
     fDisconnect = true;
-    if (hSocket != INVALID_SOCKET)
+
+    if (!invalidSocket())
     {
         edcLogPrint("net", "disconnecting peer=%d\n", id);
-        CloseSocket(hSocket);
+        closeSocket();
     }
 
     // in case this fails, we'll empty the recv buffer when the CEDCNode is deleted
@@ -721,7 +722,7 @@ void SocketSendData(CEDCNode *pnode)
 	{
         const CSerializeData &data = *it;
         assert(data.size() > pnode->nSendOffset);
-        int nBytes = send(pnode->hSocket, &data[pnode->nSendOffset], data.size() - pnode->nSendOffset, MSG_NOSIGNAL | MSG_DONTWAIT);
+        int nBytes = pnode->send( &data[pnode->nSendOffset], data.size() - pnode->nSendOffset, MSG_NOSIGNAL | MSG_DONTWAIT);
         if (nBytes > 0) 
 		{
             pnode->nLastSend = GetTime();
@@ -1121,10 +1122,10 @@ void edcThreadSocketHandler()
             LOCK(theApp.vNodesCS());
             BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
             {
-                if (pnode->hSocket == INVALID_SOCKET)
+                if (pnode->invalidSocket())
                     continue;
-                FD_SET(pnode->hSocket, &fdsetError);
-                hSocketMax = max(hSocketMax, pnode->hSocket);
+                FD_SET(pnode->socket(), &fdsetError);
+                hSocketMax = max(hSocketMax, pnode->socket());
                 have_fds = true;
 
                 // Implement the following logic:
@@ -1146,7 +1147,7 @@ void edcThreadSocketHandler()
                     TRY_LOCK(pnode->cs_vSend, lockSend);
                     if (lockSend && !pnode->vSendMsg.empty()) 
 					{
-                        FD_SET(pnode->hSocket, &fdsetSend);
+                        FD_SET(pnode->socket(), &fdsetSend);
                         continue;
                     }
                 }
@@ -1155,7 +1156,7 @@ void edcThreadSocketHandler()
                     if (lockRecv && (
                         pnode->vRecvMsg.empty() || !pnode->vRecvMsg.front().complete() ||
                         pnode->GetTotalRecvSize() <= edcReceiveFloodSize()))
-                        FD_SET(pnode->hSocket, &fdsetRecv);
+                        FD_SET(pnode->socket(), &fdsetRecv);
                 }
             }
         }
@@ -1206,9 +1207,9 @@ void edcThreadSocketHandler()
             //
             // Receive
             //
-            if (pnode->hSocket == INVALID_SOCKET)
+            if (pnode->invalidSocket())
                 continue;
-            if (FD_ISSET(pnode->hSocket, &fdsetRecv) || FD_ISSET(pnode->hSocket, &fdsetError))
+            if (FD_ISSET(pnode->socket(), &fdsetRecv) || FD_ISSET(pnode->socket(), &fdsetError))
             {
                 TRY_LOCK(pnode->cs_vRecvMsg, lockRecv);
                 if (lockRecv)
@@ -1216,7 +1217,7 @@ void edcThreadSocketHandler()
                     {
                         // typical socket buffer is 8K-64K
                         char pchBuf[0x10000];
-                        int nBytes = recv(pnode->hSocket, pchBuf, sizeof(pchBuf), MSG_DONTWAIT);
+                        int nBytes = pnode->recv( pchBuf, sizeof(pchBuf), MSG_DONTWAIT);
                         if (nBytes > 0)
                         {
                             if (!pnode->ReceiveMsgBytes(pchBuf, nBytes))
@@ -1250,9 +1251,9 @@ void edcThreadSocketHandler()
             //
             // Send
             //
-            if (pnode->hSocket == INVALID_SOCKET)
+            if (pnode->invalidSocket())
                 continue;
-            if (FD_ISSET(pnode->hSocket, &fdsetSend))
+            if (FD_ISSET(pnode->socket(), &fdsetSend))
             {
                 TRY_LOCK(pnode->cs_vSend, lockSend);
                 if (lockSend)
@@ -2106,8 +2107,8 @@ public:
 		EDCapp & theApp = EDCapp::singleton();
         // Close sockets
         BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
-            if (pnode->hSocket != INVALID_SOCKET)
-                CloseSocket(pnode->hSocket);
+            if (!pnode->invalidSocket())
+                pnode->closeSocket();
         BOOST_FOREACH(ListenSocket& hListenSocket, vhListenSocket)
             if (hListenSocket.socket != INVALID_SOCKET)
                 if (!CloseSocket(hListenSocket.socket))
@@ -2507,7 +2508,7 @@ CEDCNode::CEDCNode(
         edcLogPrint("net", "Added connection peer=%d\n", id);
 
     // Be shy and don't send version until we hear
-    if (hSocket != INVALID_SOCKET && !fInbound)
+    if (!invalidSocket() && !fInbound)
         PushVersion();
 
     edcGetNodeSignals().InitializeNode(GetId(), this);
@@ -2515,7 +2516,7 @@ CEDCNode::CEDCNode(
 
 CEDCNode::~CEDCNode()
 {
-    CloseSocket(hSocket);
+    closeSocket();
 
     if (pfilter)
         delete pfilter;
@@ -2761,3 +2762,42 @@ int64_t edcPoissonNextSend(int64_t nNow, int average_interval_seconds)
 		-0.0000000000000035527136788 /* -1/2^48 */) * 
 		average_interval_seconds * -1000000.0 + 0.5);
 }
+
+void CEDCNode::closeSocket()
+{
+	CloseSocket(hSocket);
+}
+
+ssize_t CEDCNode::send( const void *buf, size_t len, int flags )
+{
+	return ::send( hSocket, buf, len, flags );
+}
+
+ssize_t CEDCNode::recv( void *buf, size_t len, int flags )
+{
+	return ::recv( hSocket, buf, len, flags );
+}
+
+void CEDCSSLNode::closeSocket()
+{
+	int err = SSL_shutdown(ssl_);
+	if(err == -1 )
+	{
+		char buf[120];
+    	edcLogPrintf(ERR_error_string( err, buf ));
+	}
+	CloseSocket(hSocket);
+	SSL_free(ssl_);
+}
+
+ssize_t CEDCSSLNode::send( const void *buf, size_t len, int )
+{
+	return SSL_write( ssl_, buf, len );
+}
+
+ssize_t CEDCSSLNode::recv( void *buf, size_t len, int )
+{
+	return SSL_read( ssl_, buf, len );
+}
+
+
