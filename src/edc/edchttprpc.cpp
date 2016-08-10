@@ -249,7 +249,7 @@ bool InitRPCAuthentication()
 		{
             edcUiInterface.ThreadSafeMessageBox(
                 _("Error: A fatal internal error occurred, see debug.log for details"), // Same message as AbortNode
-                "", CClientUIInterface::MSG_ERROR);
+                "", CEDCClientUIInterface::MSG_ERROR);
             return false;
         }
     } 

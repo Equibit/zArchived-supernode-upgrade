@@ -49,6 +49,7 @@ unsigned int edcSendBufferSize();
 void edcAddressCurrentlyConnected(const CService& addr);
 void edcMapPort(bool fUseUPnP);
 unsigned short edcGetListenPort();
+unsigned short edcGetListenSecurePort();
 bool edcBindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
 void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler);
 bool edcStopNode();
@@ -78,7 +79,6 @@ bool edcSeenLocal(const CService& addr);
 bool edcIsLocal(const CService& addr);
 bool edcIsReachable(enum Network net);
 bool edcIsReachable(const CNetAddr &addr);
-bool edcAddLocal(const CService& addr, int nScore = LOCAL_NONE);
 bool edcAddLocal(const CNetAddr& addr, int nScore = LOCAL_NONE);
 
 typedef std::map<std::string, uint64_t> mapMsgCmdSize; //command, total bytes

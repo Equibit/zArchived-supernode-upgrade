@@ -547,7 +547,7 @@ void TorController::add_onion_cb(TorControlConnection& conn, const TorControlRep
                 private_key = i->second;
         }
 
-        service = CService(service_id+".onion", GetListenPort());
+        service = CService(service_id+".onion", edcGetListenPort());
         edcLogPrintf("tor: Got service ID %s, advertising service %s\n", service_id, service.ToString());
 
         if (WriteBinaryFile(GetPrivateKeyFile(), private_key)) 
@@ -599,7 +599,7 @@ void TorController::auth_cb(
 		// internal port, but this is just a convenient choice.  
 		// TODO; refactor the shutdown sequence some day.
         conn.Command(strprintf("ADD_ONION %s Port=%i,127.0.0.1:%i", 
-			private_key, GetListenPort(), GetListenPort()),
+			private_key, edcGetListenPort(), edcGetListenPort()),
             boost::bind(&TorController::add_onion_cb, this, _1, _2));
     } 
 	else 
@@ -856,7 +856,7 @@ void TorControlThread()
     event_base_dispatch(base);
 }
 
-}
+} // anonymous namespace 
 
 void edcStartTorControl(boost::thread_group& threadGroup, CScheduler& scheduler)
 {

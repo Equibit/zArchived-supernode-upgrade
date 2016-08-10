@@ -79,9 +79,9 @@ UniValue edcgetinfo(const UniValue& params, bool fHelp)
         );
 
 #ifdef ENABLE_WALLET
-    LOCK2(cs_main, theApp.walletMain() ? &theApp.walletMain()->cs_wallet : NULL);
+    LOCK2(EDC_cs_main, theApp.walletMain() ? &theApp.walletMain()->cs_wallet : NULL);
 #else
-    LOCK(cs_main);
+    LOCK(EDC_cs_main);
 #endif
 
     proxyType proxy;
@@ -194,9 +194,9 @@ UniValue edcvalidateaddress(const UniValue& params, bool fHelp)
         );
 
 #ifdef ENABLE_WALLET
-    LOCK2(cs_main, theApp.walletMain() ? &theApp.walletMain()->cs_wallet : NULL);
+    LOCK2(EDC_cs_main, theApp.walletMain() ? &theApp.walletMain()->cs_wallet : NULL);
 #else
-    LOCK(cs_main);
+    LOCK(EDC_cs_main);
 #endif
 
     CEDCBitcoinAddress address(params[0].get_str());
@@ -358,7 +358,7 @@ UniValue edcverifymessage(const UniValue& params, bool fHelp)
             + HelpExampleRpc("eb_verifymessage", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\", \"signature\", \"my message\"")
         );
 
-    LOCK(cs_main);
+    LOCK(EDC_cs_main);
 
     string strAddress  = params[0].get_str();
     string strSign     = params[1].get_str();
@@ -412,7 +412,7 @@ UniValue edcsignmessagewithprivkey(const UniValue& params, bool fHelp)
     string strPrivkey = params[0].get_str();
     string strMessage = params[1].get_str();
 
-    CBitcoinSecret vchSecret;
+    CEDCBitcoinSecret vchSecret;
     bool fGood = vchSecret.SetString(strPrivkey);
     if (!fGood)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key");
@@ -451,7 +451,7 @@ UniValue edcsetmocktime(const UniValue& params, bool fHelp)
     // atomically with the time change to prevent peers from being
     // disconnected because we think we haven't communicated with them
     // in a long time.
-    LOCK2(cs_main, theApp.vNodesCS());
+    LOCK2(EDC_cs_main, theApp.vNodesCS());
 
     RPCTypeCheck(params, boost::assign::list_of(UniValue::VNUM));
     SetMockTime(params[0].get_int64());

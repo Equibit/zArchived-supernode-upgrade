@@ -703,7 +703,7 @@ UniValue edcsignrawtransaction(const UniValue& params, bool fHelp)
         for (unsigned int idx = 0; idx < keys.size(); idx++) 
 		{
             UniValue k = keys[idx];
-            CBitcoinSecret vchSecret;
+            CEDCBitcoinSecret vchSecret;
             bool fGood = vchSecret.SetString(k.get_str());
             if (!fGood)
                 throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key");

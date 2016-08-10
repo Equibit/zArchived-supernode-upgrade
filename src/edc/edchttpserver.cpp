@@ -231,7 +231,7 @@ bool InitHTTPAllowList()
 			{
                 edcUiInterface.ThreadSafeMessageBox(
                     strprintf("Invalid -eb_rpcallowip subnet specification: %s. Valid are a single IP (e.g. 1.2.3.4), a network/netmask (e.g. 1.2.3.4/255.255.255.0) or a network/CIDR (e.g. 1.2.3.4/24).", strAllow),
-                    "", CClientUIInterface::MSG_ERROR);
+                    "", CEDCClientUIInterface::MSG_ERROR);
                 return false;
             }
             rpc_allow_subnets.push_back(subnet);

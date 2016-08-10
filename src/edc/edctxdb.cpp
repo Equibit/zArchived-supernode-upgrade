@@ -66,7 +66,7 @@ bool CEDCCoinsViewDB::BatchWrite( CEDCCoinsMap &mapCoins, const uint256 &hashBlo
 
     for (CEDCCoinsMap::iterator it = mapCoins.begin(); it != mapCoins.end();) 
 	{
-        if (it->second.flags & CCoinsCacheEntry::DIRTY) 
+        if (it->second.flags & CEDCCoinsCacheEntry::DIRTY) 
 		{
             if (it->second.coins.IsPruned())
                 batch.Erase(make_pair(DB_COINS, it->first));

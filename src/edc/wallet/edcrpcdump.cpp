@@ -134,7 +134,7 @@ UniValue edcimportprivkey(const UniValue& params, bool fHelp)
     if (fRescan && theApp.pruneMode())
         throw JSONRPCError(RPC_WALLET_ERROR, "Rescan is disabled in pruned mode");
 
-    CBitcoinSecret vchSecret;
+    CEDCBitcoinSecret vchSecret;
     bool fGood = vchSecret.SetString(strSecret);
 
     if (!fGood) throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key encoding");
@@ -504,7 +504,7 @@ UniValue edcimportwallet(const UniValue& params, bool fHelp)
 
         if (vstr.size() < 2)
             continue;
-        CBitcoinSecret vchSecret;
+        CEDCBitcoinSecret vchSecret;
 
         if (!vchSecret.SetString(vstr[0]))
             continue;
@@ -607,7 +607,7 @@ UniValue edcdumpprivkey(const UniValue& params, bool fHelp)
     CKey vchSecret;
     if (!theApp.walletMain()->GetKey(keyID, vchSecret))
         throw JSONRPCError(RPC_WALLET_ERROR, "Private key for address " + strAddress + " is not known");
-    return CBitcoinSecret(vchSecret).ToString();
+    return CEDCBitcoinSecret(vchSecret).ToString();
 }
 
 UniValue edcdumpwallet(const UniValue& params, bool fHelp)
@@ -669,15 +669,15 @@ UniValue edcdumpwallet(const UniValue& params, bool fHelp)
 		{
             if (theApp.walletMain()->mapAddressBook.count(keyid)) 
 			{
-                file << strprintf("%s %s label=%s # addr=%s\n", CBitcoinSecret(key).ToString(), strTime, EncodeDumpString(theApp.walletMain()->mapAddressBook[keyid].name), strAddr);
+                file << strprintf("%s %s label=%s # addr=%s\n", CEDCBitcoinSecret(key).ToString(), strTime, EncodeDumpString(theApp.walletMain()->mapAddressBook[keyid].name), strAddr);
             } 
 			else if (setKeyPool.count(keyid)) 
 			{
-                file << strprintf("%s %s reserve=1 # addr=%s\n", CBitcoinSecret(key).ToString(), strTime, strAddr);
+                file << strprintf("%s %s reserve=1 # addr=%s\n", CEDCBitcoinSecret(key).ToString(), strTime, strAddr);
             } 
 			else 
 			{
-                file << strprintf("%s %s change=1 # addr=%s\n", CBitcoinSecret(key).ToString(), strTime, strAddr);
+                file << strprintf("%s %s change=1 # addr=%s\n", CEDCBitcoinSecret(key).ToString(), strTime, strAddr);
             }
         }
     }

@@ -110,7 +110,7 @@ void edcAddTimeData(const CNetAddr& ip, int64_t nOffsetSample)
                     fDone = true;
                     string strMessage = strprintf(_("Please check that your computer's date and time are correct! If your clock is wrong, %s will not work properly."), _(PACKAGE_NAME));
                     edcstrMiscWarning = strMessage;
-                    edcUiInterface.ThreadSafeMessageBox(strMessage, "", CClientUIInterface::MSG_WARNING);
+                    edcUiInterface.ThreadSafeMessageBox(strMessage, "", CEDCClientUIInterface::MSG_WARNING);
                 }
             }
         }

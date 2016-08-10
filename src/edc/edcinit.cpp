@@ -65,7 +65,7 @@ public:
         } 
 		catch(const std::runtime_error& e) 
 		{
-            edcUiInterface.ThreadSafeMessageBox(_("Error reading from database, shutting down."), "", CClientUIInterface::MSG_ERROR);
+            edcUiInterface.ThreadSafeMessageBox(_("Error reading from database, shutting down."), "", CEDCClientUIInterface::MSG_ERROR);
             edcLogPrintf("Error reading from database: %s\n", e.what());
             // Starting the shutdown sequence and returning false to the caller
 			// would be interpreted as 'entry not found' (as opposed to unable 
@@ -653,7 +653,12 @@ bool EdcAppInit(
 	            BOOST_FOREACH(const std::string & strBind, params.bind) 
 				{
 	                CService addrBind;
+
 	                if (!Lookup(strBind.c_str(), addrBind, edcGetListenPort(), false))
+	                    return edcInitError(ResolveErrMsg("bind", strBind));
+	                fBound |= Bind(addrBind, (BF_EXPLICIT | BF_REPORT_ERROR));
+
+	                if (!Lookup(strBind.c_str(), addrBind, edcGetListenSecurePort(), false))
 	                    return edcInitError(ResolveErrMsg("bind", strBind));
 	                fBound |= Bind(addrBind, (BF_EXPLICIT | BF_REPORT_ERROR));
 	            }
@@ -664,6 +669,7 @@ bool EdcAppInit(
 	                    return edcInitError(ResolveErrMsg("whitebind", strBind));
 	                if (addrBind.GetPort() == 0)
 	                    return edcInitError(strprintf(_("Need to specify a port with -eb_whitebind: '%s'"), strBind));
+
 	                fBound |= Bind(addrBind, (BF_EXPLICIT | BF_REPORT_ERROR | BF_WHITELIST));
 	            }
 	        }
@@ -671,8 +677,12 @@ bool EdcAppInit(
 			{
 	            struct in_addr inaddr_any;
 	            inaddr_any.s_addr = INADDR_ANY;
+
 	            fBound |= Bind(CService(in6addr_any, edcGetListenPort()), BF_NONE);
 	            fBound |= Bind(CService(inaddr_any, edcGetListenPort()), !fBound ? BF_REPORT_ERROR : BF_NONE);
+
+	            fBound |= Bind(CService(in6addr_any, edcGetListenSecurePort()), BF_NONE);
+	            fBound |= Bind(CService(inaddr_any, edcGetListenSecurePort()), !fBound ? BF_REPORT_ERROR : BF_NONE);
 	        }
 	        if (!fBound)
 	            return edcInitError(_("Failed to listen on any port. Use -eb_listen=0 if you want this."));
@@ -873,7 +883,7 @@ bool EdcAppInit(
 	                    strLoadError + 
 						".\n\n" + 
 						_("Do you want to rebuild the block database now?"),
-	                    "", CClientUIInterface::MSG_ERROR | CClientUIInterface::BTN_ABORT);
+	                    "", CEDCClientUIInterface::MSG_ERROR | CEDCClientUIInterface::BTN_ABORT);
 	                if (fRet) 
 					{
 	                    theApp.reindex( true );

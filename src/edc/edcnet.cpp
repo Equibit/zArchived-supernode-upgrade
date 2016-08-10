@@ -109,6 +109,12 @@ unsigned short edcGetListenPort()
     return static_cast<unsigned short>(params.port);
 }
 
+unsigned short edcGetListenSecurePort()
+{
+	EDCparams & params = EDCparams::singleton();
+    return static_cast<unsigned short>(params.sport);
+}
+
 // find 'best' local address for a particular peer
 bool edcGetLocal(CService& addr, const CNetAddr *paddrPeer)
 {
@@ -166,7 +172,7 @@ int64_t edcGetAdjustedTime();
 // one by discovery.
 CAddress edcGetLocalAddress(const CNetAddr *paddrPeer)
 {
-    CAddress ret(CService("0.0.0.0",edcGetListenPort()),0);
+    CAddress ret(CService("0.0.0.0", edcGetListenPort()), 0);
     CService addr;
     if (edcGetLocal(addr, paddrPeer))
     {
@@ -1964,9 +1970,14 @@ void static Discover(boost::thread_group& threadGroup)
 #endif
 }
 
+namespace
+{
+
 // learn a new local address
 bool edcAddLocal(const CService& addr, int nScore)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!addr.IsRoutable())
         return false;
 
@@ -1980,9 +1991,9 @@ bool edcAddLocal(const CService& addr, int nScore)
     edcLogPrintf("edcAddLocal(%s,%i)\n", addr.ToString(), nScore);
 
     {
-        LOCK(cs_mapLocalHost);
-        bool fAlready = mapLocalHost.count(addr) > 0;
-        LocalServiceInfo &info = mapLocalHost[addr];
+    	LOCK(theApp.mapLocalHostCS());
+        bool fAlready = theApp.mapLocalHost().count(addr) > 0;
+        LocalServiceInfo &info = theApp.mapLocalHost()[addr];
         if (!fAlready || nScore >= info.nScore) {
             info.nScore = nScore + (fAlready ? 1 : 0);
             info.nPort = addr.GetPort();
@@ -1992,9 +2003,12 @@ bool edcAddLocal(const CService& addr, int nScore)
     return true;
 }
 
+}
+
 bool edcAddLocal(const CNetAddr &addr, int nScore)
 {
-    return edcAddLocal(CService(addr, GetListenPort()), nScore);
+    return 	edcAddLocal(CService(addr, edcGetListenPort()), nScore) &&
+    		edcAddLocal(CService(addr, edcGetListenSecurePort()), nScore);
 }
 
 void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)

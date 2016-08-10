@@ -388,8 +388,8 @@ static void MutateTxSign(CEDCMutableTransaction& tx, const string& flagStr)
     // starts as a clone of the raw tx:
     CEDCMutableTransaction mergedTx(txVariants[0]);
     bool fComplete = true;
-    CCoinsView viewDummy;
-    CCoinsViewCache view(&viewDummy);
+    CEDCCoinsView viewDummy;
+    CEDCCoinsViewCache view(&viewDummy);
 
     if (!registers.count("privatekeys"))
         throw runtime_error("privatekeys register variable must be set.");
@@ -402,7 +402,7 @@ static void MutateTxSign(CEDCMutableTransaction& tx, const string& flagStr)
 	{
         if (!keysObj[kidx].isStr())
             throw runtime_error("privatekey not a string");
-        CBitcoinSecret vchSecret;
+        CEDCBitcoinSecret vchSecret;
         bool fGood = vchSecret.SetString(keysObj[kidx].getValStr());
         if (!fGood)
             throw runtime_error("privatekey not valid");
@@ -436,7 +436,7 @@ static void MutateTxSign(CEDCMutableTransaction& tx, const string& flagStr)
             CScript scriptPubKey(pkData.begin(), pkData.end());
 
             {
-                CCoinsModifier coins = view.ModifyCoins(txid);
+                CEDCCoinsModifier coins = view.ModifyCoins(txid);
                 if (coins->IsAvailable(nOut) && coins->vout[nOut].scriptPubKey != scriptPubKey) 
 				{
                     string err("Previous output scriptPubKey mismatch:\n");
@@ -472,7 +472,7 @@ static void MutateTxSign(CEDCMutableTransaction& tx, const string& flagStr)
     for (unsigned int i = 0; i < mergedTx.vin.size(); i++) 
 	{
         CEDCTxIn& txin = mergedTx.vin[i];
-        const CCoins* coins = view.AccessCoins(txin.prevout.hash);
+        const CEDCCoins* coins = view.AccessCoins(txin.prevout.hash);
         if (!coins || !coins->IsAvailable(txin.prevout.n)) 
 		{
             fComplete = false;

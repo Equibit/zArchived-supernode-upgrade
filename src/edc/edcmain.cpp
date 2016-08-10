@@ -908,7 +908,7 @@ bool SequenceLocks(
 
 bool edcTestLockPointValidity(const LockPoints* lp)
 {
-    AssertLockHeld(cs_main);
+    AssertLockHeld(EDC_cs_main);
     assert(lp);
 
 	EDCapp & theApp = EDCapp::singleton();
@@ -2238,7 +2238,7 @@ bool AbortNode(const std::string& strMessage, const std::string& userMessage="")
     edcLogPrintf("*** %s\n", strMessage);
     edcUiInterface.ThreadSafeMessageBox(
         userMessage.empty() ? _("Error: A fatal internal error occurred, see debug.log for details") : userMessage,
-        "", CClientUIInterface::MSG_ERROR);
+        "", CEDCClientUIInterface::MSG_ERROR);
     StartShutdown();
     return false;
 }

@@ -41,7 +41,7 @@ UniValue edcgetconnectioncount(const UniValue& params, bool fHelp)
             + HelpExampleRpc("eb_getconnectioncount", "")
         );
 
-    LOCK2(cs_main, theApp.vNodesCS());
+    LOCK2(EDC_cs_main, theApp.vNodesCS());
 
     return (int)theApp.vNodes().size();
 }
@@ -61,7 +61,7 @@ UniValue edcping(const UniValue& params, bool fHelp)
         );
 
     // Request that each node send a ping during next message processing pass
-    LOCK2(cs_main, theApp.vNodesCS());
+    LOCK2(EDC_cs_main, theApp.vNodesCS());
 
     BOOST_FOREACH(CEDCNode* pNode, theApp.vNodes()) 
 	{
@@ -136,7 +136,7 @@ UniValue edcgetpeerinfo(const UniValue& params, bool fHelp)
             + HelpExampleRpc("eb_getpeerinfo", "")
         );
 
-    LOCK(cs_main);
+    LOCK(EDC_cs_main);
 
     vector<CNodeStats> vstats;
     CopyNodeStats(vstats);
@@ -520,7 +520,7 @@ UniValue edcgetnetworkinfo(const UniValue& params, bool fHelp)
             + HelpExampleRpc("eb_getnetworkinfo", "")
         );
 
-    LOCK(cs_main);
+    LOCK(EDC_cs_main);
 
 	EDCapp & theApp = EDCapp::singleton();
 

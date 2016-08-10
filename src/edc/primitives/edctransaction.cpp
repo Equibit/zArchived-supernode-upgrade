@@ -232,7 +232,7 @@ const char * ToString( Currency c )
 
 std::string CEDCTxOut::ToString() const
 {
-    return strprintf("CTxOut(nValue=%d.%08d, "
+    return strprintf("CEDCTxOut(nValue=%d.%08d, "
 					"forSale=%s, "
 					"receiptTxID=%s, "
 					"ownerPubKey=%s, "

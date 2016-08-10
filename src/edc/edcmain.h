@@ -50,9 +50,9 @@ extern const std::string edcstrMessageMagic;
 extern CWaitableCriticalSection edccsBestBlock;
 
 /** Register with a network node to receive its signals */
-void RegisterNodeSignals(CNodeSignals& nodeSignals);
+void RegisterNodeSignals(CEDCNodeSignals& nodeSignals);
 /** Unregister a network node */
-void UnregisterNodeSignals(CNodeSignals& nodeSignals);
+void UnregisterNodeSignals(CEDCNodeSignals& nodeSignals);
 
 /** 
  * Process an incoming block. This only returns after the best known valid
