@@ -310,108 +310,79 @@ uint64_t CEDCNode::nMaxOutboundTotalBytesSentInCycle = 0;
 uint64_t CEDCNode::nMaxOutboundTimeframe = 60*60*24; //1 day
 uint64_t CEDCNode::nMaxOutboundCycleStartTime = 0;
 
-CEDCNode* edcFindNode(const CNetAddr& ip)
+CEDCNode* edcFindNode(const CNetAddr& ip, bool secure )
 {
 	EDCapp & theApp = EDCapp::singleton();
     LOCK(theApp.vNodesCS());
-    BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
-        if ((CNetAddr)pnode->addr == ip)
-            return (pnode);
+	if(!secure)
+	{
+    	BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
+        	if ((CNetAddr)pnode->addr == ip)
+            	return (pnode);
+	}
+	else
+	{
+    	BOOST_FOREACH(CEDCSSLNode* pnode, theApp.vSSLNodes())
+        	if ((CNetAddr)pnode->addr == ip)
+            	return (pnode);
+	}
     return NULL;
 }
 
-CEDCNode* edcFindNode(const CSubNet& subNet)
+CEDCNode* edcFindNode(const CSubNet& subNet, bool secure )
 {
 	EDCapp & theApp = EDCapp::singleton();
     LOCK(theApp.vNodesCS());
-    BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
-    if (subNet.Match((CNetAddr)pnode->addr))
-        return (pnode);
+	if(!secure)
+	{
+	    BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
+    	if (subNet.Match((CNetAddr)pnode->addr))
+        	return (pnode);
+	}
+	else
+	{
+	    BOOST_FOREACH(CEDCSSLNode* pnode, theApp.vSSLNodes())
+    	if (subNet.Match((CNetAddr)pnode->addr))
+        	return (pnode);
+	}
     return NULL;
 }
 
-CEDCNode* edcFindNode(const std::string& addrName)
+CEDCNode* edcFindNode(const std::string& addrName, bool secure )
 {	
 	EDCapp & theApp = EDCapp::singleton();
     LOCK(theApp.vNodesCS());
-    BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
-        if (pnode->addrName == addrName)
-            return (pnode);
+	if(!secure)
+	{
+    	BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
+       		if (pnode->addrName == addrName)
+       	     	return (pnode);
+	}
+	else
+	{
+    	BOOST_FOREACH(CEDCSSLNode* pnode, theApp.vSSLNodes())
+       		if (pnode->addrName == addrName)
+       	     	return (pnode);
+	}
     return NULL;
 }
 
-CEDCNode* edcFindNode(const CService& addr)
+CEDCNode* edcFindNode(const CService& addr, bool secure )
 {
 	EDCapp & theApp = EDCapp::singleton();
     LOCK(theApp.vNodesCS());
-    BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
-        if ((CService)pnode->addr == addr)
-            return (pnode);
-    return NULL;
-}
-
-CEDCNode* edcConnectNode(CAddress addrConnect, const char *pszDest)
-{
-    if (pszDest == NULL) 
+	if(!secure)
 	{
-        if (edcIsLocal(addrConnect))
-            return NULL;
-
-        // Look for an existing connection
-        CEDCNode* pnode = edcFindNode((CService)addrConnect);
-        if (pnode)
-        {
-            pnode->AddRef();
-            return pnode;
-        }
-    }
-
-    /// debug print
-    edcLogPrint("net", "trying connection %s lastseen=%.1fhrs\n",
-        pszDest ? pszDest : addrConnect.ToString(),
-        pszDest ? 0.0 : (double)(edcGetAdjustedTime() - addrConnect.nTime)/3600.0);
-
-    // Connect
-    SOCKET hSocket;
-    bool proxyConnectionFailed = false;
-	EDCapp & theApp = EDCapp::singleton();
-
-    if (pszDest ? edcConnectSocketByName(addrConnect, hSocket, pszDest, edcParams().
-		GetDefaultPort(), theApp.connectTimeout(), &proxyConnectionFailed) :
-        edcConnectSocket(addrConnect, hSocket, theApp.connectTimeout(), 
-		&proxyConnectionFailed))
-    {
-        if (!IsSelectableSocket(hSocket)) 
-		{
-            edcLogPrintf("Cannot create connection: non-selectable socket created (fd >= FD_SETSIZE ?)\n");
-            CloseSocket(hSocket);
-            return NULL;
-        }
-
-        theApp.addrman().Attempt(addrConnect);
-
-        // Add node
-        CEDCNode* pnode = new CEDCNode(hSocket, addrConnect, pszDest ? pszDest : "", false);
-        pnode->AddRef();
-
-        {
-            LOCK(theApp.vNodesCS());
-            theApp.vNodes().push_back(pnode);
-        }
-
-        pnode->nTimeConnected = GetTime();
-
-        return pnode;
-    } 
-	else if (!proxyConnectionFailed) 
+	    BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
+   	     	if ((CService)pnode->addr == addr)
+            	return (pnode);
+	}
+	else
 	{
-        // If connecting to the node failed, and failure is not caused by a problem connecting to
-        // the proxy, mark this as an attempt.
-        theApp.addrman().Attempt(addrConnect);
-    }
-
-    edcLogPrint("net", "WARNING:FAILED to connect %s\n", pszDest ? pszDest : addrConnect.ToString());
-
+	    BOOST_FOREACH(CEDCSSLNode* pnode, theApp.vSSLNodes())
+   	     	if ((CService)pnode->addr == addr)
+            	return (pnode);
+	}
     return NULL;
 }
 
@@ -1015,7 +986,45 @@ static void AcceptConnection(const ListenSocket& hListenSocket)
         }
     }
 
-    CEDCNode* pnode = new CEDCNode(hSocket, addr, "", true);
+	// If socket is on secure port, then 
+	bool isSecure;
+
+	len = sizeof(sockaddr);
+	if(getsockname( hListenSocket.socket, (struct sockaddr*)&sockaddr, &len))
+	{
+		if( sockaddr.ss_family == AF_INET )
+		{
+			struct sockaddr_in * p = (struct sockaddr_in *)&sockaddr;
+			isSecure = (p->sin_port == edcGetListenSecurePort());
+		}
+		else if( sockaddr.ss_family == AF_INET6 )
+		{
+			struct sockaddr_in6 * p = (struct sockaddr_in6 *)&sockaddr;
+			isSecure = (p->sin6_port == edcGetListenSecurePort());
+		}
+		else
+		{
+        	edcLogPrint("net", "ERROR: unsupported family type loaded\n");
+			return;
+		}
+	}
+	else
+	{
+        edcLogPrint("net", "ERROR: failed to get socket information\n");
+		return;
+	}
+
+    CEDCNode * pnode = isSecure ? new CEDCSSLNode( hSocket, addr, "", true ): new CEDCNode(hSocket, addr, "", true);
+
+	if( isSecure )
+	{
+		if( !static_cast<CEDCSSLNode *>(pnode)->sslAccept() )
+		{
+			edcLogPrint( "net", "SSL accept failed. No connection established to %s\n", addr.ToString());
+			return;
+		}
+	}
+
     pnode->AddRef();
     pnode->fWhitelisted = whitelisted;
 
@@ -1040,6 +1049,7 @@ void edcThreadSocketHandler()
             LOCK(theApp.vNodesCS());
             // Disconnect unused nodes
             vector<CEDCNode*> vNodesCopy = theApp.vNodes();
+			vNodesCopy.insert( vNodesCopy.end(), theApp.vSSLNodes().begin(), theApp.vSSLNodes().end());
             BOOST_FOREACH(CEDCNode* pnode, vNodesCopy)
             {
                 if (pnode->fDisconnect ||
@@ -1164,6 +1174,45 @@ void edcThreadSocketHandler()
                         pnode->GetTotalRecvSize() <= edcReceiveFloodSize()))
                         FD_SET(pnode->socket(), &fdsetRecv);
                 }
+			}
+            BOOST_FOREACH(CEDCSSLNode* pnode, theApp.vSSLNodes())
+            {
+                if (pnode->invalidSocket())
+                    continue;
+                FD_SET(pnode->socket(), &fdsetError);
+                hSocketMax = max(hSocketMax, pnode->socket());
+                have_fds = true;
+
+                // Implement the following logic:
+                // * If there is data to send, select() for sending data. As this only
+                //   happens when optimistic write failed, we choose to first drain the
+                //   write buffer in this case before receiving more. This avoids
+                //   needlessly queueing received data, if the remote peer is not themselves
+                //   receiving data. This means properly utilizing TCP flow control signalling.
+                // * Otherwise, if there is no (complete) message in the receive buffer,
+                //   or there is space left in the buffer, select() for receiving data.
+                // * (if neither of the above applies, there is certainly one message
+                //   in the receiver buffer ready to be processed).
+                // Together, that means that at least one of the following is always possible,
+                // so we don't deadlock:
+                // * We send some data.
+                // * We wait for data to be received (and disconnect after timeout).
+                // * We process a message in the buffer (message handler thread).
+                {
+                    TRY_LOCK(pnode->cs_vSend, lockSend);
+                    if (lockSend && !pnode->vSendMsg.empty()) 
+					{
+                        FD_SET(pnode->socket(), &fdsetSend);
+                        continue;
+                    }
+                }
+                {
+                    TRY_LOCK(pnode->cs_vRecvMsg, lockRecv);
+                    if (lockRecv && (
+                        pnode->vRecvMsg.empty() || !pnode->vRecvMsg.front().complete() ||
+                        pnode->GetTotalRecvSize() <= edcReceiveFloodSize()))
+                        FD_SET(pnode->socket(), &fdsetRecv);
+                }
             }
         }
 
@@ -1203,6 +1252,8 @@ void edcThreadSocketHandler()
         {
             LOCK(theApp.vNodesCS());
             vNodesCopy = theApp.vNodes();
+			vNodesCopy.insert( vNodesCopy.end(), 
+				theApp.vSSLNodes().begin(), theApp.vSSLNodes().end());
             BOOST_FOREACH(CEDCNode* pnode, vNodesCopy)
                 pnode->AddRef();
         }
@@ -1504,7 +1555,146 @@ void edcDumpData()
     edcDumpBanlist();
 }
 
-void static ProcessOneShot()
+namespace
+{
+CEDCNode* edcConnectNode(CAddress addrConnect, const char *pszDest, bool secure )
+{
+    if (pszDest == NULL) 
+	{
+        if (edcIsLocal(addrConnect))
+            return NULL;
+
+        // Look for an existing connection
+        CEDCNode* pnode = edcFindNode((CService)addrConnect, secure );
+        if (pnode)
+        {
+            pnode->AddRef();
+            return pnode;
+        }
+    }
+
+    /// debug print
+    edcLogPrint("net", "trying connection %s lastseen=%.1fhrs\n",
+        pszDest ? pszDest : addrConnect.ToString(),
+        pszDest ? 0.0 : (double)(edcGetAdjustedTime() - addrConnect.nTime)/3600.0);
+
+    // Connect
+    SOCKET hSocket;
+    bool proxyConnectionFailed = false;
+	EDCapp & theApp = EDCapp::singleton();
+
+    if (pszDest ? 
+		edcConnectSocketByName(
+			addrConnect, 
+			hSocket, 
+			pszDest, 
+			secure ? edcParams().GetDefaultSecurePort() : edcParams().GetDefaultPort(), 
+			theApp.connectTimeout(), &proxyConnectionFailed) :
+        edcConnectSocket(
+			addrConnect, 
+			hSocket, 
+			theApp.connectTimeout(), &proxyConnectionFailed) 
+	)
+    {
+        if (!IsSelectableSocket(hSocket)) 
+		{
+            edcLogPrintf("Cannot create connection: non-selectable socket created (fd >= FD_SETSIZE ?)\n");
+            CloseSocket(hSocket);
+            return NULL;
+        }
+
+        theApp.addrman().Attempt(addrConnect);
+
+        // Add node
+       	CEDCNode* pnode = secure? new CEDCSSLNode(hSocket, addrConnect, pszDest ? pszDest : "", false) :
+							  	  new CEDCNode(hSocket, addrConnect, pszDest ? pszDest : "", false);
+
+		// If this is a secure connection, then do the SSL handshake
+		if(secure)
+		{
+			if( !static_cast<CEDCSSLNode *>(pnode)->sslConnect())
+			{
+				delete pnode;
+				return NULL;
+			}
+		}
+
+        pnode->AddRef();
+
+        {
+            LOCK(theApp.vNodesCS());
+			if(secure)
+	            theApp.vSSLNodes().push_back(static_cast<CEDCSSLNode *>(pnode));
+			else
+	            theApp.vNodes().push_back(pnode);
+        }
+
+        pnode->nTimeConnected = GetTime();
+
+        return pnode;
+    } 
+	else if (!proxyConnectionFailed) 
+	{
+        // If connecting to the node failed, and failure is not caused by a problem connecting to
+        // the proxy, mark this as an attempt.
+        theApp.addrman().Attempt(addrConnect);
+    }
+
+    edcLogPrint("net", "WARNING:FAILED to connect %s\n", pszDest ? pszDest : addrConnect.ToString());
+
+    return NULL;
+}
+
+// if successful, this moves the passed grant to the constructed node
+bool edcOpenNetworkConnection(
+	 const CAddress & addrConnect, 
+	CSemaphoreGrant * grantOutbound  = NULL, 
+	CSemaphoreGrant * sgrantOutbound = NULL, 
+	     const char * pszDest = NULL, 
+	             bool fOneShot = false )
+{
+    //
+    // Initiate outbound network connection
+    //
+    boost::this_thread::interruption_point();
+    if (!pszDest) 
+	{
+        if (edcIsLocal(addrConnect) ||
+            edcFindNode((CNetAddr)addrConnect, false ) || 
+			CEDCNode::IsBanned(addrConnect) ||
+            edcFindNode(addrConnect.ToStringIPPort(), false ))
+            return false;
+    } 
+	else if (edcFindNode(std::string(pszDest), false ))
+        return false;
+
+    CEDCNode* pnode = edcConnectNode(addrConnect, pszDest, false );
+    boost::this_thread::interruption_point();
+
+    if (!pnode)
+        return false;
+    if (grantOutbound)
+        grantOutbound->MoveTo(pnode->grantOutbound);
+    pnode->fNetworkNode = true;
+    if (fOneShot)
+        pnode->fOneShot = true;
+
+    CEDCSSLNode* pSSLnode = static_cast<CEDCSSLNode *>(edcConnectNode(addrConnect, pszDest, true ));
+    boost::this_thread::interruption_point();
+
+    if (pSSLnode)
+	{
+    	if (sgrantOutbound)
+        	sgrantOutbound->MoveTo(pSSLnode->grantOutbound);
+    	pSSLnode->fNetworkNode = true;
+    	if (fOneShot)
+        	pSSLnode->fOneShot = true;
+	}
+
+    return true;
+}
+
+void ProcessOneShot()
 {
     string strDest;
     {
@@ -1516,11 +1706,14 @@ void static ProcessOneShot()
     }
     CAddress addr;
     CSemaphoreGrant grant(*semOutbound, true);
+    CSemaphoreGrant sgrant(*semOutbound, true);
     if (grant) 
 	{
-        if (!edcOpenNetworkConnection(addr, &grant, strDest.c_str(), true))
+        if (!edcOpenNetworkConnection(addr, &grant, &sgrant, strDest.c_str(), true))
             AddOneShot(strDest);
     }
+}
+
 }
 
 void edcThreadOpenConnections()
@@ -1535,7 +1728,7 @@ void edcThreadOpenConnections()
             BOOST_FOREACH(const std::string& strAddr, params.connect)
             {
                 CAddress addr;
-                edcOpenNetworkConnection(addr, NULL, strAddr.c_str());
+                edcOpenNetworkConnection(addr, NULL, NULL, strAddr.c_str());
                 for (int i = 0; i < 10 && i < nLoop; i++)
                 {
                     MilliSleep(500);
@@ -1555,7 +1748,6 @@ void edcThreadOpenConnections()
 
         MilliSleep(500);
 
-        CSemaphoreGrant grant(*semOutbound);
         boost::this_thread::interruption_point();
 
         // Add seed nodes if DNS seeds are all down (an infrastructure attack?).
@@ -1624,8 +1816,10 @@ void edcThreadOpenConnections()
             break;
         }
 
+        CSemaphoreGrant grant(*semOutbound);
+        CSemaphoreGrant sgrant(*semOutbound);
         if (addrConnect.IsValid())
-            edcOpenNetworkConnection(addrConnect, &grant);
+            edcOpenNetworkConnection(addrConnect, &grant, &sgrant );
     }
 }
 
@@ -1652,7 +1846,8 @@ void edcThreadOpenAddedConnections()
 			{
                 CAddress addr;
                 CSemaphoreGrant grant(*semOutbound);
-                edcOpenNetworkConnection(addr, &grant, strAddNode.c_str());
+                CSemaphoreGrant sgrant(*semOutbound);
+                edcOpenNetworkConnection(addr, &grant, &sgrant, strAddNode.c_str());
                 MilliSleep(500);
             }
             MilliSleep(120000); // Retry every 2 minutes
@@ -1702,49 +1897,13 @@ void edcThreadOpenAddedConnections()
         BOOST_FOREACH(vector<CService>& vserv, lservAddressesToAdd)
         {
             CSemaphoreGrant grant(*semOutbound);
-            edcOpenNetworkConnection(CAddress(vserv[i % vserv.size()]), &grant);
+            CSemaphoreGrant sgrant(*semOutbound);
+            edcOpenNetworkConnection(CAddress(vserv[i % vserv.size()]), &grant, &sgrant );
             MilliSleep(500);
         }
         MilliSleep(120000); // Retry every 2 minutes
     }
 }
-
-// if successful, this moves the passed grant to the constructed node
-bool edcOpenNetworkConnection(
-	 const CAddress & addrConnect, 
-	CSemaphoreGrant * grantOutbound, 
-	     const char * pszDest, 
-	             bool fOneShot )
-{
-    //
-    // Initiate outbound network connection
-    //
-    boost::this_thread::interruption_point();
-    if (!pszDest) 
-	{
-        if (edcIsLocal(addrConnect) ||
-            edcFindNode((CNetAddr)addrConnect) || 
-			CEDCNode::IsBanned(addrConnect) ||
-            edcFindNode(addrConnect.ToStringIPPort()))
-            return false;
-    } 
-	else if (edcFindNode(std::string(pszDest)))
-        return false;
-
-    CEDCNode* pnode = edcConnectNode(addrConnect, pszDest);
-    boost::this_thread::interruption_point();
-
-    if (!pnode)
-        return false;
-    if (grantOutbound)
-        grantOutbound->MoveTo(pnode->grantOutbound);
-    pnode->fNetworkNode = true;
-    if (fOneShot)
-        pnode->fOneShot = true;
-
-    return true;
-}
-
 
 void edcThreadMessageHandler()
 {
@@ -1804,6 +1963,61 @@ void edcThreadMessageHandler()
         {
             LOCK(theApp.vNodesCS());
             BOOST_FOREACH(CEDCNode* pnode, vNodesCopy)
+                pnode->Release();
+        }
+
+        vector<CEDCSSLNode*> vSSLNodesCopy;
+        {
+            LOCK(theApp.vNodesCS());
+            vSSLNodesCopy = theApp.vSSLNodes();
+            BOOST_FOREACH(CEDCSSLNode* pnode, vSSLNodesCopy) 
+			{
+                pnode->AddRef();
+            }
+        }
+
+		// Repeat for SSL connections
+		//
+        fSleep = true;
+
+        BOOST_FOREACH(CEDCSSLNode* pnode, vSSLNodesCopy)
+        {
+            if (pnode->fDisconnect)
+                continue;
+
+            // Receive messages
+            {
+                TRY_LOCK(pnode->cs_vRecvMsg, lockRecv);
+                if (lockRecv)
+                {
+                    if (!g_signals.ProcessMessages(pnode))
+                        pnode->CloseSocketDisconnect();
+
+                    if (pnode->nSendSize < edcSendBufferSize())
+                    {
+                        if (!pnode->vRecvGetData.empty() || 
+						(!pnode->vRecvMsg.empty() && 
+							pnode->vRecvMsg[0].complete()))
+                        {
+                            fSleep = false;
+                        }
+                    }
+                }
+            }
+            boost::this_thread::interruption_point();
+
+            // Send messages
+            {
+                TRY_LOCK(pnode->cs_vSend, lockSend);
+                if (lockSend)
+                    g_signals.SendMessages(pnode);
+            }
+            boost::this_thread::interruption_point();
+        }
+
+        {
+            LOCK(theApp.vNodesCS());
+            BOOST_FOREACH(CEDCSSLNode* pnode, vSSLNodesCopy)
                 pnode->Release();
         }
 
@@ -2123,6 +2337,9 @@ public:
         BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
             if (!pnode->invalidSocket())
                 pnode->closeSocket();
+        BOOST_FOREACH(CEDCSSLNode* pnode, theApp.vSSLNodes())
+            if (!pnode->invalidSocket())
+                pnode->closeSocket();
         BOOST_FOREACH(ListenSocket& hListenSocket, vhListenSocket)
             if (hListenSocket.socket != INVALID_SOCKET)
                 if (!CloseSocket(hListenSocket.socket))
@@ -2131,9 +2348,13 @@ public:
         // clean up some globals (to help leak detection)
         BOOST_FOREACH(CEDCNode *pnode, theApp.vNodes())
             delete pnode;
+        BOOST_FOREACH(CEDCSSLNode *pnode, theApp.vSSLNodes())
+            delete pnode;
         BOOST_FOREACH(CEDCNode *pnode, vNodesDisconnected)
             delete pnode;
+
         theApp.vNodes().clear();
+        theApp.vSSLNodes().clear();
         vNodesDisconnected.clear();
         vhListenSocket.clear();
         delete semOutbound;
@@ -2173,16 +2394,26 @@ void RelayTransaction(const CEDCTransaction& tx, CFeeRate feerate)
     }
 }
 
-void RelayUserMessage( CUserMessage * um )
+void RelayUserMessage( CUserMessage * um, bool secure )
 {
 	EDCapp & theApp = EDCapp::singleton();
 
 	theApp.walletMain()->AddMessage( um->tag(), um->GetHash(), um );
 
 	LOCK(theApp.vNodesCS());
-	BOOST_FOREACH(CEDCNode * pnode, theApp.vNodes())
+	if(secure)
 	{
-		pnode->PushUserMessage(um);
+		BOOST_FOREACH(CEDCSSLNode * pnode, theApp.vSSLNodes())
+		{
+			pnode->PushUserMessage(um);
+		}
+	}
+	else
+	{
+		BOOST_FOREACH(CEDCNode * pnode, theApp.vNodes())
+		{
+			pnode->PushUserMessage(um);
+		}
 	}
 }
 
@@ -2792,13 +3023,140 @@ ssize_t CEDCNode::recv( void *buf, size_t len, int flags )
 	return ::recv( hSocket, buf, len, flags );
 }
 
+CEDCSSLNode::CEDCSSLNode(
+	SOCKET hSocketIn, 
+	const CAddress & addrIn, 
+	const std::string & addrNameIn, 
+	bool fInboundIn):CEDCNode( hSocketIn, addrIn, addrNameIn, fInboundIn )
+{
+
+}
+
+bool CEDCSSLNode::sslConnect()
+{
+	EDCapp & theApp = EDCapp::singleton();
+	SSL_CTX * ctx = theApp.sslCtx();
+
+   	ssl_ = SSL_new (ctx);
+   
+	if( !ssl_ )
+	{
+		char buf[120];
+		int err = ERR_get_error();
+		edcLogPrintf ("ERROR:SSL session create failed: %s\n", ERR_error_string( err, buf ) ); 
+    	return false;
+	}
+   
+    /* Assign the socket into the SSL structure (SSL and socket without BIO) */
+    SSL_set_fd(ssl_, hSocket );
+   
+    /* Perform SSL Handshake on the SSL client */
+    int rc = SSL_connect(ssl_);
+   
+	if( rc < 0 )
+	{
+		char buf[120];
+		int err = ERR_get_error();
+		edcLogPrintf ("ERROR:SSL_connect failed: %s\n", ERR_error_string( err, buf ) ); 
+    	return false;
+	}
+   
+    /* Informational output (optional) */
+    printf ("SSL connection using %s\n", SSL_get_cipher (ssl_));
+   
+    /* Get the server's certificate (optional) */
+    X509 * server_cert = SSL_get_peer_certificate (ssl_);
+   
+    if (server_cert != NULL)
+    {
+        char * str = X509_NAME_oneline(X509_get_subject_name(server_cert),0,0);
+		if(str)
+		{
+        	edcLogPrintf( "Server certificate subject: %s\n", str);
+	        free (str);
+		}
+
+        str = X509_NAME_oneline(X509_get_issuer_name(server_cert),0,0);
+		if(str)
+		{
+        	edcLogPrintf( "Server certificate issuer: %s\n", str);
+	        free(str);
+		}
+
+        X509_free (server_cert);
+    }
+    else
+	{
+        printf("The SSL server does not have certificate.\n");
+		return false;
+	}
+
+	return true;
+}
+
+bool CEDCSSLNode::sslAccept()
+{
+	EDCapp & theApp = EDCapp::singleton();
+	SSL_CTX * ctx = theApp.sslCtx();
+
+	ssl_ = SSL_new(ctx);
+	if( !ssl_ )
+	{
+		char buf[120];
+		int err = ERR_get_error();
+		edcLogPrintf ("ERROR:SSL session create failed: %s\n", ERR_error_string( err, buf ) ); 
+		return false;
+	}
+
+	SSL_set_fd( ssl_, hSocket );
+
+	int rc = SSL_accept(ssl_);
+	if( rc < 0 )
+	{
+		char buf[120];
+		int err = ERR_get_error();
+		edcLogPrintf ("ERROR:SSL_accept failed: %s\n", ERR_error_string( err, buf ) ); 
+		return false;
+	}
+
+	X509 * clientCert = SSL_get_peer_certificate(ssl_);
+	if( clientCert )
+	{
+		char * str = X509_NAME_oneline(X509_get_subject_name(clientCert), 0, 0);
+
+		if(str)
+		{
+			edcLogPrintf("client certificate subject: %s\n", str);
+			free (str);
+		}
+
+		str = X509_NAME_oneline(X509_get_issuer_name(clientCert), 0, 0);
+		if(str)
+		{
+			edcLogPrintf ("client certificate issuer: %s\n", str);
+			free (str);
+		}
+
+		X509_free(clientCert);
+	}
+	else
+	{
+		char buf[120];
+		int err = ERR_get_error();
+		edcLogPrintf ("ERROR:Failed to get peer certificate: %s\n", ERR_error_string( err, buf ) ); 
+		return false;
+	}
+
+	return true;
+}
+
 void CEDCSSLNode::closeSocket()
 {
 	int err = SSL_shutdown(ssl_);
 	if(err == -1 )
 	{
 		char buf[120];
-    	edcLogPrintf(ERR_error_string( err, buf ));
+    	edcLogPrintf("ERROR:SSL socket close error:%s", ERR_error_string( ERR_get_error(), buf ));
 	}
 	CloseSocket(hSocket);
 	SSL_free(ssl_);
@@ -2806,12 +3164,35 @@ void CEDCSSLNode::closeSocket()
 
 ssize_t CEDCSSLNode::send( const void *buf, size_t len, int )
 {
-	return SSL_write( ssl_, buf, len );
+	// No-op
+	if( len == 0 )
+		return 0;
+
+	ssize_t rc = SSL_write( ssl_, buf, len );
+	if( rc > 0 )
+		return rc;
+	else 
+	{
+		int err = ERR_get_error();
+		char buf[120];
+		edcLogPrintf( "ERROR:SSL write error:%s", ERR_error_string( err, buf ) );
+		return -1;
+	}
 }
 
 ssize_t CEDCSSLNode::recv( void *buf, size_t len, int )
 {
-	return SSL_read( ssl_, buf, len );
-}
+	ssize_t rc=SSL_read( ssl_, buf, len );
 
+	if( rc > 0 )
+		return rc;
+	else
+	{
+		int err = ERR_get_error();
+		char buf[120];
+		edcLogPrintf( "ERROR:SSL read error:%s", ERR_error_string( err, buf ) );
+
+		return -1;
+	}
+}
 

@@ -288,12 +288,15 @@ EDCparams::EDCparams()
 	// String parameters
 	alertnotify         = GetArg( "-eb_alertnotify", "" );
 	blocknotify         = GetArg( "-eb_blocknotify", "" );
+	cacert              = GetArg( "-eb_cacert", "" );
+	cert                = GetArg( "-eb_cert", "" );
 	fallbackfee         = GetArg( "-eb_fallbackfee", "" );
 	minrelaytxfee       = GetArg( "-eb_minrelaytxfee", "" );
 	mintxfee            = GetArg( "-eb_mintxfee", "" );
 	onion               = GetArg( "-eb_onion", "" );
 	pid                 = GetArg( "-eb_pid", EQUIBIT_PID_FILENAME );
 	paytxfee            = GetArg( "-eb_paytxfee", "" );
+	privkey             = GetArg( "-eb_privkey", "" );
 	proxy               = GetArg( "-eb_proxy", "" );
 	rpccookiefile       = GetArg( "-eb_rpccookiefile", COOKIEAUTH_FILE );
 	rpcpassword         = GetArg( "-eb_rpcpassword", "" );
@@ -576,7 +579,9 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
 	////////////////////////////////////////////////////////////////////////
     strUsage += HelpMessageGroup(_("Equibit RPC server options:"));
 
-    strUsage += HelpMessageOpt("-eb_server", _("Accept command line and JSON-RPC commands"));
+    strUsage += HelpMessageOpt("-eb_cacert=<CA certificate file>", _("Name of the CA certificate file"));
+    strUsage += HelpMessageOpt("-eb_cert=<certificate file>", _("Name of the certificate file"));
+    strUsage += HelpMessageOpt("-eb_privkey=<private key file>", _("Name of the private key file"));
     strUsage += HelpMessageOpt("-eb_rest", 
 		strprintf(_("Accept public REST requests (default: %u)"), EDC_DEFAULT_REST_ENABLE));
     strUsage += HelpMessageOpt("-eb_rpcbind=<addr>", 
@@ -602,6 +607,7 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
         strUsage += HelpMessageOpt("-eb_rpcservertimeout=<n>", 
 			strprintf("Timeout during HTTP requests (default: %d)", EDC_DEFAULT_HTTP_SERVER_TIMEOUT));
     }
+    strUsage += HelpMessageOpt("-eb_server", _("Accept command line and JSON-RPC commands"));
 
     return strUsage;
 }
@@ -879,6 +885,8 @@ void EDCparams::dumpToLog() const
 	edcLogPrintf( "eb_blockversion         %lld\n", blockversion );
 	edcLogPrintf( "eb_bytespersigop        %lld\n", bytespersigop );
 
+	edcLogPrintf( "eb_cacert               %s\n", cacert.c_str() );
+	edcLogPrintf( "eb_cert                 %s\n", cert.c_str() );
 	edcLogPrintf( "eb_checkblockindex      %s\n", toString(checkblockindex) );
 	edcLogPrintf( "eb_checkblocks          %lld\n", checkblocks );
 	edcLogPrintf( "eb_checklevel           %lld\n", checklevel );
@@ -951,6 +959,7 @@ void EDCparams::dumpToLog() const
 	edcLogPrintf( "eb_printpriority        %s\n", toString(printpriority) );
 	edcLogPrintf( "eb_printtoconsole       %s\n", toString(printtoconsole) );
 	edcLogPrintf( "eb_privdb               %s\n", toString(privdb) );
+	edcLogPrintf( "eb_privkey              %s\n", privkey.c_str() );
 	edcLogPrintf( "eb_proxy                \"%s\"\n", proxy.c_str() );
 	edcLogPrintf( "eb_proxyrandomize       %s\n", toString(proxyrandomize) );
 	edcLogPrintf( "eb_prune                %lld\n", prune );
@@ -1145,6 +1154,8 @@ void EDCparams::checkParams() const
 	validparams.insert("-eb_blocksonly");
 	validparams.insert("-eb_blockversion");
 	validparams.insert("-eb_bytespersigop");
+	validparams.insert("-eb_cacert");
+	validparams.insert("-eb_cert");
 	validparams.insert("-eb_checkblockindex");
 	validparams.insert("-eb_checkblocks");
 	validparams.insert("-eb_checklevel");
@@ -1209,6 +1220,7 @@ void EDCparams::checkParams() const
 	validparams.insert("-eb_printpriority");
 	validparams.insert("-eb_printtoconsole");
 	validparams.insert("-eb_privdb");
+	validparams.insert("-eb_privkey");
 	validparams.insert("-eb_proxy");
 	validparams.insert("-eb_proxyrandomize");
 	validparams.insert("-eb_prune");

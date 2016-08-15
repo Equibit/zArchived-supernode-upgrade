@@ -10,10 +10,12 @@
 #include "main.h"
 #include "net.h"
 #include "edc/wallet/edcdb.h"
+#include <openssl/ssl.h>
 
 
 class CEDCBlockTreeDB;
 class CEDCNode;
+class CEDCSSLNode;
 class CEDCCoinsViewCache;
 class CEDCWallet;
 struct event_base;
@@ -27,6 +29,7 @@ class EDCapp
 public:
 	static EDCapp & singleton();
 
+	~EDCapp();
 
 	int maxConnections() const		{ return maxConnections_; }
 	void maxConnections( int mc )	{ maxConnections_ = mc; }
@@ -86,8 +89,9 @@ public:
 	bool txIndex() const	{ return txIndex_; }
 	void txIndex( bool b )	{ txIndex_ = b; }
 
-	std::vector<CEDCNode*> & vNodes()	{ return vNodes_; }
-	CCriticalSection & vNodesCS()		{ return vNodesCS_; }
+	std::vector<CEDCNode*>		& vNodes()		{ return vNodes_; }
+	std::vector<CEDCSSLNode*>	& vSSLNodes()	{ return vSSLNodes_; }
+	CCriticalSection 			& vNodesCS()	{ return vNodesCS_; }
 
 	std::map<uint256, CEDCTransaction> & mapRelay()	{ return mapRelay_; }
 	CCriticalSection & mapRelayCS()					{ return mapRelayCS_; }
@@ -137,6 +141,10 @@ public:
 
 	event_base * eventBase()				{ return eventBase_; }
 	void	eventBase( event_base * eb )	{ eventBase_ = eb; }
+
+	SSL_CTX	* sslCtx()	{ return sslCtx_; }
+
+	bool	initSSL( const std::string & caCert, const std::string & cert, const std::string & privKey );
 
 private:
 	EDCapp();
@@ -209,8 +217,9 @@ private:
 	std::map<uint256, CEDCTransaction> mapRelay_;
 	CCriticalSection mapRelayCS_;
 
-	std::vector<CEDCNode*> vNodes_;
-	CCriticalSection vNodesCS_;
+	std::vector<CEDCNode*> 		vNodes_;
+	std::vector<CEDCSSLNode*> 	vSSLNodes_;
+	CCriticalSection 			vNodesCS_;
 
 	limitedmap<uint256, int64_t> mapAlreadyAskedFor_;
 
@@ -242,4 +251,6 @@ private:
 	CConditionVariable blockChange_;
 
 	event_base	* eventBase_;
+
+	SSL_CTX	* sslCtx_;
 };

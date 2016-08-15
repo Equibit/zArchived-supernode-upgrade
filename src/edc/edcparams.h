@@ -129,6 +129,8 @@ public:
 	// String parameters
 	std::string alertnotify;
 	std::string blocknotify;
+	std::string cacert;
+	std::string cert;
 	std::string conf;
 	std::string datadir;
 	std::string fallbackfee;
@@ -137,6 +139,7 @@ public:
 	std::string onion;
 	std::string paytxfee;
 	std::string pid;
+	std::string privkey;
 	std::string proxy;
 	std::string rpccookiefile;
 	std::string rpcpassword;

@@ -277,11 +277,16 @@ UniValue edcdisconnectnode(const UniValue& params, bool fHelp)
             + HelpExampleRpc("eb_disconnectnode", "\"192.168.0.6:8333\"")
         );
 
-    CEDCNode* pNode = edcFindNode(params[0].get_str());
+    CEDCNode* pNode = edcFindNode(params[0].get_str(), false );
     if (pNode == NULL)
         throw JSONRPCError(RPC_CLIENT_NODE_NOT_CONNECTED, "Node not found in connected nodes");
 
     pNode->fDisconnect = true;
+
+	// Disconnect secure node as well
+    pNode = edcFindNode(params[0].get_str(), true );
+    if ( pNode )
+    	pNode->fDisconnect = true;
 
     return NullUniValue;
 }
@@ -602,7 +607,7 @@ UniValue edcsetban(const UniValue& params, bool fHelp)
         isSubnet ? CEDCNode::Ban(subNet, BanReasonManuallyAdded, banTime, absolute) : CEDCNode::Ban(netAddr, BanReasonManuallyAdded, banTime, absolute);
 
         //disconnect possible nodes
-        while(CEDCNode *bannedNode = (isSubnet ? edcFindNode(subNet) : edcFindNode(netAddr)))
+        while(CEDCNode *bannedNode = (isSubnet ? edcFindNode(subNet, false ) : edcFindNode(netAddr, false )))
             bannedNode->fDisconnect = true;
     }
     else if(strCommand == "remove")

@@ -82,7 +82,6 @@ public:
 CEDCCoinsViewDB * pcoinsdbview = NULL;
 CEDCCoinsViewErrorCatcher * pcoinscatcher = NULL;
 
-
 /** Used to pass flags to the Bind() function */
 enum BindFlags 
 {
@@ -93,7 +92,6 @@ enum BindFlags
 };
 
 #define MIN_CORE_FILEDESCRIPTORS 150
-
 
 void edcInitLogging()
 {
@@ -120,7 +118,6 @@ bool Bind(const CService &addr, unsigned int flags)
     }
     return true;
 }
-
 
 struct CImportingNow
 {
@@ -334,6 +331,7 @@ bool EdcAppInit(
 	boost::thread_group & threadGroup, 
 		 	 CScheduler & scheduler)
 {
+	EDCapp & theApp = EDCapp::singleton();
 	EDCparams & params = EDCparams::singleton();
 	bool rc = params.validate();
 
@@ -361,6 +359,9 @@ bool EdcAppInit(
 	    edcInitLogging();
 
         // ************************************* Step 1: setup
+		if(!theApp.initSSL( params.cacert, params.cert, params.privkey ))
+			edcInitError("SSL initialization failed. Secure communications disabled. See log for further details.");
+
     	if (!SetupNetworking())
        	 	return edcInitError("Initializing networking failed");
 
@@ -370,7 +371,6 @@ bool EdcAppInit(
     	int nBind = std::max((int)(params.bind.size() + params.whitebind.size()), 1);
 	    int nUserMaxConnections = params.maxconnections;
 
-		EDCapp & theApp = EDCapp::singleton();
     	theApp.maxConnections( std::max(nUserMaxConnections, 0) );
 
     	// Trim requested connection counts, to fit into system limitations

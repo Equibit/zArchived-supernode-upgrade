@@ -54,7 +54,6 @@ bool edcBindListenPort(const CService &bindAddr, std::string& strError, bool fWh
 void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler);
 bool edcStopNode();
 void SocketSendData(CEDCNode *pnode);
-bool edcOpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOutbound = NULL, const char *strDest = NULL, bool fOneShot = false);
 
 typedef int NodeId;
 
@@ -594,10 +593,16 @@ public:
 class CEDCSSLNode : public CEDCNode
 {
 public:
-    CEDCSSLNode(SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn = "", bool fInboundIn = false):CEDCNode( hSocketIn, addrIn, addrNameIn, fInboundIn )
-	{}
+    CEDCSSLNode(SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn = "", bool fInboundIn = false);
+
+	// Server SSL accept processing
+	bool sslAccept();
+
+	// Client SSL connectt processing
+	bool sslConnect();
 
 	virtual void	closeSocket();
+
 	virtual ssize_t send(const void *buf, size_t len, int flags );
 	virtual ssize_t recv(void *buf, size_t len, int flags);
 
@@ -609,7 +614,7 @@ class CEDCTransaction;
 void RelayTransaction(const CEDCTransaction& tx, CFeeRate feerate);
 
 class CUserMessage;
-void RelayUserMessage( CUserMessage * );
+void RelayUserMessage( CUserMessage *, bool );
 
 /** Access to the (IP) address database (peers.dat) */
 class CEDCAddrDB
@@ -639,10 +644,10 @@ void edcDumpBanlist();
 /** Return a timestamp in the future (in microseconds) for exponentially distributed events. */
 int64_t edcPoissonNextSend(int64_t nNow, int average_interval_seconds);
 
-CEDCNode * edcFindNode(const CNetAddr& ip);
-CEDCNode * edcFindNode(const CSubNet& subNet);
-CEDCNode * edcFindNode(const std::string& addrName);
-CEDCNode * edcFindNode(const CService& ip);
+CEDCNode * edcFindNode(const CNetAddr& ip, bool );
+CEDCNode * edcFindNode(const CSubNet& subNet, bool );
+CEDCNode * edcFindNode(const std::string& addrName, bool );
+CEDCNode * edcFindNode(const CService& ip, bool );
 
 void edcSetLimited(enum Network net, bool fLimited);
 
