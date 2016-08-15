@@ -113,6 +113,7 @@ public:
 
 	int64_t maxtxfee;
 	int64_t maxuploadtarget;
+	int64_t maxverdepth;
 	int64_t mempoolexpiry;
 	int64_t par;
 	int64_t port;

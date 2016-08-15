@@ -70,7 +70,8 @@ const unsigned int EDC_DEFAULT_MAX_PEER_CONNECTIONS    = 125;
 const unsigned int EDC_DEFAULT_MAX_SIG_CACHE_SIZE      = 40;
 const int64_t      EDC_DEFAULT_MAX_TIME_ADJUSTMENT     = 70 * 60;
 const int64_t      EDC_DEFAULT_MAX_TIP_AGE             = 24 * 60 * 60;
-const uint64_t     EDC_DEFAULT_MAX_UPLOAD_TARGET= 0;
+const uint64_t     EDC_DEFAULT_MAX_UPLOAD_TARGET       = 0;
+const uint64_t     EDC_DEFAULT_MAX_VERIFY_DEPTH        = 1;
 const size_t       EDC_DEFAULT_MAXRECEIVEBUFFER        = 5 * 1000;
 const size_t       EDC_DEFAULT_MAXSENDBUFFER           = 1 * 1000;
 const unsigned int EDC_DEFAULT_MEMPOOL_EXPIRY          = 72;
@@ -271,6 +272,7 @@ EDCparams::EDCparams()
 	maxtipage           = GetArg( "-eb_maxtipage", EDC_DEFAULT_MAX_TIP_AGE );
 	maxtxfee            = GetArg( "-eb_maxtxfee", 0 );
 	maxuploadtarget     = GetArg( "-eb_maxuploadtarget", EDC_DEFAULT_MAX_UPLOAD_TARGET );
+	maxverdepth         = GetArg( "-eb_maxverdepth", EDC_DEFAULT_MAX_VERIFY_DEPTH );
 	mempoolexpiry       = GetArg( "-eb_mempoolexpiry", EDC_DEFAULT_MEMPOOL_EXPIRY );
 	par                 = GetArg( "-eb_par", EDC_DEFAULT_SCRIPTCHECK_THREADS );
 	peerbloomfilters    = GetArg( "-eb_peerbloomfilters", EDC_DEFAULT_PEERBLOOMFILTERS );
@@ -557,12 +559,17 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
 			strprintf("Relay and mine \"non-standard\" transactions (%sdefault: %u)", "testnet/regtest only; ", !edcParams(CBaseChainParams::TESTNET).RequireStandard()));
     strUsage += HelpMessageOpt("-eb_bytespersigop", 
 		strprintf(_("Minimum bytes per sigop in transactions we relay and mine (default: %u)"), EDC_DEFAULT_BYTES_PER_SIGOP));
+    strUsage += HelpMessageOpt("-eb_cacert=<CA certificate file>", _("Name of the CA certificate file"));
+    strUsage += HelpMessageOpt("-eb_cert=<certificate file>", _("Name of the certificate file"));
     strUsage += HelpMessageOpt("-eb_datacarrier", 
 		strprintf(_("Relay and mine data carrier transactions (default: %u)"), EDC_DEFAULT_ACCEPT_DATACARRIER));
     strUsage += HelpMessageOpt("-eb_datacarriersize", 
 		strprintf(_("Maximum size of data in data carrier transactions we relay and mine (default: %u)"), EDC_MAX_OP_RETURN_RELAY));
+	strUsage += HelpMessageOpt("-eb_maxverdepth",
+		strprintf(_("Maximum CA chain depth (default: %u)"), EDC_DEFAULT_MAX_VERIFY_DEPTH));
     strUsage += HelpMessageOpt("-eb_mempoolreplacement", 
 		strprintf(_("Enable transaction replacement in the memory pool (default: %u)"), EDC_DEFAULT_ENABLE_REPLACEMENT));
+    strUsage += HelpMessageOpt("-eb_privkey=<private key file>", _("Name of the private key file"));
 
 	////////////////////////////////////////////////////////////////////////
     strUsage += HelpMessageGroup(_("Equibit Block creation options:"));
@@ -579,9 +586,6 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
 	////////////////////////////////////////////////////////////////////////
     strUsage += HelpMessageGroup(_("Equibit RPC server options:"));
 
-    strUsage += HelpMessageOpt("-eb_cacert=<CA certificate file>", _("Name of the CA certificate file"));
-    strUsage += HelpMessageOpt("-eb_cert=<certificate file>", _("Name of the certificate file"));
-    strUsage += HelpMessageOpt("-eb_privkey=<private key file>", _("Name of the private key file"));
     strUsage += HelpMessageOpt("-eb_rest", 
 		strprintf(_("Accept public REST requests (default: %u)"), EDC_DEFAULT_REST_ENABLE));
     strUsage += HelpMessageOpt("-eb_rpcbind=<addr>", 
@@ -940,6 +944,7 @@ void EDCparams::dumpToLog() const
 	edcLogPrintf( "eb_maxtipage            %lld\n", maxtipage );
 	edcLogPrintf( "eb_maxtxfee             %lld\n", maxtxfee );
 	edcLogPrintf( "eb_maxuploadtarget      %lld\n", maxuploadtarget );
+	edcLogPrintf( "eb_maxverdepth          %lld\n", maxverdepth );
 	edcLogPrintf( "eb_mempoolexpiry        %lld\n", mempoolexpiry );
 	edcLogPrintf( "eb_mempoolreplacement   %s\n", toString(mempoolreplacement) );
 	edcLogPrintf( "eb_minrelaytxfee        \"%s\"\n", minrelaytxfee.c_str() );
@@ -1204,6 +1209,7 @@ void EDCparams::checkParams() const
 	validparams.insert("-eb_maxtipage");
 	validparams.insert("-eb_maxtxfee");
 	validparams.insert("-eb_maxuploadtarget");
+	validparams.insert("-eb_maxverdepth");
 	validparams.insert("-eb_mempoolexpiry");
 	validparams.insert("-eb_mempoolreplacement");
 	validparams.insert("-eb_minrelaytxfee");

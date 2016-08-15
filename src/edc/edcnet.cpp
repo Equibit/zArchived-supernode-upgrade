@@ -3029,7 +3029,6 @@ CEDCSSLNode::CEDCSSLNode(
 	const std::string & addrNameIn, 
 	bool fInboundIn):CEDCNode( hSocketIn, addrIn, addrNameIn, fInboundIn )
 {
-
 }
 
 bool CEDCSSLNode::sslConnect()
@@ -3061,10 +3060,9 @@ bool CEDCSSLNode::sslConnect()
     	return false;
 	}
    
-    /* Informational output (optional) */
-    printf ("SSL connection using %s\n", SSL_get_cipher (ssl_));
+    edcLogPrintf ("SSL connection using %s\n", SSL_get_cipher (ssl_));
    
-    /* Get the server's certificate (optional) */
+    /* Get the node's certificate (optional) */
     X509 * server_cert = SSL_get_peer_certificate (ssl_);
    
     if (server_cert != NULL)
@@ -3072,14 +3070,14 @@ bool CEDCSSLNode::sslConnect()
         char * str = X509_NAME_oneline(X509_get_subject_name(server_cert),0,0);
 		if(str)
 		{
-        	edcLogPrintf( "Server certificate subject: %s\n", str);
+        	edcLogPrintf( "Peer node certificate subject: %s\n", str);
 	        free (str);
 		}
 
         str = X509_NAME_oneline(X509_get_issuer_name(server_cert),0,0);
 		if(str)
 		{
-        	edcLogPrintf( "Server certificate issuer: %s\n", str);
+        	edcLogPrintf( "Peer node certificate issuer: %s\n", str);
 	        free(str);
 		}
 
@@ -3087,7 +3085,7 @@ bool CEDCSSLNode::sslConnect()
     }
     else
 	{
-        printf("The SSL server does not have certificate.\n");
+        edcLogPrintf("ERROR:The SSL node does not have certificate.\n");
 		return false;
 	}
 
@@ -3126,14 +3124,14 @@ bool CEDCSSLNode::sslAccept()
 
 		if(str)
 		{
-			edcLogPrintf("client certificate subject: %s\n", str);
+			edcLogPrintf("Peer node certificate subject: %s\n", str);
 			free (str);
 		}
 
 		str = X509_NAME_oneline(X509_get_issuer_name(clientCert), 0, 0);
 		if(str)
 		{
-			edcLogPrintf ("client certificate issuer: %s\n", str);
+			edcLogPrintf ("Peer node certificate issuer: %s\n", str);
 			free (str);
 		}
 

@@ -46,7 +46,8 @@ EDCapp & EDCapp::singleton()
 bool EDCapp::initSSL( 
 	const std::string & caCert, 
 	const std::string & cert, 
-	const std::string & privKey )
+	const std::string & privKey,
+	                int verifyDepth )
 {
 	// Secure communications are only permited if the certificate and
 	// private key files are specified
@@ -119,8 +120,8 @@ bool EDCapp::initSSL(
 	/* Set to require peer (client) certificate verification */
 	SSL_CTX_set_verify( sslCtx_, SSL_VERIFY_PEER, NULL );
 
-	/* Set the verification depth to 1 */
-	SSL_CTX_set_verify_depth( sslCtx_, 1 );
+	/* Set the verification depth */
+	SSL_CTX_set_verify_depth( sslCtx_, verifyDepth );
 
 	return true;
 }
