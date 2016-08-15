@@ -25,6 +25,7 @@
 #include <boost/thread.hpp>
 
 #include <stdio.h>
+#include <termios.h>
 
 /* Introduction text for doxygen: */
 
@@ -109,6 +110,11 @@ bool AppInit(int argc, char* argv[])
         return false;
     }
 
+// EDC BEGIN
+	const int MAX_PP = 100;
+	char passPhrase[MAX_PP+1];
+// EDC END
+
     try
     {
         if (!boost::filesystem::is_directory(GetDataDir(false)))
@@ -142,6 +148,37 @@ bool AppInit(int argc, char* argv[])
             fprintf(stderr, "Error: There is no RPC client functionality in bitcoind anymore. Use the bitcoin-cli utility instead.\n");
             exit(1);
         }
+
+// EDC BEGIN
+		fputs( "Enter private key pass phrase:", stdout );
+
+		/* Turn echoing off and fail if we can’t. */
+		struct termios old;
+		if (tcgetattr (fileno (stdin), &old) != 0)
+			return -1;
+		struct termios noEcho = old;
+  		noEcho.c_lflag &= ~ECHO;
+
+		if (tcsetattr (fileno (stdin), TCSAFLUSH, &noEcho ) != 0)
+    		return -1;
+
+		/* Read the password. */
+		char * ptr = fgets( passPhrase, MAX_PP, stdin);
+
+		/* Restore terminal. */
+		(void) tcsetattr (fileno (stdin), TCSAFLUSH, &old);
+
+		fputc('\n', stdout );
+
+		if( ptr == passPhrase )
+		{
+			// Remove carriage return
+			passPhrase[strlen(passPhrase)-1]=0;
+		}
+		else
+			fputs( "\nNo pass phrase. Secure intra-node communications have been disabled\n", stdout );
+// EDC END
+
 #ifndef WIN32
         fDaemon = GetBoolArg("-daemon", false);
         if (fDaemon)
@@ -182,16 +219,20 @@ bool AppInit(int argc, char* argv[])
 // EDC BEGIN
 	try
 	{
-		fRet = EdcAppInit( edcThreadGroup, scheduler );
+		fRet = EdcAppInit( edcThreadGroup, scheduler, passPhrase );
 	}
 	catch( const std::exception & ex )
 	{
         PrintExceptionContinue(&ex, "EdcAppInit()");
+		fRet = false;
 	}
 	catch( ... )
 	{
         PrintExceptionContinue( NULL, "EdcAppInit()");
+		fRet = false;
 	}
+	memset( passPhrase, 0, MAX_PP );
+
 // EDC END
 
     if (!fRet)

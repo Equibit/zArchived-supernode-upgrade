@@ -1,1 +1,12 @@
-./bitcoind -daemon -logtimestamps -eb_logtimestamps -logtimemicros -eb_logtimemicros -regtest -eb_regtest -server -eb_server -debug -eb_debug -eb_relaypriority=false "$@"
+./bitcoind \
+-daemon \
+-logtimestamps -eb_logtimestamps \
+-logtimemicros -eb_logtimemicros \
+-regtest -eb_regtest \
+-server -eb_server \
+-debug -eb_debug \
+-eb_relaypriority=false \
+-eb_cacert=/home/david/EDC/root-ca/root-ca.crt \
+-eb_cert=/home/david/EDC/root-ca/ec.crt \
+-eb_privkey=/home/david/EDC/root-ca/ec.key \
+"$@"

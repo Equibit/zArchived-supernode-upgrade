@@ -9,5 +9,5 @@
 #include "scheduler.h"
 
 
-bool EdcAppInit(boost::thread_group& threadGroup, CScheduler& scheduler);
+bool EdcAppInit(boost::thread_group& threadGroup, CScheduler& scheduler, const char * );
 void edcInterrupt(boost::thread_group& threadGroup);

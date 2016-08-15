@@ -144,7 +144,9 @@ public:
 
 	SSL_CTX	* sslCtx()	{ return sslCtx_; }
 
-	bool	initSSL( const std::string & caCert, const std::string & cert, const std::string & privKey, int verDepth );
+	bool	initSSL(const std::string & caCert, const std::string & cert, 
+					const std::string & privKey, const char * passPhrase,
+					int verDepth );
 
 private:
 	EDCapp();

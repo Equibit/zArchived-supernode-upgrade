@@ -329,7 +329,8 @@ bool edcAppInitServers(boost::thread_group& threadGroup)
 
 bool EdcAppInit(
 	boost::thread_group & threadGroup, 
-		 	 CScheduler & scheduler)
+		 	 CScheduler & scheduler,
+			 const char * passPhrase )
 {
 	EDCapp & theApp = EDCapp::singleton();
 	EDCparams & params = EDCparams::singleton();
@@ -359,7 +360,8 @@ bool EdcAppInit(
 	    edcInitLogging();
 
         // ************************************* Step 1: setup
-		if(!theApp.initSSL( params.cacert, params.cert, params.privkey, params.maxverdepth ))
+		if(!theApp.initSSL( params.cacert, params.cert, params.privkey, 
+		passPhrase, params.maxverdepth ))
 			edcInitError("SSL initialization failed. Secure communications disabled. See log for further details.");
 
     	if (!SetupNetworking())

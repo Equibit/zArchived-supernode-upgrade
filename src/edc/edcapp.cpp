@@ -43,10 +43,21 @@ EDCapp & EDCapp::singleton()
 	return theOneAndOnly;
 }
 
+namespace
+{
+int password_cb(char *buf, int size, int rwflag, void *passwd) 
+{
+    strncpy(buf, (char *) passwd, size);
+    buf[size - 1] = '\0';
+    return (int) (strlen(buf));
+}
+}
+
 bool EDCapp::initSSL( 
 	const std::string & caCert, 
 	const std::string & cert, 
 	const std::string & privKey,
+		   const char * passPhrase,
 	                int verifyDepth )
 {
 	// Secure communications are only permited if the certificate and
@@ -89,6 +100,10 @@ bool EDCapp::initSSL(
 		edcLogPrintf( "ERROR:SSL failed to load certificate file:%s\n", ERR_error_string( err, buf ) );
 		return false;
 	}
+
+	/*Load the password for the Private Key*/
+	SSL_CTX_set_default_passwd_cb_userdata( sslCtx_, const_cast<char *>(passPhrase) );
+	SSL_CTX_set_default_passwd_cb(sslCtx_, password_cb);
 
 	/* Load the private-key corresponding to the server certificate */
 	if (SSL_CTX_use_PrivateKey_file( sslCtx_, privKey.c_str(), SSL_FILETYPE_PEM) <= 0)
