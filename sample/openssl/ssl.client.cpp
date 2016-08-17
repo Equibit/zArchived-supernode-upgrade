@@ -44,7 +44,7 @@ int main( int c, char * a[] )
 	int verify_client = (c > 1 && *a[1] == 'Y' ) ? ON : OFF; /* To verify a client certificate, set ON */
 
 	short int  s_port = 5555;
-	const char * s_ipaddr = "127.0.0.1";
+	const char * s_ipaddr = "192.168.0.202";
 	
 	/* Load encryption & hashing algorithms for the SSL program */
 	SSL_library_init();

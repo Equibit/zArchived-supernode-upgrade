@@ -990,7 +990,7 @@ static void AcceptConnection(const ListenSocket& hListenSocket)
 	bool isSecure;
 
 	len = sizeof(sockaddr);
-	if(getsockname( hListenSocket.socket, (struct sockaddr*)&sockaddr, &len))
+	if(0 == getsockname( hSocket, (struct sockaddr*)&sockaddr, &len))
 	{
 		if( sockaddr.ss_family == AF_INET )
 		{
@@ -1010,20 +1010,26 @@ static void AcceptConnection(const ListenSocket& hListenSocket)
 	}
 	else
 	{
-        edcLogPrint("net", "ERROR: failed to get socket information\n");
+        edcLogPrint("net", "ERROR: failed to get socket information: %s\n",
+			strerror(errno) );
 		return;
 	}
 
-    CEDCNode * pnode = isSecure ? new CEDCSSLNode( hSocket, addr, "", true ): new CEDCNode(hSocket, addr, "", true);
-
+    CEDCNode * pnode;
 	if( isSecure )
 	{
-		if( !static_cast<CEDCSSLNode *>(pnode)->sslAccept() )
+		if( SSL * ssl = CEDCSSLNode::sslAccept(hSocket) )
+		{
+			pnode = new CEDCSSLNode( hSocket, addr, "", true, ssl );
+		}
+		else
 		{
 			edcLogPrint( "net", "SSL accept failed. No connection established to %s\n", addr.ToString());
 			return;
 		}
 	}
+	else
+		pnode = new CEDCNode(hSocket, addr, "", true );
 
     pnode->AddRef();
     pnode->fWhitelisted = whitelisted;
@@ -1605,20 +1611,24 @@ CEDCNode* edcConnectNode(CAddress addrConnect, const char *pszDest, bool secure 
 
         theApp.addrman().Attempt(addrConnect);
 
-        // Add node
-       	CEDCNode* pnode = secure? new CEDCSSLNode(hSocket, addrConnect, pszDest ? pszDest : "", false) :
-							  	  new CEDCNode(hSocket, addrConnect, pszDest ? pszDest : "", false);
-
-		// If this is a secure connection, then do the SSL handshake
+		// If this is a secure connection, then do the SSL handshake first
+       	CEDCNode * pnode;
 		if(secure)
 		{
-			if( !static_cast<CEDCSSLNode *>(pnode)->sslConnect())
+			if( SSL * ssl = CEDCSSLNode::sslConnect(hSocket))
 			{
-				delete pnode;
+       			pnode = new CEDCSSLNode( hSocket, addrConnect, pszDest ? pszDest : "", false, ssl );
+			}
+			else
+			{
+				edcLogPrintf( "ERROR: SSL connect failed. Secure messaging to node disabled\n" );
 				return NULL;
 			}
 		}
-
+		else
+		{
+			pnode = new CEDCNode( hSocket, addrConnect, pszDest ? pszDest : "", false);
+		}
         pnode->AddRef();
 
         {
@@ -3027,43 +3037,82 @@ CEDCSSLNode::CEDCSSLNode(
 	SOCKET hSocketIn, 
 	const CAddress & addrIn, 
 	const std::string & addrNameIn, 
-	bool fInboundIn):CEDCNode( hSocketIn, addrIn, addrNameIn, fInboundIn )
+	bool fInboundIn,
+	SSL * ssl ):
+		CEDCNode( hSocketIn, addrIn, addrNameIn, fInboundIn ),
+		ssl_(ssl)
 {
 }
 
-bool CEDCSSLNode::sslConnect()
+namespace
+{
+
+const char * sslError( int ec )
+{
+	switch(ec)
+	{
+	default:	
+		return "Unknown SSL error";
+
+	case SSL_ERROR_NONE:			
+		return "The TLS/SSL I/O operation completed successfully";
+	case SSL_ERROR_ZERO_RETURN:
+    	return "The TLS/SSL connection has been closed.";
+	case SSL_ERROR_WANT_READ:
+    	return "The read operation did not complete";
+	case SSL_ERROR_WANT_WRITE:
+    	return "The write operation did not complete";
+	case SSL_ERROR_WANT_CONNECT:
+    	return "The connect operation did not complete";
+	case SSL_ERROR_WANT_ACCEPT:
+    	return "The accept operation did not complete";
+	case SSL_ERROR_WANT_X509_LOOKUP:
+		return "The operation did not complete because an application callback set by SSL_CTX_set_client_cert_cb() has asked to be called again.";
+	case SSL_ERROR_WANT_ASYNC:
+    	return "The operation did not complete because an asynchronous engine is still processing data";
+	case SSL_ERROR_WANT_ASYNC_JOB:
+    	return "The asynchronous job could not be started because there were no async jobs available in the pool.";
+	case SSL_ERROR_SYSCALL:
+		return "Some I/O error occurred";
+	case SSL_ERROR_SSL:
+    	return "A failure in the SSL library occurred, usually a protocol error";
+	}
+}
+}
+
+SSL * CEDCSSLNode::sslConnect(SOCKET hSocket )
 {
 	EDCapp & theApp = EDCapp::singleton();
 	SSL_CTX * ctx = theApp.sslCtx();
 
-   	ssl_ = SSL_new (ctx);
+   	SSL * ssl = SSL_new (ctx);
    
-	if( !ssl_ )
+	if( !ssl )
 	{
 		char buf[120];
 		int err = ERR_get_error();
 		edcLogPrintf ("ERROR:SSL session create failed: %s\n", ERR_error_string( err, buf ) ); 
-    	return false;
+    	return NULL;
 	}
    
     /* Assign the socket into the SSL structure (SSL and socket without BIO) */
-    SSL_set_fd(ssl_, hSocket );
+    SSL_set_fd(ssl, hSocket );
    
     /* Perform SSL Handshake on the SSL client */
-    int rc = SSL_connect(ssl_);
+    int rc = SSL_connect(ssl);
    
 	if( rc < 0 )
 	{
-		char buf[120];
-		int err = ERR_get_error();
-		edcLogPrintf ("ERROR:SSL_connect failed: %s\n", ERR_error_string( err, buf ) ); 
-    	return false;
+		int err = SSL_get_error( ssl, rc );
+		edcLogPrintf ("ERROR:SSL_connect failed: %d:%s\n", err, sslError(err)); 
+
+    	return NULL;
 	}
    
-    edcLogPrintf ("SSL connection using %s\n", SSL_get_cipher (ssl_));
+    edcLogPrintf ("SSL connection using %s\n", SSL_get_cipher (ssl));
    
     /* Get the node's certificate (optional) */
-    X509 * server_cert = SSL_get_peer_certificate (ssl_);
+    X509 * server_cert = SSL_get_peer_certificate (ssl);
    
     if (server_cert != NULL)
     {
@@ -3086,38 +3135,38 @@ bool CEDCSSLNode::sslConnect()
     else
 	{
         edcLogPrintf("ERROR:The SSL node does not have certificate.\n");
-		return false;
+		return NULL;
 	}
 
-	return true;
+	return ssl;
 }
 
-bool CEDCSSLNode::sslAccept()
+SSL * CEDCSSLNode::sslAccept( SOCKET hSocket )
 {
 	EDCapp & theApp = EDCapp::singleton();
 	SSL_CTX * ctx = theApp.sslCtx();
 
-	ssl_ = SSL_new(ctx);
-	if( !ssl_ )
+	SSL * ssl = SSL_new(ctx);
+	if( ssl )
 	{
 		char buf[120];
 		int err = ERR_get_error();
 		edcLogPrintf ("ERROR:SSL session create failed: %s\n", ERR_error_string( err, buf ) ); 
-		return false;
+		return NULL;
 	}
 
-	SSL_set_fd( ssl_, hSocket );
+	SSL_set_fd( ssl, hSocket );
 
-	int rc = SSL_accept(ssl_);
+	int rc = SSL_accept(ssl);
 	if( rc < 0 )
 	{
 		char buf[120];
 		int err = ERR_get_error();
 		edcLogPrintf ("ERROR:SSL_accept failed: %s\n", ERR_error_string( err, buf ) ); 
-		return false;
+		return NULL;
 	}
 
-	X509 * clientCert = SSL_get_peer_certificate(ssl_);
+	X509 * clientCert = SSL_get_peer_certificate(ssl);
 	if( clientCert )
 	{
 		char * str = X509_NAME_oneline(X509_get_subject_name(clientCert), 0, 0);
@@ -3142,10 +3191,10 @@ bool CEDCSSLNode::sslAccept()
 		char buf[120];
 		int err = ERR_get_error();
 		edcLogPrintf ("ERROR:Failed to get peer certificate: %s\n", ERR_error_string( err, buf ) ); 
-		return false;
+		return NULL;
 	}
 
-	return true;
+	return ssl;
 }
 
 void CEDCSSLNode::closeSocket()
@@ -3193,4 +3242,3 @@ ssize_t CEDCSSLNode::recv( void *buf, size_t len, int )
 		return -1;
 	}
 }
-

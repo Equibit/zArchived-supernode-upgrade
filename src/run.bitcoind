@@ -9,4 +9,5 @@
 -eb_cacert=/home/david/EDC/root-ca/root-ca.crt \
 -eb_cert=/home/david/EDC/root-ca/ec.crt \
 -eb_privkey=/home/david/EDC/root-ca/ec.key \
+-eb_connect=192.168.0.202 -connect=192.168.0.202 \
 "$@"

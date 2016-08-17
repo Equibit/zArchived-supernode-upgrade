@@ -593,18 +593,19 @@ public:
 class CEDCSSLNode : public CEDCNode
 {
 public:
-    CEDCSSLNode(SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn = "", bool fInboundIn = false);
+    CEDCSSLNode(SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn, bool fInboundIn, SSL * = NULL );
 
-	// Server SSL accept processing
-	bool sslAccept();
-
-	// Client SSL connectt processing
-	bool sslConnect();
 
 	virtual void	closeSocket();
 
 	virtual ssize_t send(const void *buf, size_t len, int flags );
 	virtual ssize_t recv(void *buf, size_t len, int flags);
+
+	// Server SSL accept processing
+	static SSL * sslAccept(SOCKET);
+
+	// Client SSL connectt processing
+	static SSL * sslConnect(SOCKET);
 
 private:
 	SSL * ssl_;

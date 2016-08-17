@@ -109,9 +109,10 @@ $ openssl ecparam -genkey -name secp256k1 | /usr/bin/openssl ec -out ec.key -aes
 $ openssl req -new -key ec.key -out ec.csr
 $ openssl ca -config edc.openssl.conf -in ec.csr -out ec.crt -extensions ssl_ext
 
------------------------------------------------------------------------------------
-Compile and install newest version (currently 1.1.x) of openssl in Ubuntu 14.04 LTS
------------------------------------------------------------------------------------
+------------------------------------------------------------------------------
+Compile and install newest version (currently 1.1.x) of OpenSSL in Ubuntu
+------------------------------------------------------------------------------
+cd
 sudo DEBIAN_FRONTEND=noninteractive apt-get update
 sudo DEBIAN_FRONTEND=noninteractive apt-get --yes --force-yes install checkinstall build-essential
 sudo DEBIAN_FRONTEND=noninteractive apt-get --yes --force-yes build-dep openssl
@@ -122,15 +123,17 @@ sudo ./config
 sudo make
 sudo make test
 sudo checkinstall
-cd ..
-sudo rm -rf openssl
+sudo rm -rf ~/openssl
+sudo mv /usr/bin/c_rehash /usr/bin/c_rehashBACKUP
+sudo mv /usr/bin/openssl /usr/bin/opensslBACKUP
+sudo ln -s /usr/local/bin/c_rehash /usr/bin/c_rehash
 sudo ln -s /usr/local/bin/openssl /usr/bin/openssl
 openssl version
 apt-cache show openssl
 
------------------------------------------------------------------------------------
+------------------------------------------------------------------------------
 Working with .iso files
------------------------------------------------------------------------------------
+------------------------------------------------------------------------------
 sudo mkdir /media/iso (or /media/isoN)
 sudo mount -o loop PATH/file.iso /media/iso
 
