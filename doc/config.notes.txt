@@ -4,7 +4,6 @@ clone EDC Core source:
 
 git clone https://github.com/Equibit/EDC-core.git
 userid: dcauz (or cauz.david@gmail.com)
-pwd:    683344489cab64fe611b8bafed25745a9a3ae553
 
 ------------------------------------------------------------------------------
 clone BitMessage:

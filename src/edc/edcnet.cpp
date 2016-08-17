@@ -1021,6 +1021,7 @@ static void AcceptConnection(const ListenSocket& hListenSocket)
 		if( SSL * ssl = CEDCSSLNode::sslAccept(hSocket) )
 		{
 			pnode = new CEDCSSLNode( hSocket, addr, "", true, ssl );
+			pnode->init();
 		}
 		else
 		{
@@ -1031,6 +1032,7 @@ static void AcceptConnection(const ListenSocket& hListenSocket)
 	else
 	{
 		pnode = new CEDCNode(hSocket, addr, "", true );
+		pnode->init();
 	}
 
     pnode->AddRef();
@@ -1620,6 +1622,7 @@ CEDCNode* edcConnectNode(CAddress addrConnect, const char *pszDest, bool secure 
 			if( SSL * ssl = CEDCSSLNode::sslConnect(hSocket))
 			{
        			pnode = new CEDCSSLNode( hSocket, addrConnect, pszDest ? pszDest : "", false, ssl );
+				pnode->init();
 			}
 			else
 			{
@@ -1630,6 +1633,7 @@ CEDCNode* edcConnectNode(CAddress addrConnect, const char *pszDest, bool secure 
 		else
 		{
 			pnode = new CEDCNode( hSocket, addrConnect, pszDest ? pszDest : "", false);
+			pnode->init();
 		}
         pnode->AddRef();
 
@@ -2286,7 +2290,10 @@ void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
     }
 
     if (pnodeLocalHost == NULL)
+	{
         pnodeLocalHost = new CEDCNode(INVALID_SOCKET, CAddress(CService("127.0.0.1", 0), theApp.localServices() ));
+		pnodeLocalHost->init();
+	}
 
     Discover(threadGroup);
 
@@ -2763,7 +2770,10 @@ CEDCNode::CEDCNode(
         edcLogPrint("net", "Added connection to %s peer=%d\n", addrName, id);
     else
         edcLogPrint("net", "Added connection peer=%d\n", id);
+}
 
+void CEDCNode::init()
+{
     // Be shy and don't send version until we hear
     if (!invalidSocket() && !fInbound)
         PushVersion();
@@ -3027,11 +3037,13 @@ void CEDCNode::closeSocket()
 
 ssize_t CEDCNode::send( const void *buf, size_t len, int flags )
 {
+//edcLogPrintf( "%s:%d sock %d\n", __FILE__, __LINE__, hSocket );
 	return ::send( hSocket, buf, len, flags );
 }
 
 ssize_t CEDCNode::recv( void *buf, size_t len, int flags )
 {
+//edcLogPrintf( "%s:%d recv %d\n", __FILE__, __LINE__, hSocket );
 	return ::recv( hSocket, buf, len, flags );
 }
 
@@ -3112,12 +3124,12 @@ SSL * CEDCSSLNode::sslConnect(SOCKET hSocket )
 		++trys;
 
 		int err = SSL_get_error( ssl, rc );
-		edcLogPrintf ("ERROR:SSL connect failed: %s\n", sslError(err)); 
+		edcLogPrintf ("WARNING:SSL connect failed: %s\n", sslError(err)); 
 	
 		if( err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE )
 		{
-			// Sleep 10 milli-seconds
-			usleep(10000);
+			// Sleep 100 milli-seconds (1/10 of a second)
+			usleep(100 * 1000);
 		}
 		else if( trys >= 100 )
 		{
@@ -3185,12 +3197,12 @@ SSL * CEDCSSLNode::sslAccept( SOCKET hSocket )
 		++trys;
 
 		int err = SSL_get_error( ssl, rc );
-		edcLogPrintf ("ERROR:SSL accept failed: %s\n", sslError(err)); 
+		edcLogPrintf ("WARNING:SSL accept failed: %s\n", sslError(err)); 
 	
 		if( err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE )
 		{
-			// Sleep 10 milli-seconds
-			usleep(10000);
+			// Sleep 100 milli-seconds (1/10 of a second)
+			usleep(100 * 1000);
 		}
 		else if( trys >= 100 )
 		{
@@ -3248,12 +3260,13 @@ ssize_t CEDCSSLNode::send( const void *buf, size_t len, int )
 		return 0;
 
 	ssize_t rc = SSL_write( ssl_, buf, len );
+//edcLogPrintf( "%s:%d write %d %d %d\n", __FILE__, __LINE__, hSocket, len, rc );
 	if( rc > 0 )
 		return rc;
 	else 
 	{
 		int err = SSL_get_error( ssl_, rc );
-		edcLogPrintf( "ERROR:SSL write error:%s", sslError(err) );
+		edcLogPrintf( "ERROR:SSL write error:%s\n", sslError(err) );
 		return -1;
 	}
 }
@@ -3261,13 +3274,14 @@ ssize_t CEDCSSLNode::send( const void *buf, size_t len, int )
 ssize_t CEDCSSLNode::recv( void *buf, size_t len, int )
 {
 	ssize_t rc=SSL_read( ssl_, buf, len );
+//edcLogPrintf( "%s:%d read %d %d %d\n", __FILE__, __LINE__, hSocket, len, rc );
 
 	if( rc > 0 )
 		return rc;
 	else
 	{
 		int err = SSL_get_error( ssl_, rc );
-		edcLogPrintf( "ERROR:SSL read error:%s", sslError(err) );
+		edcLogPrintf( "ERROR:SSL read error:%s\n", sslError(err) );
 		return -1;
 	}
 }
