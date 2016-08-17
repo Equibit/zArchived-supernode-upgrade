@@ -995,12 +995,12 @@ static void AcceptConnection(const ListenSocket& hListenSocket)
 		if( sockaddr.ss_family == AF_INET )
 		{
 			struct sockaddr_in * p = (struct sockaddr_in *)&sockaddr;
-			isSecure = (p->sin_port == edcGetListenSecurePort());
+			isSecure = (ntohs(p->sin_port) == edcGetListenSecurePort());
 		}
 		else if( sockaddr.ss_family == AF_INET6 )
 		{
 			struct sockaddr_in6 * p = (struct sockaddr_in6 *)&sockaddr;
-			isSecure = (p->sin6_port == edcGetListenSecurePort());
+			isSecure = (ntohs(p->sin6_port) == edcGetListenSecurePort());
 		}
 		else
 		{
