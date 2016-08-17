@@ -1029,7 +1029,9 @@ static void AcceptConnection(const ListenSocket& hListenSocket)
 		}
 	}
 	else
+	{
 		pnode = new CEDCNode(hSocket, addr, "", true );
+	}
 
     pnode->AddRef();
     pnode->fWhitelisted = whitelisted;
@@ -3095,20 +3097,34 @@ SSL * CEDCSSLNode::sslConnect(SOCKET hSocket )
     	return NULL;
 	}
    
-    /* Assign the socket into the SSL structure (SSL and socket without BIO) */
+    // Assign the socket into the SSL structure (SSL and socket without BIO)
     SSL_set_fd(ssl, hSocket );
    
-    /* Perform SSL Handshake on the SSL client */
-    int rc = SSL_connect(ssl);
-   
-	if( rc < 0 )
+    // Perform SSL Handshake on the SSL client. Do 100 trys before giving up
+	int trys = 0;
+	while(true)
 	{
-		int err = SSL_get_error( ssl, rc );
-		edcLogPrintf ("ERROR:SSL_connect failed: %d:%s\n", err, sslError(err)); 
-
-    	return NULL;
-	}
+    	int rc = SSL_connect(ssl);
    
+		if( rc > 0 )
+			break;
+
+		++trys;
+
+		int err = SSL_get_error( ssl, rc );
+		edcLogPrintf ("ERROR:SSL connect failed: %s\n", sslError(err)); 
+	
+		if( err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE )
+		{
+			// Sleep 10 milli-seconds
+			usleep(10000);
+		}
+		else if( trys >= 100 )
+		{
+			return NULL;
+		}
+	} 
+
     edcLogPrintf ("SSL connection using %s\n", SSL_get_cipher (ssl));
    
     /* Get the node's certificate (optional) */
@@ -3147,7 +3163,7 @@ SSL * CEDCSSLNode::sslAccept( SOCKET hSocket )
 	SSL_CTX * ctx = theApp.sslCtx();
 
 	SSL * ssl = SSL_new(ctx);
-	if( ssl )
+	if( !ssl )
 	{
 		char buf[120];
 		int err = ERR_get_error();
@@ -3157,14 +3173,30 @@ SSL * CEDCSSLNode::sslAccept( SOCKET hSocket )
 
 	SSL_set_fd( ssl, hSocket );
 
-	int rc = SSL_accept(ssl);
-	if( rc < 0 )
+    // Perform SSL Handshake on the SSL server. Do 100 trys before giving up
+	int trys = 0;
+	while(true)
 	{
-		char buf[120];
-		int err = ERR_get_error();
-		edcLogPrintf ("ERROR:SSL_accept failed: %s\n", ERR_error_string( err, buf ) ); 
-		return NULL;
-	}
+    	int rc = SSL_accept(ssl);
+   
+		if( rc > 0 )
+			break;
+
+		++trys;
+
+		int err = SSL_get_error( ssl, rc );
+		edcLogPrintf ("ERROR:SSL accept failed: %s\n", sslError(err)); 
+	
+		if( err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE )
+		{
+			// Sleep 10 milli-seconds
+			usleep(10000);
+		}
+		else if( trys >= 100 )
+		{
+			return NULL;
+		}
+	} 
 
 	X509 * clientCert = SSL_get_peer_certificate(ssl);
 	if( clientCert )
@@ -3220,9 +3252,8 @@ ssize_t CEDCSSLNode::send( const void *buf, size_t len, int )
 		return rc;
 	else 
 	{
-		int err = ERR_get_error();
-		char buf[120];
-		edcLogPrintf( "ERROR:SSL write error:%s", ERR_error_string( err, buf ) );
+		int err = SSL_get_error( ssl_, rc );
+		edcLogPrintf( "ERROR:SSL write error:%s", sslError(err) );
 		return -1;
 	}
 }
@@ -3235,10 +3266,8 @@ ssize_t CEDCSSLNode::recv( void *buf, size_t len, int )
 		return rc;
 	else
 	{
-		int err = ERR_get_error();
-		char buf[120];
-		edcLogPrintf( "ERROR:SSL read error:%s", ERR_error_string( err, buf ) );
-
+		int err = SSL_get_error( ssl_, rc );
+		edcLogPrintf( "ERROR:SSL read error:%s", sslError(err) );
 		return -1;
 	}
 }

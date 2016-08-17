@@ -80,6 +80,9 @@ bool EDCapp::initSSL(
 
 	/* Create a SSL_CTX structure */
 	sslCtx_ = SSL_CTX_new(meth);
+	
+	SSL_CTX_set_mode( sslCtx_, 
+		SSL_MODE_ENABLE_PARTIAL_WRITE | SSL_MODE_AUTO_RETRY );
 
 	int secp256k1 = NID_secp256k1;
 	SSL_CTX_set1_curves( sslCtx_, &secp256k1, 1 );

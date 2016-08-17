@@ -362,7 +362,7 @@ bool EdcAppInit(
         // ************************************* Step 1: setup
 		if(!theApp.initSSL( params.cacert, params.cert, params.privkey, 
 		passPhrase, params.maxverdepth ))
-			edcInitError("SSL initialization failed. Secure communications disabled. See log for further details.");
+			edcLogPrint( "net", "SSL initialization failed. Secure communications disabled\n" );
 
     	if (!SetupNetworking())
        	 	return edcInitError("Initializing networking failed");

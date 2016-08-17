@@ -569,7 +569,7 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
 		strprintf(_("Maximum CA chain depth (default: %u)"), EDC_DEFAULT_MAX_VERIFY_DEPTH));
     strUsage += HelpMessageOpt("-eb_mempoolreplacement", 
 		strprintf(_("Enable transaction replacement in the memory pool (default: %u)"), EDC_DEFAULT_ENABLE_REPLACEMENT));
-    strUsage += HelpMessageOpt("-eb_privkey=<private key file>", _("Name of the private key file"));
+    strUsage += HelpMessageOpt("-eb_privkey=<private key file>", _("Name of the private key file. If specified, then at start up, the pass phrase will be requested."));
 
 	////////////////////////////////////////////////////////////////////////
     strUsage += HelpMessageGroup(_("Equibit Block creation options:"));

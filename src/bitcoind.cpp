@@ -150,33 +150,38 @@ bool AppInit(int argc, char* argv[])
         }
 
 // EDC BEGIN
-		fputs( "Enter private key pass phrase:", stdout );
-
-		/* Turn echoing off and fail if we can’t. */
-		struct termios old;
-		if (tcgetattr (fileno (stdin), &old) != 0)
-			return -1;
-		struct termios noEcho = old;
-  		noEcho.c_lflag &= ~ECHO;
-
-		if (tcsetattr (fileno (stdin), TCSAFLUSH, &noEcho ) != 0)
-    		return -1;
-
-		/* Read the password. */
-		char * ptr = fgets( passPhrase, MAX_PP, stdin);
-
-		/* Restore terminal. */
-		(void) tcsetattr (fileno (stdin), TCSAFLUSH, &old);
-
-		fputc('\n', stdout );
-
-		if( ptr == passPhrase )
+		// If a SSL private key file is specified, then get the pass phrase
+		if( mapArgs.count( "-eb_privkey" ) > 0 )
 		{
-			// Remove carriage return
-			passPhrase[strlen(passPhrase)-1]=0;
+			fputs( "Enter private key pass phrase:", stdout );
+
+			/* Turn echoing off and fail if we can’t. */
+			struct termios old;
+			if (tcgetattr (fileno (stdin), &old) != 0)
+				return -1;
+			struct termios noEcho = old;
+  			noEcho.c_lflag &= ~ECHO;
+
+			if (tcsetattr (fileno (stdin), TCSAFLUSH, &noEcho ) != 0)
+   		 		return -1;
+
+			/* Read the password. */
+			char * ptr = fgets( passPhrase, MAX_PP, stdin);
+
+			/* Restore terminal. */
+			(void) tcsetattr (fileno (stdin), TCSAFLUSH, &old);
+
+			fputc('\n', stdout );
+
+			if( ptr == passPhrase )
+			{
+				// Remove carriage return
+				passPhrase[strlen(passPhrase)-1]=0;
+			}
+			else
+				fputs( "\nNo pass phrase. Secure, intra-node communications "
+					"has been disabled\n", stdout );
 		}
-		else
-			fputs( "\nNo pass phrase. Secure intra-node communications have been disabled\n", stdout );
 // EDC END
 
 #ifndef WIN32
