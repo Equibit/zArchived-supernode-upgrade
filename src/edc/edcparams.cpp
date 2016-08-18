@@ -255,7 +255,7 @@ EDCparams::EDCparams()
 	dbcache             = GetArg( "-eb_dbcache", EDC_DEFAULT_DB_CACHE );
 	dblogsize           = GetArg( "-eb_dblogsize", EDC_DEFAULT_WALLET_DBLOGSIZE );
 	dropmessagestest    = GetArg( "-eb_dropmessagestest", 0 );
-	fuzzmessagetest     = GetArg( "-eb_fuzzmessagetest", 10 );
+	fuzzmessagestest    = GetArg( "-eb_fuzzmessagestest", 0 );
 	keypool             = GetArg( "-eb_keypool", EDC_DEFAULT_KEYPOOL_SIZE );
 	limitancestorcount  = GetArg( "-eb_limitancestorcount", EDC_DEFAULT_ANCESTOR_LIMIT );
 	limitancestorsize   = GetArg( "-eb_limitancestorsize", EDC_DEFAULT_ANCESTOR_SIZE_LIMIT );
@@ -918,7 +918,7 @@ void EDCparams::dumpToLog() const
 	edcLogPrintf( "eb_feefilter            %s\n", toString(feefilter) );
 	edcLogPrintf( "eb_flushwallet          %s\n", toString(flushwallet) );
 	edcLogPrintf( "eb_forcednsseed         %s\n", toString(forcednsseed) );
-	edcLogPrintf( "eb_fuzzmessagetest      %lld\n", fuzzmessagetest );
+	edcLogPrintf( "eb_fuzzmessagestest     %lld\n", fuzzmessagestest );
 
 	edcLogPrintf( "eb_keypool              %lld\n", keypool );
 
@@ -1064,7 +1064,7 @@ void EDCparams::checkParams() const
 	validparams.insert("-feefilter");
 	validparams.insert("-flushwallet");
 	validparams.insert("-forcednsseed");
-	validparams.insert("-fuzzmessagetest");
+	validparams.insert("-fuzzmessagestest");
 	validparams.insert("-keypool");
 	validparams.insert("-limitancestorcount");
 	validparams.insert("-limitancestorsize");
@@ -1186,7 +1186,7 @@ void EDCparams::checkParams() const
 	validparams.insert("-eb_feefilter");
 	validparams.insert("-eb_flushwallet");
 	validparams.insert("-eb_forcednsseed");
-	validparams.insert("-eb_fuzzmessagetest");
+	validparams.insert("-eb_fuzzmessagestest");
 	validparams.insert("-eb_keypool");
 	validparams.insert("-eb_limitancestorcount");
 	validparams.insert("-eb_limitancestorsize");

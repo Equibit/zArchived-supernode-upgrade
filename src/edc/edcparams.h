@@ -94,7 +94,7 @@ public:
 	int64_t dblogsize;
 	int64_t dropmessagestest;
 	int64_t keypool;
-	int64_t fuzzmessagetest;
+	int64_t fuzzmessagestest;
 	int64_t limitancestorcount;
 	int64_t limitancestorsize;
 	int64_t limitdescendantcount;

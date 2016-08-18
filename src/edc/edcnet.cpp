@@ -660,7 +660,7 @@ bool CEDCNode::ReceiveMsgBytes(const char *pch, unsigned int nBytes)
             handled = msg.readData(pch, nBytes);
 
         if (handled < 0)
-                return false;
+			return false;
 
         if (msg.in_data && msg.hdr.nMessageSize > MAX_PROTOCOL_MESSAGE_LENGTH) 
 		{
@@ -2858,8 +2858,8 @@ void CEDCNode::EndMessage(const char* pszCommand) UNLOCK_FUNCTION(cs_vSend)
         AbortMessage();
         return;
     }
-    if (params.fuzzmessagetest > 0 )
-        Fuzz(params.fuzzmessagetest);
+    if (params.fuzzmessagestest > 0 )
+        Fuzz(params.fuzzmessagestest);
 
     if (ssSend.size() == 0)
     {
@@ -3037,13 +3037,11 @@ void CEDCNode::closeSocket()
 
 ssize_t CEDCNode::send( const void *buf, size_t len, int flags )
 {
-//edcLogPrintf( "%s:%d sock %d\n", __FILE__, __LINE__, hSocket );
 	return ::send( hSocket, buf, len, flags );
 }
 
 ssize_t CEDCNode::recv( void *buf, size_t len, int flags )
 {
-//edcLogPrintf( "%s:%d recv %d\n", __FILE__, __LINE__, hSocket );
 	return ::recv( hSocket, buf, len, flags );
 }
 
@@ -3260,7 +3258,6 @@ ssize_t CEDCSSLNode::send( const void *buf, size_t len, int )
 		return 0;
 
 	ssize_t rc = SSL_write( ssl_, buf, len );
-//edcLogPrintf( "%s:%d write %d %d %d\n", __FILE__, __LINE__, hSocket, len, rc );
 	if( rc > 0 )
 		return rc;
 	else 
@@ -3274,7 +3271,6 @@ ssize_t CEDCSSLNode::send( const void *buf, size_t len, int )
 ssize_t CEDCSSLNode::recv( void *buf, size_t len, int )
 {
 	ssize_t rc=SSL_read( ssl_, buf, len );
-//edcLogPrintf( "%s:%d read %d %d %d\n", __FILE__, __LINE__, hSocket, len, rc );
 
 	if( rc > 0 )
 		return rc;

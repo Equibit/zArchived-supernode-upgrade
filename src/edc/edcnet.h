@@ -261,7 +261,7 @@ public:
         return nRefCount;
     }
 
-    // requires LOCK(cs_vRecvMsg)
+	// requires LOCK(cs_vRecvMsg)
     unsigned int GetTotalRecvSize()
     {
         unsigned int total = 0;
@@ -270,10 +270,10 @@ public:
         return total;
     }
 
-    // requires LOCK(cs_vRecvMsg)
+	// requires LOCK(cs_vRecvMsg)
     bool ReceiveMsgBytes(const char *pch, unsigned int nBytes);
 
-    // requires LOCK(cs_vRecvMsg)
+	// requires LOCK(cs_vRecvMsg)
     void SetRecvVersion(int nVersionIn)
     {
         nRecvVersion = nVersionIn;
@@ -609,6 +609,9 @@ public:
 	static SSL * sslConnect(SOCKET);
 
 private:
+    CEDCSSLNode(const CEDCNode & );
+    void operator=(const CEDCSSLNode & );
+
 	SSL * ssl_;
 };
 
