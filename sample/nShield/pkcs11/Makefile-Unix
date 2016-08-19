@@ -1,0 +1,191 @@
+#
+# Simple makefile for example PKCS#11 programs under Unix
+#
+# Copyright 2001-2010 Thales e-Security Ltd. 
+ 
+# This example source code is provided for your information and 
+# assistance. See the file LICENCE.TXT for details and the
+# terms and conditions of the licence which governs the use of the
+# source code. By using such source code you will be accepting these
+# terms and conditions. If you do not wish to accept these terms and
+# conditions, DO NOT OPEN THE FILE OR USE THE SOURCE CODE. 
+# 
+# Note that there is NO WARRANTY. 
+
+# C compiler options are shown here for Gnu CC (gcc)
+# This was tested using gcc under Solaris
+# You should be able to adapt it for other platforms and compilers
+# Build these with make -f Makefile-Unix
+
+# Location of nFast developer installation
+NFAST_PATH=	/opt/nfast
+
+# C Compiler
+CC=		gcc
+
+# Sets path under /opt/nfast/ for include & library dirs
+# as appropriate for C compiler in use.
+CLIBPATH=	gcc
+
+# Location of PKCS#11 include files
+PKCS11_INCLUDE= $(NFAST_PATH)/c/ctd/$(CLIBPATH)/include/pkcs11
+
+# Location of PKCS#11 library directory
+PKCS11_LIB=$(NFAST_PATH)/c/ctd/$(CLIBPATH)/lib
+
+
+# Location of nfuser examples and cutils include
+NFUSER_EXAMPLES= $(NFAST_PATH)/c/ctd/examples/nfuser
+CUTILS_INCLUDE=$(NFAST_PATH)/c/ctd/$(CLIBPATH)/include/cutils
+
+# Find the library at link time. (On AIX, needs -lcknfast.so not -lcknfast)
+# The CipherTools Integration Guide explains the multiple versions of
+# the library that are supplied. If you aren't using the shared version
+# of the library, you will also need to link with the nfkm and nfstub
+# libraries (the shared library already includes these).
+
+# CKLIB=    -L$(PKCS11_LIB)  -lcknfast  $(PKCS11_LIB)/libcutils_thr.a
+CKLIB=    -L$(PKCS11_LIB)  -lcknfast  
+
+# CKLIB= $(PKCS11_LIB)/libcknfast_thr.a $(PKCS11_LIB)/libnfkm_thr.a \
+#            $(PKCS11_LIB)/libnfstub_thr.a 
+
+
+# Find the library at run time if LD_LIBRARY_PATH isn't set.
+# Uncomment appropriate line for your system.
+# Solaris (ansic, gcc)
+# RPATH= -R$(PKCS11_LIB)
+
+# Linux, FreeBSD (gcc)
+RPATH= -Xlinker -rpath -Xlinker $(PKCS11_LIB)
+
+# AIX (xlc_r)
+# RPATH= -Wl,-blibpath:$(PKCS11_LIB):/usr/lib:/lib
+# AIX (gcc) also set -lcknfast with a postfix of .so.
+# RPATH= -Xlinker -blibpath:$(PKCS11_LIB):/usr/lib:/lib
+
+# HPUX (ansic)
+# RPATH= -Wl,+b,$(PKCS11_LIB)
+# HPUX (gcc)
+# RPATH= -Xlinker +b -Xlinker $(PKCS11_LIB)
+
+# IRIX (cc)
+# RPATH= -Wl,-rpath,$(PKCS11_LIB)
+# IRIX (gcc)
+# RPATH= -Xlinker -rpath -Xlinker $(PKCS11_LIB)
+
+# For multithreaded programs, the _REENTRANT macro is needed under Solaris
+# other platforms may have similar extra flags required. If your platform
+# doesn't support threads, you won't be able to build $(TARGETS_THREADED),
+# so comment that line out. If you are building $(TARGETS_THREADED), all objects
+# must be built with threadsafe options.
+CFLAGS=		-g -Wall -Wpointer-arith -Wwrite-strings -Wstrict-prototypes \
+		-Wmissing-prototypes -Werror -O2 -D_REENTRANT \
+		-I$(PKCS11_INCLUDE) -I$(NFUSER_EXAMPLES) -I$(CUTILS_INCLUDE) -I.
+
+LD=		gcc
+LDFLAGS=        $(RPATH)
+# LDLIBS=		$(CKLIB) $(EXAMPLESLIB) -lsocket
+LDLIBS=		$(CKLIB) $(EXAMPLESLIB) 
+# LDLIBS_THREADED= $(CKLIB) $(EXAMPLESLIB) -lsocket -lpthread
+LDLIBS_THREADED= $(CKLIB) $(EXAMPLESLIB) -lpthread
+
+# Targets ------------------------
+
+VPATH=$(NFUSER_EXAMPLES):.
+
+TARGETS= ckcheckinst ckinfo cklist ckmechinfo ckrsagen ckshahmac ckdes3gen \
+         ckcmac-ctr 
+TARGETS_THREADED= cksigtest
+
+all:	$(TARGETS) $(TARGETS_THREADED)
+
+clean:
+	rm -f *.o
+	rm -f $(TARGETS) $(TARGETS_THREADED)
+
+COMMON_OBJECTS=	ckutil.o cktestutil.o ckerrcode.o \
+	report.o report-usage.o nfopt.o nftypes.o tokenise.o \
+	ckreadpin.o readpp-unix.o ckutilprint.o
+
+COMMON_HEADERS= $(PKCS11_INCLUDE)/cryptoki.h \
+	ckutil.h cktestutil.h dsagroup.h ckerrcode.h ckcmac-ctr.h
+THREADED_OBJS= ckmutex-pthread.o pthreadthread.o
+THREADED_HEADERS= ckmutex.h examplethread.h
+
+# We assume you have GNU make's inference rules or similar here
+# (Though we no longer depend on "$@ $^" instead of explicit names).
+
+# Individual dependencies --------------
+
+ckutil.o:	ckutil.c $(COMMON_HEADERS)
+
+cktestutil.o:	cktestutil.c $(COMMON_HEADERS)
+
+ckerrcode.o:	ckerrcode.c $(COMMON_HEADERS)
+
+ckreadpin.o:    ckreadpin.c $(COMMON_HEADERS)
+
+ckcheckinst.o:  ckcheckinst.c $(COMMON_HEADERS)
+
+ckcheckinst:	ckcheckinst.o  $(COMMON_OBJECTS)
+	$(LD) $(LDFLAGS) -o ckcheckinst ckcheckinst.o $(COMMON_OBJECTS) $(LDLIBS)
+
+
+ckinfo.o:	ckinfo.c $(COMMON_HEADERS)
+
+ckinfo:		ckinfo.o $(COMMON_OBJECTS)
+	$(LD) $(LDFLAGS) -o ckinfo ckinfo.o $(COMMON_OBJECTS) $(LDLIBS)
+
+
+cklist.o:	cklist.c $(COMMON_HEADERS)
+
+cklist:		cklist.o $(COMMON_OBJECTS)
+	$(LD) $(LDFLAGS) -o cklist cklist.o $(COMMON_OBJECTS)  $(LDLIBS)
+
+
+ckrsagen.o:	ckrsagen.c $(COMMON_HEADERS)
+
+ckrsagen:	ckrsagen.o  $(COMMON_OBJECTS)
+	$(LD) $(LDFLAGS) -o ckrsagen ckrsagen.o $(COMMON_OBJECTS) $(LDLIBS)
+
+
+ckdes3gen.o:	ckdes3gen.c $(COMMON_HEADERS)
+
+ckdes3gen:	ckdes3gen.o  $(COMMON_OBJECTS)
+	$(LD) $(LDFLAGS) -o ckdes3gen ckdes3gen.o $(COMMON_OBJECTS) $(LDLIBS)
+
+
+ckmechinfo.o:	ckmechinfo.c $(COMMON_HEADERS)
+
+ckmechinfo:	ckmechinfo.o $(COMMON_OBJECTS)
+	$(LD) $(LDFLAGS) -o ckmechinfo ckmechinfo.o $(COMMON_OBJECTS) $(LDLIBS)
+	
+ckshahmac.o:	ckshahmac.c $(COMMON_HEADERS)
+ckshahmac:	ckshahmac.o $(COMMON_OBJECTS)
+	$(LD) $(LDFLAGS) -o ckshahmac ckshahmac.o $(COMMON_OBJECTS) $(LDLIBS)
+
+ckcmac-ctr.o:	ckcmac-ctr.c $(COMMON_HEADERS)
+ckcmac-ctr:	ckcmac-ctr.o $(COMMON_OBJECTS)
+	$(LD) $(LDFLAGS) -o ckcmac-ctr ckcmac-ctr.o $(COMMON_OBJECTS) $(LDLIBS)
+
+
+cksigtest:	cksigtest.o $(THREADED_OBJS) $(COMMON_OBJECTS)
+	$(LD) $(LDFLAGS) -o cksigtest cksigtest.o \
+		$(THREADED_OBJS) $(COMMON_OBJECTS) $(LDLIBS_THREADED)
+
+
+report.o:  $(NFUSER_EXAMPLES)/report.c  $(NFUSER_EXAMPLES)/report.h $(COMMON_HEADERS)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o report.o -c  $(NFUSER_EXAMPLES)/report.c
+
+report-usage.o:  $(NFUSER_EXAMPLES)/report-usage.c  $(NFUSER_EXAMPLES)/report.h $(COMMON_HEADERS)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o report-usage.o -c  $(NFUSER_EXAMPLES)/report-usage.c
+
+nfopt.o: $(NFUSER_EXAMPLES)/nfopt.c $(NFUSER_EXAMPLES)/nfopt.h $(COMMON_HEADERS)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o nfopt.o -c  $(NFUSER_EXAMPLES)/nfopt.c
+
+tokenise.o: $(NFUSER_EXAMPLES)/tokenise.c $(NFUSER_EXAMPLES)/tokenise.h $(COMMON_HEADERS)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o tokenise.o -c  $(NFUSER_EXAMPLES)/tokenise.c
+
+nftypes.o: $(NFUSER_EXAMPLES)/nftypes.c $(NFUSER_EXAMPLES)/nftypes.h $(COMMON_HEADERS)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o nftypes.o -c  $(NFUSER_EXAMPLES)/nftypes.c
