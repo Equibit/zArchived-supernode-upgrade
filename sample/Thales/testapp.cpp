@@ -121,20 +121,16 @@ int main( int c, char * a[] )
 		NFast::CardLoadingLib	theCLL( theApp, theHS, theSW );
 		NFast::Module			theModule( theSW, theCLL );
 		
-		NFast::KeyIdent keyID("equibit", a[1]);
-
 		bool useECDSA = false;
 
 		if( c < 3 )
 		{
-			fprintf( stderr, "usage: %s key-ident ECDSA|DSA\n", a[0] );
+			fprintf( stderr, "usage: %s ECDSA|DSA key-ident ...\n", a[0] );
 			return 1;
 		}
 		else
 		{
-			fprintf( stdout, "generating or using key key_equibit_%s\n",
-				a[1] );
-			useECDSA = (strcmp( a[2], "ECDSA" ) == 0);
+			useECDSA = (strcmp( a[1], "ECDSA" ) == 0);
 		}
 
 		M_KeyType	keyType = useECDSA? 
@@ -144,58 +140,67 @@ int main( int c, char * a[] )
 		int protectType		= NFKM_NKF_ProtectionCardSet;
 		int recoverType 	= NFKM_NKF_RecoveryEnabled; 
 
-		NFast::FindKey	findkey( theApp, keyID );
-
-		if( !findkey.info() )
+		for( int i = 2; i < c; ++i )
 		{
-			NFast::GenerateKeyPair	cmd( theHS, theModule, keyID, keyType, flags, protectType, recoverType );
+			NFast::KeyIdent keyID("equibit", a[i]);
 
-			int rc = cmd.transact( theHS );
+			NFast::FindKey	findkey( theApp, keyID );
+
+			if( !findkey.info() )
+			{
+				fprintf( stdout, "generating or using key key_equibit_%s\n", 
+					a[i] );
+				NFast::GenerateKeyPair	cmd(theHS, theModule, keyID, keyType, 
+											flags, protectType, recoverType );
+
+				int rc = cmd.transact( theHS );
+				if( rc != Status_OK )
+				{
+					fprintf( stderr, "Key generation failed\n" );
+					return 2;
+				}
+			}
+			else
+			{
+				printf( "The key %s:%s already exists\n", keyID.appName(), 
+					keyID.ident() );
+			}
+
+			M_Mech mech = useECDSA ? Mech_ECDSAhSHA256: Mech_DSA;
+
+			const char * plain = "Some plain text to be digitally signed by "
+				"our newly created private key. The text should be longer then "
+				"the hash to make it a useful task";
+
+			NFast::Sign	sign(theApp, theHS, theModule, keyType, keyID, 
+							 mech, plain );
+
+			int rc = sign.transact( theHS );
 			if( rc != Status_OK )
 			{
-				fprintf( stderr, "Key generation failed\n" );
+				fprintf( stderr, "Signature failed\n" );
 				return 2;
 			}
-		}
-		else
-		{
-			printf( "The key %s:%s already exists\n", keyID.appName(), 
-				keyID.ident() );
-		}
-
-		M_Mech mech = useECDSA ? Mech_ECDSAhSHA256: Mech_DSA;
-
-		const char * plain = "Some plain text to be digitally signed by our "
-			"newly created private key. The text should be longer then the "
-			"hash to make it a useful task";
-
-		NFast::Sign	sign(theApp, theHS, theModule, keyType, keyID, 
-						 mech, plain );
-
-		int rc = sign.transact( theHS );
-		if( rc != Status_OK )
-		{
-			fprintf( stderr, "Signature failed\n" );
-			return 2;
-		}
-
-		M_CipherText sig = sign.signature();
-//		printf( "Signature:" );
-//		sbn_printbignum( stdout, "R", sig.data.ecdsa.r	);
-//		sbn_printbignum( stdout, "S", sig.data.ecdsa.s );
-
-		NFast::Verify verify( theApp, theHS, theModule, keyType, keyID,
-			Mech_Any, plain, sig );
-		rc = verify.transact( theHS );
-		if( rc != Status_OK )
-		{
-			fprintf( stderr, "Verification failed\n" );
-			return 2;
+	
+			M_CipherText sig = sign.signature();
+//			printf( "Signature:" );
+//			sbn_printbignum( stdout, "R", sig.data.ecdsa.r	);
+//			sbn_printbignum( stdout, "S", sig.data.ecdsa.s );
+	
+			NFast::Verify verify( theApp, theHS, theModule, keyType, keyID,
+				Mech_Any, plain, sig );
+			rc = verify.transact( theHS );
+			if( rc != Status_OK )
+			{
+				fprintf( stderr, "Verification failed\n" );
+				return 2;
+			}
 		}
 	}
 	catch( std::runtime_error & ex )
 	{
-		std::cerr << "Terminated by uncaught exception: " << ex.what() << std::endl;
+		std::cerr << "Terminated by uncaught exception: " << ex.what() << 
+			std::endl;
 		return 1;
 	}
 

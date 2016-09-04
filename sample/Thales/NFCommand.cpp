@@ -4,6 +4,7 @@
 #include "NFModule.h"
 #include "NFSecurityWorld.h"
 #include "NFCardLoadingLib.h"
+#include "NFFindKey.h"
 #include <stdexcept>
 #include <endian.h>
 
@@ -703,32 +704,39 @@ Verify::Verify(
   hardServer_(hardServer),
   module_(module)
 {
-	NFKM_Key * keyinfo;
-	int rc = NFKM_findkey(app_.handle(), keyIdent.data(), &keyinfo,app_.cctx());
-	throwOnError( "Invalid key passed to verify", rc );
+	FindKey key( app, keyIdent );
 
+	if( !key.info() )
+	{
+		std::string msg = "Verify passed non-existent key ";
+		msg += keyIdent.appName();
+		msg += ":";
+		msg += keyIdent.ident();
+		throw std::runtime_error( msg );
+	}
+		
 	const M_ByteBlock *blobptr;
 
-	if(keyinfo->pubblob.len)
-		blobptr = &keyinfo->pubblob;
+	if(key.info()->pubblob.len)
+		blobptr = &key.info()->pubblob;
 	else
-		blobptr = &keyinfo->privblob;
-	
+		blobptr = &key.info()->privblob;
+
 	M_KeyID keyid = 0;
 
-    /* Attempt to load the key blob.  NFKM_cmd_loadblob() deals with the
-     * details of filling in the command and handling the reply; it would be
-     * possible to construct an M_Command with Cmd_LoadBlob directly
+	/* Attempt to load the key blob.  NFKM_cmd_loadblob() deals with the
+   	 * details of filling in the command and handling the reply; it would be
+   	 * possible to construct an M_Command with Cmd_LoadBlob directly
      * instead.  */
-    rc = NFKM_cmd_loadblob(
+   	int rc = NFKM_cmd_loadblob(
 		app_.handle(), 
 		hardServer_.connection(),
-        module_.info()->module,
-        blobptr,
+   		module_.info()->module,
+   		blobptr,
 		module.cardSetId(),
-        &keyid,      
-        "loading key blob",
-        app_.cctx() );
+       	&keyid,      
+       	"loading key blob",
+       	app_.cctx() );
 	throwOnError( "Loading Blob", rc );
 
 	cmd_.args.verify.key = keyid;
@@ -762,28 +770,35 @@ Sign::Sign(
   hardServer_(hardServer),
   module_(module)
 {
-	NFKM_Key * keyinfo;
-	int rc = NFKM_findkey(app_.handle(), keyIdent.data(), &keyinfo,app_.cctx());
-	throwOnError( "Invalid key passed to verify", rc );
+	FindKey key( app, keyIdent );
 
-	const M_ByteBlock * blobptr = &keyinfo->privblob;
+	if( !key.info() )
+	{
+		std::string msg = "Verify passed non-existent key ";
+		msg += keyIdent.appName();
+		msg += ":";
+		msg += keyIdent.ident();
+		throw std::runtime_error( msg );
+	}
+		
+	const M_ByteBlock * blobptr = &key.info()->privblob;
 	      
 	M_KeyID keyid;
 
-    /* Attempt to load the key blob.  NFKM_cmd_loadblob() deals with the
-     * details of filling in the command and handling the reply; it would be
-     * possible to construct an M_Command with Cmd_LoadBlob directly
-     * instead.  
+   	/* Attempt to load the key blob.  NFKM_cmd_loadblob() deals with the
+   	 * details of filling in the command and handling the reply; it would be
+   	 * possible to construct an M_Command with Cmd_LoadBlob directly
+   	 * instead.  
 	 */
-    rc = NFKM_cmd_loadblob(
+   	int rc = NFKM_cmd_loadblob(
 		app_.handle(), 
 		hardServer_.connection(),
-        module_.info()->module,
-        blobptr,
+   		module_.info()->module,
+		blobptr,
 		module.cardSetId(),
-        &keyid,      
-        "loading key blob",
-        app_.cctx() );
+		&keyid,      
+		"loading key blob",
+		app_.cctx() );
 	throwOnError( "Loading Blob", rc );
 
 	Hash	hash( app, Mech_SHA256Hash, in );
@@ -796,7 +811,8 @@ Sign::Sign(
 	cmd_.args.sign.mech = mech;
 	cmd_.args.sign.plain.type = PlainTextType_Hash32;
 
-	memcpy(cmd_.args.sign.plain.data.hash.data.bytes, h.data.sha256hash.h.bytes, sizeof (M_Hash));
+	memcpy(cmd_.args.sign.plain.data.hash.data.bytes, 
+		h.data.sha256hash.h.bytes, sizeof (M_Hash));
 }
 
 }

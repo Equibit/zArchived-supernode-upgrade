@@ -36,7 +36,11 @@ KeyIdent::KeyIdent( const char * appName, const char * ident ):
 	ident_(strdup(ident))
 {
 	if( !appName_ )
+	{
+		if(ident_ )
+			free(ident_ );
 		throw std::bad_alloc();
+	}
 	if( !ident_ )
 	{
 		free(appName_);
@@ -47,6 +51,8 @@ KeyIdent::KeyIdent( const char * appName, const char * ident ):
 
 	if(!verifyName( appName ))
 	{
+		free(ident_ );
+		free(appName_);
 		std::string msg = "Invalid application name [";
 		msg += appName;
 		msg += "]";
@@ -55,12 +61,59 @@ KeyIdent::KeyIdent( const char * appName, const char * ident ):
 	}
 	if(!verifyName( ident ))
 	{
+		free(ident_ );
+		free(appName_);
 		std::string msg = "Invalid key identifier [";
 		msg += ident;
 		msg += "]";
 
 		throw std::runtime_error( msg );
 	}
+}
+
+KeyIdent::KeyIdent( const KeyIdent & k ):
+	appName_(strdup(k.appName_)),
+	ident_(strdup(k.ident_))
+{
+	if( !appName_ )
+	{
+		if(ident_ )
+			free(ident_ );
+		throw std::bad_alloc();
+	}
+	if( !ident_ )
+	{
+		free(appName_);
+		throw std::bad_alloc();
+	}
+	keyIdent_.appname = appName_;
+	keyIdent_.ident = ident_;	
+
+	// no need to verify. The source KeyIdent already did so
+}
+
+KeyIdent & KeyIdent::operator = ( const KeyIdent & k )
+{
+	free(appName_ );
+	free(ident_ );
+
+	appName_ = strdup(k.appName_);
+
+	if( !appName_ )
+		throw std::bad_alloc();
+
+	ident_ = strdup(k.ident_);
+	if( !ident_ )
+	{
+		free(appName_);
+		throw std::bad_alloc();
+	}
+	keyIdent_.appname = appName_;
+	keyIdent_.ident = ident_;	
+
+	// no need to verify. The source KeyIdent already did so
+
+	return *this;
 }
 
 KeyIdent::~KeyIdent()

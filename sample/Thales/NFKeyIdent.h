@@ -12,7 +12,10 @@ class KeyIdent
 {
 public:
 	KeyIdent( const char * appName, const char * ident );
+	KeyIdent( const KeyIdent & );
 	~KeyIdent();
+
+	KeyIdent & operator = ( const KeyIdent & );
 
 	const NFKM_KeyIdent & data() const { return keyIdent_; }
 
