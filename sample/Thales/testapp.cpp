@@ -7,6 +7,7 @@
 #include "NFCardLoadingLib.h"
 #include "NFModule.h"
 #include "NFCommand.h"
+#include "NFFindKey.h"
 #include "picky-upcalls.h"
 #include "simplebignum.h"
 
@@ -101,10 +102,10 @@ const NFast_MallocUpcalls mallocupcalls = {
   local_free
 };
 
+
 int main( int c, char * a[] )
 {
     NFast_Call_Context cctx;
-
 	try
 	{
 		NFastAppInitArgs app_init_args;
@@ -120,9 +121,7 @@ int main( int c, char * a[] )
 		NFast::CardLoadingLib	theCLL( theApp, theHS, theSW );
 		NFast::Module			theModule( theSW, theCLL );
 		
-		NFKM_KeyIdent keyID;
-		keyID.appname = const_cast<char *>("equibit");
-		keyID.ident   = const_cast<char *>(a[1]);
+		NFast::KeyIdent keyID("equibit", a[1]);
 
 		bool useECDSA = false;
 
@@ -145,13 +144,23 @@ int main( int c, char * a[] )
 		int protectType		= NFKM_NKF_ProtectionCardSet;
 		int recoverType 	= NFKM_NKF_RecoveryEnabled; 
 
-		NFast::GenerateKeyPair	cmd( theHS, theModule, keyID, keyType, flags, protectType, recoverType );
+		NFast::FindKey	findkey( theApp, keyID );
 
-		int rc = cmd.transact( theHS );
-		if( rc != Status_OK )
+		if( !findkey.info() )
 		{
-			fprintf( stderr, "Key generation failed\n" );
-			return 2;
+			NFast::GenerateKeyPair	cmd( theHS, theModule, keyID, keyType, flags, protectType, recoverType );
+
+			int rc = cmd.transact( theHS );
+			if( rc != Status_OK )
+			{
+				fprintf( stderr, "Key generation failed\n" );
+				return 2;
+			}
+		}
+		else
+		{
+			printf( "The key %s:%s already exists\n", keyID.appName(), 
+				keyID.ident() );
 		}
 
 		M_Mech mech = useECDSA ? Mech_ECDSAhSHA256: Mech_DSA;
@@ -163,7 +172,7 @@ int main( int c, char * a[] )
 		NFast::Sign	sign(theApp, theHS, theModule, keyType, keyID, 
 						 mech, plain );
 
-		rc = sign.transact( theHS );
+		int rc = sign.transact( theHS );
 		if( rc != Status_OK )
 		{
 			fprintf( stderr, "Signature failed\n" );

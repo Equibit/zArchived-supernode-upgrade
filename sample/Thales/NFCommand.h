@@ -1,6 +1,7 @@
 #pragma once
 
 #include "nfast.h"
+#include "NFKeyIdent.h"
 
 namespace NFast
 {
@@ -70,7 +71,7 @@ public:
 class GenerateKeyPair: public Command
 {
 public:
-	GenerateKeyPair( HardServer &, Module &, const NFKM_KeyIdent &, M_KeyType, int flags, int protectType, int recoverType );
+	GenerateKeyPair( HardServer &, Module &, const KeyIdent &, M_KeyType, int flags, int protectType, int recoverType );
 	~GenerateKeyPair();
 
 	const char * name() const final	{ return "GenerateKeyPair"; }
@@ -78,9 +79,9 @@ public:
 	int transact( HardServer & ) final;
 
 private:
-	HardServer			 & hardServer_;
-	Module				 & module_;
-	NFKM_KeyIdent 		 keyIdent_;
+			HardServer & hardServer_;
+				Module & module_;
+				KeyIdent keyIdent_;
 	NFKM_MakeBlobsParams mbp_;
   NFKM_FIPS140AuthHandle fips140authhandle_;
 			  NFKM_Key * keyinfo_;
@@ -98,7 +99,7 @@ private:
 class GenerateKey: public Command
 {
 public:
-	GenerateKey( HardServer &, Module &, const NFKM_KeyIdent &, M_KeyType, int flags, int protectType, int recoverType );
+	GenerateKey( HardServer &, Module &, const KeyIdent &, M_KeyType, int flags, int protectType, int recoverType );
 	~GenerateKey();
 
 	const char * name() const final	{ return "GenerateKey"; }
@@ -106,9 +107,9 @@ public:
 	int transact( HardServer & ) final;
 
 private:
-	HardServer			 & hardServer_;
-	Module				 & module_;
-	NFKM_KeyIdent 		 keyIdent_;
+			HardServer & hardServer_;
+				Module & module_;
+				KeyIdent keyIdent_;
 	NFKM_MakeBlobsParams mbp_;
   NFKM_FIPS140AuthHandle fips140authhandle_;
 			  NFKM_Key * keyinfo_;
@@ -146,7 +147,7 @@ public:
 		HardServer &, 
 		Module &, 
 		M_KeyType, 
-		const NFKM_KeyIdent &, 
+		const KeyIdent &, 
 		M_Mech, 
 		const char *,
 		const M_CipherText & );
@@ -174,7 +175,7 @@ public:
 		HardServer &, 
 		Module &, 
 		M_KeyType, 
-		const NFKM_KeyIdent &, 
+		const KeyIdent &, 
 		M_Mech,
 		const char * );
 

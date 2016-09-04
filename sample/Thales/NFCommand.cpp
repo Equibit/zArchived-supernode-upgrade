@@ -289,7 +289,7 @@ M_Status check_reply(
 int checkKeyGenReply( 
 					 int rc,
 			   M_Reply & reply,
-		 NFKM_KeyIdent & keyident,
+			  KeyIdent & keyident,
   NFKM_MakeBlobsParams & mbp,
 NFKM_FIPS140AuthHandle & fips140authhandle,
 			NFKM_Key * & keyinfo,
@@ -313,8 +313,8 @@ NFKM_FIPS140AuthHandle & fips140authhandle,
 
 	/* Some things we must fill in ourselves */
 	keyinfo->v = 8;
-	keyinfo->appname = keyident.appname;
-	keyinfo->ident = keyident.ident;
+	keyinfo->appname = keyident.data().appname;
+	keyinfo->ident = keyident.data().ident;
 	time(&keyinfo->gentime);
 
 	/* Next we fill in the makeblob parameters structure, mbp, and notice whether
@@ -471,7 +471,7 @@ LoadBuffer::LoadBuffer(
 GenerateKeyPair::GenerateKeyPair(
 			 HardServer & hardServer,
 				 Module & module, 
-	const NFKM_KeyIdent & keyIdent,
+		 const KeyIdent & keyIdent,
 				M_KeyType keyType, 
 		  			  int flags,
 					  int protectType,
@@ -601,7 +601,7 @@ int GenerateKeyPair::transact( HardServer & hs )
 GenerateKey::GenerateKey(
 			 HardServer & hardServer,
 				 Module & module, 
-	const NFKM_KeyIdent & keyIdent,
+		 const KeyIdent & keyIdent,
 				M_KeyType keyType, 
 					  int flags,
 					  int protectType,
@@ -695,7 +695,7 @@ Verify::Verify(
  		 HardServer & hardServer, 
 	 		 Module & module, 
 			M_KeyType keyType, 
-const NFKM_KeyIdent & keyIdent, 
+	 const KeyIdent & keyIdent, 
 			   M_Mech mech,
 	     const char * in,
  const M_CipherText & sig
@@ -704,7 +704,7 @@ const NFKM_KeyIdent & keyIdent,
   module_(module)
 {
 	NFKM_Key * keyinfo;
-	int rc = NFKM_findkey(app_.handle(), keyIdent, &keyinfo, app_.cctx() );
+	int rc = NFKM_findkey(app_.handle(), keyIdent.data(), &keyinfo,app_.cctx());
 	throwOnError( "Invalid key passed to verify", rc );
 
 	const M_ByteBlock *blobptr;
@@ -755,7 +755,7 @@ Sign::Sign(
  		 HardServer & hardServer, 
 	 		 Module & module, 
 			M_KeyType keyType, 
-const NFKM_KeyIdent & keyIdent, 
+	 const KeyIdent & keyIdent, 
 			   M_Mech mech,
 	     const char * in
 ):Command( app, Cmd_Sign ),
@@ -763,7 +763,7 @@ const NFKM_KeyIdent & keyIdent,
   module_(module)
 {
 	NFKM_Key * keyinfo;
-	int rc = NFKM_findkey(app_.handle(), keyIdent, &keyinfo, app_.cctx() );
+	int rc = NFKM_findkey(app_.handle(), keyIdent.data(), &keyinfo,app_.cctx());
 	throwOnError( "Invalid key passed to verify", rc );
 
 	const M_ByteBlock * blobptr = &keyinfo->privblob;
