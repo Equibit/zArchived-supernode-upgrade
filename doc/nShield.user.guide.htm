@@ -37,14 +37,14 @@ A Security World comprises:</p>
 
 <ul>
 <li>One or more Thales nShield HSMs</li>
-<li>An Administrator Card Set (ACS): set of smart cards used to control access to the Security World configuration, as well as in recovery and replacement operations.</li>
-<li>Optionally, one or more Operator Card Sets (OCSs): set or sets of Operator smart cards used to control access to application keys.</li>
-<li>Some cryptographic key and certificate data that is encrypted using the Security World key and stored on a host computer or computers.</li>
+<li>Administrator Card Set (ACS): set of smart cards used to control access to the Security World configuration, as well as in recovery and replacement operations.</li>
+<li><em>Optionally</em>, one or more Operator Card Sets (OCSs): smart cards used to control access to application keys.</li>
+<li>Some cryptographic key and certificate data that is encrypted using the Security World key and stored on a host computer(s).</li>
 </ul>
 
 <p>
-You can add or remove cards, keys, and even HSM (hardware security module)s at any time. These
-components are linked by the Security World key, which is unique to each world.
+You can add or remove cards, keys, and even HSM (Hardware Security Module)s at any time. 
+These components are linked by the Security World key, which is unique to each world.
 </p>
 
 <p>Each card set consists of a number of smart cards, N, of which a smaller number, K, is required to authorize an action. The required number K is known as the quorum. The value for K should be less than N because an error on one card would render the whole card set unusable. </p>
@@ -160,6 +160,14 @@ You can choose whether or not to make an OCS persistent at the time of its creat
 A Security World can contain a mix of persistent and non-persistent card sets.
 </p>
 
+<h3>Manually removing keys from an HSM</h3>
+<p> You can manually remove all keys protected by persistent cards by clearing the hardware security module by
+
+<ul>
+<li>Run the command <code>nopclearfail --clear --all</code></li>
+<li>Press the Clear button of the hardware security module</li>
+</ul>
+
 <h3>Using pass phrases for extra security</h3>
 <p>
 You can set individual pass phrases for some or all the cards in an OCS.  You can change the pass phrase for a card at any time provided that you have access to the card, the existing pass phrase, and a HSM that belongs to the Security World to which the card belongs.</p>
@@ -179,6 +187,10 @@ A softcard is a file containing a logical token that you cannot load without a p
 <li>Are stored in the /opt/nfast/kmdata/local directory</li>
 <li>Have names of the form softcard_<em>hash</em> (where <em>hash</em> is the hash of the logical token share).</li>
 </ul>
+
+<p>
+Softcard-protected keys offer better security than module-protected keys and better availability than OCS-protected keys. However, because softcard-protected keys do not require physical tokens to authorize key-loading, OCS-protected keys offer better security than softcard-protected keys.
+</p>
 
 <h3>Scalability</h3>
 <p>
@@ -343,18 +355,115 @@ Relevant only if you are replacing a Security World.
 
 </table>
 
-<h4>Before you start to create a SW</h4>
+<h3>Create Security World Steps</h4>
 
-<ul>
+<ol>
 <li>The HSM must be in pre-initialization mode</li>
 <li>Log into host as root or as a user in ther group nfast</li>
+<li>Run the new-world command</li>
 <li>When you have finished, restart the  HSM in operational mode</li>
-</ul>
+</ol>
 
-<h4>new-world usage:</h4>
+<h4>Place HSM in pre-initization mode</h4>
+<p> The modes are: </p>
+<ul>
+<li>Maintenance (top) red</li>
+<li>Initialization (middle) orange</li>
+<li>Operational (bottom) yellow</li>
+</ul>
+<ol>
+<li>Press mode button to change</li>
+<li>Press clear button to set new mode</li>
+</ol>
+<p>status light will be long dashes in operational mode and short dashes in maintenance and initialization mode</p>
+<p>Run enquiry to verify mode</p>
+
+<h4>new-world command:</h4>
+
+<p><code>new-world --initialize --no-remoteshare-cert --cipher-suite=DLf1024s160mRijndael --acs-quorum=1/2</code</p>
+<p>Output: security world generated on module #0; hknso = db0e937ee525394f04d400136e099e3eb3c9eabf</p>
 
 <h3 id=OCS>Create an OCS</h3>
 
+
+<h3 id=LD>Logging and Debugging</h3>
+<p>Use environment variables:</p>
+<table border=1 cellspacing=0>
+<tr><td>NFLOG_FILE</td><td>Name of a file.</td></tr>
+<tr><td>NFLOG_SEVERITY</td><td>
+Minimum severity level for logging messages to be written (all log messages less severe than the specified level are ignored). The level can be one of (in order of greatest to least severity):
+<ol><li>FATAL</li>
+<li>SEVERE</li>
+<li>ERROR</li>
+<li>WARNING (default)</li>
+<li>NOTIFICATION</li>
+<li>DEBUG<em>N</em> N can be an integer from 1 to 10 inclusive that specifies increasing levels of debugging detail, with 10 representing the greatest level of detail. </li></ol>
+</td></tr>
+<tr><td>NFLOG_DETAIL</td><td>
+Hexadecimal value from a bitmask of detail flags.
+The logdetail flags are also used in the hardserver configuration file to control 
+hardserver logging.
+<table cellspacing=0 border=1>
+<tr><td>0x00000001</td><td>Show the external time (machine's local clock). Default.</td><td>external_time</td></tr>
+<tr><td>0x00000002</td><td>Show the external date (machine's local clock)</td><td>external_date</td></tr>
+<tr><td>0x00000004</td><td>Show the external process ID</td><td>external_pid</td></tr>
+<tr><td>0x00000008</td><td>Show the external thread ID</td><td>external_tid</td></tr>
+<tr><td>0x00000010</td><td>Show the external time_t (the time in machine clock ticks rather than local time)</td><td>external_time_t</td></tr>
+<tr><td>0x00000020</td><td>Show the stack backtrace</td><td>stack_backtrace</td></tr>
+<tr><td>0x00000040</td><td>Show the stack file</td><td>stack_file</td></tr>
+<tr><td>0x00000080</td><td>Show the stack line number</td><td>stack_line</td></tr>
+<tr><td>0x00000100</td><td>Show the message severity. Default.</td><td>msg_severity</td></tr>
+<tr><td>0x00000200</td><td>Show the message category</td><td>msg_categories</td></tr>
+<tr><td>0x00000400</td><td>Show message writeables, extra information. Default.</td><td>msg_writeable</td></tr>
+<tr><td>0x00000800</td><td>Show the message file in the original library</td><td>msg_file</td></tr>
+<tr><td>0x00001000</td><td>Show the message line number in the original library</td><td> msg_line</td></tr>
+<tr><td>0x00002000</td><td>Show the date and time in UTC (Coordinated Universal Time)</td><td>options_utc</td></tr>
+</table>
+</td></tr>
+
+<tr><td>NFLOG_CATEGORIES</td><td>
+Colon-separated list of categories on which to filter log messages (categories may contain the wild-card characters * and ? ). If you do not supply any values, then all categories of messages are logged. 
+<table cellspacing=0 border=1>
+<tr><td>nflog</td><td>all general messages relating to nflog</td></tr>
+<tr><td>nflog-stack</td><td>messages from StackPush and StackPop functions</td></tr>
+<tr><td>memory-host</td><td>messages concerning host memory</td></tr>
+<tr><td>memory-module</td><td>messages concerning module memory</td></tr>
+<tr><td>gs-stub</td><td>general generic stub messages</td></tr>
+<tr><td>gs-stubbignum</td><td>bignum printing messages</td></tr>
+<tr><td>gs-stubinit</td><td>generic stub initialization routines</td></tr>
+<tr><td>gs-dumpenv</td><td>environment variable dumps</td></tr>
+<tr><td>nfkm-getinfo</td><td>nfkm-getinfo messages</td></tr>
+<tr><td>nfkm-newworld</td><td>messages about world generation</td></tr>
+<tr><td>nfkm-admin</td><td>operations using the Administrator Card Set</td></tr>
+<tr><td>nfkm-kmdata</td><td>file operations in the kmdata directory</td></tr>
+<tr><td>nfkm-general</td><td>general NFKM library messages</td></tr>
+<tr><td>nfkm-keys</td><td>key loading operations</td></tr>
+<tr><td>nfkm-preload</td><td>preload operations</td></tr>
+<tr><td>nfkm-ppmk</td><td>softcard operations</td></tr>
+<tr><td>serv-general</td><td>general messages about the local hardserver</td></tr>
+<tr><td>serv-client</td><td>messages relating to clients or remote hardservers</td></tr>
+<tr><td>serv-internal</td><td>severe or fatal internal errors</td></tr>
+<tr><td>serv-startup</td><td>fatal startup errors</td></tr>
+<tr><td>servdbg-stub</td><td>all generic stub debugging messages</td></tr>
+<tr><td>servdbg-env</td><td>generic stub environment variable messages</td></tr>
+<tr><td>servdbg-underlay</td><td>messages from the OS-specific device driver interface</td></tr>
+<tr><td>servdbg-statemach</td><td>information about the server’s internal state machine</td></tr>
+<tr><td>servdbg-perf</td><td>messages about the server's internal queuing</td></tr>
+<tr><td>servdbg-client</td><td>external messages generated by the client</td></tr>
+<tr><td>servdbg-messages</td><td>server command dumps</td></tr>
+<tr><td>servdbg-sys</td><td>OS-specific messages</td></tr>
+<tr><td>hwcrhk</td><td>messages from the CHIL (Cryptographic Hardware Interface Library)</td></tr>
+<tr><td>pkcs11-sam</td><td>all security assurance messages from the PKCS #11 library</td></tr>
+<tr><td>pkcs11</td><td>all other messages from the PKCS #11 library</td></tr>
+<tr><td>rqcard-core</td><td>all card-loading library operations that involve standard message passing (including slot polling)</td></tr>
+<tr><td>rqcard-ui</td><td>all card-loading library messages from the current user interface</td></tr>
+<tr><td>rqcard-logic</td><td>all card-loading library messages from specific logics</td></tr>
+<p>See hardserver configuration for more information on configuring logging and debugginf</p>
+<p>See page 187 of the User Guide for logging and debugging PKCS # 11</p>
+<p>See page 188 for more information on Hardserver logging and debugging</p>
+
+</td></tr>
+</table>
 
 </body>
 </html>

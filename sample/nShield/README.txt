@@ -12,7 +12,7 @@
 - Use the Makefile to build the examples. The build will fail unless the 
   following changes are made to the local copy of pkcs11/Makefile-Unix.
 
-
+------------------------------------------------------------------------------
 47,48c47
 < # CKLIB=    -L$(PKCS11_LIB)  -lcknfast  $(PKCS11_LIB)/libcutils_thr.a
 < CKLIB=    -L$(PKCS11_LIB)  -lcknfast  
@@ -34,4 +34,14 @@
 ---
 > LDLIBS=		$(CKLIB) $(EXAMPLESLIB) -lsocket
 > LDLIBS_THREADED= $(CKLIB) $(EXAMPLESLIB) -lsocket -lpthread
+------------------------------------------------------------------------------
 
+- See file:///opt/nfast/document/ncore/html/index.html for CAPI documentation
+- See ../../doc/Cryptographic_API_Integration_Guide.pdf and ../../doc/nCore_Developer_Tutorial.pdf
+
+- Customer Elliptic Curves are supported by types 
+ 	ECName_Custom_Data
+	ECName_CustomLCF_Data
+	ECName_Custom
+	ECName_CustomLCF 
+	and enum M_ECName::ECName_Custom.
