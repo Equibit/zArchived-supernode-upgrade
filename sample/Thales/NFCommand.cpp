@@ -111,24 +111,11 @@ int newBignum(
 	const char * hexStr,
 	  M_Bignum * out )
 {
-#if 1
 	return sbn_char2bignum( out,
 							hexStr,
 							app.handle(),
 							NULL,
 							NULL );
-#else
-	constexpr bool IS_BIG_ENDIAN = BYTE_ORDER == BIG_ENDIAN;
-
-	return sbn_bignumreceiveupcall( app.handle(),
-									nullptr,
-									nullptr,
-									out,
-									len,
-									hexStr,
-									IS_BIG_ENDIAN,
-									IS_BIG_ENDIAN );
-#endif
 }
 
 }
@@ -397,6 +384,7 @@ NFKM_FIPS140AuthHandle & fips140authhandle,
 Command::Command( App & app, M_Cmd c ):app_(app)
 {
 	memset(&cmd_, 0, sizeof(cmd_));
+	memset(&reply_, 0, sizeof(reply_));
 	cmd_.cmd = c;
 }
 
@@ -407,8 +395,6 @@ Command::~Command()
 
 int Command::transact( HardServer & hs )
 {
-	memset(&reply_, 0, sizeof(reply_));
-
 	int rc = NFastApp_Transact( hs.connection(), app_.cctx(), &cmd_, &reply_, NULL );
 
 	if(rc != Status_OK )
@@ -691,24 +677,21 @@ Hash::Hash(
 
 /////////////////////////////////////////////////////////
 
-Verify::Verify( 
-				App & app, 
- 		 HardServer & hardServer, 
-	 		 Module & module, 
-			M_KeyType keyType, 
-	 const KeyIdent & keyIdent, 
-			   M_Mech mech,
-	     const char * in,
- const M_CipherText & sig
-):Command( app, Cmd_Verify ),
-  hardServer_(hardServer),
-  module_(module)
+namespace
 {
-	FindKey key( app, keyIdent );
+
+void loadKeyID(
+	HardServer & hardServer,// IN
+		Module & module,	// IN
+const KeyIdent & keyIdent, 	// IN: The key's identifier
+	   M_KeyID & keyid		// OUT: The key ID
+)
+{
+	FindKey key( hardServer.app(), keyIdent );
 
 	if( !key.info() )
 	{
-		std::string msg = "Verify passed non-existent key ";
+		std::string msg = "Failed to find key ";
 		msg += keyIdent.appName();
 		msg += ":";
 		msg += keyIdent.ident();
@@ -722,30 +705,47 @@ Verify::Verify(
 	else
 		blobptr = &key.info()->privblob;
 
-	M_KeyID keyid = 0;
-
 	/* Attempt to load the key blob.  NFKM_cmd_loadblob() deals with the
    	 * details of filling in the command and handling the reply; it would be
    	 * possible to construct an M_Command with Cmd_LoadBlob directly
      * instead.  */
    	int rc = NFKM_cmd_loadblob(
-		app_.handle(), 
-		hardServer_.connection(),
-   		module_.info()->module,
+		hardServer.app().handle(), 
+		hardServer.connection(),
+   		module.info()->module,
    		blobptr,
 		module.cardSetId(),
        	&keyid,      
        	"loading key blob",
-       	app_.cctx() );
+       	hardServer.app().cctx() );
 	throwOnError( "Loading Blob", rc );
+}
+
+}
+
+Verify::Verify( 
+ 		 HardServer & hardServer, 
+	 		 Module & module, 
+			M_KeyType keyType, 
+	 const KeyIdent & keyIdent, 
+			   M_Mech mech,
+	     const char * in,
+ const M_CipherText & sig
+):Command( hardServer.app(), Cmd_Verify ),
+  hardServer_(hardServer),
+  module_(module)
+{
+	M_KeyID keyid;
+
+	loadKeyID( hardServer_, module_, keyIdent, keyid );
 
 	cmd_.args.verify.key = keyid;
 	cmd_.args.verify.mech = mech;
 
 	cmd_.args.verify.sig = sig;
 
-	Hash	hash( app, Mech_SHA256Hash, in );
-	rc = hash.transact( hardServer );
+	Hash	hash( hardServer_.app(), Mech_SHA256Hash, in );
+	int rc = hash.transact( hardServer );
 	throwOnError( "Hashing message", rc );
 
 	M_CipherText h = hash.hash();
@@ -759,18 +759,17 @@ Verify::Verify(
 /////////////////////////////////////////////////////////
 
 Sign::Sign( 
-				App & app, 
  		 HardServer & hardServer, 
 	 		 Module & module, 
 			M_KeyType keyType, 
 	 const KeyIdent & keyIdent, 
 			   M_Mech mech,
 	     const char * in
-):Command( app, Cmd_Sign ),
+):Command( hardServer.app(), Cmd_Sign ),
   hardServer_(hardServer),
   module_(module)
 {
-	FindKey key( app, keyIdent );
+	FindKey key( hardServer.app(), keyIdent );
 
 	if( !key.info() )
 	{
@@ -801,7 +800,7 @@ Sign::Sign(
 		app_.cctx() );
 	throwOnError( "Loading Blob", rc );
 
-	Hash	hash( app, Mech_SHA256Hash, in );
+	Hash	hash( hardServer.app(), Mech_SHA256Hash, in );
 	rc = hash.transact( hardServer );
 	throwOnError( "Hashing message", rc );
 
@@ -813,6 +812,16 @@ Sign::Sign(
 
 	memcpy(cmd_.args.sign.plain.data.hash.data.bytes, 
 		h.data.sha256hash.h.bytes, sizeof (M_Hash));
+}
+
+Export::Export( 
+	HardServer & hardServer,
+		Module & module,
+const KeyIdent & ident ):Command( hardServer.app(), Cmd_Export )
+{
+	M_KeyID keyID;
+	loadKeyID( hardServer, module, ident, keyID );
+	cmd_.args._export.key = keyID;
 }
 
 }

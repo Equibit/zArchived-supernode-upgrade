@@ -143,7 +143,6 @@ class Verify: public Command
 {
 public:
 	Verify( 
-		App &, 
 		HardServer &, 
 		Module &, 
 		M_KeyType, 
@@ -171,7 +170,6 @@ class Sign: public Command
 {
 public:
 	Sign( 
-		App &, 
 		HardServer &, 
 		Module &, 
 		M_KeyType, 
@@ -185,6 +183,25 @@ public:
 private:
 	HardServer	& hardServer_;
 	Module		& module_;
+};
+
+/** Export key material.
+ **
+ **   Requires the ExportAsPlain operation permission.
+  *
+  * See \ref Cmd_Export for more information.
+  */
+class Export: public Command
+{
+public:
+	Export(
+		HardServer &, 
+		Module &, 
+		const KeyIdent & );
+
+	const char * name() const final	{ return "Export"; }
+
+	M_KeyData	data() const	{ return reply_.reply._export.data; }
 };
 
 }

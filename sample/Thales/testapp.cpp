@@ -122,15 +122,90 @@ int main( int c, char * a[] )
 		NFast::Module			theModule( theSW, theCLL );
 		
 		bool useECDSA = false;
+		bool exportOnly = false;
 
 		if( c < 3 )
 		{
-			fprintf( stderr, "usage: %s ECDSA|DSA key-ident ...\n", a[0] );
+usage:		fprintf( stderr, "usage: %s [-e|-g ECDSA|DSA] key-ident ...\n", 
+				a[0] );
 			return 1;
 		}
 		else
 		{
-			useECDSA = (strcmp( a[1], "ECDSA" ) == 0);
+			if( strcmp( a[1], "-g" ) == 0 )
+				useECDSA = (strcmp( a[2], "ECDSA" ) == 0);
+			else if( strcmp( a[1], "-e" ) == 0 )
+				exportOnly = true;
+			else
+				goto usage;
+		}
+
+		if( exportOnly )
+		{
+			for( int i = 2; i < c; ++i )
+			{
+				NFast::KeyIdent keyID("equibit", a[i]);
+				NFast::Export	exp( theHS, theModule, keyID );
+				int rc = exp.transact( theHS );
+				if( rc != Status_OK )
+				{
+					fprintf( stderr, "Key export failed\n" );
+					return 2;
+				}
+				M_KeyData data = exp.data();
+
+				printf( "%s:%s %s\n", keyID.appName(), keyID.ident(), 
+					NF_Lookup( data.type, NF_KeyType_enumtable ) );
+				if( data.type == KeyType_ECDSAPublic )
+				{
+					printf( "name=%s\n", NF_Lookup( data.data.ecpublic.curve.
+						name, NF_ECName_enumtable ));
+
+					if( data.data.ecpublic.curve.name == ECName_Custom )
+					{
+						printf( "field type=%s\n", 
+							NF_Lookup( data.data.ecpublic.curve.data.custom.F.
+								type,
+							NF_FieldType_enumtable ));
+
+						if( data.data.ecpublic.curve.data.custom.F.
+                                type == FieldType_Prime )
+						{
+							printf( "F.flags=%d\n", 
+								data.data.ecpublic.curve.data.custom.F.data.prime.flags );
+							sbn_printbignum( stdout, "F.p", 
+								data.data.ecpublic.curve.data.custom.F.data.prime.p );
+						}
+						else
+						{
+							// TODO: Binary
+						}
+						sbn_printbignum( stdout, "a", 
+							data.data.ecpublic.curve.data.custom.a );
+						sbn_printbignum( stdout, "b", 
+							data.data.ecpublic.curve.data.custom.b );
+						sbn_printbignum( stdout, "r", 
+							data.data.ecpublic.curve.data.custom.r );
+						printf( "g.flags=%d\n", 
+							data.data.ecpublic.curve.data.custom.g.flags );
+						sbn_printbignum( stdout, "g.x", 
+							data.data.ecpublic.curve.data.custom.g.x );
+						sbn_printbignum( stdout, "g.y", 
+							data.data.ecpublic.curve.data.custom.g.y );
+						printf( "h=%d\n", 
+							data.data.ecpublic.curve.data.custom.h);
+					}
+					else
+					{
+						// TODO: For CustomLCF, the only difference is the h
+						// member has type bignum
+					}
+
+					printf( "Q.flags=%d\n", data.data.ecpublic.Q.flags );
+					sbn_printbignum( stdout, "Q.x", data.data.ecpublic.Q.x );
+					sbn_printbignum( stdout, "Q.y", data.data.ecpublic.Q.y );
+				}
+			}
 		}
 
 		M_KeyType	keyType = useECDSA? 
@@ -140,7 +215,7 @@ int main( int c, char * a[] )
 		int protectType		= NFKM_NKF_ProtectionCardSet;
 		int recoverType 	= NFKM_NKF_RecoveryEnabled; 
 
-		for( int i = 2; i < c; ++i )
+		for( int i = 3; i < c; ++i )
 		{
 			NFast::KeyIdent keyID("equibit", a[i]);
 
@@ -172,7 +247,7 @@ int main( int c, char * a[] )
 				"our newly created private key. The text should be longer then "
 				"the hash to make it a useful task";
 
-			NFast::Sign	sign(theApp, theHS, theModule, keyType, keyID, 
+			NFast::Sign	sign( theHS, theModule, keyType, keyID, 
 							 mech, plain );
 
 			int rc = sign.transact( theHS );
@@ -187,7 +262,7 @@ int main( int c, char * a[] )
 //			sbn_printbignum( stdout, "R", sig.data.ecdsa.r	);
 //			sbn_printbignum( stdout, "S", sig.data.ecdsa.s );
 	
-			NFast::Verify verify( theApp, theHS, theModule, keyType, keyID,
+			NFast::Verify verify( theHS, theModule, keyType, keyID,
 				Mech_Any, plain, sig );
 			rc = verify.transact( theHS );
 			if( rc != Status_OK )
