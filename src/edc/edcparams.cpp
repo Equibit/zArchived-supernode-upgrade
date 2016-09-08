@@ -236,6 +236,7 @@ EDCparams::EDCparams()
 	txindex             = GetBoolArg( "-eb_txindex", EDC_DEFAULT_TXINDEX );
 	upgradewallet       = GetBoolArg( "-eb_upgradewallet", false );
 	upnp                = GetBoolArg( "-eb_upnp", EDC_DEFAULT_UPNP );
+	usehsm              = GetBoolArg( "-eb_usehsm", false );
 	walletbroadcast     = GetBoolArg( "-eb_walletbroadcast", EDC_DEFAULT_WALLETBROADCAST );
 	whitelistrelay      = GetBoolArg( "-eb_whitelistrelay", EDC_DEFAULT_WHITELISTRELAY );
 	whitelistforcerelay = GetBoolArg( "-eb_whitelistforcerelay", EDC_DEFAULT_WHITELISTFORCERELAY );
@@ -460,6 +461,8 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
 		strprintf(_("Use UPnP to map the listening port (default: %u)"), 0));
 #endif
 #endif
+	strUsage += HelpMessageOpt("-eb_usehsm",
+		_("Use HSM for security operations (default: false)"));
     strUsage += HelpMessageOpt("-eb_whitebind=<addr>", 
 		_("Bind to given address and whitelist peers connecting to it. Use [host]:port notation for IPv6"));
     strUsage += HelpMessageOpt("-eb_whitelist=<netmask>", 
@@ -1005,6 +1008,7 @@ void EDCparams::dumpToLog() const
 	printStrVec( "eb_uacomment           ", uacomment );
 	edcLogPrintf( "eb_upgradewallet        %s\n", toString( upgradewallet) );
 	edcLogPrintf( "eb_upnp                 %s\n", toString( upnp) );
+	edcLogPrintf( "eb_usehsm               %s\n", toString( usehsm) );
 
 	edcLogPrintf( "eb_wallet               \"%s\"\n", wallet.c_str() );
 	edcLogPrintf( "eb_walletbroadcast      %s\n", toString( walletbroadcast) );
@@ -1263,6 +1267,7 @@ void EDCparams::checkParams() const
 	validparams.insert("-eb_uacomment");
 	validparams.insert("-eb_upgradewallet");
 	validparams.insert("-eb_upnp");
+	validparams.insert("-eb_usehsm");
 	validparams.insert("-eb_wallet");
 	validparams.insert("-eb_walletbroadcast");
 	validparams.insert("-eb_walletnotify");

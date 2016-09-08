@@ -1,5 +1,6 @@
-#include "NFError.h"
 #include <stdexcept>
+#include "../edc/edcutil.h"
+#include "NFError.h"
 #include "nfast.h"
 
 
@@ -29,7 +30,6 @@ void printOnError( const char * str, int rc )
 		msg += ":";
 		msg += buff;
 
-		fprintf( stderr, "ERROR: %s\n", msg.c_str() );	
-// TODO: replace fprintf with edcLogPrintf
+		edcError( "%s", msg.c_str() );	
 	}
 }

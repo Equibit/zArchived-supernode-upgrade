@@ -75,6 +75,7 @@ public:
 	bool txindex;
 	bool upgradewallet;
 	bool upnp;
+	bool usehsm;
 	bool walletbroadcast;
 	bool whitelistforcerelay;
 	bool whitelistrelay;

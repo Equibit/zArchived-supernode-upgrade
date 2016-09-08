@@ -295,6 +295,7 @@ libbitcoin_server_a_SOURCES = \
   edc/edctimedata.cpp \
   edc/edctxdb.cpp \
   edc/edcutil.cpp \
+  Thales/init.cpp \
   Thales/NFApp.cpp \
   Thales/NFCardLoadingLib.cpp \
   Thales/NFCommand.cpp \

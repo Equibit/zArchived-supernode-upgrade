@@ -22,6 +22,21 @@
 #include <boost/interprocess/sync/file_lock.hpp>
 #include <boost/algorithm/string/replace.hpp>
 
+namespace NFast
+{
+
+class App;
+class SecurityWorld;
+class HardServer;
+class CardLoadingLib;
+class Module;
+
+bool init(	App * &,
+		 	SecurityWorld * &,
+			HardServer * &,
+			CardLoadingLib * &,
+			Module * & );
+};
 
 void edcRegisterAllCoreRPCCommands( CEDCRPCTable & edcTableRPC );
 void edcRegisterWalletRPCCommands(CEDCRPCTable & edcTableRPC );
@@ -1043,6 +1058,15 @@ bool EdcAppInit(
 #endif
 		params.dumpToLog();
 		params.checkParams();
+
+		if(params.usehsm)
+		{
+			rc = NFast::init(theApp.nfApp(), 
+					theApp.nfSecWorld(), 
+					theApp.nfHardServer(),
+					theApp.nfCardLoadingLib(),
+					theApp.nfModule() );
+		}
 	}
 	catch( const std::exception & e )
 	{

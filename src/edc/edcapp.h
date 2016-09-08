@@ -12,6 +12,15 @@
 #include "edc/wallet/edcdb.h"
 #include <openssl/ssl.h>
 
+namespace NFast
+{
+class App;
+class CardLoadingLib;
+class HardServer;
+class Module;
+class SecurityWorld;
+};
+
 
 class CEDCBlockTreeDB;
 class CEDCNode;
@@ -148,6 +157,12 @@ public:
 					const std::string & privKey, const char * passPhrase,
 					int verDepth );
 
+	NFast::App              * & nfApp() 			{ return nfApp_; }
+	NFast::SecurityWorld    * & nfSecWorld()		{ return nfSecWorld_; }
+	NFast::HardServer       * & nfHardServer()		{ return nfHardServer_; }
+	NFast::CardLoadingLib   * & nfCardLoadingLib()	{ return nfCardLoadingLib_;}
+	NFast::Module           * & nfModule()			{ return nfModule_; }
+
 private:
 	EDCapp();
 
@@ -255,4 +270,10 @@ private:
 	event_base	* eventBase_;
 
 	SSL_CTX	* sslCtx_;
+
+	NFast::App              * nfApp_;
+	NFast::SecurityWorld    * nfSecWorld_;
+	NFast::HardServer       * nfHardServer_;
+	NFast::CardLoadingLib   * nfCardLoadingLib_;
+	NFast::Module           * nfModule_;
 };

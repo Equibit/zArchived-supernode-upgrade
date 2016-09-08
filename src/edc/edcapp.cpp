@@ -25,7 +25,12 @@ EDCapp::EDCapp():
 	mempool_(minRelayTxFee_),
 	mapAlreadyAskedFor_(MAX_INV_SZ),
 	payTxFee_(EDC_DEFAULT_TRANSACTION_FEE),
-	sslCtx_(NULL)
+	sslCtx_(NULL),
+	nfApp_(NULL),
+	nfSecWorld_(NULL),
+	nfHardServer_(NULL),
+	nfCardLoadingLib_(NULL),
+	nfModule_(NULL)
 {
 	//TODO: Does maxConnects_ need to take into account the bitcoin connections?
 }
