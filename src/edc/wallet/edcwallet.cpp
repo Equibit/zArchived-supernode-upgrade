@@ -2890,6 +2890,129 @@ bool CEDCWallet::GetKeyFromPool(CPubKey& result)
     return true;
 }
 
+#ifdef USE_HSM
+
+// done
+bool CEDCWallet::GetHSMKeyFromPool(CPubKey& result)
+{
+    int64_t nIndex = 0;
+    CKeyPool keypool;
+    {
+        LOCK(cs_wallet);
+        ReserveKeyFromHSMKeyPool(nIndex, keypool);
+        if (nIndex == -1)
+        {
+            if (IsLocked()) return false;
+            result = GenerateNewHSMKey();
+            return true;
+        }
+        KeepHSMKey(nIndex);
+        result = keypool.vchPubKey;
+    }
+    return true;
+}
+
+// done
+void CEDCWallet::ReserveKeyFromHSMKeyPool( long & nIndex , CKeyPool& keypool )
+{
+    nIndex = -1;
+    keypool.vchPubKey = CPubKey();
+    {
+        LOCK(cs_wallet);
+
+        if (!IsLocked())
+            TopUpHSMKeyPool();
+
+        // Get the oldest key
+        if(setHSMKeyPool.empty())
+            return;
+
+        CEDCWalletDB walletdb(strWalletFile);
+
+        nIndex = *(setHSMKeyPool.begin());
+        setHSMKeyPool.erase(setHSMKeyPool.begin());
+        if (!walletdb.ReadHSMPool(nIndex, keypool))
+            throw runtime_error("ReserveKeyFromHSMKeyPool(): read failed");
+/*?*/        if (!HaveKey(keypool.vchPubKey.GetID()))
+            throw runtime_error("ReserveKeyFromHSMKeyPool(): unknown key in key pool");
+        assert(keypool.vchPubKey.IsValid());
+        edcLogPrintf("HSM keypool reserve %d\n", nIndex);
+    }
+}
+
+// done
+void CEDCWallet::KeepHSMKey( long nIndex )
+{
+    // Remove from key pool
+    if (fFileBacked)
+    {
+        CEDCWalletDB walletdb(strWalletFile);
+        walletdb.EraseHSMPool(nIndex);
+    }
+    edcLogPrintf("HSM keypool keep %d\n", nIndex);
+}
+
+CPubKey CEDCWallet::GenerateNewHSMKey()
+{
+    AssertLockHeld(cs_wallet); // mapKeyMetadata
+    bool fCompressed = CanSupportFeature(FEATURE_COMPRPUBKEY); // default to compressed public keys
+
+/*?*/    CKey secret;
+/*?*/    secret.MakeNewKey(fCompressed);
+
+    // Compressed public keys were introduced in version 0.6.0
+    if (fCompressed)
+        SetMinVersion(FEATURE_COMPRPUBKEY);
+
+    CPubKey pubkey = secret.GetPubKey();
+
+    // Create new metadata
+    int64_t nCreationTime = GetTime();
+/*?*/    mapKeyMetadata[pubkey.GetID()] = CKeyMetadata(nCreationTime);
+
+    if (!nTimeFirstKey || nCreationTime < nTimeFirstKey)
+/*?*/        nTimeFirstKey = nCreationTime;
+
+/*?*/    if (!AddKeyPubKey(secret, pubkey))
+        throw std::runtime_error("CEDCWallet::GenerateNewHSMKey(): AddKey failed");
+    return pubkey;
+}
+
+// done
+bool CEDCWallet::TopUpHSMKeyPool(unsigned int kpSize)
+{
+	EDCparams & params = EDCparams::singleton();
+    {
+        LOCK(cs_wallet);
+
+        if (IsLocked())
+            return false;
+
+        CEDCWalletDB walletdb(strWalletFile);
+
+        // Top up key pool
+        unsigned int nTargetSize;
+        if (kpSize > 0)
+            nTargetSize = kpSize;
+        else
+            nTargetSize = max(params.keypool, (int64_t) 0);
+
+        while (setHSMKeyPool.size() < (nTargetSize + 1))
+        {
+            int64_t nEnd = 1;
+            if (!setHSMKeyPool.empty())
+                nEnd = *(--setHSMKeyPool.end()) + 1;
+            if (!walletdb.WriteHSMPool(nEnd, CKeyPool(GenerateNewHSMKey())))
+                throw runtime_error("TopUpHSMKeyPool(): writing generated key failed");
+            setHSMKeyPool.insert(nEnd);
+            edcLogPrintf("HSM keypool added key %d, size=%u\n", nEnd, setHSMKeyPool.size());
+        }
+    }
+    return true;
+}
+
+#endif	// USE_HSM
+
 int64_t CEDCWallet::GetOldestKeyPoolTime()
 {
     LOCK(cs_wallet);

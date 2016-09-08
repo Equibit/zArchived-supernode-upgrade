@@ -49,6 +49,9 @@ const std::string MKEY              = "mkey";              // mkey:id
 const std::string NAME              = "name";              // name:address
 const std::string ORDERPOSNEXT      = "orderposnext";      // orderposnext
 const std::string POOL              = "pool";              // pool:number
+#ifdef USE_HSM
+const std::string HSM_POOL          = "HSM_pool";          // HSM_pool:number
+#endif
 const std::string PURPOSE           = "purpose";           // purpose:address
 const std::string TX                = "tx";                // tx:hash
 const std::string USER_MSG          = "user_msg";          // user_msg:tag:hash
@@ -241,6 +244,29 @@ bool CEDCWalletDB::ErasePool(int64_t nPool)
     theApp.incWalletDBUpdated();
     return Erase(std::make_pair(POOL, nPool));
 }
+
+#ifdef USE_HSM
+bool CEDCWalletDB::ReadHSMPool(int64_t nPool, CKeyPool& keypool)
+{
+    return Read(std::make_pair(HSM_POOL, nPool), keypool);
+}
+
+bool CEDCWalletDB::WriteHSMPool(int64_t nPool, const CKeyPool& keypool)
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+    theApp.incWalletDBUpdated();
+    return Write(std::make_pair(HSM_POOL, nPool), keypool);
+}
+
+bool CEDCWalletDB::EraseHSMPool(int64_t nPool)
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+    theApp.incWalletDBUpdated();
+    return Erase(std::make_pair(HSM_POOL, nPool));
+}
+#endif
 
 bool CEDCWalletDB::WriteMinVersion(int nVersion)
 {

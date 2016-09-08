@@ -161,6 +161,57 @@ UniValue edcgetnewaddress(const UniValue& params, bool fHelp)
     return CEDCBitcoinAddress(keyID).ToString();
 }
 
+UniValue edcgetnewhsmaddress(const UniValue& params, bool fHelp)
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+    if (!edcEnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+    if (fHelp || params.size() > 1)
+        throw runtime_error(
+            "eb_getnewhsmaddress ( \"account\" )\n"
+            "\nReturns a new Bitcoin address for receiving payments that uses an HSM.\n"
+            "If 'account' is specified (DEPRECATED), it is added to the address book \n"
+            "so payments received with the address will be credited to 'account'.\n"
+            "\nArguments:\n"
+            "1. \"account\"        (string, optional) DEPRECATED. The account name for the address to be linked to. If not provided, the default account \"\" is used. It can also be set to the empty string \"\" to represent the default account. The account does not need to exist, it will be created if there is no account by the given name.\n"
+            "\nResult:\n"
+            "\"bitcoinaddress\"    (string) The new bitcoin address\n"
+            "\nExamples:\n"
+            + HelpExampleCli("eb_getnewhsmaddress", "")
+            + HelpExampleRpc("eb_getnewhsmaddress", "")
+        );
+
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
+
+    // Parse the account first so we don't generate a key if there's an error
+    string strAccount;
+    if (params.size() > 0)
+        strAccount = edcAccountFromValue(params[0]);
+
+	// If keys can be generated
+    if (!theApp.walletMain()->IsLocked())
+        theApp.walletMain()->TopUpKeyPool();
+
+#ifdef USE_HSM
+
+    // Generate a new key that is added to wallet
+    CPubKey newKey;
+    if (!theApp.walletMain()->GetHSMKeyFromPool(newKey))
+        throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
+    CKeyID keyID = newKey.GetID();
+
+    theApp.walletMain()->SetAddressBook(keyID, strAccount, "receive");
+
+    return CEDCBitcoinAddress(keyID).ToString();
+
+#else
+
+    throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM support is not included in the build");
+
+#endif
+}
 
 CEDCBitcoinAddress edcGetAccountAddress(string strAccount, bool bForceNew=false)
 {
@@ -2741,6 +2792,7 @@ static const CRPCCommand edcCommands[] =
     { "wallet",             "eb_getaddressesbyaccount",    &edcgetaddressesbyaccount,    true  },
     { "wallet",             "eb_getbalance",               &edcgetbalance,               false },
     { "wallet",             "eb_getnewaddress",            &edcgetnewaddress,            true  },
+    { "wallet",             "eb_getnewhsmaddress",         &edcgetnewhsmaddress,         true  },
     { "wallet",             "eb_getrawchangeaddress",      &edcgetrawchangeaddress,      true  },
     { "wallet",             "eb_getreceivedbyaccount",     &edcgetreceivedbyaccount,     false },
     { "wallet",             "eb_getreceivedbyaddress",     &edcgetreceivedbyaddress,     false },
