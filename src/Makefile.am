@@ -162,17 +162,6 @@ BITCOIN_CORE_H = \
   edc/script/edcinterpreter.h \
   edc/edctxdb.h \
   edc/edcutil.h \
-  Thales/NFApp.h \
-  Thales/NFCardLoadingLib.h \
-  Thales/NFCommand.h \
-  Thales/NFError.h \
-  Thales/NFFindKey.h \
-  Thales/NFHardServer.h \
-  Thales/NFKeyIdent.h \
-  Thales/NFModule.h \
-  Thales/NFPubKey.h \
-  Thales/NFSecurityWorld.h \
-  Thales/nfast.h \
   rpc/register.h \
   scheduler.h \
   script/sigcache.h \
@@ -295,17 +284,6 @@ libbitcoin_server_a_SOURCES = \
   edc/edctimedata.cpp \
   edc/edctxdb.cpp \
   edc/edcutil.cpp \
-  Thales/init.cpp \
-  Thales/NFApp.cpp \
-  Thales/NFCardLoadingLib.cpp \
-  Thales/NFCommand.cpp \
-  Thales/NFError.cpp \
-  Thales/NFFindKey.cpp \
-  Thales/NFHardServer.cpp \
-  Thales/NFKeyIdent.cpp \
-  Thales/NFModule.cpp \
-  Thales/NFPubKey.cpp \
-  Thales/NFSecurityWorld.cpp \
   script/sigcache.cpp \
   script/ismine.cpp \
   timedata.cpp \
@@ -461,7 +439,7 @@ nodist_libbitcoin_util_a_SOURCES = $(srcdir)/obj/build.h
 bitcoind_SOURCES = bitcoind.cpp
 bitcoind_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 bitcoind_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-bitcoind_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+bitcoind_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) -Wl,--unresolved-symbols=ignore-all
 
 if TARGET_WINDOWS
 bitcoind_SOURCES += bitcoind-res.rc

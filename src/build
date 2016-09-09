@@ -1,0 +1,8 @@
+#
+# This is a temporary hack. The configure/automake/libtool generated build re-orders the libraries such that the
+# libnfast.so is always placed before libbitcoin_server.a, which causes unresolved references. Why would anyone write
+# a tool that unilaterally re-orders the linker command line, preventing a good link from occurring? 
+#
+make $*
+
+g++ -std=c++11 -Wstack-protector -fstack-protector-all -fPIE -g -O2 -Wall -Wextra -Wformat -Wformat-security -Wno-unused-parameter -pthread -Wl,-z -Wl,relro -Wl,-z -Wl,now -pie -o bitcoind bitcoind-bitcoind.o  libbitcoin_server.a libbitcoin_common.a univalue/.libs/libunivalue.a libbitcoin_util.a libbitcoin_consensus.a crypto/libbitcoin_crypto.a leveldb/libleveldb.a leveldb/libmemenv.a secp256k1/.libs/libsecp256k1.a libbitcoin_wallet.a Thales/libnfast.so -L/usr/lib/x86_64-linux-gnu -lboost_system -lboost_filesystem -lboost_program_options -lboost_thread -lboost_chrono -ldb_cxx -L/usr/local/lib -lssl -lcrypto -levent_pthreads -levent -lanl -pthread

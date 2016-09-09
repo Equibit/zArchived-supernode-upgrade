@@ -365,8 +365,7 @@ case $host in
      OBJCXXFLAGS="$CXXFLAGS"
      ;;
    *linux*)
-     CPPFLAGS="$CPPFLAGS -DUSE_HSM -I/opt/nfast/c/ctd/gcc/include/hilibs -I/opt/nfast/c/ctd/gcc/include/cutils"
-     CPPFLAGS="$CPPFLAGS -I/opt/nfast/c/ctd/gcc/include/sworld -I/opt/nfast/c/ctd/examples/nfuser"
+     CPPFLAGS="$CPPFLAGS -DUSE_HSM"
      TARGET_OS=linux
      LEVELDB_TARGET_FLAGS="-DOS_LINUX"
      ;;

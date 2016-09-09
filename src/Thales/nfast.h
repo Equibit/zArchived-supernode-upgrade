@@ -25,7 +25,7 @@
 #include <rqcard-applic.h>
 #include <rqcard-fips.h>
 
-#include <simplebignum.h>
+#include "simplebignum.h"
 #include <ncthread-upcalls.h>
 #include <nfopt.h>
 #include <autoversion.h>

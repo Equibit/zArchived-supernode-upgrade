@@ -10,6 +10,11 @@
 #include "edcutil.h"
 
 
+namespace NFast
+{
+void terminate( App * &, SecurityWorld * &, HardServer * &, CardLoadingLib * &, Module * & );
+}
+
 namespace
 {
 const unsigned int EDC_DEFAULT_MAX_PEER_CONNECTIONS = 125;
@@ -39,6 +44,13 @@ EDCapp::~EDCapp()
 {
 	if(sslCtx_)
 		SSL_CTX_free(sslCtx_);
+
+#ifdef USE_HSM
+	if( nfApp_ )
+	{
+		NFast::terminate( nfApp_, nfSecWorld_, nfHardServer_, nfCardLoadingLib_, nfModule_ );
+	}
+#endif
 }
 
 EDCapp & EDCapp::singleton()

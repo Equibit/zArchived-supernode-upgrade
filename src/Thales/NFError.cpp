@@ -1,5 +1,4 @@
 #include <stdexcept>
-#include "../edc/edcutil.h"
 #include "NFError.h"
 #include "nfast.h"
 
@@ -30,6 +29,6 @@ void printOnError( const char * str, int rc )
 		msg += ":";
 		msg += buff;
 
-		edcError( "%s", msg.c_str() );	
+		fprintf( stderr, "%s\n", msg.c_str() );	
 	}
 }

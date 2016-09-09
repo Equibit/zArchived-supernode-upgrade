@@ -22,6 +22,7 @@
 #include <boost/interprocess/sync/file_lock.hpp>
 #include <boost/algorithm/string/replace.hpp>
 
+#ifdef USE_HSM
 namespace NFast
 {
 
@@ -37,6 +38,7 @@ bool init(	App * &,
 			CardLoadingLib * &,
 			Module * & );
 };
+#endif
 
 void edcRegisterAllCoreRPCCommands( CEDCRPCTable & edcTableRPC );
 void edcRegisterWalletRPCCommands(CEDCRPCTable & edcTableRPC );
@@ -1059,6 +1061,7 @@ bool EdcAppInit(
 		params.dumpToLog();
 		params.checkParams();
 
+#ifdef USE_HSM
 		if(params.usehsm)
 		{
 			rc = NFast::init(theApp.nfApp(), 
@@ -1067,6 +1070,7 @@ bool EdcAppInit(
 					theApp.nfCardLoadingLib(),
 					theApp.nfModule() );
 		}
+#endif
 	}
 	catch( const std::exception & e )
 	{

@@ -2,7 +2,6 @@
 #include <stdexcept>
 #include <endian.h>
 
-#include "../edc/edcutil.h"
 #include "NFCommand.h"
 #include "NFHardServer.h"
 #include "NFError.h"
@@ -297,7 +296,7 @@ NFKM_FIPS140AuthHandle & fips140authhandle,
 
 	if(!(keyinfo = static_cast<NFKM_Key *>(NFastApp_Malloc(app.handle(), sizeof *keyinfo, app.cctx(), 0)))) 
 	{
-		edcError( "out of memory" );
+		fprintf( stderr, "ERROR:out of memory\n" );
 		return Status_NoHostMemory;
 	}
 	memset(keyinfo, 0, sizeof *keyinfo);
@@ -418,7 +417,7 @@ int Command::transact( HardServer & hs )
 		char err_buf[256];
 		NFast_StrError( err_buf, sizeof(err_buf), static_cast<M_Status>(rc), &reply_.errorinfo );
 
-		edcError( "Command %s FAILED: %s", ecmd, err_buf);
+		fprintf( stderr, "ERROR:Command %s FAILED: %s\n", ecmd, err_buf);
 		return rc;
 	}
 
