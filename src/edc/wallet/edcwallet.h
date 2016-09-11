@@ -398,6 +398,10 @@ private:
 
     std::map< std::pair<std::string, uint256 >, CUserMessage *> messageMap;
 
+#ifdef USE_HSM
+	std::map<CKeyID, std::pair<CPubKey, std::string > > hsmKeyMap;
+#endif
+
 public:
     /*
      * Main wallet lock.
@@ -523,6 +527,11 @@ public:
 
     //! Adds a key to the store, and saves it to disk.
     bool AddKeyPubKey(const CKey& key, const CPubKey &pubkey);
+
+#ifdef USE_HSM
+	//! Adds a public key and HSM ID to the map
+	bool AddHSMKey( const CPubKey &, const std::string & hsmID );
+#endif
 
     //! Adds a key to the store, without saving it to disk (used by LoadWallet)
     bool LoadKey(const CKey& key, const CPubKey &pubkey) 

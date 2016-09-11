@@ -42,7 +42,7 @@ const std::string CSCRIPT           = "cscript";           // CSCRIPT:hash/scrip
 const std::string DEFAULTKEY        = "defaultkey";        // DEFAULTKEY/pubkey
 const std::string DESTDATA          = "destdata";          // DESTDATA:(address:key)/value
 const std::string ISSUER            = "issuer";            // ISSUER:issuer-name/issuer
-const std::string KEY               = "key";               // KEY:pubkey/(priv-key:pubkey-hash)
+const std::string KEY               = "key";               // KEY:pubkey/(priv-key:hash(pubkey,privkey))
 const std::string KEYMETA           = "keymeta";           // KEYMETA:pub-key/key-meta
 const std::string MINVERSION        = "minversion";        // MINVERSION/version
 const std::string MKEY              = "mkey";              // MKEY:id/masterkey
@@ -50,7 +50,7 @@ const std::string NAME              = "name";              // NAME:address/name
 const std::string ORDERPOSNEXT      = "orderposnext";      // ORDERPOSNEXT/order-pos-next
 const std::string POOL              = "pool";              // POOL:number/keypool
 #ifdef USE_HSM
-const std::string HSM_KEY			= "HSM_key";		   // HSM_KEY:pub-key/(address,HSM-ID)
+const std::string HSM_KEY			= "HSM_key";		   // HSM_KEY:pub-key/HSM-ID
 const std::string HSM_POOL          = "HSM_pool";          // HSM_POOL:number/keypool
 #endif
 const std::string PURPOSE           = "purpose";           // PURPOSE:address/purpose
@@ -133,6 +133,25 @@ bool CEDCWalletDB::WriteKey(
     return Write(std::make_pair(KEY, vchPubKey), 
 		std::make_pair(vchPrivKey, Hash(vchKey.begin(), vchKey.end())), false);
 }
+
+#ifdef USE_HSM
+bool CEDCWalletDB::WriteHSMKey(
+	 const CPubKey & vchPubKey, 
+ const std::string & hsmID,
+const CKeyMetadata & keyMeta
+)
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+    theApp.incWalletDBUpdated();
+
+    if (!Write(std::make_pair(KEYMETA, vchPubKey),
+               keyMeta, false))
+        return false;
+
+    return Write(std::make_pair(HSM_KEY, vchPubKey), hsmID, false);
+}
+#endif
 
 bool CEDCWalletDB::WriteCryptedKey(
 	                   const CPubKey & vchPubKey,
@@ -750,6 +769,42 @@ ReadKeyValue(
 			}
 			pwallet->LoadMessage( tag, hash, msg );
 		}
+#ifdef USE_HSM
+		else if( strType == HSM_POOL )
+		{
+            int64_t nIndex;
+            ssKey >> nIndex;
+            CKeyPool keypool;
+            ssValue >> keypool;
+            pwallet->setHSMKeyPool.insert(nIndex);
+
+            // If no metadata exists yet, create a default with the pool key's
+            // creation time. Note that this may be overwritten by actually
+            // stored metadata for that key later, which is fine.
+            CKeyID keyid = keypool.vchPubKey.GetID();
+            if (pwallet->mapKeyMetadata.count(keyid) == 0)
+                pwallet->mapKeyMetadata[keyid] = CKeyMetadata(keypool.nTime);
+		}
+		else if( strType == HSM_KEY )
+		{
+            CPubKey pubKey;
+            ssKey >> pubKey;
+            if (!pubKey.IsValid())
+            {
+                strErr = "Error reading wallet database: CPubKey corrupt";
+                return false;
+            }
+
+			std::string hsmID;
+			ssValue >> hsmID;
+
+			if(!pwallet->AddHSMKey( pubKey, hsmID ))
+            {
+				strErr = "Error reading wallet database: Add HSM Key failed";
+				return false;
+			}
+		}
+#endif
 	} 
 	catch (...)
 	{
@@ -761,7 +816,11 @@ ReadKeyValue(
 static bool IsKeyType(string strType)
 {
     return (strType== KEY || strType == WKEY ||
-            strType == MKEY || strType == CKEY);
+            strType == MKEY || strType == CKEY
+#ifdef USE_HSM
+			|| strType == HSM_KEY
+#endif
+);
 }
 
 DBErrors CEDCWalletDB::LoadWallet(CEDCWallet* pwallet)
@@ -1384,6 +1443,20 @@ bool dumpKey(
 			ssKey >> hash;
 			out << ':' << msgTag << ':' << hash.ToString();
 		}
+#ifdef USE_HSM
+		else if( strType == HSM_POOL )
+		{
+            int64_t nIndex;
+            ssKey >> nIndex;
+			out << ':' << nIndex;
+		}
+		else if( strType == HSM_KEY )
+		{
+            CPubKey vchPubKey;
+            ssKey >> vchPubKey;
+			out << ':' << HexStr( vchPubKey );
+		}
+#endif
 		else
 		{
 			out << "ERROR: Unsupported key [" << strType  << "]" << endl;
@@ -1619,6 +1692,22 @@ dumpValue(
 			out << msg->ToJSON() << endl;
 			delete msg;
 		}
+#ifdef USE_HSM
+		else if( strType == HSM_POOL )
+		{
+            CKeyPool keypool;
+            ssValue >> keypool;
+
+			out << " {\"hsm_pool\":" << keypool.nTime << ", \"pubKey\":" << 
+				HexStr(keypool.vchPubKey) << "}" << endl;
+		}
+		else if( strType == HSM_KEY )
+		{
+			std::string hsmID;
+			ssValue >> hsmID;
+			out << " " << hsmID << endl;
+		}
+#endif
 		else
 		{
 			edcLogPrintf( "Error: Unsupported key in walletdb\n" );

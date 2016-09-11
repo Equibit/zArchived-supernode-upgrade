@@ -2923,7 +2923,6 @@ bool CEDCWallet::GetKeyFromPool(CPubKey& result)
 
 #ifdef USE_HSM
 
-// done
 bool CEDCWallet::GetHSMKeyFromPool(CPubKey& result)
 {
     int64_t nIndex = 0;
@@ -2943,7 +2942,6 @@ bool CEDCWallet::GetHSMKeyFromPool(CPubKey& result)
     return true;
 }
 
-// done
 void CEDCWallet::ReserveKeyFromHSMKeyPool( long & nIndex , CKeyPool& keypool )
 {
     nIndex = -1;
@@ -2965,13 +2963,12 @@ void CEDCWallet::ReserveKeyFromHSMKeyPool( long & nIndex , CKeyPool& keypool )
         if (!walletdb.ReadHSMPool(nIndex, keypool))
             throw runtime_error("ReserveKeyFromHSMKeyPool(): read failed");
 // Needed?        if (!HaveKey(keypool.vchPubKey.GetID()))
-// Needed?           throw runtime_error("ReserveKeyFromKeyPool(): unknown key in key pool");
+// Needed?           throw runtime_error("ReserveKeyFromHSMKeyPool(): unknown key in key pool");
         assert(keypool.vchPubKey.IsValid());
         edcLogPrintf("HSM keypool reserve %d\n", nIndex);
     }
 }
 
-// done
 void CEDCWallet::KeepHSMKey( long nIndex )
 {
     // Remove from key pool
@@ -2981,12 +2978,6 @@ void CEDCWallet::KeepHSMKey( long nIndex )
         walletdb.EraseHSMPool(nIndex);
     }
     edcLogPrintf("HSM keypool keep %d\n", nIndex);
-}
-
-#ifdef USE_HSM
-namespace NFast
-{
-bool generateKeyPair( unsigned char * pubkeydata, unsigned char * hsmID );
 }
 
 CPubKey CEDCWallet::GenerateNewHSMKey()
@@ -3010,19 +3001,21 @@ CPubKey CEDCWallet::GenerateNewHSMKey()
 
     // Create new metadata
     int64_t nCreationTime = GetTime();
-		mapKeyMetadata[pubkey.GetID()] = CKeyMetadata(nCreationTime);
+	mapKeyMetadata[pubkey.GetID()] = CKeyMetadata(nCreationTime);
 
     if (!nTimeFirstKey || nCreationTime < nTimeFirstKey)
 		nTimeFirstKey = nCreationTime;
 
-/*? if (!AddKeyPubKey(secret, pubkey))
+	if(!AddHSMKey( pubkey, hsmID ))
         throw std::runtime_error("CEDCWallet::GenerateNewHSMKey(): AddKey failed");
-*/
+
+	CEDCWalletDB walletdb(strWalletFile);
+	if(!walletdb.WriteHSMKey( pubkey, hsmID, mapKeyMetadata[pubkey.GetID()] ))
+        throw std::runtime_error("CEDCWallet::GenerateNewHSMKey(): Write failed");
+
     return pubkey;
 }
-#endif
 
-// done
 bool CEDCWallet::TopUpHSMKeyPool(unsigned int kpSize)
 {
 	EDCparams & params = EDCparams::singleton();
@@ -3053,6 +3046,17 @@ bool CEDCWallet::TopUpHSMKeyPool(unsigned int kpSize)
         }
     }
     return true;
+}
+
+bool CEDCWallet::AddHSMKey(
+	const CPubKey & pubkey,
+const std::string & hsmID
+)
+{
+	CKeyID keyID = pubkey.GetID();
+
+	hsmKeyMap.insert( std::make_pair( keyID, std::make_pair( pubkey, hsmID ) ) );	
+	return true;
 }
 
 #endif	// USE_HSM
