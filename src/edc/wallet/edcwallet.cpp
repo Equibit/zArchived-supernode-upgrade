@@ -29,6 +29,9 @@
 #include "edc/edcapp.h"
 #include "edc/edcparams.h"
 #include "edc/edcchainparams.h"
+#ifdef USE_HSM
+#include "Thales/interface.h"
+#endif
 
 #include <assert.h>
 
@@ -41,14 +44,15 @@ using namespace std;
 const char * EDC_DEFAULT_WALLET_DAT = "wallet.dat";
 
 /**
- * Fees smaller than this (in satoshi) are considered zero fee (for transaction creation)
+ * Fees smaller than this (in satoshi) are considered zero fee (for transaction 
+ * creation). 
  * Override with -eb_mintxfee
  */
 CFeeRate CEDCWallet::minTxFee = CFeeRate(DEFAULT_TRANSACTION_MINFEE);
 
 /**
- * If fee estimation does not have enough data to provide estimates, use this fee instead.
- * Has no effect if not using fee estimation
+ * If fee estimation does not have enough data to provide estimates, use this 
+ * fee instead. Has no effect if not using fee estimation
  * Override with -eb_fallbackfee
  */
 CFeeRate CEDCWallet::fallbackFee = CFeeRate(DEFAULT_FALLBACK_FEE);
@@ -71,7 +75,8 @@ struct CompareValueOnly
 
 std::string CEDCOutput::ToString() const
 {
-    return strprintf("CEDCOutput(%s, %d, %d) [%s]", tx->GetHash().ToString(), i, nDepth, FormatMoney(tx->vout[i].nValue));
+    return strprintf("CEDCOutput(%s, %d, %d) [%s]", tx->GetHash().ToString(), i,
+		 nDepth, FormatMoney(tx->vout[i].nValue));
 }
 
 const CEDCWalletTx* CEDCWallet::GetWalletTx(const uint256& hash) const
@@ -150,21 +155,26 @@ bool CEDCWallet::AddCryptedKey(
     {
         LOCK(cs_wallet);
         if (pwalletdbEncryption)
-            return pwalletdbEncryption->WriteCryptedKey(vchPubKey,
-                                                        vchCryptedSecret,
-                                                        mapKeyMetadata[vchPubKey.GetID()]);
+            return pwalletdbEncryption->WriteCryptedKey(
+				vchPubKey,
+                vchCryptedSecret,
+                mapKeyMetadata[vchPubKey.GetID()]);
         else
-            return CEDCWalletDB(strWalletFile).WriteCryptedKey(vchPubKey,
-                                                            vchCryptedSecret,
-                                                            mapKeyMetadata[vchPubKey.GetID()]);
+            return CEDCWalletDB(strWalletFile).WriteCryptedKey(
+				vchPubKey,
+                vchCryptedSecret,
+                mapKeyMetadata[vchPubKey.GetID()]);
     }
     return false;
 }
 
-bool CEDCWallet::LoadKeyMetadata(const CPubKey &pubkey, const CKeyMetadata &meta)
+bool CEDCWallet::LoadKeyMetadata(
+	const CPubKey &pubkey, 
+	const CKeyMetadata &meta)
 {
     AssertLockHeld(cs_wallet); // mapKeyMetadata
-    if (meta.nCreateTime && (!nTimeFirstKey || meta.nCreateTime < nTimeFirstKey))
+    if (meta.nCreateTime && (!nTimeFirstKey || 
+	meta.nCreateTime < nTimeFirstKey))
         nTimeFirstKey = meta.nCreateTime;
 
     mapKeyMetadata[pubkey.GetID()] = meta;
@@ -181,11 +191,11 @@ bool CEDCWallet::LoadCryptedKey(
 bool CEDCWallet::AddCScript(const CScript& redeemScript)
 {
     if (!CCryptoKeyStore::AddCScript(redeemScript))
-//    if (!CCryptoKeyStore::edcAddCScript(redeemScript))
         return false;
     if (!fFileBacked)
         return true;
-    return CEDCWalletDB(strWalletFile).WriteCScript(Hash160(redeemScript), redeemScript);
+    return CEDCWalletDB(strWalletFile).WriteCScript(Hash160(redeemScript), 
+		redeemScript);
 }
 
 bool CEDCWallet::LoadCScript(const CScript& redeemScript)
@@ -195,14 +205,14 @@ bool CEDCWallet::LoadCScript(const CScript& redeemScript)
      * these. Do not add them to the wallet and warn. */
     if (redeemScript.size() > MAX_SCRIPT_ELEMENT_SIZE)
     {
-        std::string strAddr = CEDCBitcoinAddress(CScriptID(redeemScript)).ToString();
+        std::string strAddr = CEDCBitcoinAddress(CScriptID(redeemScript)).
+			ToString();
         edcLogPrintf("%s: Warning: This wallet contains a redeemScript of size %i which exceeds maximum size %i thus can never be redeemed. Do not use address %s.\n",
             __func__, redeemScript.size(), MAX_SCRIPT_ELEMENT_SIZE, strAddr);
         return true;
     }
 
     return CCryptoKeyStore::AddCScript(redeemScript);
-//    return CCryptoKeyStore::edcAddCScript(redeemScript);
 }
 
 bool CEDCWallet::AddWatchOnly(const CScript &dest)
@@ -292,15 +302,20 @@ bool CEDCWallet::ChangeWalletPassphrase(
 											pMasterKey.second.nDeriveIterations, 
 											pMasterKey.second.nDerivationMethod);
 
-                pMasterKey.second.nDeriveIterations = pMasterKey.second.nDeriveIterations * 
+                pMasterKey.second.nDeriveIterations = pMasterKey.second.
+					nDeriveIterations * 
 					(100 / ((double)(GetTimeMillis() - nStartTime)));
 
                 nStartTime = GetTimeMillis();
-                crypter.SetKeyFromPassphrase(strNewWalletPassphrase, pMasterKey.second.vchSalt, 
-					pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod);
+                crypter.SetKeyFromPassphrase(strNewWalletPassphrase, 
+					pMasterKey.second.vchSalt, 
+					pMasterKey.second.nDeriveIterations, 
+					pMasterKey.second.nDerivationMethod);
 
-                pMasterKey.second.nDeriveIterations = (pMasterKey.second.nDeriveIterations + 
-					pMasterKey.second.nDeriveIterations * 100 / ((double)(GetTimeMillis() - nStartTime))) / 2;
+                pMasterKey.second.nDeriveIterations = 
+					(pMasterKey.second.nDeriveIterations + 
+					pMasterKey.second.nDeriveIterations * 100 / 
+					((double)(GetTimeMillis() - nStartTime))) / 2;
 
                 if (pMasterKey.second.nDeriveIterations < 25000)
                     pMasterKey.second.nDeriveIterations = 25000;
@@ -313,7 +328,9 @@ bool CEDCWallet::ChangeWalletPassphrase(
                     return false;
                 if (!crypter.Encrypt(vMasterKey, pMasterKey.second.vchCryptedKey))
                     return false;
-                CEDCWalletDB(strWalletFile).WriteMasterKey(pMasterKey.first, pMasterKey.second);
+
+                CEDCWalletDB(strWalletFile).WriteMasterKey(pMasterKey.first, 
+					pMasterKey.second);
                 if (fWasLocked)
                     Lock();
                 return true;
@@ -339,7 +356,8 @@ bool CEDCWallet::SetMinVersion(
     if (nWalletVersion >= nVersion)
         return true;
 
-    // when doing an explicit upgrade, if we pass the max version permitted, upgrade all the way
+    // when doing an explicit upgrade, if we pass the max version permitted, 
+	// upgrade all the way
     if (fExplicit && nVersion > nWalletMaxVersion)
             nVersion = FEATURE_LATEST;
 
@@ -350,7 +368,8 @@ bool CEDCWallet::SetMinVersion(
 
     if (fFileBacked)
     {
-        CEDCWalletDB* pwalletdb = pwalletdbIn ? pwalletdbIn : new CEDCWalletDB(strWalletFile);
+        CEDCWalletDB* pwalletdb = pwalletdbIn ? pwalletdbIn : 
+			new CEDCWalletDB(strWalletFile);
         if (nWalletVersion > 40000)
             pwalletdb->WriteMinVersion(nWalletVersion);
         if (!pwalletdbIn)
@@ -389,7 +408,7 @@ set<uint256> CEDCWallet::GetConflicts(const uint256& txid) const
         if (mapTxSpends.count(txin.prevout) <= 1)
             continue;  // No conflict if zero or one spends
         range = mapTxSpends.equal_range(txin.prevout);
-        for (TxSpends::const_iterator it = range.first; it != range.second; ++it)
+        for (TxSpends::const_iterator it = range.first; it != range.second;++it)
             result.insert(it->second);
     }
     return result;
@@ -414,7 +433,8 @@ bool CEDCWallet::Verify()
     edcUiInterface.InitMessage(_("Verifying wallet..."));
 
     // Wallet file must be a plain filename without a directory
-    if (walletFile != boost::filesystem::basename(walletFile) + boost::filesystem::extension(walletFile))
+    if (walletFile != boost::filesystem::basename(walletFile) + 
+	boost::filesystem::extension(walletFile))
         return edcInitError(strprintf(_("Wallet %s resides outside data "
 			"directory %s"), walletFile, edcGetDataDir().string()));
 
@@ -456,7 +476,9 @@ bool CEDCWallet::Verify()
     
     if (boost::filesystem::exists(edcGetDataDir() / walletFile))
     {
-        CEDCDBEnv::VerifyResult r = theApp.bitdb().Verify(walletFile,CEDCWalletDB::Recover);
+        CEDCDBEnv::VerifyResult r = theApp.bitdb().Verify(walletFile,
+			CEDCWalletDB::Recover);
+
         if (r == CEDCDBEnv::RECOVER_OK)
         {
             edcInitWarning(strprintf(
@@ -524,7 +546,8 @@ bool CEDCWallet::IsSpent(const uint256& hash, unsigned int n) const
     for (TxSpends::const_iterator it = range.first; it != range.second; ++it)
     {
         const uint256& wtxid = it->second;
-        std::map<uint256, CEDCWalletTx>::const_iterator mit = mapWallet.find(wtxid);
+        std::map<uint256, CEDCWalletTx>::const_iterator mit = mapWallet.
+			find(wtxid);
 
         if (mit != mapWallet.end()) 
 		{
@@ -576,20 +599,28 @@ bool CEDCWallet::EncryptWallet(const SecureString& strWalletPassphrase)
 
     CCrypter crypter;
     int64_t nStartTime = GetTimeMillis();
-    crypter.SetKeyFromPassphrase(strWalletPassphrase, kMasterKey.vchSalt, 25000, kMasterKey.nDerivationMethod);
-    kMasterKey.nDeriveIterations = 2500000 / ((double)(GetTimeMillis() - nStartTime));
+    crypter.SetKeyFromPassphrase(strWalletPassphrase, kMasterKey.vchSalt, 25000,
+		kMasterKey.nDerivationMethod);
+    kMasterKey.nDeriveIterations = 2500000 / ((double)(GetTimeMillis() - 
+		nStartTime));
 
     nStartTime = GetTimeMillis();
-    crypter.SetKeyFromPassphrase(strWalletPassphrase, kMasterKey.vchSalt, kMasterKey.nDeriveIterations, kMasterKey.nDerivationMethod);
-    kMasterKey.nDeriveIterations = (kMasterKey.nDeriveIterations + kMasterKey.nDeriveIterations * 100 / ((double)(GetTimeMillis() - nStartTime))) / 2;
+    crypter.SetKeyFromPassphrase(strWalletPassphrase, kMasterKey.vchSalt, 
+		kMasterKey.nDeriveIterations, kMasterKey.nDerivationMethod);
+    kMasterKey.nDeriveIterations = (kMasterKey.nDeriveIterations + 
+		kMasterKey.nDeriveIterations * 100 / ((double)(GetTimeMillis() - 
+			nStartTime))) / 2;
 
     if (kMasterKey.nDeriveIterations < 25000)
         kMasterKey.nDeriveIterations = 25000;
 
-    edcLogPrintf("Encrypting Wallet with an nDeriveIterations of %i\n", kMasterKey.nDeriveIterations);
+    edcLogPrintf("Encrypting Wallet with an nDeriveIterations of %i\n", 
+		kMasterKey.nDeriveIterations);
 
-    if (!crypter.SetKeyFromPassphrase(strWalletPassphrase, kMasterKey.vchSalt, kMasterKey.nDeriveIterations, kMasterKey.nDerivationMethod))
+    if (!crypter.SetKeyFromPassphrase(strWalletPassphrase, kMasterKey.vchSalt, 
+	kMasterKey.nDeriveIterations, kMasterKey.nDerivationMethod))
         return false;
+
     if (!crypter.Encrypt(vMasterKey, kMasterKey.vchCryptedKey))
         return false;
 
@@ -2933,8 +2964,8 @@ void CEDCWallet::ReserveKeyFromHSMKeyPool( long & nIndex , CKeyPool& keypool )
         setHSMKeyPool.erase(setHSMKeyPool.begin());
         if (!walletdb.ReadHSMPool(nIndex, keypool))
             throw runtime_error("ReserveKeyFromHSMKeyPool(): read failed");
-/*?*/        if (!HaveKey(keypool.vchPubKey.GetID()))
-            throw runtime_error("ReserveKeyFromHSMKeyPool(): unknown key in key pool");
+// Needed?        if (!HaveKey(keypool.vchPubKey.GetID()))
+// Needed?           throw runtime_error("ReserveKeyFromKeyPool(): unknown key in key pool");
         assert(keypool.vchPubKey.IsValid());
         edcLogPrintf("HSM keypool reserve %d\n", nIndex);
     }
@@ -2952,31 +2983,44 @@ void CEDCWallet::KeepHSMKey( long nIndex )
     edcLogPrintf("HSM keypool keep %d\n", nIndex);
 }
 
+#ifdef USE_HSM
+namespace NFast
+{
+bool generateKeyPair( unsigned char * pubkeydata, unsigned char * hsmID );
+}
+
 CPubKey CEDCWallet::GenerateNewHSMKey()
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     AssertLockHeld(cs_wallet); // mapKeyMetadata
     bool fCompressed = CanSupportFeature(FEATURE_COMPRPUBKEY); // default to compressed public keys
 
-/*?*/    CKey secret;
-/*?*/    secret.MakeNewKey(fCompressed);
+	unsigned char pubkeyData[NFast::PUBKEY_DATA_SIZE];
+	char hsmID[NFast::IDENT_SIZE];
+
+	if(! NFast::generateKeyPair( *theApp.nfHardServer(), *theApp.nfModule(), pubkeyData, hsmID ) )
+        throw std::runtime_error("CEDCWallet::GenerateNewHSMKey(): Generate Key failed");
+	CPubKey	pubkey;
+	pubkey.Set( pubkeyData, pubkeyData + 65 );
 
     // Compressed public keys were introduced in version 0.6.0
     if (fCompressed)
         SetMinVersion(FEATURE_COMPRPUBKEY);
 
-    CPubKey pubkey = secret.GetPubKey();
-
     // Create new metadata
     int64_t nCreationTime = GetTime();
-/*?*/    mapKeyMetadata[pubkey.GetID()] = CKeyMetadata(nCreationTime);
+		mapKeyMetadata[pubkey.GetID()] = CKeyMetadata(nCreationTime);
 
     if (!nTimeFirstKey || nCreationTime < nTimeFirstKey)
-/*?*/        nTimeFirstKey = nCreationTime;
+		nTimeFirstKey = nCreationTime;
 
-/*?*/    if (!AddKeyPubKey(secret, pubkey))
+/*? if (!AddKeyPubKey(secret, pubkey))
         throw std::runtime_error("CEDCWallet::GenerateNewHSMKey(): AddKey failed");
+*/
     return pubkey;
 }
+#endif
 
 // done
 bool CEDCWallet::TopUpHSMKeyPool(unsigned int kpSize)

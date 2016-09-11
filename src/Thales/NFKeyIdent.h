@@ -22,6 +22,8 @@ public:
 	const char * appName() const { return appName_; }
 	const char * ident() const { return ident_; }
 
+	bool ident( const char * id );
+
 private:
 	NFKM_KeyIdent keyIdent_;
 	char * appName_;

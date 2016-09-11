@@ -1,4 +1,7 @@
 #include <stdexcept>
+#include <time.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include "NFApp.h"
 #include "NFSecurityWorld.h"
 #include "NFHardServer.h"
@@ -6,8 +9,14 @@
 #include "NFCardLoadingLib.h"
 #include "NFCommand.h"
 #include "NFFindKey.h"
+#include "NFPubKey.h"
 #include <picky-upcalls.h>
 #include <simplebignum.h>
+#include <sys/syscall.h>
+#include "interface.h"
+
+
+bool get_mac( unsigned char * );
 
 
 struct NFast_Call_Context
@@ -42,13 +51,13 @@ static void xlate_cctx_to_ncthread(
 	struct NFast_Call_Context * cc,
 	struct nf_lock_cctx ** lcc_r ) 
 {
-  *lcc_r = 0;
+	*lcc_r = 0;
 }
 
 const NFast_NewThreadUpcalls newthreadupcalls = 
 {
-  &ncthread_upcalls,
-  xlate_cctx_to_ncthread
+	&ncthread_upcalls,
+	xlate_cctx_to_ncthread
 };
 
 /** Memory allocation upcalls
@@ -186,5 +195,102 @@ void terminate(
 }
 
 
-};
+static bool createHSMID( unsigned char * hsmID )
+{
+	static unsigned char mac[MAC_SIZE];
+
+	if( !mac[0] )
+		if(!get_mac( mac ) )
+			return false;
+
+	memcpy( hsmID, mac, MAC_SIZE );
+	pid_t pid = getpid();
+	pid_t tid = (pid_t) syscall (SYS_gettid);
+	memcpy(hsmID + MAC_SIZE, &pid, sizeof(pid));
+	memcpy(hsmID + MAC_SIZE + sizeof(pid), &tid, sizeof(tid));
+	struct timespec ts;
+	clock_gettime( CLOCK_REALTIME, &ts );
+	memcpy( hsmID + MAC_SIZE + 2*sizeof(pid), &ts.tv_sec, sizeof(ts.tv_sec));
+	memcpy( hsmID + MAC_SIZE + 2*sizeof(pid) + sizeof(ts.tv_sec), &ts.tv_nsec, sizeof(ts.tv_nsec));
+
+	return true;
+}
+
+static void hsmID2Ident( char * ident, const unsigned char * hsmID )
+{
+	const unsigned char * p = hsmID;
+	const unsigned char * e = hsmID + HSMID_SIZE;
+
+	char * i = ident;
+
+	while( p != e )
+	{
+		int hi = *p >> 4;
+		int lo = *p & 0x0f;
+
+		if(hi > 9 )
+			*i++ = hi + 'a' - 10;
+		else
+			*i++ = hi + '0';
+
+		if( lo > 9 )
+			*i++ = lo + 'a' - 10;
+		else
+			*i++ = lo + '0';
+		
+		++p;
+	}
+
+	*i = 0;
+}
+
+// Generates a new key pair. Returns true if successful. In this case
+// the elliptic curve public key, prefixed with 0x4 to be compatible with
+// bitcoin is returned. The x/y values are in the remaining 64 bytes
+//
+// The HSM ID is also returned. Unlike bitcoin, which generates an address
+// from the public key value, the HSM ID value has no relationship to the
+// public key value. It is generated before the public key value and is
+// used to access the key pair for signing, etc.
+//
+bool generateKeyPair( 
+	   HardServer & hs,
+		   Module & module,
+	unsigned char * pubkeydata, 
+			 char * ident )
+{
+	KeyIdent id( "equibit", "" );
+
+// TODO: Race to find id need mutex
+
+	// Loop until new key is found
+	while(true)
+	{
+		unsigned char HSMid[HSMID_SIZE];
+
+		if(!createHSMID( HSMid ))
+			return false;
+
+		hsmID2Ident( ident, HSMid );
+
+		id.ident( ident );
+
+		FindKey key( hs.app(), id );
+		if( key.info() == NULL )
+			break;
+	}
+
+	M_KeyType   keyType = KeyType_ECDSAPrivate;
+	int flags           = Cmd_GenerateKeyPair_Args_flags_Certify;
+	int protectType     = NFKM_NKF_ProtectionCardSet;
+	int recoverType     = NFKM_NKF_RecoveryEnabled;
+
+	PubKey	pubKey( hs, module, id, keyType, flags, protectType, recoverType );
+
+	memcpy( pubkeydata, pubKey.data(), 65 );
+
+	return true;
+}
+
+}
 

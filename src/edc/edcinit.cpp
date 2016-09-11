@@ -21,23 +21,8 @@
 #include "consensus/validation.h"
 #include <boost/interprocess/sync/file_lock.hpp>
 #include <boost/algorithm/string/replace.hpp>
-
 #ifdef USE_HSM
-namespace NFast
-{
-
-class App;
-class SecurityWorld;
-class HardServer;
-class CardLoadingLib;
-class Module;
-
-bool init(	App * &,
-		 	SecurityWorld * &,
-			HardServer * &,
-			CardLoadingLib * &,
-			Module * & );
-};
+#include "Thales/interface.h"
 #endif
 
 void edcRegisterAllCoreRPCCommands( CEDCRPCTable & edcTableRPC );

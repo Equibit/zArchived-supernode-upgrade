@@ -11,7 +11,8 @@ namespace
 
 bool verifyName( const std::string & id )
 {
-	if( id.size() == 0 )
+	// The length is constrained as follows
+	if( id.size() == 0 || id.size() > NFKM_KEYIDENT_LENGTH_MAX )
 		return false;
 
 	std::string::const_iterator i = id.begin();
@@ -122,6 +123,21 @@ KeyIdent::~KeyIdent()
 		free(appName_ );
 	if(ident_ )
 		free(ident_ );
+}
+
+bool KeyIdent::ident( const char * id )
+{
+	// If id is not a valid identifier, then just
+	// exit
+	//
+	if(!verifyName( id ))
+		return false;
+	else
+	{
+		free(appName_);
+		ident_ = strdup(id);
+		return true;
+	}
 }
 
 }

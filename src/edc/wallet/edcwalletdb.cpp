@@ -33,31 +33,32 @@ namespace
 {
 // Wallet DB Keys:
 //
-const std::string ACC               = "acc";               // acc:account-name
-const std::string ACENTRY           = "acentry";           // acentry:account-name:account-number
-const std::string BESTBLOCK         = "bestblock";         // bestblock
-const std::string BESTBLOCK_NOMERKLE= "bestblock_nomerkle";// bestblock_nomerkle
-const std::string CKEY              = "ckey";              // ckey:pub-key
-const std::string CSCRIPT           = "cscript";           // cscript:hash
-const std::string DEFAULTKEY        = "defaultkey";        // defaultkey
-const std::string DESTDATA          = "destdata";          // destdata:address:key
-const std::string ISSUER            = "issuer";            // issuer:issuer-name
-const std::string KEY               = "key";               // key:pub-key
-const std::string KEYMETA           = "keymeta";           // keymeta:pub-key
-const std::string MINVERSION        = "minversion";        // minversion
-const std::string MKEY              = "mkey";              // mkey:id
-const std::string NAME              = "name";              // name:address
-const std::string ORDERPOSNEXT      = "orderposnext";      // orderposnext
-const std::string POOL              = "pool";              // pool:number
+const std::string ACC               = "acc";               // ACC:account-name/account
+const std::string ACENTRY           = "acentry";           // ACENTRY:(account-name:account-number)/acentry
+const std::string BESTBLOCK         = "bestblock";         // BESTBLOCK/empty-locator
+const std::string BESTBLOCK_NOMERKLE= "bestblock_nomerkle";// BESTBLOCK_NOMERKLE/locator
+const std::string CKEY              = "ckey";              // CKEY:pub-key/privkey-secret
+const std::string CSCRIPT           = "cscript";           // CSCRIPT:hash/script
+const std::string DEFAULTKEY        = "defaultkey";        // DEFAULTKEY/pubkey
+const std::string DESTDATA          = "destdata";          // DESTDATA:(address:key)/value
+const std::string ISSUER            = "issuer";            // ISSUER:issuer-name/issuer
+const std::string KEY               = "key";               // KEY:pubkey/(priv-key:pubkey-hash)
+const std::string KEYMETA           = "keymeta";           // KEYMETA:pub-key/key-meta
+const std::string MINVERSION        = "minversion";        // MINVERSION/version
+const std::string MKEY              = "mkey";              // MKEY:id/masterkey
+const std::string NAME              = "name";              // NAME:address/name
+const std::string ORDERPOSNEXT      = "orderposnext";      // ORDERPOSNEXT/order-pos-next
+const std::string POOL              = "pool";              // POOL:number/keypool
 #ifdef USE_HSM
-const std::string HSM_POOL          = "HSM_pool";          // HSM_pool:number
+const std::string HSM_KEY			= "HSM_key";		   // HSM_KEY:pub-key/(address,HSM-ID)
+const std::string HSM_POOL          = "HSM_pool";          // HSM_POOL:number/keypool
 #endif
-const std::string PURPOSE           = "purpose";           // purpose:address
-const std::string TX                = "tx";                // tx:hash
-const std::string USER_MSG          = "user_msg";          // user_msg:tag:hash
-const std::string VERSION           = "version";           // version
-const std::string WATCHS            = "watchs";            // watchs:dest
-const std::string WKEY              = "wkey";              // wkey:pub-key
+const std::string PURPOSE           = "purpose";           // PURPOSE:address/purpose
+const std::string TX                = "tx";                // TX:trx-hash/trx
+const std::string USER_MSG          = "user_msg";          // USER_MSG:(tag:hash)/msg
+const std::string VERSION           = "version";           // VERSION/version
+const std::string WATCHS            = "watchs";            // WATCHS/dest
+const std::string WKEY              = "wkey";              // WKEY/pub-key
 }
 
 bool CEDCWalletDB::WriteName(const string& strAddress, const string& strName)

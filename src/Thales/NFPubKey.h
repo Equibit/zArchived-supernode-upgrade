@@ -24,6 +24,8 @@ public:
 
 	bool	keyExists() const	{ return keyExists_; }
 
+	const unsigned char * data() const {	return data_; }
+
 private:
 			App	& app_;
 		 KeyIdent ident_;

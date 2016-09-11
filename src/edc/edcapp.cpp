@@ -8,12 +8,10 @@
 #include "edcparams.h"
 #include "net.h"
 #include "edcutil.h"
+#ifdef USE_HSM
+#include "Thales/interface.h"
+#endif
 
-
-namespace NFast
-{
-void terminate( App * &, SecurityWorld * &, HardServer * &, CardLoadingLib * &, Module * & );
-}
 
 namespace
 {
