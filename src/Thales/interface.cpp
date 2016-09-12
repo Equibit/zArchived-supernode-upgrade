@@ -292,5 +292,79 @@ bool generateKeyPair(
 	return true;
 }
 
+bool sign(
+				  HardServer & hardServer,
+					  Module & module,
+    	   const std::string & hsmID,
+         const unsigned char * hash,
+                        size_t inSize,
+  std::vector<unsigned char> & signature )
+{
+	KeyIdent	id( "equibit", hsmID.c_str() );	
+
+	Sign	sign(	hardServer, 
+					module, 
+					KeyType_ECDSAPrivate, 
+					id, 
+					Mech_ECDSAhSHA256,
+					hash );
+
+	M_CipherText out = sign.signature();
+
+	int msbytefirst;
+	int mswordfirst; 
+
+	int rc = NFastApp_GetBignumFormat(	hardServer.app().handle(),
+										hardServer.app().cctx(),
+										NULL,
+										&msbytefirst,
+										&mswordfirst );
+	if( rc != Status_OK )
+		return false;
+
+	int rSz;
+	rc = NFastApp_GetBignumLen(	hardServer.app().handle(),
+								hardServer.app().cctx(),
+								NULL,
+								out.data.ecdsa.r,
+								&rSz);
+	if( rc != Status_OK )
+		return false;
+	int sSz;
+	rc = NFastApp_GetBignumLen(	hardServer.app().handle(),
+								hardServer.app().cctx(),
+								NULL,
+								out.data.ecdsa.s,
+								&sSz);
+	if( rc != Status_OK )
+		return false;
+
+	signature.resize(rSz+sSz);
+
+	rc = NFastApp_StoreBignum(	hardServer.app().handle(),
+								hardServer.app().cctx(),
+								NULL,
+								out.data.ecdsa.r,
+								signature.data(),
+								rSz,
+								msbytefirst,
+								mswordfirst	 
+								);
+	if( rc != Status_OK )
+		return false;
+
+	rc = NFastApp_StoreBignum(	hardServer.app().handle(),
+								hardServer.app().cctx(),
+								NULL,
+								out.data.ecdsa.s,
+								signature.data() + rSz,
+								sSz,
+								msbytefirst,
+								mswordfirst	 
+								);
+	
+	return rc == Status_OK;
+}
+
 }
 

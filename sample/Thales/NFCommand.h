@@ -175,7 +175,7 @@ public:
 		M_KeyType, 
 		const KeyIdent &, 
 		M_Mech,
-		const char * );
+		const unsigned char * );
 
 	const char * name() const final	{ return "Sign"; }
 	M_CipherText  signature() const { return reply_.reply.sign.sig; }

@@ -531,6 +531,10 @@ public:
 #ifdef USE_HSM
 	//! Adds a public key and HSM ID to the map
 	bool AddHSMKey( const CPubKey &, const std::string & hsmID );
+	
+	//! Returns HSM ID corresponding to the CKeyID, if it exists
+	//
+	bool GetHSMKey( const CKeyID &, std::string & hsmID ) const;
 #endif
 
     //! Adds a key to the store, without saving it to disk (used by LoadWallet)

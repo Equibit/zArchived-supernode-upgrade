@@ -7,11 +7,16 @@
 #include "edc/script/edcsign.h"
 
 #include "key.h"
-#include "keystore.h"
+#include "edc/wallet/edcwallet.h"
 #include "edc/policy/edcpolicy.h"
 #include "edc/primitives/edctransaction.h"
 #include "script/standard.h"
 #include "uint256.h"
+#ifdef USE_HSM
+#include "edc/edcapp.h"
+#include "Thales/interface.h"
+#include <secp256k1.h>
+#endif
 
 #include <boost/foreach.hpp>
 
@@ -19,7 +24,17 @@ using namespace std;
 
 typedef std::vector<unsigned char> valtype;
 
-EDCTransactionSignatureCreator::EDCTransactionSignatureCreator(const CKeyStore* keystoreIn, const CEDCTransaction* txToIn, unsigned int nInIn, int nHashTypeIn) : BaseSignatureCreator(keystoreIn), txTo(txToIn), nIn(nInIn), nHashType(nHashTypeIn), checker(txTo, nIn) {}
+EDCTransactionSignatureCreator::EDCTransactionSignatureCreator(
+		const CKeyStore * keystoreIn, 
+  const CEDCTransaction * txToIn, 
+			 unsigned int nInIn, 
+					  int nHashTypeIn) : 
+		BaseSignatureCreator(keystoreIn), 
+		txTo(txToIn), 
+		nIn(nInIn), 
+		nHashType(nHashTypeIn), 
+		checker(txTo, nIn) 
+{}
 
 bool EDCTransactionSignatureCreator::CreateSig(
 	std::vector<unsigned char> & vchSig, 
@@ -28,7 +43,40 @@ bool EDCTransactionSignatureCreator::CreateSig(
 {
     CKey key;
     if (!keystore->GetKey(address, key))
+	{
+#ifdef USE_HSM
+		const CEDCWallet * wallet = dynamic_cast<const CEDCWallet *>(keystore);
+
+		if( wallet )
+		{
+			std::string hsmID;
+			if( wallet && wallet->GetHSMKey(address, hsmID))
+			{
+				EDCapp & theApp = EDCapp::singleton();
+
+   		 		uint256 hash = SignatureHash(scriptCode, *txTo, nIn, nHashType);
+   		 		if (!NFast::sign( *theApp.nfHardServer(), *theApp.nfModule(), 
+				hsmID, hash.begin(), 256, vchSig))
+        			return false;
+
+				secp256k1_ecdsa_signature sig;
+				memcpy( sig.data, vchSig.data(), sizeof(sig.data));
+
+				vchSig.resize(72);
+   		 		size_t nSigLen = 72;
+
+				secp256k1_context * not_used = NULL;
+		    	secp256k1_ecdsa_signature_serialize_der( not_used, 
+					(unsigned char*)&vchSig[0], &nSigLen, &sig);
+			    vchSig.resize(nSigLen);
+   	 			vchSig.push_back((unsigned char)nHashType);
+
+				return true;
+			}
+		}
+#endif
         return false;
+	}
 
     uint256 hash = SignatureHash(scriptCode, *txTo, nIn, nHashType);
     if (!key.Sign(hash, vchSig))

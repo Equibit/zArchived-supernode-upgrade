@@ -459,7 +459,6 @@ static void MutateTxSign(CEDCMutableTransaction& tx, const string& flagStr)
                 vector<unsigned char> rsData(ParseHexUV(v, "redeemScript"));
                 CScript redeemScript(rsData.begin(), rsData.end());
                 tempKeystore.AddCScript(redeemScript);
-//                tempKeystore.edcAddCScript(redeemScript);
             }
         }
     }

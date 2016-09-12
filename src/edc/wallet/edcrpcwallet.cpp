@@ -20,6 +20,9 @@
 #include "edcwallet.h"
 #include "edc/wallet/edcwalletdb.h"
 #include "edc/edcapp.h"
+#ifdef USE_HSM
+#include "Thales/interface.h"
+#endif
 
 #include <stdint.h>
 
@@ -651,7 +654,12 @@ UniValue edcsignmessage(const UniValue& params, bool fHelp)
 
     CKey key;
     if (!theApp.walletMain()->GetKey(keyID, key))
+	{
+#ifdef USE_HSM
+// TODO
+#endif
         throw JSONRPCError(RPC_WALLET_ERROR, "Private key not available");
+	}
 
     CHashWriter ss(SER_GETHASH, 0);
     ss << edcstrMessageMagic;

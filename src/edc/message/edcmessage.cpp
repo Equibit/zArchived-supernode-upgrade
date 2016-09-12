@@ -12,6 +12,10 @@
 #include "edc/edcmain.h"
 #include <stdexcept>
 #include <sstream>
+#ifdef USE_HSM
+#include "Thales/interface.h"
+#include <secp256k1.h>
+#endif
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -437,14 +441,46 @@ void signMessage(
 		 const std::string & type,     // IN
 		 const std::string & assetId,  // IN
 		 const std::string & message,  // IN
-std::vector<unsigned char> & signature // OUT
+std::vector<unsigned char> & vchSig    // OUT
     )
 {
     EDCapp & theApp = EDCapp::singleton();
 
     CKey key;
     if (!theApp.walletMain()->GetKey(keyID, key))
+	{
+#ifdef USE_HSM
+		std::string hsmID;
+		if( theApp.walletMain()->GetHSMKey( keyID, hsmID ))
+		{
+    		CHashWriter ss(SER_GETHASH, 0);
+		    ss	<< edcstrMessageMagic
+	   		 	<< ts.tv_sec
+	   			<< ts.tv_nsec
+	   			<< nonce
+			    << type
+			    << assetId
+			    << message;
+
+		    if (!NFast::sign( *theApp.nfHardServer(), *theApp.nfModule(), 
+			hsmID, ss.GetHash().begin(), 256, vchSig ))
+        		throw std::runtime_error("Sign failed");
+
+            secp256k1_ecdsa_signature sig;
+            memcpy( sig.data, vchSig.data(), sizeof(sig.data));
+
+            vchSig.resize(72);
+            size_t nSigLen = 72;
+
+            secp256k1_context * not_used = NULL;
+            secp256k1_ecdsa_signature_serialize_der( not_used, (unsigned char*)&vchSig[0], &nSigLen, &sig);
+            vchSig.resize(nSigLen);
+            vchSig.push_back((unsigned char)SIGHASH_ALL);
+			return;
+		}
+#endif
         throw std::runtime_error("Private key not available");
+	}
 
     CHashWriter ss(SER_GETHASH, 0);
     ss << edcstrMessageMagic
@@ -455,7 +491,7 @@ std::vector<unsigned char> & signature // OUT
        << assetId
        << message;
 
-    if (!key.SignCompact(ss.GetHash(), signature ))
+    if (!key.Sign(ss.GetHash(), vchSig ))
         throw std::runtime_error("Sign failed");
 }
 

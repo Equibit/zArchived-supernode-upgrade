@@ -1,5 +1,8 @@
 #pragma once
 
+#include <vector>
+
+
 // This file defines the functions and constants that provide access to the NFast
 // functionality
 //
@@ -52,4 +55,13 @@ bool generateKeyPair(
 	unsigned char * pubkeydata, 
 	         char * HSMid );
 
+bool sign(
+				  HardServer & hsPtr,
+					  Module & module,
+		   const std::string & hsmID,
+		 const unsigned char * in,
+		                size_t inSize,
+  std::vector<unsigned char> & signature );
+
 }
+

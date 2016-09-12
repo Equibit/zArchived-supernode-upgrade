@@ -3059,6 +3059,20 @@ const std::string & hsmID
 	return true;
 }
 
+bool CEDCWallet::GetHSMKey(
+	const CKeyID & id,
+	 std::string & hsmID ) const
+{
+	std::map<CKeyID, std::pair<CPubKey, std::string > >::const_iterator i = 
+		hsmKeyMap.find( id );
+	if( i == hsmKeyMap.end() )
+		return false;
+
+	hsmID = i->second.second;
+
+	return true;
+}
+
 #endif	// USE_HSM
 
 int64_t CEDCWallet::GetOldestKeyPoolTime()

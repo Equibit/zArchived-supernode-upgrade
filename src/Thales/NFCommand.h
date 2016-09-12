@@ -169,13 +169,22 @@ private:
 class Sign: public Command
 {
 public:
+
 	Sign( 
 		HardServer &, 
 		Module &, 
 		M_KeyType, 
 		const KeyIdent &, 
 		M_Mech,
-		const char * );
+		const unsigned char * hash );
+
+	Sign( 
+		HardServer &, 
+		Module &, 
+		M_KeyType, 
+		const KeyIdent &, 
+		M_Mech,
+		const char * plain );
 
 	const char * name() const final	{ return "Sign"; }
 	M_CipherText  signature() const { return reply_.reply.sign.sig; }

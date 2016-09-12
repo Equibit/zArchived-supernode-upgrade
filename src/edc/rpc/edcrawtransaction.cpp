@@ -769,7 +769,6 @@ UniValue edcsignrawtransaction(const UniValue& params, bool fHelp)
                     vector<unsigned char> rsData(ParseHexV(v, "redeemScript"));
                     CScript redeemScript(rsData.begin(), rsData.end());
                     tempKeystore.AddCScript(redeemScript);
-//                    tempKeystore.edcAddCScript(redeemScript);
                 }
             }
         }

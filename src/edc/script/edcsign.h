@@ -25,7 +25,7 @@ class EDCTransactionSignatureCreator : public BaseSignatureCreator
     const EDCTransactionSignatureChecker checker;
 
 public:
-    EDCTransactionSignatureCreator(	const CKeyStore* keystoreIn, 
+    EDCTransactionSignatureCreator(	const CKeyStore * keyStoreIn,
 									const CEDCTransaction* txToIn, 
 									unsigned int nInIn, 
 									int nHashTypeIn=SIGHASH_ALL);
