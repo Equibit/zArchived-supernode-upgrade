@@ -1,5 +1,4 @@
 ./bitcoind \
--daemon \
 -logtimestamps -eb_logtimestamps \
 -logtimemicros -eb_logtimemicros \
 -regtest -eb_regtest \
@@ -10,4 +9,7 @@
 -eb_cert=/home/david/EDC/root-ca/client.crt \
 -eb_privkey=/home/david/EDC/root-ca/client.key \
 -eb_connect=192.168.0.202 -connect=192.168.0.202 \
+-eb_usehsm
 "$@"
+
+# -daemon \

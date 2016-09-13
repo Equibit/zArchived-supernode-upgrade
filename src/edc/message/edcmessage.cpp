@@ -15,6 +15,7 @@
 #ifdef USE_HSM
 #include "Thales/interface.h"
 #include <secp256k1.h>
+#include "edc/edcparams.h"
 #endif
 
 
@@ -450,8 +451,10 @@ std::vector<unsigned char> & vchSig    // OUT
     if (!theApp.walletMain()->GetKey(keyID, key))
 	{
 #ifdef USE_HSM
+		EDCparams & params = EDCparams::singleton();
+
 		std::string hsmID;
-		if( theApp.walletMain()->GetHSMKey( keyID, hsmID ))
+		if( params.usehsm && theApp.walletMain()->GetHSMKey( keyID, hsmID ))
 		{
     		CHashWriter ss(SER_GETHASH, 0);
 		    ss	<< edcstrMessageMagic

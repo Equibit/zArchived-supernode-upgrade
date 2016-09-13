@@ -1049,6 +1049,11 @@ bool EdcAppInit(
 #ifdef USE_HSM
 		if(params.usehsm)
 		{
+			if( GetBoolArg("-daemon", false) )
+			{
+        		return edcInitError( "Only one of parameters -daemon and -eb_usehsm can be specified" );
+			}
+
 			rc = NFast::init(theApp.nfApp(), 
 					theApp.nfSecWorld(), 
 					theApp.nfHardServer(),

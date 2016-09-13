@@ -2950,20 +2950,26 @@ void CEDCWallet::ReserveKeyFromHSMKeyPool( long & nIndex , CKeyPool& keypool )
         LOCK(cs_wallet);
 
         if (!IsLocked())
+		{
             TopUpHSMKeyPool();
+		}
 
         // Get the oldest key
         if(setHSMKeyPool.empty())
+		{
             return;
+		}
 
         CEDCWalletDB walletdb(strWalletFile);
 
         nIndex = *(setHSMKeyPool.begin());
         setHSMKeyPool.erase(setHSMKeyPool.begin());
         if (!walletdb.ReadHSMPool(nIndex, keypool))
+		{
             throw runtime_error("ReserveKeyFromHSMKeyPool(): read failed");
 // Needed?        if (!HaveKey(keypool.vchPubKey.GetID()))
 // Needed?           throw runtime_error("ReserveKeyFromHSMKeyPool(): unknown key in key pool");
+		}
         assert(keypool.vchPubKey.IsValid());
         edcLogPrintf("HSM keypool reserve %d\n", nIndex);
     }
@@ -2992,6 +2998,7 @@ CPubKey CEDCWallet::GenerateNewHSMKey()
 
 	if(! NFast::generateKeyPair( *theApp.nfHardServer(), *theApp.nfModule(), pubkeyData, hsmID ) )
         throw std::runtime_error("CEDCWallet::GenerateNewHSMKey(): Generate Key failed");
+
 	CPubKey	pubkey;
 	pubkey.Set( pubkeyData, pubkeyData + 65 );
 
@@ -3011,8 +3018,8 @@ CPubKey CEDCWallet::GenerateNewHSMKey()
 
 	CEDCWalletDB walletdb(strWalletFile);
 	if(!walletdb.WriteHSMKey( pubkey, hsmID, mapKeyMetadata[pubkey.GetID()] ))
-        throw std::runtime_error("CEDCWallet::GenerateNewHSMKey(): Write failed");
-
+        throw std::runtime_error(
+			"CEDCWallet::GenerateNewHSMKey(): Write failed" );
     return pubkey;
 }
 

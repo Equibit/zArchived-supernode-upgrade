@@ -764,7 +764,7 @@ Sign::Sign(
 			M_KeyType keyType, 
 	 const KeyIdent & keyIdent, 
 			   M_Mech mech,
-	     const unsigned char * in
+	     const char * in
 ):Command( hardServer.app(), Cmd_Sign ),
   hardServer_(hardServer),
   module_(module)

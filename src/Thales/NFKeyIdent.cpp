@@ -134,8 +134,9 @@ bool KeyIdent::ident( const char * id )
 		return false;
 	else
 	{
-		free(appName_);
+		free(ident_);
 		ident_ = strdup(id);
+		keyIdent_.ident = ident_;	
 		return true;
 	}
 }

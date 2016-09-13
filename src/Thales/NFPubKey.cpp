@@ -17,6 +17,9 @@ PubKey::PubKey(
 {
 	memset( data_, 0, sizeof data_ );
 
+	// Set the first byte to 4 because that is what bitcoin uses
+	data_[0] = 4;
+
 	FindKey	find( app_, id );
 
 	// If the key could not be found and force generation is set
@@ -33,7 +36,7 @@ PubKey::PubKey(
 							 NULL,
                         	 &data.data.ecpublic.Q.x, 
 							 32,
-                        	 data_, 
+                        	 data_+1, 
 							 1, 
 							 1 );
 		sbn_bignumsendupcall(hardServer.app().handle(),
@@ -41,7 +44,7 @@ PubKey::PubKey(
 							 NULL,
                         	 &data.data.ecpublic.Q.y, 
 							 32,
-                        	 data_+32, 
+                        	 data_+33, 
 							 1, 
 							 1 );
 	}
@@ -60,6 +63,9 @@ const KeyIdent & keyID,
 {
 	memset( data_, 0, sizeof data_ );
 
+	// Set the first byte to 4 because that is what bitcoin uses
+	data_[0] = 4;
+
 	GenerateKeyPair	cmd( hardServer, module, keyID, keyType, 
 						flags, protectType, recoverType );
 
@@ -77,7 +83,7 @@ const KeyIdent & keyID,
 						 NULL,
                          &data.data.ecpublic.Q.x, 
 						 32,
-                         data_, 
+                         data_+1, 
 						 1, 
 						 1 );
 	sbn_bignumsendupcall(hardServer.app().handle(),
@@ -85,7 +91,7 @@ const KeyIdent & keyID,
 						 NULL,
                          &data.data.ecpublic.Q.y, 
 						 32,
-                         data_+32, 
+                         data_+33, 
 						 1, 
 						 1 );
 }

@@ -159,14 +159,13 @@ bool init(
 	}
 	catch(...)
 	{
-		delete appPtr;
-		delete swPtr;
-		delete hsPtr;
-		delete cllPtr;
 		delete mdPtr;
-
-   		delete cctx;
+		delete cllPtr;
+		delete hsPtr;
+		delete swPtr;
+		delete appPtr;
 		delete app_init_args;
+   		delete cctx;
 
 		return false;
 	}
@@ -181,11 +180,11 @@ void terminate(
 	CardLoadingLib * & cllPtr,
 			Module * & mdPtr )
 {
-	delete appPtr;
-	delete swPtr;
-	delete hsPtr;
-	delete cllPtr;
 	delete mdPtr;
+	delete cllPtr;
+	delete hsPtr;
+	delete swPtr;
+	delete appPtr;
 
 	appPtr = NULL;
 	swPtr  = NULL;
@@ -259,7 +258,7 @@ bool generateKeyPair(
 	unsigned char * pubkeydata, 
 			 char * ident )
 {
-	KeyIdent id( "equibit", "" );
+	KeyIdent id( "equibit", "dummy" );
 
 // TODO: Race to find id need mutex
 

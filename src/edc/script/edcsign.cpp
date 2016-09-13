@@ -14,6 +14,7 @@
 #include "uint256.h"
 #ifdef USE_HSM
 #include "edc/edcapp.h"
+#include "edc/edcparams.h"
 #include "Thales/interface.h"
 #include <secp256k1.h>
 #endif
@@ -45,33 +46,38 @@ bool EDCTransactionSignatureCreator::CreateSig(
     if (!keystore->GetKey(address, key))
 	{
 #ifdef USE_HSM
-		const CEDCWallet * wallet = dynamic_cast<const CEDCWallet *>(keystore);
+		EDCparams & params = EDCparams::singleton();
 
-		if( wallet )
+		if( params.usehsm )
 		{
-			std::string hsmID;
-			if( wallet && wallet->GetHSMKey(address, hsmID))
+			const CEDCWallet * wallet = dynamic_cast<const CEDCWallet *>(keystore);
+
+			if( wallet )
 			{
-				EDCapp & theApp = EDCapp::singleton();
-
-   		 		uint256 hash = SignatureHash(scriptCode, *txTo, nIn, nHashType);
-   		 		if (!NFast::sign( *theApp.nfHardServer(), *theApp.nfModule(), 
-				hsmID, hash.begin(), 256, vchSig))
-        			return false;
-
-				secp256k1_ecdsa_signature sig;
-				memcpy( sig.data, vchSig.data(), sizeof(sig.data));
-
-				vchSig.resize(72);
-   		 		size_t nSigLen = 72;
-
-				secp256k1_context * not_used = NULL;
-		    	secp256k1_ecdsa_signature_serialize_der( not_used, 
-					(unsigned char*)&vchSig[0], &nSigLen, &sig);
-			    vchSig.resize(nSigLen);
-   	 			vchSig.push_back((unsigned char)nHashType);
-
-				return true;
+				std::string hsmID;
+				if( wallet && wallet->GetHSMKey(address, hsmID))
+				{
+					EDCapp & theApp = EDCapp::singleton();
+	
+   			 		uint256 hash = SignatureHash(scriptCode, *txTo, nIn, nHashType);
+   			 		if (!NFast::sign( *theApp.nfHardServer(), *theApp.nfModule(), 
+					hsmID, hash.begin(), 256, vchSig))
+   	     				return false;
+	
+					secp256k1_ecdsa_signature sig;
+					memcpy( sig.data, vchSig.data(), sizeof(sig.data));
+	
+					vchSig.resize(72);
+   			 		size_t nSigLen = 72;
+	
+					secp256k1_context * not_used = NULL;
+			    	secp256k1_ecdsa_signature_serialize_der( not_used, 
+						(unsigned char*)&vchSig[0], &nSigLen, &sig);
+				    vchSig.resize(nSigLen);
+   		 			vchSig.push_back((unsigned char)nHashType);
+	
+					return true;
+				}
 			}
 		}
 #endif
