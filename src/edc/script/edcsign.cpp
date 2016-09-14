@@ -91,6 +91,121 @@ bool EDCTransactionSignatureCreator::CreateSig(
     return true;
 }
 
+namespace
+{
+
+bool Sign1(const CKeyID& address, const BaseSignatureCreator& creator, const CScript& scriptCode, CScript& scriptSigRet)
+{
+    vector<unsigned char> vchSig;
+    if (!creator.CreateSig(vchSig, address, scriptCode))
+        return false;
+    scriptSigRet << vchSig;
+    return true;
+}
+
+bool SignN(const vector<valtype>& multisigdata, const BaseSignatureCreator& creator, const CScript& scriptCode, CScript& scriptSigRet)
+{
+    int nSigned = 0;
+    int nRequired = multisigdata.front()[0];
+    for (unsigned int i = 1; i < multisigdata.size()-1 && nSigned < nRequired; i++)
+    {
+        const valtype& pubkey = multisigdata[i];
+        CKeyID keyID = CPubKey(pubkey).GetID();
+        if (Sign1(keyID, creator, scriptCode, scriptSigRet))
+            ++nSigned;
+    }
+    return nSigned==nRequired;
+}
+
+/**
+ * Sign scriptPubKey using signature made with creator.
+ * Signatures are returned in scriptSigRet (or returns false if scriptPubKey can't be signed),
+ * unless whichTypeRet is TX_SCRIPTHASH, in which case scriptSigRet is the redemption script.
+ * Returns false if scriptPubKey could not be completely satisfied.
+ */
+bool SignStep(
+	const BaseSignatureCreator & creator, 
+				 const CScript & scriptPubKey,
+    				   CScript & scriptSigRet, 
+					txnouttype & whichTypeRet)
+{
+    scriptSigRet.clear();
+
+    vector<valtype> vSolutions;
+    if (!Solver(scriptPubKey, whichTypeRet, vSolutions))
+        return false;
+
+    CKeyID keyID;
+    switch (whichTypeRet)
+    {
+    case TX_NONSTANDARD:
+    case TX_NULL_DATA:
+        return false;
+    case TX_PUBKEY:
+        keyID = CPubKey(vSolutions[0]).GetID();
+        return Sign1(keyID, creator, scriptPubKey, scriptSigRet);
+    case TX_PUBKEYHASH:
+        keyID = CKeyID(uint160(vSolutions[0]));
+        if (!Sign1(keyID, creator, scriptPubKey, scriptSigRet))
+            return false;
+        else
+        {
+            CPubKey vch;
+#ifndef USE_HSM
+            creator.KeyStore().GetPubKey(keyID, vch);
+#else
+			if(!creator.KeyStore().GetPubKey(keyID, vch))
+			{
+				const CEDCWallet * wallet = dynamic_cast<const CEDCWallet *>(&creator.KeyStore());
+				if( wallet )
+				{
+					wallet->GetHSMPubKey(keyID, vch);
+				}
+			}
+#endif
+            scriptSigRet << ToByteVector(vch);
+        }
+        return true;
+    case TX_SCRIPTHASH:
+        return creator.KeyStore().GetCScript(uint160(vSolutions[0]), scriptSigRet);
+
+    case TX_MULTISIG:
+        scriptSigRet << OP_0; // workaround CHECKMULTISIG bug
+        return (SignN(vSolutions, creator, scriptPubKey, scriptSigRet));
+    }
+    return false;
+}
+
+}
+
+bool edcProduceSignature(
+	const BaseSignatureCreator & creator, 
+				 const CScript & fromPubKey, 
+					   CScript & scriptSig)
+{
+    txnouttype whichType;
+    if (!SignStep(creator, fromPubKey, scriptSig, whichType))
+        return false;
+
+    if (whichType == TX_SCRIPTHASH)
+    {
+        // Solver returns the subscript that need to be evaluated;
+        // the final scriptSig is the signatures from that
+        // and then the serialized subscript:
+        CScript subscript = scriptSig;
+
+        txnouttype subType;
+        bool fSolved =
+            SignStep(creator, subscript, scriptSig, subType) && subType != TX_SCRIPTHASH;
+        // Append serialized subscript whether or not it is completely signed:
+        scriptSig << valtype(subscript.begin(), subscript.end());
+        if (!fSolved) return false;
+    }
+
+    // Test solution
+    return VerifyScript(scriptSig, fromPubKey, STANDARD_SCRIPT_VERIFY_FLAGS, creator.Checker());
+}
+
 bool SignSignature(
 		   const CKeyStore & keystore, 
 	  		 const CScript & fromPubKey, 
@@ -104,7 +219,7 @@ bool SignSignature(
     CEDCTransaction txToConst(txTo);
     EDCTransactionSignatureCreator creator(&keystore, &txToConst, nIn, nHashType);
 
-    return ProduceSignature(creator, fromPubKey, txin.scriptSig);
+    return edcProduceSignature(creator, fromPubKey, txin.scriptSig);
 }
 
 bool SignSignature(

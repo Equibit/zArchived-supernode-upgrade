@@ -364,7 +364,7 @@ UniValue edcsetaccount(const UniValue& params, bool fHelp)
         strAccount = edcAccountFromValue(params[1]);
 
     // Only add the account if the address is yours.
-    if (IsMine(*theApp.walletMain(), address.Get()))
+    if (edcIsMine(*theApp.walletMain(), address.Get()))
     {
         // Detect when changing the account of an address that is the 'unused current key' of another account:
         if (theApp.walletMain()->mapAddressBook.count(address.Get()))
@@ -716,7 +716,7 @@ UniValue edcgetreceivedbyaddress(const UniValue& params, bool fHelp)
     if (!address.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address");
     CScript scriptPubKey = GetScriptForDestination(address.Get());
-    if (!IsMine(*theApp.walletMain(),scriptPubKey))
+    if (!edcIsMine(*theApp.walletMain(),scriptPubKey))
         return (double)0.0;
 
     // Minimum confirmations
@@ -791,7 +791,7 @@ UniValue edcgetreceivedbyaccount(const UniValue& params, bool fHelp)
         BOOST_FOREACH(const CEDCTxOut& txout, wtx.vout)
         {
             CTxDestination address;
-            if (ExtractDestination(txout.scriptPubKey, address) && IsMine(*theApp.walletMain(), address) && setAddress.count(address))
+            if (ExtractDestination(txout.scriptPubKey, address) && edcIsMine(*theApp.walletMain(), address) && setAddress.count(address))
                 if (wtx.GetDepthInMainChain() >= nMinDepth)
                     nAmount += txout.nValue;
         }
@@ -1201,7 +1201,7 @@ UniValue edcsendmany(const UniValue& params, bool fHelp)
 }
 
 // Defined in rpc/misc.cpp
-CScript _createmultisig_redeemScript(const UniValue& params);
+CScript edc_createmultisig_redeemScript(const UniValue& params);
 
 UniValue edcaddmultisigaddress(const UniValue& params, bool fHelp)
 {
@@ -1245,7 +1245,7 @@ UniValue edcaddmultisigaddress(const UniValue& params, bool fHelp)
         strAccount = edcAccountFromValue(params[2]);
 
     // Construct using pay-to-script-hash:
-    CScript inner = _createmultisig_redeemScript(params);
+    CScript inner = edc_createmultisig_redeemScript(params);
     CScriptID innerID(inner);
     theApp.walletMain()->AddCScript(inner);
 
@@ -1306,7 +1306,7 @@ UniValue edcListReceived(const UniValue& params, bool fByAccounts)
             if (!ExtractDestination(txout.scriptPubKey, address))
                 continue;
 
-            isminefilter mine = IsMine(*theApp.walletMain(), address);
+            isminefilter mine = edcIsMine(*theApp.walletMain(), address);
             if(!(mine & filter))
                 continue;
 
@@ -1504,7 +1504,7 @@ void ListTransactions(
         BOOST_FOREACH(const COutputEntry& s, listSent)
         {
             UniValue entry(UniValue::VOBJ);
-            if(involvesWatchonly || (::IsMine(*theApp.walletMain(), s.destination) & ISMINE_WATCH_ONLY))
+            if(involvesWatchonly || (edcIsMine(*theApp.walletMain(), s.destination) & ISMINE_WATCH_ONLY))
                 entry.push_back(Pair("involvesWatchonly", true));
             entry.push_back(Pair("account", strSentAccount));
             MaybePushAddress(entry, s.destination);
@@ -1532,7 +1532,7 @@ void ListTransactions(
             if (fAllAccounts || (account == strAccount))
             {
                 UniValue entry(UniValue::VOBJ);
-                if(involvesWatchonly || (::IsMine(*theApp.walletMain(), r.destination) & ISMINE_WATCH_ONLY))
+                if(involvesWatchonly || (edcIsMine(*theApp.walletMain(), r.destination) & ISMINE_WATCH_ONLY))
                     entry.push_back(Pair("involvesWatchonly", true));
                 entry.push_back(Pair("account", account));
                 MaybePushAddress(entry, r.destination);
@@ -1754,7 +1754,7 @@ UniValue edclistaccounts(const UniValue& params, bool fHelp)
     map<string, CAmount> mapAccountBalances;
     BOOST_FOREACH(const PAIRTYPE(CTxDestination, CAddressBookData)& entry, theApp.walletMain()->mapAddressBook) 
 	{
-        if (IsMine(*theApp.walletMain(), entry.first) & includeWatchonly) // This address belongs to me
+        if (edcIsMine(*theApp.walletMain(), entry.first) & includeWatchonly) // This address belongs to me
             mapAccountBalances[entry.second.name] = 0;
     }
 

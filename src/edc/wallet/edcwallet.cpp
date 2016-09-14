@@ -1098,7 +1098,7 @@ CAmount CEDCWallet::GetDebit(const CEDCTxIn &txin, const isminefilter& filter) c
 
 isminetype CEDCWallet::IsMine(const CEDCTxOut& txout) const
 {
-    return ::IsMine(*this, txout.scriptPubKey);
+    return edcIsMine(*this, txout.scriptPubKey);
 }
 
 CAmount CEDCWallet::GetCredit(const CEDCTxOut& txout, const isminefilter& filter) const
@@ -1118,7 +1118,7 @@ bool CEDCWallet::IsChange(const CEDCTxOut& txout) const
 	// outputs are 'the send' and which are 'the change' will need to be 
 	// implemented (maybe extend CEDCWalletTx to remember
     // which output, if any, was change).
-    if (::IsMine(*this, txout.scriptPubKey))
+    if (edcIsMine(*this, txout.scriptPubKey))
     {
         CTxDestination address;
         if (!ExtractDestination(txout.scriptPubKey, address))
@@ -2481,9 +2481,9 @@ bool CEDCWallet::CreateTransaction(
                     const CScript& scriptPubKey = coin.first->vout[coin.second].scriptPubKey;
                     CScript& scriptSigRes = txNew.vin[nIn].scriptSig;
                     if (sign)
-                        signSuccess = ProduceSignature(EDCTransactionSignatureCreator(this, &txNewConst, nIn, SIGHASH_ALL), scriptPubKey, scriptSigRes);
+                        signSuccess = edcProduceSignature(EDCTransactionSignatureCreator(this, &txNewConst, nIn, SIGHASH_ALL), scriptPubKey, scriptSigRes);
                     else
-                        signSuccess = ProduceSignature(DummySignatureCreator(this), scriptPubKey, scriptSigRes);
+                        signSuccess = edcProduceSignature(DummySignatureCreator(this), scriptPubKey, scriptSigRes);
 
                     if (!signSuccess)
                     {
@@ -2745,7 +2745,7 @@ bool CEDCWallet::SetAddressBook(
         if (!strPurpose.empty()) /* update purpose only if requested */
             mapAddressBook[address].purpose = strPurpose;
     }
-    NotifyAddressBookChanged(this, address, strName, ::IsMine(*this, address) != ISMINE_NO,
+    NotifyAddressBookChanged(this, address, strName, edcIsMine(*this, address) != ISMINE_NO,
                              strPurpose, (fUpdated ? CT_UPDATED : CT_NEW) );
     if (!fFileBacked)
         return false;
@@ -2774,7 +2774,7 @@ bool CEDCWallet::DelAddressBook(const CTxDestination& address)
         mapAddressBook.erase(address);
     }
 
-    NotifyAddressBookChanged(this, address, "", ::IsMine(*this, address) != ISMINE_NO, "", CT_DELETED);
+    NotifyAddressBookChanged(this, address, "", edcIsMine(*this, address) != ISMINE_NO, "", CT_DELETED);
 
     if (!fFileBacked)
         return false;
@@ -3070,6 +3070,8 @@ bool CEDCWallet::GetHSMKey(
 	const CKeyID & id,
 	 std::string & hsmID ) const
 {
+    LOCK(cs_wallet);
+
 	std::map<CKeyID, std::pair<CPubKey, std::string > >::const_iterator i = 
 		hsmKeyMap.find( id );
 	if( i == hsmKeyMap.end() )
@@ -3916,10 +3918,10 @@ bool CEDCWallet::CreateAuthorizingTransaction(
 
 			bool sign = true;
 			if(sign)
-            	signSuccess = ProduceSignature(EDCTransactionSignatureCreator(this, &txNewConst, 0, 
+            	signSuccess = edcProduceSignature(EDCTransactionSignatureCreator(this, &txNewConst, 0, 
 					SIGHASH_ALL), scriptPubKey, scriptSigRes);
             else
-                signSuccess = ProduceSignature(DummySignatureCreator(this), scriptPubKey, scriptSigRes);
+                signSuccess = edcProduceSignature(DummySignatureCreator(this), scriptPubKey, scriptSigRes);
 
             if (!signSuccess)
             {
@@ -3994,3 +3996,22 @@ void CEDCWallet::DeleteMessages(
 	CEDCWalletDB(strWalletFile).DeleteMessages(
 		from, to, assets, types, senders, receivers );
 }
+
+#ifdef USE_HSM
+
+bool CEDCWallet::GetHSMPubKey(const CKeyID & id, CPubKey & out ) const
+{
+    LOCK(cs_wallet);
+
+	std::map<CKeyID, std::pair<CPubKey, std::string > >::const_iterator i = 
+		hsmKeyMap.find( id );
+
+	if( i == hsmKeyMap.end() )
+		return false;
+
+	out = i->second.first;
+
+	return true;
+}
+
+#endif

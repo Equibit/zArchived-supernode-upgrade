@@ -13,7 +13,7 @@
 #include "edc/edcui_interface.h"
 #include "utilstrencodings.h"
 #include "edc/edcvalidationinterface.h"
-#include "script/ismine.h"
+#include "edc/script/edcismine.h"
 #include "wallet/crypter.h"
 #include "edc/wallet/edcwalletdb.h"
 #include "wallet/rpcwallet.h"
@@ -523,6 +523,7 @@ public:
     CPubKey GenerateNewKey();
 #ifdef USE_HSM
     CPubKey GenerateNewHSMKey();
+	bool GetHSMPubKey( const CKeyID & address, CPubKey & vchPubKeyOut ) const;
 #endif
 
     //! Adds a key to the store, and saves it to disk.

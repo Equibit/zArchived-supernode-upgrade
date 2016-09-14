@@ -131,7 +131,14 @@ public:
         UniValue obj(UniValue::VOBJ);
         CPubKey vchPubKey;
         obj.push_back(Pair("isscript", false));
+
+#ifndef USE_HSM
         if (theApp.walletMain() && theApp.walletMain()->GetPubKey(keyID, vchPubKey)) 
+#else
+        if (theApp.walletMain() && 
+		(theApp.walletMain()->GetPubKey(keyID, vchPubKey) || 
+		theApp.walletMain()->GetHSMPubKey(keyID, vchPubKey))) 
+#endif
 		{
             obj.push_back(Pair("pubkey", HexStr(vchPubKey)));
             obj.push_back(Pair("iscompressed", vchPubKey.IsCompressed()));
@@ -214,7 +221,7 @@ UniValue edcvalidateaddress(const UniValue& params, bool fHelp)
         ret.push_back(Pair("scriptPubKey", HexStr(scriptPubKey.begin(), scriptPubKey.end())));
 
 #ifdef ENABLE_WALLET
-        isminetype mine = theApp.walletMain() ? IsMine(*theApp.walletMain(), dest) : ISMINE_NO;
+        isminetype mine = theApp.walletMain() ? edcIsMine(*theApp.walletMain(), dest) : ISMINE_NO;
         ret.push_back(Pair("ismine", (mine & ISMINE_SPENDABLE) ? true : false));
         ret.push_back(Pair("iswatchonly", (mine & ISMINE_WATCH_ONLY) ? true: false));
         UniValue detail = boost::apply_visitor(DescribeAddressVisitor(), dest);
@@ -260,7 +267,12 @@ CScript edc_createmultisig_redeemScript(const UniValue& params)
                 throw runtime_error(
                     strprintf("%s does not refer to a key",ks));
             CPubKey vchPubKey;
+#ifndef USE_HSM
             if (!theApp.walletMain()->GetPubKey(keyID, vchPubKey))
+#else
+            if (!theApp.walletMain()->GetPubKey(keyID, vchPubKey) &&
+            !theApp.walletMain()->GetHSMPubKey(keyID, vchPubKey))
+#endif
                 throw runtime_error(
                     strprintf("no full public key for address %s",ks));
             if (!vchPubKey.IsFullyValid())

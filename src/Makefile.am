@@ -160,6 +160,7 @@ BITCOIN_CORE_H = \
   edc/script/edcsigcache.h \
   edc/script/edcsign.h \
   edc/script/edcinterpreter.h \
+  edc/script/edcismine.h \
   edc/edctxdb.h \
   edc/edcutil.h \
   rpc/register.h \
@@ -279,6 +280,7 @@ libbitcoin_server_a_SOURCES = \
   edc/script/edcsigcache.cpp \
   edc/script/edcsign.cpp \
   edc/script/edcinterpreter.cpp \
+  edc/script/edcismine.cpp \
   edc/edctxmempool.cpp \
   edc/edcparams.cpp \
   edc/edctimedata.cpp \

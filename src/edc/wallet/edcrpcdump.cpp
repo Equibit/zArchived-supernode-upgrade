@@ -179,7 +179,7 @@ void edcImportScript(
 {
 	EDCapp & theApp = EDCapp::singleton();
 
-    if (!isRedeemScript && ::IsMine(*theApp.walletMain(), script) == ISMINE_SPENDABLE)
+    if (!isRedeemScript && edcIsMine(*theApp.walletMain(), script) == ISMINE_SPENDABLE)
         throw JSONRPCError(RPC_WALLET_ERROR, "The wallet already contains the private key for this address or script");
 
     theApp.walletMain()->MarkDirty();
