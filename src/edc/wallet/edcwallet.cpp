@@ -1264,10 +1264,14 @@ void CEDCWalletTx::GetAmounts(
         {
             // Don't report 'change' txouts
             if (pwallet->IsChange(txout))
+			{
                 continue;
+			}
         }
         else if (!(fIsMine & filter))
+		{
             continue;
+		}
 
         // In either case, we need to get the destination address
         CTxDestination address;
@@ -1283,11 +1287,15 @@ void CEDCWalletTx::GetAmounts(
 
         // If we are debited by the transaction, add the output as a "sent" entry
         if (nDebit > 0)
+		{
             listSent.push_back(output);
+		}
 
         // If we are receiving the output, add it as a "received" entry
         if (fIsMine & filter)
+		{
             listReceived.push_back(output);
+		}
     }
 
 }
@@ -1322,7 +1330,9 @@ const isminefilter & filter) const
             {
                 map<CTxDestination, CAddressBookData>::const_iterator mi = pwallet->mapAddressBook.find(r.destination);
                 if (mi != pwallet->mapAddressBook.end() && (*mi).second.name == strAccount)
+				{
                     nReceived += r.amount;
+				}
             }
             else if (strAccount.empty())
             {
@@ -3062,6 +3072,7 @@ const std::string & hsmID
 {
 	CKeyID keyID = pubkey.GetID();
 
+    LOCK(cs_wallet);
 	hsmKeyMap.insert( std::make_pair( keyID, std::make_pair( pubkey, hsmID ) ) );	
 	return true;
 }

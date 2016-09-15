@@ -10,6 +10,9 @@
 #include "script/script.h"
 #include "script/standard.h"
 #include "edc/script/edcsign.h"
+#ifdef USE_HSM
+#include "edc/wallet/edcwallet.h"
+#endif
 
 
 #include <boost/foreach.hpp>
@@ -18,16 +21,37 @@ using namespace std;
 
 typedef vector<unsigned char> valtype;
 
+namespace
+{
+
+bool edcHaveKey(const CKeyStore & keystore, const CKeyID & keyID)
+{
+	if (keystore.HaveKey(keyID))
+		return true;
+#ifdef USE_HSM
+	const CEDCWallet * wallet = dynamic_cast<const CEDCWallet *>(&keystore);
+	if( wallet )
+	{
+		std::string hsmID;
+		if( wallet->GetHSMKey( keyID, hsmID ) )
+			return true;
+	}
+#endif
+	return false;
+}
+
 unsigned int edcHaveKeys(const vector<valtype>& pubkeys, const CKeyStore& keystore)
 {
     unsigned int nResult = 0;
     BOOST_FOREACH(const valtype& pubkey, pubkeys)
     {
         CKeyID keyID = CPubKey(pubkey).GetID();
-        if (keystore.HaveKey(keyID))
+        if (edcHaveKey(keystore, keyID))
             ++nResult;
     }
     return nResult;
+}
+
 }
 
 isminetype edcIsMine(const CKeyStore &keystore, const CTxDestination& dest)
@@ -40,7 +64,8 @@ isminetype edcIsMine(const CKeyStore &keystore, const CScript& scriptPubKey)
 {
     vector<valtype> vSolutions;
     txnouttype whichType;
-    if (!Solver(scriptPubKey, whichType, vSolutions)) {
+    if (!Solver(scriptPubKey, whichType, vSolutions)) 
+	{
         if (keystore.HaveWatchOnly(scriptPubKey))
             return ISMINE_WATCH_UNSOLVABLE;
         return ISMINE_NO;
@@ -54,19 +79,20 @@ isminetype edcIsMine(const CKeyStore &keystore, const CScript& scriptPubKey)
         break;
     case TX_PUBKEY:
         keyID = CPubKey(vSolutions[0]).GetID();
-        if (keystore.HaveKey(keyID))
+        if (edcHaveKey( keystore, keyID))
             return ISMINE_SPENDABLE;
         break;
     case TX_PUBKEYHASH:
         keyID = CKeyID(uint160(vSolutions[0]));
-        if (keystore.HaveKey(keyID))
+        if (edcHaveKey( keystore, keyID))
             return ISMINE_SPENDABLE;
         break;
     case TX_SCRIPTHASH:
     {
         CScriptID scriptID = CScriptID(uint160(vSolutions[0]));
         CScript subscript;
-        if (keystore.GetCScript(scriptID, subscript)) {
+        if (keystore.GetCScript(scriptID, subscript)) 
+		{
             isminetype ret = edcIsMine(keystore, subscript);
             if (ret == ISMINE_SPENDABLE)
                 return ret;
@@ -87,7 +113,8 @@ isminetype edcIsMine(const CKeyStore &keystore, const CScript& scriptPubKey)
     }
     }
 
-    if (keystore.HaveWatchOnly(scriptPubKey)) {
+    if (keystore.HaveWatchOnly(scriptPubKey)) 
+	{
         // TODO: This could be optimized some by doing some work after the above solver
         CScript scriptSig;
         return edcProduceSignature(DummySignatureCreator(&keystore), scriptPubKey, scriptSig) ? ISMINE_WATCH_SOLVABLE : ISMINE_WATCH_UNSOLVABLE;
