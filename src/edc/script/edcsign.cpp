@@ -17,6 +17,27 @@
 #include "edc/edcparams.h"
 #include "Thales/interface.h"
 #include <secp256k1.h>
+
+namespace
+{
+secp256k1_context	* secp256k1_context_verify;
+
+struct Verifier
+{
+	Verifier()
+	{
+		secp256k1_context_verify = secp256k1_context_create(SECP256K1_CONTEXT_VERIFY);
+	}
+	~Verifier()
+	{
+		secp256k1_context_destroy(secp256k1_context_verify);
+	}
+};
+
+Verifier	verifier;
+
+}
+
 #endif
 
 #include <boost/foreach.hpp>
@@ -66,12 +87,13 @@ bool EDCTransactionSignatureCreator::CreateSig(
 	
 					secp256k1_ecdsa_signature sig;
 					memcpy( sig.data, vchSig.data(), sizeof(sig.data));
+
+					secp256k1_ecdsa_signature_normalize( secp256k1_context_verify, &sig, &sig );
 	
 					vchSig.resize(72);
    			 		size_t nSigLen = 72;
 	
-					secp256k1_context * not_used = NULL;
-			    	secp256k1_ecdsa_signature_serialize_der( not_used, 
+			    	secp256k1_ecdsa_signature_serialize_der( secp256k1_context_verify, 
 						(unsigned char*)&vchSig[0], &nSigLen, &sig);
 				    vchSig.resize(nSigLen);
    		 			vchSig.push_back((unsigned char)nHashType);
@@ -94,7 +116,7 @@ bool EDCTransactionSignatureCreator::CreateSig(
 namespace
 {
 
-bool Sign1(const CKeyID& address, const BaseSignatureCreator& creator, const CScript& scriptCode, CScript& scriptSigRet)
+bool edcSign1(const CKeyID& address, const BaseSignatureCreator& creator, const CScript& scriptCode, CScript& scriptSigRet)
 {
     vector<unsigned char> vchSig;
     if (!creator.CreateSig(vchSig, address, scriptCode))
@@ -103,7 +125,7 @@ bool Sign1(const CKeyID& address, const BaseSignatureCreator& creator, const CSc
     return true;
 }
 
-bool SignN(const vector<valtype>& multisigdata, const BaseSignatureCreator& creator, const CScript& scriptCode, CScript& scriptSigRet)
+bool edcSignN(const vector<valtype>& multisigdata, const BaseSignatureCreator& creator, const CScript& scriptCode, CScript& scriptSigRet)
 {
     int nSigned = 0;
     int nRequired = multisigdata.front()[0];
@@ -111,7 +133,7 @@ bool SignN(const vector<valtype>& multisigdata, const BaseSignatureCreator& crea
     {
         const valtype& pubkey = multisigdata[i];
         CKeyID keyID = CPubKey(pubkey).GetID();
-        if (Sign1(keyID, creator, scriptCode, scriptSigRet))
+        if (edcSign1(keyID, creator, scriptCode, scriptSigRet))
             ++nSigned;
     }
     return nSigned==nRequired;
@@ -123,7 +145,7 @@ bool SignN(const vector<valtype>& multisigdata, const BaseSignatureCreator& crea
  * unless whichTypeRet is TX_SCRIPTHASH, in which case scriptSigRet is the redemption script.
  * Returns false if scriptPubKey could not be completely satisfied.
  */
-bool SignStep(
+bool edcSignStep(
 	const BaseSignatureCreator & creator, 
 				 const CScript & scriptPubKey,
     				   CScript & scriptSigRet, 
@@ -143,10 +165,10 @@ bool SignStep(
         return false;
     case TX_PUBKEY:
         keyID = CPubKey(vSolutions[0]).GetID();
-        return Sign1(keyID, creator, scriptPubKey, scriptSigRet);
+        return edcSign1(keyID, creator, scriptPubKey, scriptSigRet);
     case TX_PUBKEYHASH:
         keyID = CKeyID(uint160(vSolutions[0]));
-        if (!Sign1(keyID, creator, scriptPubKey, scriptSigRet))
+        if (!edcSign1(keyID, creator, scriptPubKey, scriptSigRet))
             return false;
         else
         {
@@ -171,7 +193,7 @@ bool SignStep(
 
     case TX_MULTISIG:
         scriptSigRet << OP_0; // workaround CHECKMULTISIG bug
-        return (SignN(vSolutions, creator, scriptPubKey, scriptSigRet));
+        return (edcSignN(vSolutions, creator, scriptPubKey, scriptSigRet));
     }
     return false;
 }
@@ -184,7 +206,7 @@ bool edcProduceSignature(
 					   CScript & scriptSig)
 {
     txnouttype whichType;
-    if (!SignStep(creator, fromPubKey, scriptSig, whichType))
+    if (!edcSignStep(creator, fromPubKey, scriptSig, whichType))
         return false;
 
     if (whichType == TX_SCRIPTHASH)
@@ -196,14 +218,14 @@ bool edcProduceSignature(
 
         txnouttype subType;
         bool fSolved =
-            SignStep(creator, subscript, scriptSig, subType) && subType != TX_SCRIPTHASH;
+            edcSignStep(creator, subscript, scriptSig, subType) && subType != TX_SCRIPTHASH;
         // Append serialized subscript whether or not it is completely signed:
         scriptSig << valtype(subscript.begin(), subscript.end());
         if (!fSolved) return false;
     }
 
     // Test solution
-    return VerifyScript(scriptSig, fromPubKey, STANDARD_SCRIPT_VERIFY_FLAGS, creator.Checker());
+    return edcVerifyScript(scriptSig, fromPubKey, STANDARD_SCRIPT_VERIFY_FLAGS, creator.Checker());
 }
 
 bool SignSignature(

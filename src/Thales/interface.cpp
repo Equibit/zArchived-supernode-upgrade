@@ -308,16 +308,21 @@ bool sign(
 					Mech_ECDSAhSHA256,
 					hash );
 
+	int rc = sign.transact( hardServer );
+
+	if( rc != Status_OK )
+		return false;
+
 	M_CipherText out = sign.signature();
 
 	int msbytefirst;
 	int mswordfirst; 
 
-	int rc = NFastApp_GetBignumFormat(	hardServer.app().handle(),
-										hardServer.app().cctx(),
-										NULL,
-										&msbytefirst,
-										&mswordfirst );
+	rc = NFastApp_GetBignumFormat(	hardServer.app().handle(),
+									hardServer.app().cctx(),
+									NULL,
+									&msbytefirst,
+									&mswordfirst );
 	if( rc != Status_OK )
 		return false;
 

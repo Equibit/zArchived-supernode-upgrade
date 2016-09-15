@@ -16,6 +16,27 @@
 #include "Thales/interface.h"
 #include <secp256k1.h>
 #include "edc/edcparams.h"
+
+namespace
+{
+secp256k1_context   * secp256k1_context_verify;
+
+struct Verifier
+{
+    Verifier()
+    {
+        secp256k1_context_verify = secp256k1_context_create(SECP256K1_CONTEXT_VERIFY);
+    }
+    ~Verifier()
+    {
+        secp256k1_context_destroy(secp256k1_context_verify);
+    }
+};
+
+Verifier    verifier;
+
+}
+
 #endif
 
 
@@ -472,11 +493,12 @@ std::vector<unsigned char> & vchSig    // OUT
             secp256k1_ecdsa_signature sig;
             memcpy( sig.data, vchSig.data(), sizeof(sig.data));
 
+			secp256k1_ecdsa_signature_normalize( secp256k1_context_verify, &sig, &sig );
+	
             vchSig.resize(72);
             size_t nSigLen = 72;
 
-            secp256k1_context * not_used = NULL;
-            secp256k1_ecdsa_signature_serialize_der( not_used, (unsigned char*)&vchSig[0], &nSigLen, &sig);
+            secp256k1_ecdsa_signature_serialize_der( secp256k1_context_verify, (unsigned char*)&vchSig[0], &nSigLen,&sig);
             vchSig.resize(nSigLen);
             vchSig.push_back((unsigned char)SIGHASH_ALL);
 			return;
