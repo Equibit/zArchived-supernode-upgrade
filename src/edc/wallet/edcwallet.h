@@ -536,6 +536,8 @@ public:
 	//! Returns HSM ID corresponding to the CKeyID, if it exists
 	//
 	bool GetHSMKey( const CKeyID &, std::string & hsmID ) const;
+
+	bool HaveKey( const CKeyID & address ) const;
 #endif
 
     //! Adds a key to the store, without saving it to disk (used by LoadWallet)

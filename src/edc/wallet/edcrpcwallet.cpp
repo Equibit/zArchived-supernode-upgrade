@@ -20,9 +20,33 @@
 #include "edcwallet.h"
 #include "edc/wallet/edcwalletdb.h"
 #include "edc/edcapp.h"
+
 #ifdef USE_HSM
+
 #include "Thales/interface.h"
 #include "edc/edcparams.h"
+#include <secp256k1.h>
+
+namespace
+{
+secp256k1_context   * secp256k1_context_verify;
+
+struct Verifier
+{
+    Verifier()
+    {
+        secp256k1_context_verify = secp256k1_context_create(SECP256K1_CONTEXT_VERIFY);
+    }
+    ~Verifier()
+    {
+        secp256k1_context_destroy(secp256k1_context_verify);
+    }
+};
+
+Verifier    verifier;
+
+}
+
 #endif
 
 #include <stdint.h>
@@ -175,7 +199,7 @@ UniValue edcgetnewhsmaddress(const UniValue& params, bool fHelp)
     if (fHelp || params.size() > 1)
         throw runtime_error(
             "eb_getnewhsmaddress ( \"account\" )\n"
-            "\nReturns a new Bitcoin address for receiving payments that uses an HSM.\n"
+            "\nReturns a new Equibit address, derived from an HSM key pair, that can be used for receiving payments.\n"
             "If 'account' is specified (DEPRECATED), it is added to the address book \n"
             "so payments received with the address will be credited to 'account'.\n"
             "\nArguments:\n"
@@ -665,7 +689,31 @@ UniValue edcsignmessage(const UniValue& params, bool fHelp)
 
 		if( theParams.usehsm )
 		{
-// TODO
+			std::string hsmid;
+			if(theApp.walletMain()->GetHSMKey(keyID, hsmid ))
+			{
+    			CHashWriter ss(SER_GETHASH, 0);
+			    ss << edcstrMessageMagic;
+			    ss << strMessage;
+
+    			vector<unsigned char> vchSig;
+
+   		 		if (!NFast::sign( *theApp.nfHardServer(), *theApp.nfModule(), 
+				hsmid, ss.GetHash().begin(), 256, vchSig))
+       				return false;
+	
+				secp256k1_ecdsa_signature sig;
+				memcpy( sig.data, vchSig.data(), sizeof(sig.data));
+
+				secp256k1_ecdsa_signature_normalize( secp256k1_context_verify, &sig, &sig );
+	
+				vchSig.resize(65);
+
+				vchSig[0] = 27;	// TODO: recid needs to be computed. It is from 0 to 3.
+				memcpy( &vchSig[1], sig.data, sizeof(sig.data));
+	
+    			return EncodeBase64(&vchSig[0], vchSig.size());
+			}
 		}
 #endif
         throw JSONRPCError(RPC_WALLET_ERROR, "Private key not available");

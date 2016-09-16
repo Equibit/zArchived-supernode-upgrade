@@ -2975,11 +2975,10 @@ void CEDCWallet::ReserveKeyFromHSMKeyPool( long & nIndex , CKeyPool& keypool )
         nIndex = *(setHSMKeyPool.begin());
         setHSMKeyPool.erase(setHSMKeyPool.begin());
         if (!walletdb.ReadHSMPool(nIndex, keypool))
-		{
             throw runtime_error("ReserveKeyFromHSMKeyPool(): read failed");
-// Needed?        if (!HaveKey(keypool.vchPubKey.GetID()))
-// Needed?           throw runtime_error("ReserveKeyFromHSMKeyPool(): unknown key in key pool");
-		}
+		if (!HaveKey(keypool.vchPubKey.GetID()))
+			throw runtime_error("ReserveKeyFromHSMKeyPool(): unknown key in key pool");
+
         assert(keypool.vchPubKey.IsValid());
         edcLogPrintf("HSM keypool reserve %d\n", nIndex);
     }
@@ -3091,6 +3090,17 @@ bool CEDCWallet::GetHSMKey(
 	hsmID = i->second.second;
 
 	return true;
+}
+
+bool CEDCWallet::HaveKey( const CKeyID & address ) const
+{
+	if( CCryptoKeyStore::HaveKey( address ))
+		return true;
+
+	LOCK(cs_wallet);
+
+	std::string hsmid;
+	return GetHSMKey( address, hsmid );
 }
 
 #endif	// USE_HSM

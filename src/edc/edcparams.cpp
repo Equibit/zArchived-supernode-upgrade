@@ -1142,6 +1142,7 @@ void EDCparams::checkParams() const
 	validparams.insert("-uacomment");
 	validparams.insert("-upgradewallet");
 	validparams.insert("-upnp");
+	validparams.insert("-usehsm");
 	validparams.insert("-wallet");
 	validparams.insert("-walletbroadcast");
 	validparams.insert("-walletnotify");
