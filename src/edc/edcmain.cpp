@@ -52,7 +52,7 @@
 using namespace std;
 
 #if defined(NDEBUG)
-# error "Bitcoin cannot be compiled without assertions."
+# error "Equibit cannot be compiled without assertions."
 #endif
 
 /**
@@ -2401,7 +2401,7 @@ bool edcFindUndoPos(CValidationState &state, int nFile, CDiskBlockPos &pos, unsi
 
 void edcThreadScriptCheck() 
 {
-    RenameThread("bitcoin-scriptch");
+    RenameThread("equibit-scriptch");
     scriptcheckqueue.Thread();
 }
 

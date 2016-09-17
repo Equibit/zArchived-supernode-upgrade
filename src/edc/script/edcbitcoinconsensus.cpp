@@ -11,6 +11,10 @@
 #include "edc/script/edcinterpreter.h"
 #include "version.h"
 
+
+const int EQUIBITCONSENSUS_API_VER = 0;
+
+
 namespace 
 {
 
@@ -71,7 +75,7 @@ struct ECCryptoClosure
 ECCryptoClosure instance_of_eccryptoclosure;
 }
 
-int bitcoinconsensus_verify_script(
+int equibitconsensus_verify_script(
 	const unsigned char * scriptPubKey, 
 			 unsigned int scriptPubKeyLen,
     const unsigned char * txTo, 
@@ -105,8 +109,8 @@ int bitcoinconsensus_verify_script(
     }
 }
 
-unsigned int bitcoinconsensus_version()
+unsigned int equibitconsensus_version()
 {
     // Just use the API version for now
-    return BITCOINCONSENSUS_API_VER;
+    return EQUIBITCONSENSUS_API_VER;
 }

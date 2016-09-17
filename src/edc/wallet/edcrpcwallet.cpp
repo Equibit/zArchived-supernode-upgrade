@@ -155,7 +155,7 @@ UniValue edcgetnewaddress(const UniValue& params, bool fHelp)
     if (fHelp || params.size() > 1)
         throw runtime_error(
             "eb_getnewaddress ( \"account\" )\n"
-            "\nReturns a new Bitcoin address for receiving payments.\n"
+            "\nReturns a new Equibit address for receiving payments.\n"
             "If 'account' is specified (DEPRECATED), it is added to the address book \n"
             "so payments received with the address will be credited to 'account'.\n"
             "\nArguments:\n"
@@ -297,7 +297,7 @@ UniValue edcgetaccountaddress(const UniValue& params, bool fHelp)
     if (fHelp || params.size() != 1)
         throw runtime_error(
             "eb_getaccountaddress \"account\"\n"
-            "\nDEPRECATED. Returns the current Bitcoin address for receiving payments to this account.\n"
+            "\nDEPRECATED. Returns the current Equibit address for receiving payments to this account.\n"
             "\nArguments:\n"
             "1. \"account\"       (string, required) The account name for the address. It can also be set to the empty string \"\" to represent the default account. The account does not need to exist, it will be created and a new address created  if there is no account by the given name.\n"
             "\nResult:\n"
@@ -320,6 +320,92 @@ UniValue edcgetaccountaddress(const UniValue& params, bool fHelp)
     return ret;
 }
 
+CEDCBitcoinAddress edcGetHSMAccountAddress(string strAccount, bool bForceNew=false)
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+    CEDCWalletDB walletdb(theApp.walletMain()->strWalletFile);
+
+    CAccount account;
+    walletdb.ReadAccount(strAccount, account);
+
+    if (!bForceNew) 
+	{
+        if (!account.vchPubKey.IsValid())
+            bForceNew = true;
+        else 
+		{
+            // Check if the current key has been used
+            CScript scriptPubKey = GetScriptForDestination(account.vchPubKey.GetID());
+            for (map<uint256, CEDCWalletTx>::iterator it = theApp.walletMain()->mapWallet.begin();
+                 it != theApp.walletMain()->mapWallet.end() && account.vchPubKey.IsValid();
+                 ++it)
+                BOOST_FOREACH(const CEDCTxOut& txout, (*it).second.vout)
+                    if (txout.scriptPubKey == scriptPubKey) 
+					{
+                        bForceNew = true;
+                        break;
+                    }
+        }
+    }
+
+    // Generate a new key
+    if (bForceNew) 
+	{
+#ifdef USE_HSM
+		EDCparams & params = EDCparams::singleton();
+		if( params.usehsm )
+		{
+        	if (!theApp.walletMain()->GetHSMKeyFromPool(account.vchPubKey))
+           		throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM Keypool ran out, please call hsmkeypoolrefill first");
+
+        	theApp.walletMain()->SetAddressBook(account.vchPubKey.GetID(), strAccount, "receive");
+        	walletdb.WriteAccount(strAccount, account);
+		}
+		else
+    		throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM processing disabled. "
+				"Use -eb_usehsm command line option to enable HSM processing" );
+#else
+	    throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM support is not included in the build");
+#endif
+    }
+
+    return CEDCBitcoinAddress(account.vchPubKey.GetID());
+}
+
+UniValue edcgethsmaccountaddress(const UniValue& params, bool fHelp)
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+    if (!edcEnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+            "eb_gethsmaccountaddress \"account\"\n"
+            "\nDEPRECATED. Returns the current Equibit HSM address for receiving payments to this account.\n"
+            "\nArguments:\n"
+            "1. \"account\"       (string, required) The account name for the address. It can also be set to the empty string \"\" to represent the default account. The account does not need to exist, it will be created and a new address created  if there is no account by the given name.\n"
+            "\nResult:\n"
+            "\"equibitaddress\"   (string) The account equibit address\n"
+            "\nExamples:\n"
+            + HelpExampleCli("eb_gethsmaccountaddress", "")
+            + HelpExampleCli("eb_gethsmaccountaddress", "\"\"")
+            + HelpExampleCli("eb_gethsmaccountaddress", "\"myaccount\"")
+            + HelpExampleRpc("eb_gethsmaccountaddress", "\"myaccount\"")
+        );
+
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
+
+    // Parse the account first so we don't generate a key if there's an error
+    string strAccount = edcAccountFromValue(params[0]);
+
+    UniValue ret(UniValue::VSTR);
+
+    ret = edcGetHSMAccountAddress(strAccount).ToString();
+
+    return ret;
+}
 
 UniValue edcgetrawchangeaddress(const UniValue& params, bool fHelp)
 {
@@ -331,7 +417,7 @@ UniValue edcgetrawchangeaddress(const UniValue& params, bool fHelp)
     if (fHelp || params.size() > 1)
         throw runtime_error(
             "eb_getrawchangeaddress\n"
-            "\nReturns a new Bitcoin address, for receiving change.\n"
+            "\nReturns a new Equibit address, for receiving change.\n"
             "This is for use with raw transactions, NOT normal use.\n"
             "\nResult:\n"
             "\"address\"    (string) The address\n"
@@ -381,7 +467,7 @@ UniValue edcsetaccount(const UniValue& params, bool fHelp)
 
     CEDCBitcoinAddress address(params[0].get_str());
     if (!address.IsValid())
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Equibit address");
 
     string strAccount;
     if (params.size() > 1)
@@ -430,7 +516,7 @@ UniValue edcgetaccount(const UniValue& params, bool fHelp)
 
     CEDCBitcoinAddress address(params[0].get_str());
     if (!address.IsValid())
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Equibit address");
 
     string strAccount;
     map<CTxDestination, CAddressBookData>::iterator mi = theApp.walletMain()->mapAddressBook.find(address.Get());
@@ -499,7 +585,7 @@ void SendMoney(
     if (nValue > curBalance)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient funds");
 
-    // Parse Bitcoin address
+    // Parse Equibit address
     CScript scriptPubKey = GetScriptForDestination(address);
 
     // Create and send the transaction
@@ -560,7 +646,7 @@ UniValue edcsendtoaddress(const UniValue& params, bool fHelp)
 
     CEDCBitcoinAddress address(params[0].get_str());
     if (!address.IsValid())
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Equibit address");
 
     // Amount
     CAmount nAmount = AmountFromValue(params[1]);
@@ -759,10 +845,10 @@ UniValue edcgetreceivedbyaddress(const UniValue& params, bool fHelp)
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-    // Bitcoin address
+    // Equibit address
     CEDCBitcoinAddress address = CEDCBitcoinAddress(params[0].get_str());
     if (!address.IsValid())
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Equibit address");
     CScript scriptPubKey = GetScriptForDestination(address.Get());
     if (!edcIsMine(*theApp.walletMain(),scriptPubKey))
         return (double)0.0;
@@ -1106,7 +1192,7 @@ UniValue edcsendfrom(const UniValue& params, bool fHelp)
     string strAccount = edcAccountFromValue(params[0]);
     CEDCBitcoinAddress address(params[1].get_str());
     if (!address.IsValid())
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Equibit address");
     CAmount nAmount = AmountFromValue(params[2]);
     if (nAmount <= 0)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
@@ -1203,7 +1289,7 @@ UniValue edcsendmany(const UniValue& params, bool fHelp)
     {
         CEDCBitcoinAddress address(name_);
         if (!address.IsValid())
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, string("Invalid Bitcoin address: ")+name_);
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, string("Invalid Equibit address: ")+name_);
 
         if (setAddress.count(address))
             throw JSONRPCError(RPC_INVALID_PARAMETER, string("Invalid parameter, duplicated address: ")+name_);
@@ -1262,7 +1348,7 @@ UniValue edcaddmultisigaddress(const UniValue& params, bool fHelp)
     {
         string msg = "eb_addmultisigaddress nrequired [\"key\",...] ( \"account\" )\n"
             "\nAdd a nrequired-to-sign multisignature address to the wallet.\n"
-            "Each key is a Bitcoin address or hex-encoded public key.\n"
+            "Each key is a Equibit address or hex-encoded public key.\n"
             "If 'account' is specified (DEPRECATED), assign address to that account.\n"
 
             "\nArguments:\n"
@@ -2343,7 +2429,7 @@ UniValue edcencryptwallet(const UniValue& params, bool fHelp)
     // slack space in .dat files; that is bad if the old data is
     // unencrypted private keys. So:
     StartShutdown();
-    return "wallet encrypted; Bitcoin server stopping, restart to run with encrypted wallet. The keypool has been flushed, you need to make a new backup.";
+    return "wallet encrypted; Equibit server stopping, restart to run with encrypted wallet. The keypool has been flushed, you need to make a new backup.";
 }
 
 UniValue edclockunspent(const UniValue& params, bool fHelp)
@@ -2650,7 +2736,7 @@ UniValue edclistunspent(const UniValue& params, bool fHelp)
             const UniValue& input = inputs[idx];
             CEDCBitcoinAddress address(input.get_str());
             if (!address.IsValid())
-                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, string("Invalid Bitcoin address: ")+input.get_str());
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, string("Invalid Equibit address: ")+input.get_str());
             if (setAddress.count(address))
                 throw JSONRPCError(RPC_INVALID_PARAMETER, string("Invalid parameter, duplicated address: ")+input.get_str());
            setAddress.insert(address);
@@ -2854,6 +2940,7 @@ static const CRPCCommand edcCommands[] =
     { "equibit",            "eb_dumpwalletdb",             &edcdumpwalletdb,             false },
     { "wallet",             "eb_encryptwallet",            &edcencryptwallet,            true  },
     { "wallet",             "eb_getaccountaddress",        &edcgetaccountaddress,        true  },
+    { "wallet",             "eb_gethsmaccountaddress",     &edcgethsmaccountaddress,     true  },
     { "wallet",             "eb_getaccount",               &edcgetaccount,               true  },
     { "wallet",             "eb_getaddressesbyaccount",    &edcgetaddressesbyaccount,    true  },
     { "wallet",             "eb_getbalance",               &edcgetbalance,               false },

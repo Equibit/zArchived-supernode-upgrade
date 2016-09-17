@@ -10,6 +10,9 @@
 #include "edc/edcmain.h"
 #include "../utilstrencodings.h"
 #include "wallet/wallet.h"
+#ifdef	USE_HSM
+#include "edc/edcparams.h"
+#endif
 
 
 bool edcEnsureWalletIsAvailable(bool avoidException);
@@ -75,6 +78,69 @@ UniValue getNewIssuer( const UniValue & params, bool fHelp )
 	ret = CEDCBitcoinAddress(issuer.pubKey_.GetID()).ToString();
 
 	return ret;
+}
+
+UniValue getNewHSMIssuer( const UniValue & params, bool fHelp )
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+	if (!edcEnsureWalletIsAvailable(fHelp))
+	    return NullUniValue;
+
+	if( fHelp || params.size() < 4 )
+		throw std::runtime_error(
+			"eb_getnewhsmissuer( \"name\" \"location\" \"phone-number\" \"e-mail address\" )\n"
+			"\nCreates a new Issuer with an HSM key pair.\n"
+			"\nResult:\n"
+			"The address associated with the Issuer.\n"
+			"\nArguments:\n"
+			"1. \"Name\"            (string) The name of the Issuer.\n"
+			"2. \"Location\"        (string) The geographic address of the Issuer.\n"
+			"3. \"Phone number\"    (string) The phone number of the Issuer.\n"
+			"4. \"E-mail address\"  (string) The e-mail address of the Issuer.\n"
+			+ HelpExampleCli( "eb_getnewhsmissuer", "\"Equibit Issuer\" \"100 University Ave, Toronto\" \"416 233-4753\" \"equibit-issuer.com\"" )
+			+ HelpExampleRpc( "eb_getnewhsmissuer", "\"Equibit Issuer\" \"100 University Ave, Toronto\" \"416 233-4753\" \"equibit-issuer.com\"" )
+		);
+
+	std::string name       = params[0].get_str();
+	std::string location   = params[1].get_str();
+	std::string phoneNumber= params[2].get_str();
+	std::string emailAddr  = params[3].get_str();
+
+	CIssuer	issuer(location, phoneNumber, emailAddr);
+
+	LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
+
+	if (!theApp.walletMain()->IsLocked())
+	    theApp.walletMain()->TopUpKeyPool();
+
+#ifdef USE_HSM
+	EDCparams & theParams = EDCparams::singleton();
+	if( theParams.usehsm )
+	{
+		if (!theApp.walletMain()->GetHSMKeyFromPool(issuer.pubKey_))
+			throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
+
+		CEDCWalletDB walletdb(theApp.walletMain()->strWalletFile);
+
+		walletdb.WriteIssuer( name, issuer );
+
+		UniValue ret(UniValue::VSTR);
+
+		CKeyID keyID = issuer.pubKey_.GetID();
+
+		theApp.walletMain()->SetAddressBook(keyID, name, "receive");
+
+		ret = CEDCBitcoinAddress(issuer.pubKey_.GetID()).ToString();
+
+		return ret;
+	}
+	else
+		throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM processing disabled. "
+			"Use -eb_usehsm command line option to enable HSM processing" );
+#else
+	throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM support is not included in the build");
+#endif
 }
 
 UniValue listIssuers( const UniValue & params, bool fHelp )
@@ -188,7 +254,7 @@ UniValue authorizeEquibit( const UniValue & params, bool fHelp )
 	if(wtx.vout.size() <= txOff )
         throw JSONRPCError(RPC_WALLET_ERROR, "TxOut offset is out of range" );
 
-	// Parse Bitcoin address
+	// Parse Equibit address
     CScript scriptPubKey = GetScriptForDestination(address);
 
     // Create and send the transaction
@@ -219,6 +285,7 @@ const CRPCCommand commands[] =
   // ---------- ------------------- ------------------ -------------
 
 	{ "equibit", "eb_getnewissuer",		 &getNewIssuer,      true },
+	{ "equibit", "eb_getnewhsmissuer",	 &getNewHSMIssuer,   true },
 	{ "equibit", "eb_getissuers",		 &listIssuers,       true },
 	{ "equibit", "eb_authorizeequibit",  &authorizeEquibit,  true },
 };

@@ -57,7 +57,7 @@ void edcnoui_InitMessage(const std::string& message)
 
 void edcnoui_connect()
 {
-    // Connect bitcoind signal handlers
+    // Connect equibitd signal handlers
     edcUiInterface.ThreadSafeMessageBox.connect(edcnoui_ThreadSafeMessageBox);
     edcUiInterface.InitMessage.connect(edcnoui_InitMessage);
 }

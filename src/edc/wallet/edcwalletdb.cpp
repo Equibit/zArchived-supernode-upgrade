@@ -1084,7 +1084,7 @@ void edcThreadFlushWalletDB(const string& strFile)
 	EDCapp & theApp = EDCapp::singleton();
 
     // Make this thread recognisable as the wallet flushing thread
-    RenameThread("bitcoin-wallet");
+    RenameThread("equibit-wallet");
 
     static bool fOneThread;
     if (fOneThread)

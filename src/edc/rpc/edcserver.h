@@ -49,7 +49,7 @@ void edcRPCUnsetTimerInterface(RPCTimerInterface *iface);
 void edcRPCRunLater(const std::string& name, boost::function<void(void)> func, int64_t nSeconds);
 
 /**
- * Bitcoin RPC command dispatcher.
+ * Equibit RPC command dispatcher.
  */
 class CEDCRPCTable
 {

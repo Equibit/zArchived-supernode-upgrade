@@ -362,7 +362,7 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-eb_checklevel=<n>", 
 		strprintf(_("How thorough the block verification of -eb_checkblocks is (0-4, default: %u)"), EDC_DEFAULT_CHECKLEVEL));
     strUsage += HelpMessageOpt("-eb_conf=<file>", 
-		strprintf(_("Specify configuration file (default: %s)"), BITCOIN_CONF_FILENAME));
+		strprintf(_("Specify configuration file (default: %s)"), EDC_DEFAULT_CONF_FILENAME));
     strUsage += HelpMessageOpt("-eb_datadir=<dir>", 
 		_("Specify data directory"));
     strUsage += HelpMessageOpt("-eb_dbcache=<n>", 
@@ -382,7 +382,7 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
         -GetNumCores(), EDC_MAX_SCRIPTCHECK_THREADS, EDC_DEFAULT_SCRIPTCHECK_THREADS));
 #ifndef WIN32
     strUsage += HelpMessageOpt("-eb_pid=<file>", 
-		strprintf(_("Specify pid file (default: %s)"), BITCOIN_PID_FILENAME));
+		strprintf(_("Specify pid file (default: %s)"), EQUIBIT_PID_FILENAME));
 #endif
     strUsage += HelpMessageOpt("-eb_prune=<n>", 
 		strprintf(_("Reduce storage requirements by pruning (deleting) old blocks. This mode is incompatible with -eb_txindex and -eb_rescan. "

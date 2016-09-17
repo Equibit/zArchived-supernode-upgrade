@@ -340,7 +340,7 @@ void http_reject_request_cb(struct evhttp_request * req, void*)
 /** Event dispatcher thread */
 void ThreadHTTP(struct event_base* base, struct evhttp* http)
 {
-    RenameThread("bitcoin-http");
+    RenameThread("equibit-http");
     edcLogPrint("http", "Entering http event loop\n");
     event_base_dispatch(base);
     // Event loop will be interrupted by InterruptHTTPServer()

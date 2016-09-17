@@ -75,8 +75,8 @@ UniValue broadcastMessage( const UniValue & params, bool fHelp )
 			"2. \"send-address\"   (string) The sender address\n"
 			"3. \"asset\" (string) Owners of the identified asset will receive the message\n"
 			"4. \"message\"  (string) The message to be sent to the all addresses\n"
-			+ HelpExampleCli( "eb_broadcastmessage", "ACME StockDividend \"A dividend of 0.032 bitcoins will be issued on March 15th\"" )
-			+ HelpExampleRpc( "eb_broadcastmessage", "ACME StockDividend \"A dividend of 0.032 bitcoins will be issued on March 15th\"" )
+			+ HelpExampleCli( "eb_broadcastmessage", "ACME StockDividend \"A dividend of 0.032 equibits will be issued on March 15th\"" )
+			+ HelpExampleRpc( "eb_broadcastmessage", "ACME StockDividend \"A dividend of 0.032 equibits will be issued on March 15th\"" )
 		);
 
 	std::string	type   = params[0].get_str();

@@ -2396,7 +2396,7 @@ bool CEDCWallet::CreateTransaction(
                 {
                     // Fill a vout to ourself
                     // TODO: pass in scriptChange instead of reservekey so
-                    // change transaction isn't always pay-to-bitcoin-address
+                    // change transaction isn't always pay-to-equibit-address
                     CScript scriptChange;
 
                     // coin control: send change to custom address

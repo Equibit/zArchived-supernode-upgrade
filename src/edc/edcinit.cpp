@@ -148,7 +148,7 @@ void edcThreadImport(std::vector<boost::filesystem::path> vImportFiles)
 	EDCparams & params = EDCparams::singleton();
 
     const CEDCChainParams& chainparams = edcParams();
-    RenameThread("bitcoin-loadblk");
+    RenameThread("equibit-loadblk");
 
     // -eb_reindex
 
@@ -1103,7 +1103,7 @@ void edcShutdown()
 	/// failed part of the way, for example if the data directory was found to 
 	/// be locked. Be sure that anything that writes files or flushes caches 
 	/// only does this if the respective module was initialized.
-    RenameThread("bitcoin-shutoff");
+    RenameThread("equibit-shutoff");
 
     theApp.mempool().AddTransactionsUpdated(1);
 

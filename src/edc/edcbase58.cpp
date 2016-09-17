@@ -93,13 +93,13 @@ int CEDCBase58Data::CompareTo(const CEDCBase58Data& b58) const
 namespace
 {
 
-class CBitcoinAddressVisitor : public boost::static_visitor<bool>
+class CEquibitAddressVisitor : public boost::static_visitor<bool>
 {
 private:
     CEDCBitcoinAddress* addr;
 
 public:
-    CBitcoinAddressVisitor(CEDCBitcoinAddress* addrIn) : addr(addrIn) {}
+    CEquibitAddressVisitor(CEDCBitcoinAddress* addrIn) : addr(addrIn) {}
 
     bool operator()(const CKeyID& id) const { return addr->Set(id); }
     bool operator()(const CScriptID& id) const { return addr->Set(id); }
@@ -122,7 +122,7 @@ bool CEDCBitcoinAddress::Set(const CScriptID& id)
 
 bool CEDCBitcoinAddress::Set(const CTxDestination& dest)
 {
-    return boost::apply_visitor(CBitcoinAddressVisitor(this), dest);
+    return boost::apply_visitor(CEquibitAddressVisitor(this), dest);
 }
 
 bool CEDCBitcoinAddress::IsValid() const

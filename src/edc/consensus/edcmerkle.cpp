@@ -130,7 +130,7 @@ void edcMerkleComputation(
     while (count != (((uint32_t)1) << level)) 
 	{
         // If we reach this point, h is an inner value that is not the top.
-        // We combine it with itself (Bitcoin's special rule for odd levels in
+        // We combine it with itself (Equibit's special rule for odd levels in
         // the tree) to produce a higher level one.
         if (pbranch && matchh) 
 		{
