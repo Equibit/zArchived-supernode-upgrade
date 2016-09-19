@@ -400,6 +400,8 @@ private:
 
 #ifdef USE_HSM
 	std::map<CKeyID, std::pair<CPubKey, std::string > > hsmKeyMap;
+
+	void GetHSMKeys( std::set<CKeyID> & ) const;
 #endif
 
 public:
@@ -537,7 +539,7 @@ public:
 	//
 	bool GetHSMKey( const CKeyID &, std::string & hsmID ) const;
 
-	bool HaveKey( const CKeyID & address ) const;
+	bool HaveHSMKey( const CKeyID & address ) const;
 #endif
 
     //! Adds a key to the store, without saving it to disk (used by LoadWallet)
@@ -590,6 +592,9 @@ public:
     bool EncryptWallet(const SecureString& strWalletPassphrase);
 
     void GetKeyBirthTimes(std::map<CKeyID, int64_t> &mapKeyBirth) const;
+#ifdef USE_HSM
+    void GetHSMKeyBirthTimes(std::map<CKeyID, int64_t> &mapKeyBirth) const;
+#endif
 
     /** 
      * Increment the next transaction order id
@@ -681,10 +686,14 @@ public:
     void ReturnKey(int64_t nIndex);
     bool GetKeyFromPool(CPubKey &key);
 #ifdef USE_HSM
+    bool NewHSMKeyPool();
     bool TopUpHSMKeyPool(unsigned int kpSize = 0);
-    void KeepHSMKey(int64_t nIndex);
     void ReserveKeyFromHSMKeyPool(int64_t& nIndex, CKeyPool& keypool);
+    void KeepHSMKey(int64_t nIndex);
+    void ReturnHSMKey(int64_t nIndex);
     bool GetHSMKeyFromPool(CPubKey &key);
+    int64_t GetOldestHSMKeyPoolTime();
+    void GetAllReserveHSMKeys(std::set<CKeyID>& setAddress) const;
 #endif
     int64_t GetOldestKeyPoolTime();
     void GetAllReserveKeys(std::set<CKeyID>& setAddress) const;
@@ -861,6 +870,31 @@ public:
     bool GetReservedKey(CPubKey &pubkey);
     void KeepKey();
     void KeepScript() { KeepKey(); }
+};
+
+/** A key allocated from the HSM key pool. */
+class CEDCReserveHSMKey : public CReserveScript
+{
+protected:
+    CEDCWallet* pwallet;
+    int64_t nIndex;
+    CPubKey vchPubKey;
+public:
+    CEDCReserveHSMKey(CEDCWallet* pwalletIn)
+    {
+        nIndex = -1;
+        pwallet = pwalletIn;
+    }
+
+    ~CEDCReserveHSMKey()
+    {
+        ReturnHSMKey();
+    }
+
+    void ReturnHSMKey();
+    bool GetReservedHSMKey(CPubKey &pubkey);
+    void KeepHSMKey();
+    void KeepScript() { KeepHSMKey(); }
 };
 
 class CIssuer

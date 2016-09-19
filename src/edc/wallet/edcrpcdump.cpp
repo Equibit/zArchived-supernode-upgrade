@@ -682,6 +682,45 @@ UniValue edcdumpwallet(const UniValue& params, bool fHelp)
         }
     }
 
+#ifdef USE_HSM
+    std::map<CKeyID, int64_t> mapHSMKeyBirth;
+    std::set<CKeyID> setHSMKeyPool;
+    theApp.walletMain()->GetHSMKeyBirthTimes(mapHSMKeyBirth);
+    theApp.walletMain()->GetAllReserveHSMKeys(setHSMKeyPool);
+
+    // sort time/key pairs
+    std::vector<std::pair<int64_t, CKeyID> > vHSMKeyBirth;
+    for (std::map<CKeyID, int64_t>::const_iterator it = mapHSMKeyBirth.begin(); it != mapHSMKeyBirth.end(); it++) 
+	{
+        vHSMKeyBirth.push_back(std::make_pair(it->second, it->first));
+    }
+    mapHSMKeyBirth.clear();
+    std::sort(vHSMKeyBirth.begin(), vHSMKeyBirth.end());
+
+    for (std::vector<std::pair<int64_t, CKeyID> >::const_iterator it = vHSMKeyBirth.begin(); it !=vHSMKeyBirth.end();it++)
+	{
+        const CKeyID &keyid = it->second;
+        std::string strTime = EncodeDumpTime(it->first);
+        std::string strAddr = CEDCBitcoinAddress(keyid).ToString();
+        std::string hsmid;
+        if (theApp.walletMain()->GetHSMKey(keyid, hsmid)) 
+		{
+            if (theApp.walletMain()->mapAddressBook.count(keyid)) 
+			{
+                file << strprintf("%s %s label=%s # addr=%s\n", hsmid, strTime, EncodeDumpString(theApp.walletMain()->mapAddressBook[keyid].name), strAddr);
+            } 
+			else if (setKeyPool.count(keyid)) 
+			{
+                file << strprintf("%s %s reserve=1 # addr=%s\n", hsmid, strTime, strAddr);
+            } 
+			else 
+			{
+                file << strprintf("%s %s change=1 # addr=%s\n", hsmid, strTime, strAddr);
+            }
+        }
+    }
+#endif
+
     file << "\n";
     file << "# End of dump\n";
     file.close();

@@ -102,22 +102,23 @@ UniValue getNewHSMIssuer( const UniValue & params, bool fHelp )
 			+ HelpExampleRpc( "eb_getnewhsmissuer", "\"Equibit Issuer\" \"100 University Ave, Toronto\" \"416 233-4753\" \"equibit-issuer.com\"" )
 		);
 
-	std::string name       = params[0].get_str();
-	std::string location   = params[1].get_str();
-	std::string phoneNumber= params[2].get_str();
-	std::string emailAddr  = params[3].get_str();
-
-	CIssuer	issuer(location, phoneNumber, emailAddr);
-
-	LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
-
-	if (!theApp.walletMain()->IsLocked())
-	    theApp.walletMain()->TopUpKeyPool();
-
 #ifdef USE_HSM
 	EDCparams & theParams = EDCparams::singleton();
+
 	if( theParams.usehsm )
 	{
+		std::string name       = params[0].get_str();
+		std::string location   = params[1].get_str();
+		std::string phoneNumber= params[2].get_str();
+		std::string emailAddr  = params[3].get_str();
+
+		CIssuer	issuer(location, phoneNumber, emailAddr);
+
+		LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
+
+		if (!theApp.walletMain()->IsLocked())
+		    theApp.walletMain()->TopUpHSMKeyPool();
+
 		if (!theApp.walletMain()->GetHSMKeyFromPool(issuer.pubKey_))
 			throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
 

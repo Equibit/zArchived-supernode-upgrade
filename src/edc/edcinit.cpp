@@ -1002,6 +1002,10 @@ bool EdcAppInit(
 #ifdef ENABLE_WALLET
     	edcLogPrintf("setKeyPool.size() = %u\n",
 			theApp.walletMain() ? theApp.walletMain()->setKeyPool.size() : 0);
+#ifdef USE_HSM
+    	edcLogPrintf("setHSMKeyPool.size() = %u\n",
+			theApp.walletMain() ? theApp.walletMain()->setHSMKeyPool.size() : 0);
+#endif
     	edcLogPrintf("mapWallet.size() = %u\n",
 			theApp.walletMain() ? theApp.walletMain()->mapWallet.size() : 0);
     	edcLogPrintf("mapAddressBook.size() = %u\n", 

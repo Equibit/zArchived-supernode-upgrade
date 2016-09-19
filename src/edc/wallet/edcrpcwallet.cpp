@@ -218,15 +218,15 @@ UniValue edcgetnewhsmaddress(const UniValue& params, bool fHelp)
     if (params.size() > 0)
         strAccount = edcAccountFromValue(params[0]);
 
-	// If keys can be generated
-    if (!theApp.walletMain()->IsLocked())
-        theApp.walletMain()->TopUpKeyPool();
-
 #ifdef USE_HSM
 	EDCparams & theParams = EDCparams::singleton();
 
 	if( theParams.usehsm )
 	{
+		// If keys can be generated
+	    if (!theApp.walletMain()->IsLocked())
+			theApp.walletMain()->TopUpHSMKeyPool();
+
     	// Generate a new key that is added to wallet
 	    CPubKey newKey;
    	 	if (!theApp.walletMain()->GetHSMKeyFromPool(newKey))
@@ -395,16 +395,27 @@ UniValue edcgethsmaccountaddress(const UniValue& params, bool fHelp)
             + HelpExampleRpc("eb_gethsmaccountaddress", "\"myaccount\"")
         );
 
-    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
+#ifdef USE_HSM
+	EDCparams & theParams = EDCparams::singleton();
+	if(theParams.usehsm)
+	{
+    	LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-    // Parse the account first so we don't generate a key if there's an error
-    string strAccount = edcAccountFromValue(params[0]);
+	    // Parse the account first so we don't generate a key if there's an error
+		string strAccount = edcAccountFromValue(params[0]);
 
-    UniValue ret(UniValue::VSTR);
+		UniValue ret(UniValue::VSTR);
 
-    ret = edcGetHSMAccountAddress(strAccount).ToString();
+		ret = edcGetHSMAccountAddress(strAccount).ToString();
 
-    return ret;
+		return ret;
+	}
+	else
+    	throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM processing disabled. "
+			"Use -eb_usehsm command line option to enable HSM processing" );
+#else
+    throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM support is not included in the build");
+#endif
 }
 
 UniValue edcgetrawchangeaddress(const UniValue& params, bool fHelp)
@@ -443,6 +454,52 @@ UniValue edcgetrawchangeaddress(const UniValue& params, bool fHelp)
     return CEDCBitcoinAddress(keyID).ToString();
 }
 
+UniValue edcgetrawchangehsmaddress(const UniValue& params, bool fHelp)
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+    if (!edcEnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+    if (fHelp || params.size() > 1)
+        throw runtime_error(
+            "eb_getrawchangehsmaddress\n"
+            "\nReturns a new Equibit HSM address, for receiving change.\n"
+            "This is for use with raw transactions, NOT normal use.\n"
+            "\nResult:\n"
+            "\"address\"    (string) The address\n"
+            "\nExamples:\n"
+            + HelpExampleCli("eb_getrawchangehsmaddress", "")
+            + HelpExampleRpc("eb_getrawchangehsmaddress", "")
+       );
+
+#ifdef USE_HSM
+	EDCparams & theParams = EDCparams::singleton();
+	if(theParams.usehsm)
+	{
+		LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
+
+		if (!theApp.walletMain()->IsLocked())
+			theApp.walletMain()->TopUpHSMKeyPool();
+
+		CEDCReserveHSMKey reservekey(theApp.walletMain());
+		CPubKey vchPubKey;
+		if (!reservekey.GetReservedHSMKey(vchPubKey))
+			throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
+
+		reservekey.KeepHSMKey();
+
+		CKeyID keyID = vchPubKey.GetID();
+
+    	return CEDCBitcoinAddress(keyID).ToString();
+	}
+	else
+    	throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM processing disabled. "
+			"Use -eb_usehsm command line option to enable HSM processing" );
+#else
+    throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM support is not included in the build");
+#endif
+}
 
 UniValue edcsetaccount(const UniValue& params, bool fHelp)
 {
@@ -801,6 +858,9 @@ UniValue edcsignmessage(const UniValue& params, bool fHelp)
     			return EncodeBase64(&vchSig[0], vchSig.size());
 			}
 		}
+		else
+    		throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM processing disabled. "
+				"Use -eb_usehsm command line option to enable HSM processing" );
 #endif
         throw JSONRPCError(RPC_WALLET_ERROR, "Private key not available");
 	}
@@ -2168,7 +2228,6 @@ UniValue edcbackupwallet(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
-
 UniValue edckeypoolrefill(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
@@ -2206,6 +2265,56 @@ UniValue edckeypoolrefill(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_WALLET_ERROR, "Error refreshing keypool.");
 
     return NullUniValue;
+}
+
+UniValue edchsmkeypoolrefill(const UniValue& params, bool fHelp)
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+    if (!edcEnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+    if (fHelp || params.size() > 1)
+        throw runtime_error(
+            "eb_hsmkeypoolrefill ( newsize )\n"
+            "\nFills the keypool."
+            + edcHelpRequiringPassphrase() + "\n"
+            "\nArguments\n"
+            "1. newsize     (numeric, optional, default=100) The new keypool size\n"
+            "\nExamples:\n"
+            + HelpExampleCli("eb_hsmkeypoolrefill", "")
+            + HelpExampleRpc("eb_hsmkeypoolrefill", "")
+        );
+
+#ifdef USE_HSM
+	EDCparams & theParams = EDCparams::singleton();
+	if(theParams.usehsm)
+	{
+		LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
+
+	    // 0 is interpreted by TopUpKeyPool() as the default keypool size given by -eb_keypool
+	    unsigned int kpSize = 0;
+	    if (params.size() > 0) 
+		{
+   	     	if (params[0].get_int() < 0)
+   	        	throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, expected valid size.");
+   	    	kpSize = (unsigned int)params[0].get_int();
+   		}
+
+    	edcEnsureWalletIsUnlocked();
+    	theApp.walletMain()->TopUpHSMKeyPool(kpSize);
+
+    	if (theApp.walletMain()->GetHSMKeyPoolSize() < kpSize)
+        	throw JSONRPCError(RPC_WALLET_ERROR, "Error refreshing keypool.");
+
+    	return NullUniValue;
+	}
+	else
+    	throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM processing disabled. "
+			"Use -eb_usehsm command line option to enable HSM processing" );
+#else
+    throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM support is not included in the build");
+#endif
 }
 
 
@@ -2327,7 +2436,6 @@ UniValue edcwalletpassphrasechange(const UniValue& params, bool fHelp)
 
     return NullUniValue;
 }
-
 
 UniValue edcwalletlock(const UniValue& params, bool fHelp)
 {
@@ -2621,6 +2729,10 @@ UniValue edcgetwalletinfo(const UniValue& params, bool fHelp)
             "  \"txcount\": xxxxxxx,         (numeric) the total number of transactions in the wallet\n"
             "  \"keypoololdest\": xxxxxx,    (numeric) the timestamp (seconds since GMT epoch) of the oldest pre-generated key in the key pool\n"
             "  \"keypoolsize\": xxxx,        (numeric) how many new keys are pre-generated\n"
+#ifdef USE_HSM
+            "  \"hsmkeypoololdest\": xxxxxx,    (numeric) the timestamp (seconds since GMT epoch) of the oldest pre-generated HSM key in the key pool\n"
+            "  \"hsmkeypoolsize\": xxxx,        (numeric) how many new HSM keys are pre-generated\n"
+#endif
             "  \"unlocked_until\": ttt,      (numeric) the timestamp in seconds since epoch (midnight Jan 1 1970 GMT) that the wallet is unlocked for transfers, or 0 if the wallet is locked\n"
             "  \"paytxfee\": x.xxxx,         (numeric) the transaction fee configuration, set in " + CURRENCY_UNIT + "/kB\n"
             "}\n"
@@ -2639,6 +2751,10 @@ UniValue edcgetwalletinfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("txcount",       (int)theApp.walletMain()->mapWallet.size()));
     obj.push_back(Pair("keypoololdest", theApp.walletMain()->GetOldestKeyPoolTime()));
     obj.push_back(Pair("keypoolsize",   (int)theApp.walletMain()->GetKeyPoolSize()));
+#ifdef USE_HSM
+    obj.push_back(Pair("keypoololdest", theApp.walletMain()->GetOldestHSMKeyPoolTime()));
+    obj.push_back(Pair("keypoolsize",   (int)theApp.walletMain()->GetHSMKeyPoolSize()));
+#endif
     if (theApp.walletMain()->IsCrypted())
         obj.push_back(Pair("unlocked_until", theApp.walletUnlockTime() ));
     obj.push_back(Pair("paytxfee",      ValueFromAmount(theApp.payTxFee().GetFeePerK())));

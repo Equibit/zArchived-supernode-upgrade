@@ -108,6 +108,10 @@ UniValue edcgetinfo(const UniValue& params, bool fHelp)
 	{
         obj.push_back(Pair("keypoololdest", theApp.walletMain()->GetOldestKeyPoolTime()));
         obj.push_back(Pair("keypoolsize",   (int)theApp.walletMain()->GetKeyPoolSize()));
+#ifdef USE_HSM
+        obj.push_back(Pair("hsmkeypoololdest", theApp.walletMain()->GetOldestHSMKeyPoolTime()));
+        obj.push_back(Pair("hsmkeypoolsize",   (int)theApp.walletMain()->GetHSMKeyPoolSize()));
+#endif
     }
     if (theApp.walletMain() && theApp.walletMain()->IsCrypted())
         obj.push_back(Pair("unlocked_until", theApp.walletUnlockTime() ));

@@ -2676,6 +2676,9 @@ DBErrors CEDCWallet::LoadWallet(bool& fFirstRunRet)
         {
             LOCK(cs_wallet);
             setKeyPool.clear();
+#ifdef USE_HSM
+            setHSMKeyPool.clear();
+#endif
             // Note: can't top-up keypool here, because wallet is locked.
             // User will be prompted to unlock wallet the next operation
             // that requires a new key.
@@ -2702,6 +2705,9 @@ DBErrors CEDCWallet::ZapSelectTx(vector<uint256>& vHashIn, vector<uint256>& vHas
         {
             LOCK(cs_wallet);
             setKeyPool.clear();
+#ifdef USE_HSM
+            setHSMKeyPool.clear();
+#endif
             // Note: can't top-up keypool here, because wallet is locked.
             // User will be prompted to unlock wallet the next operation
             // that requires a new key.
@@ -2728,6 +2734,9 @@ DBErrors CEDCWallet::ZapWalletTx(std::vector<CEDCWalletTx>& vWtx)
         {
             LOCK(cs_wallet);
             setKeyPool.clear();
+#ifdef USE_HSM
+            setHSMKeyPool.clear();
+#endif
             // Note: can't top-up keypool here, because wallet is locked.
             // User will be prompted to unlock wallet the next operation
             // that requires a new key.
@@ -2933,6 +2942,45 @@ bool CEDCWallet::GetKeyFromPool(CPubKey& result)
 
 #ifdef USE_HSM
 
+void CEDCWallet::ReturnHSMKey(int64_t nIndex)
+{
+    // Return to HSM key pool
+    {
+        LOCK(cs_wallet);
+        setHSMKeyPool.insert(nIndex);
+    }
+    edcLogPrintf("HSM keypool return %d\n", nIndex);
+}
+
+/**
+ * Mark old keypool keys as used,
+ * and generate all new HSM keys 
+ */
+bool CEDCWallet::NewHSMKeyPool()
+{
+    {
+        LOCK(cs_wallet);
+        CEDCWalletDB walletdb(strWalletFile);
+        BOOST_FOREACH(int64_t nIndex, setHSMKeyPool)
+            walletdb.EraseHSMPool(nIndex);
+        setHSMKeyPool.clear();
+
+        if (IsLocked())
+            return false;
+
+		EDCparams & params = EDCparams::singleton();
+        int64_t nKeys = max(params.keypool, (int64_t)0);
+        for (int i = 0; i < nKeys; i++)
+        {
+            int64_t nIndex = i+1;
+            walletdb.WriteHSMPool(nIndex, CKeyPool(GenerateNewHSMKey()));
+            setHSMKeyPool.insert(nIndex);
+        }
+        edcLogPrintf("CEDCWallet::NewKeyPool wrote %d new HSM keys\n", nKeys);
+    }
+    return true;
+}
+
 bool CEDCWallet::GetHSMKeyFromPool(CPubKey& result)
 {
     int64_t nIndex = 0;
@@ -3076,6 +3124,20 @@ const std::string & hsmID
 	return true;
 }
 
+void CEDCWallet::GetHSMKeys( std::set<CKeyID> & keys ) const
+{
+    LOCK(cs_wallet);
+
+	std::map<CKeyID, std::pair<CPubKey, std::string > >::const_iterator i = hsmKeyMap.begin();
+	std::map<CKeyID, std::pair<CPubKey, std::string > >::const_iterator e = hsmKeyMap.end();
+
+	while( i != e )
+	{
+		keys.insert( i->first );
+		++i;
+	}
+}
+
 bool CEDCWallet::GetHSMKey(
 	const CKeyID & id,
 	 std::string & hsmID ) const
@@ -3092,15 +3154,30 @@ bool CEDCWallet::GetHSMKey(
 	return true;
 }
 
-bool CEDCWallet::HaveKey( const CKeyID & address ) const
+bool CEDCWallet::HaveHSMKey( const CKeyID & address ) const
 {
-	if( CCryptoKeyStore::HaveKey( address ))
-		return true;
-
 	LOCK(cs_wallet);
 
 	std::string hsmid;
 	return GetHSMKey( address, hsmid );
+}
+
+int64_t CEDCWallet::GetOldestHSMKeyPoolTime()
+{
+    LOCK(cs_wallet);
+
+    // if the keypool is empty, return <NOW>
+    if (setHSMKeyPool.empty())
+        return GetTime();
+
+    // load oldest key from keypool, get time and return
+    CKeyPool keypool;
+    CEDCWalletDB walletdb(strWalletFile);
+    int64_t nIndex = *(setHSMKeyPool.begin());
+    if (!walletdb.ReadHSMPool(nIndex, keypool))
+        throw runtime_error("GetOldestHSMKeyPoolTime(): read oldest HSM key in keypool failed");
+    assert(keypool.vchPubKey.IsValid());
+    return keypool.nTime;
 }
 
 #endif	// USE_HSM
@@ -3289,6 +3366,44 @@ bool CEDCReserveKey::GetReservedKey(CPubKey& pubkey)
     return true;
 }
 
+#ifdef USE_HSM
+bool CEDCReserveHSMKey::GetReservedHSMKey(CPubKey& pubkey)
+{
+    if (nIndex == -1)
+    {
+        CKeyPool keypool;
+        pwallet->ReserveKeyFromHSMKeyPool(nIndex, keypool);
+
+        if (nIndex != -1)
+            vchPubKey = keypool.vchPubKey;
+        else 
+		{
+            return false;
+        }
+    }
+    assert(vchPubKey.IsValid());
+    pubkey = vchPubKey;
+    return true;
+}
+
+void CEDCReserveHSMKey::KeepHSMKey()
+{
+    if (nIndex != -1)
+        pwallet->KeepHSMKey(nIndex);
+    nIndex = -1;
+    vchPubKey = CPubKey();
+}
+
+void CEDCReserveHSMKey::ReturnHSMKey()
+{
+    if (nIndex != -1)
+        pwallet->ReturnKey(nIndex);
+    nIndex = -1;
+    vchPubKey = CPubKey();
+}
+
+#endif
+
 void CEDCReserveKey::KeepKey()
 {
     if (nIndex != -1)
@@ -3324,6 +3439,28 @@ void CEDCWallet::GetAllReserveKeys(set<CKeyID>& setAddress) const
         setAddress.insert(keyID);
     }
 }
+
+#ifdef USE_HSM
+void CEDCWallet::GetAllReserveHSMKeys(set<CKeyID>& setAddress) const
+{
+    setAddress.clear();
+
+    CEDCWalletDB walletdb(strWalletFile);
+
+    LOCK2(EDC_cs_main, cs_wallet);
+    BOOST_FOREACH(const int64_t& id, setHSMKeyPool)
+    {
+        CKeyPool keypool;
+        if (!walletdb.ReadHSMPool(id, keypool))
+            throw runtime_error("GetAllReserveHSMKeyHashes(): read failed");
+        assert(keypool.vchPubKey.IsValid());
+        CKeyID keyID = keypool.vchPubKey.GetID();
+        if (!HaveHSMKey(keyID))
+            throw runtime_error("GetAllReserveHSMKeyHashes(): unknown HSM key in HSM key pool");
+        setAddress.insert(keyID);
+    }
+}
+#endif
 
 void CEDCWallet::UpdatedTransaction(const uint256 &hashTx)
 {
@@ -3484,6 +3621,73 @@ void CEDCWallet::GetKeyBirthTimes(std::map<CKeyID, int64_t> &mapKeyBirth) const
     for (std::map<CKeyID, CBlockIndex*>::const_iterator it = mapKeyFirstBlock.begin(); it != mapKeyFirstBlock.end(); it++)
         mapKeyBirth[it->first] = it->second->GetBlockTime() - 7200; // block times can be 2h off
 }
+
+#ifdef USE_HSM
+
+void CEDCWallet::GetHSMKeyBirthTimes(std::map<CKeyID, int64_t> &mapKeyBirth) const 
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+    AssertLockHeld(cs_wallet); // mapKeyMetadata
+    mapKeyBirth.clear();
+
+    // get birth times for keys with metadata
+    for (std::map<CKeyID, CKeyMetadata>::const_iterator it = mapKeyMetadata.begin(); it != mapKeyMetadata.end(); it++)
+        if (it->second.nCreateTime)
+            mapKeyBirth[it->first] = it->second.nCreateTime;
+
+    // map in which we'll infer heights of other keys
+    CBlockIndex *pindexMax = theApp.chainActive()[std::max(0, theApp.chainActive().Height() - 144)]; // the tip can be reorganised; use a 144-block safety margin
+    std::map<CKeyID, CBlockIndex*> mapKeyFirstBlock;
+    std::set<CKeyID> setKeys;
+
+    GetHSMKeys(setKeys);
+    BOOST_FOREACH(const CKeyID &keyid, setKeys) 
+	{
+        if (mapKeyBirth.count(keyid) == 0)
+            mapKeyFirstBlock[keyid] = pindexMax;
+    }
+    setKeys.clear();
+
+    // if there are no such keys, we're done
+    if (mapKeyFirstBlock.empty())
+        return;
+
+    // find first block that affects those keys, if there are any left
+    std::vector<CKeyID> vAffected;
+    for (std::map<uint256, CEDCWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); it++) 
+	{
+        // iterate over all wallet transactions...
+        const CEDCWalletTx &wtx = (*it).second;
+        BlockMap::const_iterator blit = theApp.mapBlockIndex().find(wtx.hashBlock);
+
+        if (blit != theApp.mapBlockIndex().end() && theApp.chainActive().Contains(blit->second)) 
+		{
+            // ... which are already in a block
+            int nHeight = blit->second->nHeight;
+
+            BOOST_FOREACH(const CEDCTxOut &txout, wtx.vout) 
+			{
+                // iterate over all their outputs
+                CAffectedKeysVisitor(*this, vAffected).Process(txout.scriptPubKey);
+                BOOST_FOREACH(const CKeyID &keyid, vAffected) 
+				{
+                    // ... and all their affected keys
+                    std::map<CKeyID, CBlockIndex*>::iterator rit = mapKeyFirstBlock.find(keyid);
+                    if (rit != mapKeyFirstBlock.end() && nHeight < rit->second->nHeight)
+                        rit->second = blit->second;
+                }
+                vAffected.clear();
+            }
+        }
+    }
+
+    // Extract block timestamps for those keys
+    for (std::map<CKeyID, CBlockIndex*>::const_iterator it = mapKeyFirstBlock.begin(); it != mapKeyFirstBlock.end(); it++)
+        mapKeyBirth[it->first] = it->second->GetBlockTime() - 7200; // block times can be 2h off
+}
+
+#endif
 
 bool CEDCWallet::AddDestData(
 	 const CTxDestination & dest, 
