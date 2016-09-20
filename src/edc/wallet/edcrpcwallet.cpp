@@ -181,7 +181,7 @@ UniValue edcgetnewaddress(const UniValue& params, bool fHelp)
     // Generate a new key that is added to wallet
     CPubKey newKey;
     if (!theApp.walletMain()->GetKeyFromPool(newKey))
-        throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
+        throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call eb_keypoolrefill first");
     CKeyID keyID = newKey.GetID();
 
     theApp.walletMain()->SetAddressBook(keyID, strAccount, "receive");
@@ -230,7 +230,7 @@ UniValue edcgetnewhsmaddress(const UniValue& params, bool fHelp)
     	// Generate a new key that is added to wallet
 	    CPubKey newKey;
    	 	if (!theApp.walletMain()->GetHSMKeyFromPool(newKey))
-        	throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
+        	throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call eb_hsmkeypoolrefill first");
     	CKeyID keyID = newKey.GetID();
 
     	theApp.walletMain()->SetAddressBook(keyID, strAccount, "receive");
@@ -278,7 +278,7 @@ CEDCBitcoinAddress edcGetAccountAddress(string strAccount, bool bForceNew=false)
     if (bForceNew) 
 	{
         if (!theApp.walletMain()->GetKeyFromPool(account.vchPubKey))
-            throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
+            throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call eb_keypoolrefill first");
 
         theApp.walletMain()->SetAddressBook(account.vchPubKey.GetID(), strAccount, "receive");
         walletdb.WriteAccount(strAccount, account);
@@ -357,7 +357,7 @@ CEDCBitcoinAddress edcGetHSMAccountAddress(string strAccount, bool bForceNew=fal
 		if( params.usehsm )
 		{
         	if (!theApp.walletMain()->GetHSMKeyFromPool(account.vchPubKey))
-           		throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM Keypool ran out, please call hsmkeypoolrefill first");
+           		throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM Keypool ran out, please call eb_hsmkeypoolrefill first");
 
         	theApp.walletMain()->SetAddressBook(account.vchPubKey.GetID(), strAccount, "receive");
         	walletdb.WriteAccount(strAccount, account);
@@ -445,7 +445,7 @@ UniValue edcgetrawchangeaddress(const UniValue& params, bool fHelp)
     CEDCReserveKey reservekey(theApp.walletMain());
     CPubKey vchPubKey;
     if (!reservekey.GetReservedKey(vchPubKey))
-        throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
+        throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call eb_keypoolrefill first");
 
     reservekey.KeepKey();
 
@@ -485,7 +485,7 @@ UniValue edcgetrawchangehsmaddress(const UniValue& params, bool fHelp)
 		CEDCReserveHSMKey reservekey(theApp.walletMain());
 		CPubKey vchPubKey;
 		if (!reservekey.GetReservedHSMKey(vchPubKey))
-			throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
+			throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call eb_hsmkeypoolrefill first");
 
 		reservekey.KeepHSMKey();
 
@@ -1381,14 +1381,14 @@ UniValue edcsendmany(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Account has insufficient funds");
 
     // Send
-    CEDCReserveKey keyChange(theApp.walletMain());
+    CEDCReserveKey reservekey(theApp.walletMain());
     CAmount nFeeRequired = 0;
     int nChangePosRet = -1;
     string strFailReason;
-    bool fCreated = theApp.walletMain()->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, nChangePosRet, strFailReason);
+    bool fCreated = theApp.walletMain()->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strFailReason);
     if (!fCreated)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, strFailReason);
-    if (!theApp.walletMain()->CommitTransaction(wtx, keyChange))
+    if (!theApp.walletMain()->CommitTransaction(wtx, reservekey))
         throw JSONRPCError(RPC_WALLET_ERROR, "Transaction commit failed");
 
     return wtx.GetHash().GetHex();
@@ -2280,7 +2280,7 @@ UniValue edchsmkeypoolrefill(const UniValue& params, bool fHelp)
             "\nFills the keypool."
             + edcHelpRequiringPassphrase() + "\n"
             "\nArguments\n"
-            "1. newsize     (numeric, optional, default=100) The new keypool size\n"
+            "1. newsize     (numeric, optional, default=100) The new HSM keypool size\n"
             "\nExamples:\n"
             + HelpExampleCli("eb_hsmkeypoolrefill", "")
             + HelpExampleRpc("eb_hsmkeypoolrefill", "")
@@ -2305,7 +2305,7 @@ UniValue edchsmkeypoolrefill(const UniValue& params, bool fHelp)
     	theApp.walletMain()->TopUpHSMKeyPool(kpSize);
 
     	if (theApp.walletMain()->GetHSMKeyPoolSize() < kpSize)
-        	throw JSONRPCError(RPC_WALLET_ERROR, "Error refreshing keypool.");
+        	throw JSONRPCError(RPC_WALLET_ERROR, "Error refreshing HSM keypool.");
 
     	return NullUniValue;
 	}
@@ -3056,13 +3056,14 @@ static const CRPCCommand edcCommands[] =
     { "equibit",            "eb_dumpwalletdb",             &edcdumpwalletdb,             false },
     { "wallet",             "eb_encryptwallet",            &edcencryptwallet,            true  },
     { "wallet",             "eb_getaccountaddress",        &edcgetaccountaddress,        true  },
-    { "wallet",             "eb_gethsmaccountaddress",     &edcgethsmaccountaddress,     true  },
+    { "equibit",            "eb_gethsmaccountaddress",     &edcgethsmaccountaddress,     true  },
     { "wallet",             "eb_getaccount",               &edcgetaccount,               true  },
     { "wallet",             "eb_getaddressesbyaccount",    &edcgetaddressesbyaccount,    true  },
     { "wallet",             "eb_getbalance",               &edcgetbalance,               false },
     { "wallet",             "eb_getnewaddress",            &edcgetnewaddress,            true  },
-    { "wallet",             "eb_getnewhsmaddress",         &edcgetnewhsmaddress,         true  },
+    { "equibit",            "eb_getnewhsmaddress",         &edcgetnewhsmaddress,         true  },
     { "wallet",             "eb_getrawchangeaddress",      &edcgetrawchangeaddress,      true  },
+    { "equibit",            "eb_getrawchangehsmaddress",   &edcgetrawchangehsmaddress,   true  },
     { "wallet",             "eb_getreceivedbyaccount",     &edcgetreceivedbyaccount,     false },
     { "wallet",             "eb_getreceivedbyaddress",     &edcgetreceivedbyaddress,     false },
     { "wallet",             "eb_gettransaction",           &edcgettransaction,           false },
@@ -3074,6 +3075,7 @@ static const CRPCCommand edcCommands[] =
     { "wallet",             "eb_importprunedfunds",        &edcimportprunedfunds,        true  },
     { "wallet",             "eb_importpubkey",             &edcimportpubkey,             true  },
     { "wallet",             "eb_keypoolrefill",            &edckeypoolrefill,            true  },
+    { "equibit",            "eb_hsmkeypoolrefill",         &edchsmkeypoolrefill,         true  },
     { "wallet",             "eb_listaccounts",             &edclistaccounts,             false },
     { "wallet",             "eb_listaddressgroupings",     &edclistaddressgroupings,     false },
     { "wallet",             "eb_listlockunspent",          &edclistlockunspent,          false },

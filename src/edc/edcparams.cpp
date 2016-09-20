@@ -55,8 +55,6 @@ const int          EDC_DEFAULT_HTTP_SERVER_TIMEOUT     = 30;
 const int          EDC_DEFAULT_HTTP_THREADS            = 4;
 const int          EDC_DEFAULT_HTTP_WORKQUEUE          = 16;
 
-const unsigned int EDC_DEFAULT_KEYPOOL_SIZE            = 100;
-
 const unsigned int EDC_DEFAULT_LIMITFREERELAY          = 15;
 const bool         EDC_DEFAULT_LISTEN                  = true;
 const bool         EDC_DEFAULT_LISTEN_ONION            = true;
@@ -236,7 +234,7 @@ EDCparams::EDCparams()
 	txindex             = GetBoolArg( "-eb_txindex", EDC_DEFAULT_TXINDEX );
 	upgradewallet       = GetBoolArg( "-eb_upgradewallet", false );
 	upnp                = GetBoolArg( "-eb_upnp", EDC_DEFAULT_UPNP );
-	usehsm              = GetBoolArg( "-eb_usehsm", false );
+	usehsm              = GetBoolArg( "-eb_usehsm", true );
 	walletbroadcast     = GetBoolArg( "-eb_walletbroadcast", EDC_DEFAULT_WALLETBROADCAST );
 	whitelistrelay      = GetBoolArg( "-eb_whitelistrelay", EDC_DEFAULT_WHITELISTRELAY );
 	whitelistforcerelay = GetBoolArg( "-eb_whitelistforcerelay", EDC_DEFAULT_WHITELISTFORCERELAY );
@@ -257,6 +255,7 @@ EDCparams::EDCparams()
 	dblogsize           = GetArg( "-eb_dblogsize", EDC_DEFAULT_WALLET_DBLOGSIZE );
 	dropmessagestest    = GetArg( "-eb_dropmessagestest", 0 );
 	fuzzmessagestest    = GetArg( "-eb_fuzzmessagestest", 0 );
+	hsmkeypool          = GetArg( "-eb_hsmkeypool", EDC_DEFAULT_HSMKEYPOOL_SIZE );
 	keypool             = GetArg( "-eb_keypool", EDC_DEFAULT_KEYPOOL_SIZE );
 	limitancestorcount  = GetArg( "-eb_limitancestorcount", EDC_DEFAULT_ANCESTOR_LIMIT );
 	limitancestorsize   = GetArg( "-eb_limitancestorsize", EDC_DEFAULT_ANCESTOR_SIZE_LIMIT );
@@ -462,7 +461,7 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
 #endif
 #endif
 	strUsage += HelpMessageOpt("-eb_usehsm",
-		_("Use HSM for security operations (default: false)"));
+		_("Use HSM for security operations (default: true)"));
     strUsage += HelpMessageOpt("-eb_whitebind=<addr>", 
 		_("Bind to given address and whitelist peers connecting to it. Use [host]:port notation for IPv6"));
     strUsage += HelpMessageOpt("-eb_whitelist=<netmask>", 
@@ -923,6 +922,8 @@ void EDCparams::dumpToLog() const
 	edcLogPrintf( "eb_forcednsseed         %s\n", toString(forcednsseed) );
 	edcLogPrintf( "eb_fuzzmessagestest     %lld\n", fuzzmessagestest );
 
+	edcLogPrintf( "eb_hsmkeypool           %lld\n", hsmkeypool );
+
 	edcLogPrintf( "eb_keypool              %lld\n", keypool );
 
 	edcLogPrintf( "eb_limitancestorcount   %lld\n", limitancestorcount );
@@ -1192,6 +1193,7 @@ void EDCparams::checkParams() const
 	validparams.insert("-eb_flushwallet");
 	validparams.insert("-eb_forcednsseed");
 	validparams.insert("-eb_fuzzmessagestest");
+	validparams.insert("-eb_hsmkeypool");
 	validparams.insert("-eb_keypool");
 	validparams.insert("-eb_limitancestorcount");
 	validparams.insert("-eb_limitancestorsize");

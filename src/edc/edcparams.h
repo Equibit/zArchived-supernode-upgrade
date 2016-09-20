@@ -9,6 +9,8 @@
 
 
 const int          EDC_DEFAULT_CONNECT_TIMEOUT    = 5000;
+const unsigned int EDC_DEFAULT_HSMKEYPOOL_SIZE    = 50;
+const unsigned int EDC_DEFAULT_KEYPOOL_SIZE       = 100;
 const unsigned int EDC_DEFAULT_MIN_RELAY_TX_FEE   = 1000;
 const CAmount      EDC_DEFAULT_TRANSACTION_MAXFEE = 0.1 * COIN;
 const unsigned int EDC_DEFAULT_WALLET_DBLOGSIZE   = 100;
@@ -17,6 +19,7 @@ const bool         EDC_DEFAULT_WALLETBROADCAST    = true;
 const int          EDC_MAX_SCRIPTCHECK_THREADS    = 16;
 const int64_t      EDC_MAX_DB_CACHE               = sizeof(void*)>4?16384:1024;
 const int64_t      EDC_MIN_DB_CACHE               = 4;
+
 
 
 // Equibit specific parameters
@@ -94,6 +97,7 @@ public:
 	int64_t dbcache;
 	int64_t dblogsize;
 	int64_t dropmessagestest;
+	int64_t hsmkeypool;
 	int64_t keypool;
 	int64_t fuzzmessagestest;
 	int64_t limitancestorcount;

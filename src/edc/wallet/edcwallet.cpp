@@ -672,6 +672,9 @@ bool CEDCWallet::EncryptWallet(const SecureString& strWalletPassphrase)
         Lock();
         Unlock(strWalletPassphrase);
         NewKeyPool();
+#ifdef USE_HSM
+        NewHSMKeyPool();
+#endif
         Lock();
 
         // Need to completely rewrite the wallet file; if we don't, bdb might keep
@@ -2969,7 +2972,7 @@ bool CEDCWallet::NewHSMKeyPool()
             return false;
 
 		EDCparams & params = EDCparams::singleton();
-        int64_t nKeys = max(params.keypool, (int64_t)0);
+        int64_t nKeys = max(params.hsmkeypool, (int64_t)0);
         for (int i = 0; i < nKeys; i++)
         {
             int64_t nIndex = i+1;
@@ -3096,7 +3099,7 @@ bool CEDCWallet::TopUpHSMKeyPool(unsigned int kpSize)
         if (kpSize > 0)
             nTargetSize = kpSize;
         else
-            nTargetSize = max(params.keypool, (int64_t) 0);
+            nTargetSize = max(params.hsmkeypool, (int64_t) 0);
 
         while (setHSMKeyPool.size() < (nTargetSize + 1))
         {
@@ -3746,7 +3749,10 @@ std::string CEDCWallet::GetWalletHelpString(bool showDebug)
 
     std::string strUsage = HelpMessageGroup(_("Equibit Wallet options:"));
     strUsage += HelpMessageOpt("-eb_disablewallet", _("Do not load the wallet and disable wallet RPC calls"));
-    strUsage += HelpMessageOpt("-eb_keypool=<n>", strprintf(_("Set key pool size to <n> (default: %u)"), DEFAULT_KEYPOOL_SIZE));
+    strUsage += HelpMessageOpt("-eb_keypool=<n>", strprintf(_("Set key pool size to <n> (default: %u)"), EDC_DEFAULT_KEYPOOL_SIZE));
+#ifdef USE_HSM
+    strUsage += HelpMessageOpt("-eb_hsmkeypool=<n>", strprintf(_("Set HSM key pool size to <n> (default: %u)"), EDC_DEFAULT_HSMKEYPOOL_SIZE));
+#endif
     strUsage += HelpMessageOpt("-eb_fallbackfee=<amt>", strprintf(_("A fee rate (in %s/kB) that will be used when fee estimation has insufficient data (default: %s)"),
                                                                CURRENCY_UNIT, FormatMoney(DEFAULT_FALLBACK_FEE)));
     strUsage += HelpMessageOpt("-eb_mintxfee=<amt>", strprintf(_("Fees (in %s/kB) smaller than this are considered zero fee for transaction creation (default: %s)"),
@@ -4129,8 +4135,6 @@ bool CEDCWallet::CreateAuthorizingTransaction(
 			const_cast<CKeyID &>(txout.issuerPayAddr)= *boost::get<CKeyID>(&address);
 
             txNew.vout.push_back(txout);
-
-            reservekey.ReturnKey();
 
             txNew.vin.push_back(CEDCTxIn(wtx.GetHash(), 0, CScript(), 
 				std::numeric_limits<unsigned int>::max()-1));

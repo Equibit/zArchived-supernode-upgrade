@@ -63,7 +63,7 @@ UniValue getNewIssuer( const UniValue & params, bool fHelp )
 	    theApp.walletMain()->TopUpKeyPool();
 
 	if (!theApp.walletMain()->GetKeyFromPool(issuer.pubKey_))
-		throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
+		throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call eb_keypoolrefill first");
 
 	CEDCWalletDB walletdb(theApp.walletMain()->strWalletFile);
 
@@ -120,7 +120,7 @@ UniValue getNewHSMIssuer( const UniValue & params, bool fHelp )
 		    theApp.walletMain()->TopUpHSMKeyPool();
 
 		if (!theApp.walletMain()->GetHSMKeyFromPool(issuer.pubKey_))
-			throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
+			throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call eb_hsmkeypoolrefill first");
 
 		CEDCWalletDB walletdb(theApp.walletMain()->strWalletFile);
 

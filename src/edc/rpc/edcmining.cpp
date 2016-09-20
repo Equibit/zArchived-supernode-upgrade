@@ -191,7 +191,7 @@ UniValue edcgenerate(const UniValue& params, bool fHelp)
 
     // If the keypool is exhausted, no script is returned at all.  Catch this.
     if (!coinbaseScript)
-        throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
+        throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call eb_keypoolrefill first");
 
     //throw an error if no script was provided
     if (coinbaseScript->reserveScript.empty())
