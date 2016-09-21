@@ -454,53 +454,6 @@ UniValue edcgetrawchangeaddress(const UniValue& params, bool fHelp)
     return CEDCBitcoinAddress(keyID).ToString();
 }
 
-UniValue edcgetrawchangehsmaddress(const UniValue& params, bool fHelp)
-{
-	EDCapp & theApp = EDCapp::singleton();
-
-    if (!edcEnsureWalletIsAvailable(fHelp))
-        return NullUniValue;
-
-    if (fHelp || params.size() > 1)
-        throw runtime_error(
-            "eb_getrawchangehsmaddress\n"
-            "\nReturns a new Equibit HSM address, for receiving change.\n"
-            "This is for use with raw transactions, NOT normal use.\n"
-            "\nResult:\n"
-            "\"address\"    (string) The address\n"
-            "\nExamples:\n"
-            + HelpExampleCli("eb_getrawchangehsmaddress", "")
-            + HelpExampleRpc("eb_getrawchangehsmaddress", "")
-       );
-
-#ifdef USE_HSM
-	EDCparams & theParams = EDCparams::singleton();
-	if(theParams.usehsm)
-	{
-		LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
-
-		if (!theApp.walletMain()->IsLocked())
-			theApp.walletMain()->TopUpHSMKeyPool();
-
-		CEDCReserveHSMKey reservekey(theApp.walletMain());
-		CPubKey vchPubKey;
-		if (!reservekey.GetReservedHSMKey(vchPubKey))
-			throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call eb_hsmkeypoolrefill first");
-
-		reservekey.KeepHSMKey();
-
-		CKeyID keyID = vchPubKey.GetID();
-
-    	return CEDCBitcoinAddress(keyID).ToString();
-	}
-	else
-    	throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM processing disabled. "
-			"Use -eb_usehsm command line option to enable HSM processing" );
-#else
-    throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM support is not included in the build");
-#endif
-}
-
 UniValue edcsetaccount(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
@@ -3063,7 +3016,6 @@ static const CRPCCommand edcCommands[] =
     { "wallet",             "eb_getnewaddress",            &edcgetnewaddress,            true  },
     { "equibit",            "eb_getnewhsmaddress",         &edcgetnewhsmaddress,         true  },
     { "wallet",             "eb_getrawchangeaddress",      &edcgetrawchangeaddress,      true  },
-    { "equibit",            "eb_getrawchangehsmaddress",   &edcgetrawchangehsmaddress,   true  },
     { "wallet",             "eb_getreceivedbyaccount",     &edcgetreceivedbyaccount,     false },
     { "wallet",             "eb_getreceivedbyaddress",     &edcgetreceivedbyaddress,     false },
     { "wallet",             "eb_gettransaction",           &edcgettransaction,           false },

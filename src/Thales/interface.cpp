@@ -218,7 +218,7 @@ static bool createHSMID( unsigned char * hsmID )
 static void hsmID2Ident( char * ident, const unsigned char * hsmID )
 {
 	const unsigned char * p = hsmID;
-	const unsigned char * e = hsmID + HSMID_SIZE;
+	const unsigned char * e = hsmID + SHA1_SIZE;
 
 	char * i = ident;
 
@@ -270,7 +270,10 @@ bool generateKeyPair(
 		if(!createHSMID( HSMid ))
 			return false;
 
-		hsmID2Ident( ident, HSMid );
+		M_Hash	hash;
+		NFast_Hash( HSMid, HSMID_SIZE, &hash );
+
+		hsmID2Ident( ident, hash.bytes );
 
 		id.ident( ident );
 

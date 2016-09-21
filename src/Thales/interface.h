@@ -44,7 +44,8 @@ const size_t	HSMID_SIZE= MAC_SIZE + 			// MAC (Media Access Control) size
 							sizeof(time_t) + 	// Size of timespec::tv_sec
 							sizeof(long);		// Size of timespec::tv_nsec
 
-const size_t	IDENT_SIZE 			= 2*HSMID_SIZE + 1;
+const size_t	SHA1_SIZE			= 20;
+const size_t	IDENT_SIZE 			= 2*SHA1_SIZE + 1;
 const size_t	PUBKEY_DATA_SIZE 	= 65;
 
 // Generate a new key pair

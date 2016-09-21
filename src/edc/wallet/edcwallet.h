@@ -872,31 +872,6 @@ public:
     void KeepScript() { KeepKey(); }
 };
 
-/** A key allocated from the HSM key pool. */
-class CEDCReserveHSMKey : public CReserveScript
-{
-protected:
-    CEDCWallet* pwallet;
-    int64_t nIndex;
-    CPubKey vchPubKey;
-public:
-    CEDCReserveHSMKey(CEDCWallet* pwalletIn)
-    {
-        nIndex = -1;
-        pwallet = pwalletIn;
-    }
-
-    ~CEDCReserveHSMKey()
-    {
-        ReturnHSMKey();
-    }
-
-    void ReturnHSMKey();
-    bool GetReservedHSMKey(CPubKey &pubkey);
-    void KeepHSMKey();
-    void KeepScript() { KeepHSMKey(); }
-};
-
 class CIssuer
 {
 public:

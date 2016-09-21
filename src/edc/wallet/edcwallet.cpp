@@ -3027,7 +3027,7 @@ void CEDCWallet::ReserveKeyFromHSMKeyPool( long & nIndex , CKeyPool& keypool )
         setHSMKeyPool.erase(setHSMKeyPool.begin());
         if (!walletdb.ReadHSMPool(nIndex, keypool))
             throw runtime_error("ReserveKeyFromHSMKeyPool(): read failed");
-		if (!HaveKey(keypool.vchPubKey.GetID()))
+		if (!HaveHSMKey(keypool.vchPubKey.GetID()))
 			throw runtime_error("ReserveKeyFromHSMKeyPool(): unknown key in key pool");
 
         assert(keypool.vchPubKey.IsValid());
@@ -3355,28 +3355,15 @@ bool CEDCReserveKey::GetReservedKey(CPubKey& pubkey)
     if (nIndex == -1)
     {
         CKeyPool keypool;
-        pwallet->ReserveKeyFromKeyPool(nIndex, keypool);
-
-        if (nIndex != -1)
-            vchPubKey = keypool.vchPubKey;
-        else 
-		{
-            return false;
-        }
-    }
-    assert(vchPubKey.IsValid());
-    pubkey = vchPubKey;
-    return true;
-}
-
 #ifdef USE_HSM
-bool CEDCReserveHSMKey::GetReservedHSMKey(CPubKey& pubkey)
-{
-    if (nIndex == -1)
-    {
-        CKeyPool keypool;
-        pwallet->ReserveKeyFromHSMKeyPool(nIndex, keypool);
-
+		EDCparams & params = EDCparams::singleton();
+		if( params.usehsm )
+			pwallet->ReserveKeyFromHSMKeyPool(nIndex, keypool);
+		else
+			pwallet->ReserveKeyFromKeyPool(nIndex, keypool);
+#else
+		pwallet->ReserveKeyFromKeyPool(nIndex, keypool);
+#endif
         if (nIndex != -1)
             vchPubKey = keypool.vchPubKey;
         else 
@@ -3388,29 +3375,21 @@ bool CEDCReserveHSMKey::GetReservedHSMKey(CPubKey& pubkey)
     pubkey = vchPubKey;
     return true;
 }
-
-void CEDCReserveHSMKey::KeepHSMKey()
-{
-    if (nIndex != -1)
-        pwallet->KeepHSMKey(nIndex);
-    nIndex = -1;
-    vchPubKey = CPubKey();
-}
-
-void CEDCReserveHSMKey::ReturnHSMKey()
-{
-    if (nIndex != -1)
-        pwallet->ReturnKey(nIndex);
-    nIndex = -1;
-    vchPubKey = CPubKey();
-}
-
-#endif
 
 void CEDCReserveKey::KeepKey()
 {
     if (nIndex != -1)
-        pwallet->KeepKey(nIndex);
+	{
+#ifdef USE_HSM
+		EDCparams & params = EDCparams::singleton();
+		if( params.usehsm )
+			pwallet->KeepHSMKey(nIndex);
+		else	
+			pwallet->KeepKey(nIndex);
+#else
+		pwallet->KeepKey(nIndex);
+#endif
+	}
     nIndex = -1;
     vchPubKey = CPubKey();
 }
@@ -3418,7 +3397,17 @@ void CEDCReserveKey::KeepKey()
 void CEDCReserveKey::ReturnKey()
 {
     if (nIndex != -1)
-        pwallet->ReturnKey(nIndex);
+	{
+#ifdef USE_HSM
+		EDCparams & params = EDCparams::singleton();
+		if( params.usehsm )
+			pwallet->ReturnHSMKey(nIndex);
+		else	
+			pwallet->ReturnKey(nIndex);
+#else
+		pwallet->ReturnKey(nIndex);
+#endif
+	}
     nIndex = -1;
     vchPubKey = CPubKey();
 }
