@@ -19,9 +19,10 @@ UniValue broadcastMessage( const UniValue & params, bool fHelp )
 {
 	if( fHelp  || params.size() != 4)
 		throw std::runtime_error(
-			"eb_broadcastmessage ( \"type\" \"send-address\" \"asset\" \"message\" )\n"
+			"eb_broadcastmessage \"type\" \"send-address\" \"asset\" \"message\"\n"
+			"\nBroadcasts a message to all equibit nodes on the network.\n"
 			"\nArguments:\n"
-			"1. \"type\" (string) Type of message. Type must be one of:\n"
+			"1. \"type\" (string, required) Type of message. Type must be one of:\n"
 			"      Acquisition\n"
 			"      Ask\n"
 			"      Assimilation\n"
@@ -72,9 +73,9 @@ UniValue broadcastMessage( const UniValue & params, bool fHelp )
 			"      WarrantExercise\n"
 			"      WarrantExpiry\n"
 			"      WarrantIssue\n"
-			"2. \"send-address\"   (string) The sender address\n"
-			"3. \"asset\" (string) Owners of the identified asset will receive the message\n"
-			"4. \"message\"  (string) The message to be sent to the all addresses\n"
+			"2. \"send-address\"   (string, required) The sender address\n"
+			"3. \"asset\" (string, required) Owners of the identified asset will receive the message\n"
+			"4. \"message\"  (string, required) The message to be sent to the all addresses\n"
 			+ HelpExampleCli( "eb_broadcastmessage", "ACME StockDividend \"A dividend of 0.032 equibits will be issued on March 15th\"" )
 			+ HelpExampleRpc( "eb_broadcastmessage", "ACME StockDividend \"A dividend of 0.032 equibits will be issued on March 15th\"" )
 		);
@@ -102,13 +103,14 @@ UniValue multicastMessage( const UniValue & params, bool fHelp )
 {
 	if( fHelp || params.size() != 4 )
 		throw std::runtime_error(
-			"eb_multicastmessage ( \"type\" \"send-address\" \"asset\" \"message\" )\n"
+			"eb_multicastmessage \"type\" \"send-address\" \"asset\" \"message\"\n"
+			"\nMulti-casts a message to all owners of an equibit asset.\n"
 			"\nArguments:\n"
-			"1. \"type\" (string) Type of message. Type must be one of:\n"
+			"1. \"type\" (string,required) Type of message. Type must be one of:\n"
 			"        Poll\n"
-			"2. \"send-address\"   (string) The sender address\n"
-			"3. \"asset\" (string) The message applies to the identified asset\n"
-			"4. \"message\"  (string) The message to be sent to the multiple addresses\n"
+			"2. \"send-address\"   (string,required) The sender address\n"
+			"3. \"asset\" (string,required) The message applies to the identified asset\n"
+			"4. \"message\"  (string,required) The message to be sent to the multiple addresses\n"
 			+ HelpExampleCli( "eb_multicastmessage", "ACME Poll \"Board of directors Vote. Choose 1 for John Smith, 2 for Doug Brown\"" )
 			+ HelpExampleRpc( "eb_multicastmessage", "ACME Poll \"Board of directors Vote. Choose 1 for John Smith, 2 for Doug Brown\"" )
 		);
@@ -136,14 +138,15 @@ UniValue message( const UniValue & params, bool fHelp )
 {
 	if( fHelp  || params.size() != 4)
 		throw std::runtime_error(
-			"eb_p2pmessage ( \"type\" \"send-address\" \"recv-address\" \"message\" )\n"
+			"eb_p2pmessage \"type\" \"send-address\" \"recv-address\" \"message\"\n"
+			"\nSends a peer-to-peer message.\n"
 			"\nArguments:\n"
-			"1. \"type\" (string) Type of message. Type must be one of:\n"
+			"1. \"type\" (string,required) Type of message. Type must be one of:\n"
 			"        Private\n"
 			"        Vote\n"
-			"2. \"send-address\"   (string) The sender address\n"
-			"3. \"recv-address\"   (string) The receiver address\n"
-			"4. \"message\"   (string) The message to be sent to the specified address\n"
+			"2. \"send-address\"   (string,required) The sender address\n"
+			"3. \"recv-address\"   (string,required) The receiver address\n"
+			"4. \"message\"   (string,required) The message to be sent to the specified address\n"
 			+ HelpExampleCli( "eb_p2pmessage", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\" Private "
 				"\"What is your position WRT the upcomming merger?\""  )
 			+ HelpExampleRpc( "eb_p2pmessage", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\" Vote 1" )
@@ -339,17 +342,18 @@ UniValue getMessages( const UniValue & params, bool fHelp )
 {
 	if( fHelp )
 		throw std::runtime_error(
-			"eb_getmessages ( from(date[:time]) to(date[:time]) type(name[,...]) asset(name[,...]) sender(hash[,...]) receiver(hash[,...])\n"
+			"eb_getmessages ( \"from(date[:time])\" \"to(date[:time])\" \"type(name[,...])\" \"asset(name[,...])\" \"sender(hash[,...])\" \"receiver(hash[,...])\" )\n"
+			"\nGets all messages whose attributes match the specified filtering conditions.\n"
 			"\nArguments:\n"
 			"\nAll arguments are optional and can be specified in any order. The date format is of the form YYYY-MM-DD.\n"
 			"The optional time format is of the form HH:MM:SS.\n" 
-			"\nfrom(date[:time]) Filters messages whose time stamp is less than the specified date/time.\n"
-			"to(date[:time]) Filters messages whose time stamp is greater than the specified date/time.\n"
-			"type(name[,...]) Filters messages which have the specified types.\n"
-			"asset(name[,..]) Filters messages which are not associated with the specified assets. This filter has no\n"
+			"\n1. from(date[:time]) (string,optional) Filters messages whose time stamp is less than the specified date/time.\n"
+			"2. to(date[:time]) (string,optional) Filters messages whose time stamp is greater than the specified date/time.\n"
+			"3. type(name[,...]) (string,optional) Filters messages which have the specified types.\n"
+			"4. asset(name[,..]) (string,optional) Filters messages which are not associated with the specified assets. This filter has no\n"
 			"effect on peer-to-peer messages.\n"
-			"sender(hash[,...]) Filters messages which are sent by the specified senders.\n"
-			"receiver(hash[,...]) Filters peer-to-peer messages which are sent to the specified receivers.\n"
+			"5. sender(hash[,...]) (string,optional) Filters messages which are sent by the specified senders.\n"
+			"6. receiver(hash[,...]) (string,optional) Filters peer-to-peer messages which are sent to the specified receivers.\n"
 			"\nResult:"
 			"\n["
 			"\n  {"
@@ -426,9 +430,10 @@ UniValue getMessage( const UniValue & params, bool fHelp )
 {
 	if( fHelp || params.size() != 1 )
 		throw std::runtime_error(
-			"eb_getmessage ( hash )\n"
+			"eb_getmessage \"hash\"\n"
+			"\nGets the message with the specified hash value.\n"
 			"\nArguments:\n"
-			"\n1. hash - the hash of the message to be loaded\n"
+			"\n1. hash (string,required) the hash of the message to be loaded\n"
 			"\nResult: (for Broadcast and Multicast messages)"
 			"\n{"
 				"\n  \"type\":\"Poll\","
@@ -475,9 +480,10 @@ UniValue deleteMessage( const UniValue & params, bool fHelp )
 {
 	if( fHelp || params.size() != 1 )
 		throw std::runtime_error(
-			"eb_deletemessage ( hash )\n"
+			"eb_deletemessage \"hash\"\n"
+			"\nDeletes the message with the specified hash value.\n"
 			"\nArguments:\n"
-			"\n1. hash - the hash of the message to be deleted\n"
+			"\n1. hash (string,required) the hash of the message to be deleted\n"
 			+ HelpExampleCli( "eb_deletemessage", "\"c1c1d256...0983fed\"" )
 			+ HelpExampleRpc( "eb_deletemessage", "\"70292cde...a890192\"" )
 		);
@@ -495,16 +501,17 @@ UniValue deleteMessages( const UniValue & params, bool fHelp )
 {
 	if( fHelp )
 		throw std::runtime_error(
-			"eb_deletemessages ( from(date[:time]) to(date[:time]) type(name[,...]) asset(name[,...]) sender(hash[,...]) receiver(hash[,...])\n"
+			"eb_deletemessages ( \"from(date[:time])\" \"to(date[:time])\" \"type(name[,...])\" \"asset(name[,...])\" \"sender(hash[,...])\" \"receiver(hash[,...])\" )\n"
+			"\nDeletes the messages whose attributes match the specified conditions.\n"
 			"\nArguments:\n"
 			"\nAll arguments are optional and can be specified in any order. The date format is of the form YYYY-MM-DD.\n"
 			"The optional time format is of the form HH:MM:SS.\n" 
-			"\nfrom(date[:time]) Deletes messages whose time stamp is greater than or equal to the specified date/time.\n"
-			"to(date[:time]) Deletes messages whose time stamp is less than the specified date/time.\n"
-			"type(name[,...]) Deletes messages which have the specified types.\n"
-			"asset(name[,..]) Deletes messages which are not associated with the specified assets. This filter has no effect on peer-to-peer messages.\n"
-			"sender(hash[,...]) Deletes messages which are sent by the specified senders.\n"
-			"receiver(hash[,...]) Deletes peer-to-peer messages which are sent to the specified receivers. This filter has no effect on broadcast and multicast messages.\n"
+			"\n1. from(date[:time]) (string,optional) Deletes messages whose time stamp is greater than or equal to the specified date/time.\n"
+			"2. to(date[:time]) (string,optional) Deletes messages whose time stamp is less than the specified date/time.\n"
+			"3. type(name[,...]) (string,optional) Deletes messages which have the specified types.\n"
+			"4. asset(name[,..]) (string,optional) Deletes messages which are not associated with the specified assets. This filter has no effect on peer-to-peer messages.\n"
+			"5. sender(hash[,...]) (string,optional) Deletes messages which are sent by the specified senders.\n"
+			"6. receiver(hash[,...]) (string,optional) Deletes peer-to-peer messages which are sent to the specified receivers. This filter has no effect on broadcast and multicast messages.\n"
 			+ HelpExampleCli( "eb_deletemessages", "\"from(2016-01-01:10:10:10)\" \"asset(ACME,MSXY)\"" )
 			+ HelpExampleRpc( "eb_deletemessages", "\"from(2016-02-01)\", \"asset(ACME,MSYZ)\"" )
 		);

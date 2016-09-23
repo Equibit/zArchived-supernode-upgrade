@@ -231,7 +231,7 @@ UniValue edcgettxoutproof(const UniValue& params, bool fHelp)
 
     if (fHelp || (params.size() != 1 && params.size() != 2))
         throw runtime_error(
-            "eb_gettxoutproof [\"txid\",...] ( blockhash )\n"
+            "eb_gettxoutproof [\"txid\",...] ( \"blockhash\" )\n"
             "\nReturns a hex-encoded proof that \"txid\" was included in a block.\n"
             "\nNOTE: By default this function only works sometimes. This is when there is an\n"
             "unspent output in the utxo for this transaction. To make it always work,\n"
@@ -528,7 +528,7 @@ UniValue edcdecodescript(const UniValue& params, bool fHelp)
             "eb_decodescript \"hex\"\n"
             "\nDecode a hex-encoded script.\n"
             "\nArguments:\n"
-            "1. \"hex\"     (string) the hex encoded script\n"
+            "1. \"hex\"     (string,required) the hex encoded script\n"
             "\nResult:\n"
             "{\n"
             "  \"asm\":\"asm\",   (string) Script public key\n"

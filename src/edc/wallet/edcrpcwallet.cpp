@@ -385,13 +385,13 @@ UniValue edcgethsmaccountaddress(const UniValue& params, bool fHelp)
             "eb_gethsmaccountaddress \"account\"\n"
             "\nDEPRECATED. Returns the current Equibit HSM address for receiving payments to this account.\n"
             "\nArguments:\n"
-            "1. \"account\"       (string, required) The account name for the address. It can also be set to the empty string \"\" to represent the default account. The account does not need to exist, it will be created and a new address created  if there is no account by the given name.\n"
+            "1. \"account\"       (string, required) The account name for the address. It can also be set to the empty string \"\" to represent the default account. The account does not need to exist, it will be created and a new HSM address created  if there is no account by the given name.\n"
             "\nResult:\n"
             "\"equibitaddress\"   (string) The account equibit address\n"
             "\nExamples:\n"
-            + HelpExampleCli("eb_gethsmaccountaddress", "")
-            + HelpExampleCli("eb_gethsmaccountaddress", "\"\"")
             + HelpExampleCli("eb_gethsmaccountaddress", "\"myaccount\"")
+            + HelpExampleCli("eb_gethsmaccountaddress", "\"\"" )
+            + HelpExampleRpc("eb_gethsmaccountaddress", "\"\"" )
             + HelpExampleRpc("eb_gethsmaccountaddress", "\"myaccount\"")
         );
 
@@ -2166,7 +2166,7 @@ UniValue edcbackupwallet(const UniValue& params, bool fHelp)
             "eb_backupwallet \"destination\"\n"
             "\nSafely copies current wallet file to destination, which can be a directory or a path with filename.\n"
             "\nArguments:\n"
-            "1. \"destination\"   (string) The destination directory or file\n"
+            "1. \"destination\"   (string, required) The destination directory or file\n"
             "\nExamples:\n"
             + HelpExampleCli("eb_backupwallet", "\"backup.dat\"")
             + HelpExampleRpc("eb_backupwallet", "\"backup.dat\"")
@@ -2233,7 +2233,7 @@ UniValue edchsmkeypoolrefill(const UniValue& params, bool fHelp)
             "\nFills the keypool."
             + edcHelpRequiringPassphrase() + "\n"
             "\nArguments\n"
-            "1. newsize     (numeric, optional, default=100) The new HSM keypool size\n"
+            "1. newsize     (numeric, optional, default=50) The new HSM keypool size\n"
             "\nExamples:\n"
             + HelpExampleCli("eb_hsmkeypoolrefill", "")
             + HelpExampleRpc("eb_hsmkeypoolrefill", "")
@@ -2354,8 +2354,8 @@ UniValue edcwalletpassphrasechange(const UniValue& params, bool fHelp)
             "eb_walletpassphrasechange \"oldpassphrase\" \"newpassphrase\"\n"
             "\nChanges the wallet passphrase from 'oldpassphrase' to 'newpassphrase'.\n"
             "\nArguments:\n"
-            "1. \"oldpassphrase\"      (string) The current passphrase\n"
-            "2. \"newpassphrase\"      (string) The new passphrase\n"
+            "1. \"oldpassphrase\"      (string, required) The current passphrase\n"
+            "2. \"newpassphrase\"      (string, required) The new passphrase\n"
             "\nExamples:\n"
             + HelpExampleCli("eb_walletpassphrasechange", "\"old one\" \"new one\"")
             + HelpExampleRpc("eb_walletpassphrasechange", "\"old one\", \"new one\"")
@@ -2450,7 +2450,7 @@ UniValue edcencryptwallet(const UniValue& params, bool fHelp)
             "If the wallet is already encrypted, use the eb_walletpassphrasechange call.\n"
             "Note that this will shutdown the server.\n"
             "\nArguments:\n"
-            "1. \"passphrase\"    (string) The pass phrase to encrypt the wallet with. It must be at least 1 character, but should be long.\n"
+            "1. \"passphrase\"    (string, required) The pass phrase to encrypt the wallet with. It must be at least 1 character, but should be long.\n"
             "\nExamples:\n"
             "\nEncrypt you wallet\n"
             + HelpExampleCli("eb_encryptwallet", "\"my pass phrase\"") +
@@ -2877,43 +2877,43 @@ UniValue edcfundrawtransaction(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-                            "eb_fundrawtransaction \"hexstring\" ( options )\n"
-                            "\nAdd inputs to a transaction until it has enough in value to meet its out value.\n"
-                            "This will not modify existing inputs, and will add one change output to the outputs.\n"
-                            "Note that inputs which were signed may need to be resigned after completion since in/outputs have been added.\n"
-                            "The inputs added will not be signed, use signrawtransaction for that.\n"
-                            "Note that all existing inputs must have their previous output transaction be in the wallet.\n"
-                            "Note that all inputs selected must be of standard form and P2SH scripts must be\n"
-                            "in the wallet using eb_importaddress or eb_addmultisigaddress (to calculate fees).\n"
-                            "You can see whether this is the case by checking the \"solvable\" field in the listunspent output.\n"
-                            "Only pay-to-pubkey, multisig, and P2SH versions thereof are currently supported for watch-only\n"
-                            "\nArguments:\n"
-                            "1. \"hexstring\"           (string, required) The hex string of the raw transaction\n"
-                            "2. options               (object, optional)\n"
-                            "   {\n"
-                            "     \"changeAddress\"     (string, optional, default pool address) The equibit address to receive the change\n"
-                            "     \"changePosition\"    (numeric, optional, default random) The index of the change output\n"
-                            "     \"includeWatching\"   (boolean, optional, default false) Also select inputs which are watch only\n"
-                            "     \"lockUnspents\"      (boolean, optional, default false) Lock selected unspent outputs\n"
-                            "   }\n"
-                            "                         for backward compatibility: passing in a true instead of an object will result in {\"includeWatching\":true}\n"
-                            "\nResult:\n"
-                            "{\n"
-                            "  \"hex\":       \"value\", (string)  The resulting raw transaction (hex-encoded string)\n"
-                            "  \"fee\":       n,         (numeric) Fee the resulting transaction pays\n"
-                            "  \"changepos\": n          (numeric) The position of the added change output, or -1\n"
-                            "}\n"
-                            "\"hex\"             \n"
-                            "\nExamples:\n"
-                            "\nCreate a transaction with no inputs\n"
-                            + HelpExampleCli("createrawtransaction", "\"[]\" \"{\\\"myaddress\\\":0.01}\"") +
-                            "\nAdd sufficient unsigned inputs to meet the output value\n"
-                            + HelpExampleCli("eb_fundrawtransaction", "\"rawtransactionhex\"") +
-                            "\nSign the transaction\n"
-                            + HelpExampleCli("signrawtransaction", "\"fundedtransactionhex\"") +
-                            "\nSend the transaction\n"
-                            + HelpExampleCli("sendrawtransaction", "\"signedtransactionhex\"")
-                            );
+            "eb_fundrawtransaction \"hexstring\" ( options )\n"
+            "\nAdd inputs to a transaction until it has enough in value to meet its out value.\n"
+            "This will not modify existing inputs, and will add one change output to the outputs.\n"
+            "Note that inputs which were signed may need to be resigned after completion since in/outputs have been added.\n"
+            "The inputs added will not be signed, use signrawtransaction for that.\n"
+            "Note that all existing inputs must have their previous output transaction be in the wallet.\n"
+            "Note that all inputs selected must be of standard form and P2SH scripts must be\n"
+            "in the wallet using eb_importaddress or eb_addmultisigaddress (to calculate fees).\n"
+            "You can see whether this is the case by checking the \"solvable\" field in the listunspent output.\n"
+            "Only pay-to-pubkey, multisig, and P2SH versions thereof are currently supported for watch-only\n"
+            "\nArguments:\n"
+            "1. \"hexstring\"           (string, required) The hex string of the raw transaction\n"
+            "2. options               (object, optional)\n"
+            "   {\n"
+            "     \"changeAddress\"     (string, optional, default pool address) The equibit address to receive the change\n"
+            "     \"changePosition\"    (numeric, optional, default random) The index of the change output\n"
+            "     \"includeWatching\"   (boolean, optional, default false) Also select inputs which are watch only\n"
+            "     \"lockUnspents\"      (boolean, optional, default false) Lock selected unspent outputs\n"
+            "   }\n"
+            "                         for backward compatibility: passing in a true instead of an object will result in {\"includeWatching\":true}\n"
+            "\nResult:\n"
+            "{\n"
+            "  \"hex\":       \"value\", (string)  The resulting raw transaction (hex-encoded string)\n"
+            "  \"fee\":       n,         (numeric) Fee the resulting transaction pays\n"
+            "  \"changepos\": n          (numeric) The position of the added change output, or -1\n"
+            "}\n"
+            "\"hex\"             \n"
+            "\nExamples:\n"
+            "\nCreate a transaction with no inputs\n"
+            + HelpExampleCli("createrawtransaction", "\"[]\" \"{\\\"myaddress\\\":0.01}\"") +
+            "\nAdd sufficient unsigned inputs to meet the output value\n"
+            + HelpExampleCli("eb_fundrawtransaction", "\"rawtransactionhex\"") +
+            "\nSign the transaction\n"
+            + HelpExampleCli("signrawtransaction", "\"fundedtransactionhex\"") +
+            "\nSend the transaction\n"
+            + HelpExampleCli("sendrawtransaction", "\"signedtransactionhex\"")
+            );
 
     RPCTypeCheck(params, boost::assign::list_of(UniValue::VSTR));
 

@@ -37,15 +37,15 @@ UniValue getNewIssuer( const UniValue & params, bool fHelp )
 
 	if( fHelp || params.size() < 4 )
 		throw std::runtime_error(
-			"eb_getnewissuer( \"name\" \"location\" \"phone-number\" \"e-mail address\" )\n"
+			"eb_getnewissuer \"name\" \"location\" \"phone-number\" \"e-mail address\"\n"
 			"\nCreates a new Issuer.\n"
+			"\nArguments:\n"
+			"1. \"Name\"            (string,required) The name of the Issuer.\n"
+			"2. \"Location\"        (string,required) The geographic address of the Issuer.\n"
+			"3. \"Phone number\"    (string,required) The phone number of the Issuer.\n"
+			"4. \"E-mail address\"  (string,required) The e-mail address of the Issuer.\n"
 			"\nResult:\n"
 			"The address associated with the Issuer.\n"
-			"\nArguments:\n"
-			"1. \"Name\"            (string) The name of the Issuer.\n"
-			"2. \"Location\"        (string) The geographic address of the Issuer.\n"
-			"3. \"Phone number\"    (string) The phone number of the Issuer.\n"
-			"4. \"E-mail address\"  (string) The e-mail address of the Issuer.\n"
 			+ HelpExampleCli( "eb_getnewissuer", "\"Equibit Issuer\" \"100 University Ave, Toronto\" \"416 233-4753\" \"equibit-issuer.com\"" )
 			+ HelpExampleRpc( "eb_getnewissuer", "\"Equibit Issuer\" \"100 University Ave, Toronto\" \"416 233-4753\" \"equibit-issuer.com\"" )
 		);
@@ -89,15 +89,15 @@ UniValue getNewHSMIssuer( const UniValue & params, bool fHelp )
 
 	if( fHelp || params.size() < 4 )
 		throw std::runtime_error(
-			"eb_getnewhsmissuer( \"name\" \"location\" \"phone-number\" \"e-mail address\" )\n"
+			"eb_getnewhsmissuer \"name\" \"location\" \"phone-number\" \"e-mail address\"\n"
 			"\nCreates a new Issuer with an HSM key pair.\n"
 			"\nResult:\n"
 			"The address associated with the Issuer.\n"
 			"\nArguments:\n"
-			"1. \"Name\"            (string) The name of the Issuer.\n"
-			"2. \"Location\"        (string) The geographic address of the Issuer.\n"
-			"3. \"Phone number\"    (string) The phone number of the Issuer.\n"
-			"4. \"E-mail address\"  (string) The e-mail address of the Issuer.\n"
+			"1. \"Name\"            (string,required) The name of the Issuer.\n"
+			"2. \"Location\"        (string,required) The geographic address of the Issuer.\n"
+			"3. \"Phone number\"    (string,required) The phone number of the Issuer.\n"
+			"4. \"E-mail address\"  (string,required) The e-mail address of the Issuer.\n"
 			+ HelpExampleCli( "eb_getnewhsmissuer", "\"Equibit Issuer\" \"100 University Ave, Toronto\" \"416 233-4753\" \"equibit-issuer.com\"" )
 			+ HelpExampleRpc( "eb_getnewhsmissuer", "\"Equibit Issuer\" \"100 University Ave, Toronto\" \"416 233-4753\" \"equibit-issuer.com\"" )
 		);
@@ -214,12 +214,12 @@ UniValue authorizeEquibit( const UniValue & params, bool fHelp )
 
 	if( fHelp || params.size() < 3)
 		throw std::runtime_error(
-			"eq_authorizeequibit( \"issuer\" \"transaction-id\" transaction-offset )\n"
-			"\nSigns an Eqibit.\n"
+			"eb_authorizeequibit \"issuer\" \"transaction-id\" transaction-offset\n"
+			"\nAuthorizes (or labels) an eqibit.\n"
 			"\nArguments:\n"
-			"1. \"Issuer\"                (string) The issuer that will be authorizing the Equibit.\n"
-			"2. \"transaction-id\"        (string) The address of the transaction that contains the output transaction.\n"
-			"3. \"transaction-off\"       (string) The offset of the TxOut within that stores the Equibit to be authorized.\n"
+			"1. \"Issuer\"                (string,required) The issuer that will be authorizing the Equibit.\n"
+			"2. \"transaction-id\"        (string,required) The address of the transaction that contains the output transaction.\n"
+			"3. \"transaction-off\"       (numeric,required) The offset of the TxOut within that stores the Equibit to be authorized.\n"
 	        "\nResult:\n"
 	        "\"transactionid\"            (string) The transaction id.\n"
 

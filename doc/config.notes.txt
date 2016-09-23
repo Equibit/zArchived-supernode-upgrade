@@ -12,6 +12,16 @@ clone BitMessage:
 git clone https://github.com/Bitmessage/PyBitmessage.git
 
 ------------------------------------------------------------------------------
+clone Bitcoin:
+------------------------------------------------------------------------------
+
+git clone https://github.com/bitcoin/bitcoin.git
+cd bitcoin/
+./autogen.sh
+./configure --disable-wallet --without-gui --without-miniupnpc
+make check
+
+------------------------------------------------------------------------------
 File editing process:
 ------------------------------------------------------------------------------
 
