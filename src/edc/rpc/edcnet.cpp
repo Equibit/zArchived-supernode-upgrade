@@ -498,6 +498,8 @@ UniValue edcgetnetworkinfo(const UniValue& params, bool fHelp)
             "  \"subversion\": \"/Satoshi:x.x.x/\",     (string) the server subversion string\n"
             "  \"protocolversion\": xxxxx,              (numeric) the protocol version\n"
             "  \"localservices\": \"xxxxxxxxxxxxxxxx\", (string) the services we offer to the network\n"
+            "  \"localrelay\": true|false,              (bool) true if transaction relay is requested from peers\n"
+
             "  \"timeoffset\": xxxxx,                   (numeric) the time offset\n"
             "  \"connections\": xxxxx,                  (numeric) the number of connections\n"
             "  \"networks\": [                          (array) information per network\n"
@@ -528,12 +530,14 @@ UniValue edcgetnetworkinfo(const UniValue& params, bool fHelp)
     LOCK(EDC_cs_main);
 
 	EDCapp & theApp = EDCapp::singleton();
+	EDCparams & theParams = EDCparams::singleton();
 
     UniValue obj(UniValue::VOBJ);
     obj.push_back(Pair("version",       CLIENT_VERSION));
     obj.push_back(Pair("subversion",    theApp.strSubVersion() ));
     obj.push_back(Pair("protocolversion",PROTOCOL_VERSION));
     obj.push_back(Pair("localservices",       strprintf("%016x", theApp.localServices())));
+	obj.push_back(Pair("localreply",    theParams.blocksonly));
     obj.push_back(Pair("timeoffset",    edcGetTimeOffset()));
     obj.push_back(Pair("connections",   (int)theApp.vNodes().size()));
     obj.push_back(Pair("networks",      GetNetworksInfo()));
