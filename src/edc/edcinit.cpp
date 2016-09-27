@@ -797,7 +797,7 @@ bool EdcAppInit(
 	                delete theApp.blocktree();
 	
 	                theApp.blocktree( new CEDCBlockTreeDB(nBlockTreeDBCache, false, theApp.reindex() ) );
-	                pcoinsdbview = new CEDCCoinsViewDB(nCoinDBCache, false, theApp.reindex() );
+	                pcoinsdbview = new CEDCCoinsViewDB(nCoinDBCache, false, theApp.reindex() || params.reindex_chainstate );
 	                pcoinscatcher = new CEDCCoinsViewErrorCatcher(pcoinsdbview);
 	                theApp.coinsTip( new CEDCCoinsViewCache(pcoinscatcher) );
 	
@@ -835,7 +835,7 @@ bool EdcAppInit(
 	                // Check for changed -eb_txindex state
 	                if ( theApp.txIndex() != params.txindex) 
 					{
-	                    strLoadError = _("You need to rebuild the database using -eb_reindex to change -eb_txindex");
+	                    strLoadError = _("You need to rebuild the database using -eb_reindex-chainstate to change -eb_txindex");
 	                    break;
 	                }
 	

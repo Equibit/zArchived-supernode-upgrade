@@ -217,6 +217,7 @@ EDCparams::EDCparams()
 	checkblockindex     = GetBoolArg( "-eb_checkblockindex", regtest );
 	checkmempool        = GetBoolArg( "-eb_checkmempool", regtest );
 	reindex             = GetBoolArg( "-eb_reindex", false );
+	reindex_chainstate  = GetBoolArg( "-eb_reindex-chainstate", false );
 	printpriority       = GetBoolArg( "-eb_printpriority", EDC_DEFAULT_PRINTPRIORITY );
 	printtoconsole      = GetBoolArg( "-eb_printtoconsole", false );
 	privdb              = GetBoolArg( "-eb_privdb", EDC_DEFAULT_WALLET_PRIVDB );
@@ -387,8 +388,9 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
 		strprintf(_("Reduce storage requirements by pruning (deleting) old blocks. This mode is incompatible with -eb_txindex and -eb_rescan. "
             "Warning: Reverting this setting requires re-downloading the entire blockchain. "
             "(default: 0 = disable pruning blocks, >%u = target size in MiB to use for block files)"), EDC_MIN_DISK_SPACE_FOR_BLOCK_FILES / 1024 / 1024));
-    strUsage += HelpMessageOpt("-eb_reindex", 
-		_("Rebuild block chain index from current blk000??.dat files on startup"));
+	strUsage += HelpMessageOpt("-eb_reindex-chainstate", _("Rebuild chain state from the currently indexed blocks"));
+	strUsage += HelpMessageOpt("-eb_reindex", _("Rebuild chain state and block index from the blk*.dat files on disk"));
+
     strUsage += HelpMessageOpt("-eb_txindex", 
 		strprintf(_("Maintain a full transaction index, used by the getrawtransaction rpc call (default: %u)"), EDC_DEFAULT_TXINDEX));
 
@@ -975,6 +977,7 @@ void EDCparams::dumpToLog() const
 
 	edcLogPrintf( "eb_regtest              %s\n", toString(regtest) );
 	edcLogPrintf( "eb_reindex              %s\n", toString(reindex) );
+	edcLogPrintf( "eb_reindex-chainstate   %s\n", toString(reindex_chainstate) );
 	edcLogPrintf( "eb_relaypriority        %s\n", toString(relaypriority) );
 	edcLogPrintf( "eb_rescan               %s\n", toString(rescan) );
 	edcLogPrintf( "eb_rest                 %s\n", toString(rest) );
@@ -1113,6 +1116,7 @@ void EDCparams::checkParams() const
 	validparams.insert("-prune");
 	validparams.insert("-regtest");
 	validparams.insert("-reindex");
+	validparams.insert("-reindex-chainsate");
 	validparams.insert("-relaypriority");
 	validparams.insert("-rescan");
 	validparams.insert("-rest");
@@ -1239,6 +1243,7 @@ void EDCparams::checkParams() const
 	validparams.insert("-eb_prune");
 	validparams.insert("-eb_regtest");
 	validparams.insert("-eb_reindex");
+	validparams.insert("-eb_reindex-chainstate");
 	validparams.insert("-eb_relaypriority");
 	validparams.insert("-eb_rescan");
 	validparams.insert("-eb_rest");

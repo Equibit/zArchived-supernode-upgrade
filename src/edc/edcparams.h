@@ -65,6 +65,7 @@ public:
 	bool privdb;
 	bool proxyrandomize;
 	bool reindex;
+	bool reindex_chainstate;
 	bool relaypriority;
 	bool rescan;
 	bool rest;
