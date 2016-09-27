@@ -63,10 +63,10 @@ void UnregisterNodeSignals(CEDCNodeSignals& nodeSignals);
  * @param[in]   pfrom   The node which we are receiving the block from; it is added to mapBlockSource and may be penalised if the block is invalid.
  * @param[in]   pblock  The block we want to process.
  * @param[in]   fForceProcessing Process this block even if unrequested; used for non-network block sources and whitelisted peers.
- * @param[out]  dbp     If pblock is stored to disk (or already there), this will be set to its location.
+ * @param[out]  dbp     The already known disk position of pblock, or NULL if not yet stored.
  * @return True if state.IsValid()
  */
-bool ProcessNewBlock(CValidationState& state, const CEDCChainParams& chainparams, const CEDCNode* pfrom, const CEDCBlock* pblock, bool fForceProcessing, CDiskBlockPos* dbp);
+bool ProcessNewBlock(CValidationState& state, const CEDCChainParams& chainparams, const CEDCNode* pfrom, const CEDCBlock* pblock, bool fForceProcessing, const CDiskBlockPos* dbp);
 /** Initialize a new block tree database + block data on disk */
 bool edcInitBlockIndex(const CEDCChainParams& chainparams);
 /** Load the block tree and coins database from disk */

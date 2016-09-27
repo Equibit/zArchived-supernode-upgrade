@@ -3895,7 +3895,7 @@ bool AcceptBlock(
 	const CEDCChainParams & chainparams, 
 	         CBlockIndex ** ppindex, 
 	                   bool fRequested, 
-	        CDiskBlockPos * dbp)
+	  const CDiskBlockPos * dbp)
 {
     AssertLockHeld(EDC_cs_main);
 
@@ -3993,7 +3993,7 @@ bool ProcessNewBlock(
 	       const CEDCNode * pfrom, 
 	      const CEDCBlock * pblock, 
 	                   bool fForceProcessing, 
-	        CDiskBlockPos * dbp)
+	  const CDiskBlockPos * dbp)
 {
     {
         LOCK(EDC_cs_main);
