@@ -3237,12 +3237,12 @@ bool ActivateBestChainStep(
 	     CValidationState & state, 
 	const CEDCChainParams & chainparams, 
 	          CBlockIndex * pindexMostWork, 
-          const CEDCBlock * pblock)
+          const CEDCBlock * pblock,
+					 bool & fInvalidFound )
 {
 	EDCapp & theApp = EDCapp::singleton();
 
     AssertLockHeld(EDC_cs_main);
-    bool fInvalidFound = false;
     const CBlockIndex *pindexOldTip = theApp.chainActive().Tip();
     const CBlockIndex *pindexFork = theApp.chainActive().FindFork(pindexMostWork);
 
@@ -3355,14 +3355,24 @@ bool ActivateBestChain(
         {
             LOCK(EDC_cs_main);
             CBlockIndex *pindexOldTip = theApp.chainActive().Tip();
-            pindexMostWork = FindMostWorkChain();
+			if (pindexMostWork == NULL) 
+			{
+				pindexMostWork = FindMostWorkChain();
+			}
 
             // Whether we have anything to do at all.
             if (pindexMostWork == NULL || pindexMostWork == theApp.chainActive().Tip())
                 return true;
 
-            if (!ActivateBestChainStep(state, chainparams, pindexMostWork, pblock && pblock->GetHash() == pindexMostWork->GetBlockHash() ? pblock : NULL))
+			bool fInvalidFound = false;
+			if (!ActivateBestChainStep(state, chainparams, pindexMostWork, pblock && pblock->GetHash() == pindexMostWork->GetBlockHash() ? pblock : NULL, fInvalidFound))
                 return false;
+
+			if (fInvalidFound) 
+			{
+				// Wipe cache, we may need another branch now.
+				pindexMostWork = NULL;
+			}
 
             pindexNewTip = theApp.chainActive().Tip();
             pindexFork = theApp.chainActive().FindFork(pindexOldTip);
