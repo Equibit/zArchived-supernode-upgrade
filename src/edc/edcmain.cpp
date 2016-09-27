@@ -3328,6 +3328,33 @@ bool ActivateBestChainStep(
     return true;
 }
 
+void NotifyHeaderTip() 
+{
+    bool fNotify = false;
+    bool fInitialBlockDownload = false;
+    static CBlockIndex* pindexHeaderOld = NULL;
+    CBlockIndex* pindexHeader = NULL;
+    {
+        LOCK(cs_main);
+        if (!setBlockIndexCandidates.empty()) 
+		{
+            pindexHeader = *setBlockIndexCandidates.rbegin();
+        }
+        if (pindexHeader != pindexHeaderOld) 
+		{
+            fNotify = true;
+            fInitialBlockDownload = IsInitialBlockDownload();
+            pindexHeaderOld = pindexHeader;
+        }
+    }
+    // Send block tip changed notifications without cs_main
+    if (fNotify) 
+	{
+        uiInterface.NotifyHeaderTip(fInitialBlockDownload, pindexHeader);
+    }
+}
+
+
 }
 
 /**
@@ -4024,6 +4051,8 @@ bool ProcessNewBlock(
             return edcError("%s: AcceptBlock FAILED", __func__);
     }
 
+	NotifyHeaderTip();
+
     if (!ActivateBestChain(state, chainparams, pblock))
         return edcError("%s: ActivateBestChain failed", __func__);
 
@@ -4653,6 +4682,18 @@ bool edcLoadExternalBlockFile(
 					edcLogPrint("reindex", "Block Import: already had block %s at height %d\n", hash.ToString(), mapBlockIndex[hash]->nHeight);
                 }
 
+                // Activate the genesis block so normal node progress can continue
+                if (hash == chainparams.GetConsensus().hashGenesisBlock) 
+				{
+                    CValidationState state;
+                    if (!ActivateBestChain(state, chainparams)) 
+					{
+                        break;
+                    }
+                }
+
+                NotifyHeaderTip();
+
                 // Recursively process earlier encountered successors of this block
                 deque<uint256> queue;
                 queue.push_back(hash);
@@ -4681,6 +4722,7 @@ bool edcLoadExternalBlockFile(
                         }
                         range.first++;
                         mapBlocksUnknownParent.erase(it);
+						NotifyHeaderTip();
                     }
                 }
             } 
@@ -5729,6 +5771,7 @@ bool ProcessMessage(
             ReadCompactSize(vRecv); // ignore tx count; assume it is 0.
         }
 
+		{
         LOCK(EDC_cs_main);
 
         if (nCount == 0) 
@@ -5844,6 +5887,9 @@ bool ProcessMessage(
         }
 
         edcCheckBlockIndex(chainparams.GetConsensus());
+		}
+
+		NotifyHeaderTip();
     }
 
     else if (strCommand == NetMsgType::BLOCK && !theApp.importing() && !theApp.reindex()) // Ignore blocks received while importing
