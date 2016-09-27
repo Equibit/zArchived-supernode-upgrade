@@ -3901,7 +3901,9 @@ bool AcceptBlock(
 
 	EDCapp & theApp = EDCapp::singleton();
 
-    CBlockIndex *&pindex = *ppindex;
+    CBlockIndex * pindexDummy = NULL;
+    CBlockIndex * & pindex = ppindex ? *ppindex : pindexDummy;
+
 
     if (!AcceptBlockHeader(block, state, chainparams, &pindex))
         return false;
@@ -4628,8 +4630,9 @@ bool edcLoadExternalBlockFile(
                 if (theApp.mapBlockIndex().count(hash) == 0 || 
 				(theApp.mapBlockIndex()[hash]->nStatus & BLOCK_HAVE_DATA) == 0) 
 				{
+					LOCK(cs_main);
                     CValidationState state;
-                    if (ProcessNewBlock(state, chainparams, NULL, &block, true, dbp))
+                    if (AcceptBlock(block, state, chainparams, NULL, true, dbp))
                         nLoaded++;
                     if (state.IsError())
                         break;
@@ -4637,7 +4640,7 @@ bool edcLoadExternalBlockFile(
 				else if (hash != chainparams.GetConsensus().hashGenesisBlock &&
 				theApp.mapBlockIndex()[hash]->nHeight % 1000 == 0) 
 				{
-                    edcLogPrintf("Block Import: already had block %s at height %d\n", hash.ToString(), theApp.mapBlockIndex()[hash]->nHeight);
+					edcLogPrint("reindex", "Block Import: already had block %s at height %d\n", hash.ToString(), mapBlockIndex[hash]->nHeight);
                 }
 
                 // Recursively process earlier encountered successors of this block
@@ -4656,10 +4659,11 @@ bool edcLoadExternalBlockFile(
                         std::multimap<uint256, CDiskBlockPos>::iterator it = range.first;
                         if (ReadBlockFromDisk(block, it->second, chainparams.GetConsensus()))
                         {
-                            edcLogPrintf("%s: Processing out of order child %s of %s\n", __func__, block.GetHash().ToString(),
+							edcLogPrint("reindex", "%s: Processing out of order child %s of %s\n", __func__, block.GetHash().ToString(),
                                     head.ToString());
+							LOCK(cs_main);
                             CValidationState dummy;
-                            if (ProcessNewBlock(dummy, chainparams, NULL, &block, true, &it->second))
+                            if (AcceptBlock(block, dummy, chainparams, NULL, true, &it->second))
                             {
                                 nLoaded++;
                                 queue.push_back(block.GetHash());

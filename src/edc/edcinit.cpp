@@ -149,12 +149,12 @@ void edcThreadImport(std::vector<boost::filesystem::path> vImportFiles)
 
     const CEDCChainParams& chainparams = edcParams();
     RenameThread("equibit-loadblk");
+	CImportingNow imp;
 
     // -eb_reindex
 
     if (theApp.reindex()) 
 	{
-        CImportingNow imp;
         int nFile = 0;
 
         while (true) 
@@ -188,7 +188,6 @@ void edcThreadImport(std::vector<boost::filesystem::path> vImportFiles)
         FILE *file = fopen(pathBootstrap.string().c_str(), "rb");
         if (file) 
 		{
-            CImportingNow imp;
             boost::filesystem::path pathBootstrapOld = edcGetDataDir() / 
 				"bootstrap.dat.old";
 
@@ -208,7 +207,6 @@ void edcThreadImport(std::vector<boost::filesystem::path> vImportFiles)
         FILE *file = fopen(path.string().c_str(), "rb");
         if (file) 
 		{
-            CImportingNow imp;
             edcLogPrintf("Importing blocks file %s...\n", path.string());
             edcLoadExternalBlockFile(chainparams, file);
         } 
@@ -217,6 +215,14 @@ void edcThreadImport(std::vector<boost::filesystem::path> vImportFiles)
             edcLogPrintf("Warning: Could not open blocks file %s\n", path.string());
         }
     }
+
+	// scan for better chains in the block chain database, that are not yet connected in the active best chain
+	CValidationState state;
+	if (!ActivateBestChain(state, chainparams)) 
+	{
+		edcLogPrintf("Failed to connect best block");
+		StartShutdown();
+	}
 
     if (params.stopafterblockimport) 
 	{
@@ -962,15 +968,6 @@ bool EdcAppInit(
     	// ********************************************* Step 10: import blocks
     	if (params.blocknotify.size() > 0 )
         	edcUiInterface.NotifyBlockTip.connect(BlockNotifyCallback);
-
-	    edcUiInterface.InitMessage(_("Activating best chain..."));
-
-    	// scan for better chains in the block chain database, that are not yet
-		// connected in the active best chain
-    	CValidationState state;
-
-    	if (!ActivateBestChain(state, chainparams))
-        	strErrors << "Failed to connect best block";
 
     	std::vector<boost::filesystem::path> vImportFiles;
     	if (params.loadblock.size() > 0 )
