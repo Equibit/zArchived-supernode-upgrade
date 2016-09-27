@@ -143,7 +143,7 @@ void edcPruneAndFlush();
 
 /** (try to) add transaction to memory pool **/
 bool AcceptToMemoryPool(CEDCTxMemPool& pool, CValidationState &state, const CEDCTransaction &tx, bool fLimitFree,
-                        bool* pfMissingInputs, CFeeRate* txFeeRate, bool fOverrideMempoolLimit=false, const CAmount nAbsurdFee=0);
+                        bool* pfMissingInputs, bool fOverrideMempoolLimit=false, const CAmount nAbsurdFee=0);
 
 /** Get the BIP9 state for a given deployment at the current tip. */
 ThresholdState edcVersionBitsTipState(const Consensus::Params& params, Consensus::DeploymentPos pos);

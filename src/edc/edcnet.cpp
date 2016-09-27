@@ -2390,7 +2390,7 @@ public:
 edcinstance_of_cnetcleanup;
 
 
-void RelayTransaction(const CEDCTransaction& tx, CFeeRate feerate)
+void RelayTransaction(const CEDCTransaction& tx)
 {
 	EDCapp & theApp = EDCapp::singleton();
     CInv inv(MSG_TX, tx.GetHash());

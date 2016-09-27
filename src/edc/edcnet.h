@@ -616,7 +616,7 @@ private:
 };
 
 class CEDCTransaction;
-void RelayTransaction(const CEDCTransaction& tx, CFeeRate feerate);
+void RelayTransaction(const CEDCTransaction& tx);
 
 class CUserMessage;
 void RelayUserMessage( CUserMessage *, bool );

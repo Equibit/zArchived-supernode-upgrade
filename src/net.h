@@ -784,7 +784,7 @@ public:
 
 
 class CTransaction;
-void RelayTransaction(const CTransaction& tx, CFeeRate feerate);
+void RelayTransaction(const CTransaction& tx);
 
 /** Access to the (IP) address database (peers.dat) */
 class CAddrDB

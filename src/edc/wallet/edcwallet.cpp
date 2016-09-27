@@ -1437,10 +1437,7 @@ bool CEDCWalletTx::RelayWalletTransaction()
         if (GetDepthInMainChain() == 0 && !isAbandoned() && InMempool()) 
 		{
             edcLogPrintf("Relaying wtx %s\n", GetHash().ToString());
-            CFeeRate feeRate;
-			EDCapp & theApp = EDCapp::singleton();
-            theApp.mempool().lookupFeeRate(GetHash(), feeRate);
-            RelayTransaction((CEDCTransaction)*this, feeRate);
+            RelayTransaction((CEDCTransaction)*this);
             return true;
         }
     }
@@ -4063,7 +4060,7 @@ bool CEDCMerkleTx::AcceptToMemoryPool(bool fLimitFree, CAmount nAbsurdFee)
 {
     CValidationState state;
 	EDCapp & theApp = EDCapp::singleton();
-    return ::AcceptToMemoryPool(theApp.mempool(), state, *this, fLimitFree, NULL, NULL, false, nAbsurdFee);
+    return ::AcceptToMemoryPool(theApp.mempool(), state, *this, fLimitFree, NULL, false, nAbsurdFee);
 }
 
 std::string CEDCMerkleTx::toJSON( const char * margin ) const

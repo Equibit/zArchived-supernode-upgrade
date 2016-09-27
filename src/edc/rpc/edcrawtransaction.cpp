@@ -888,7 +888,6 @@ UniValue edcsendrawtransaction(const UniValue& params, bool fHelp)
     const CEDCCoins* existingCoins = view.AccessCoins(hashTx);
     bool fHaveMempool = theApp.mempool().exists(hashTx);
     bool fHaveChain = existingCoins && existingCoins->nHeight < 1000000000;
-    CFeeRate txFeeRate = CFeeRate(0);
 
     if (!fHaveMempool && !fHaveChain) 
 	{
@@ -896,7 +895,7 @@ UniValue edcsendrawtransaction(const UniValue& params, bool fHelp)
         CValidationState state;
         bool fMissingInputs;
 
-        if (!AcceptToMemoryPool( theApp.mempool(), state, tx, false, &fMissingInputs, &txFeeRate, false, nMaxRawTxFee)) 
+        if (!AcceptToMemoryPool( theApp.mempool(), state, tx, false, &fMissingInputs, false, nMaxRawTxFee)) 
 		{
             if (state.IsInvalid()) 
 			{
@@ -916,7 +915,7 @@ UniValue edcsendrawtransaction(const UniValue& params, bool fHelp)
 	{
         throw JSONRPCError(RPC_TRANSACTION_ALREADY_IN_CHAIN, "transaction already in block chain");
     }
-    RelayTransaction(tx, txFeeRate);
+    RelayTransaction(tx);
 
     return hashTx.GetHex();
 }
