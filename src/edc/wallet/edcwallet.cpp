@@ -4032,6 +4032,51 @@ bool CEDCWallet::ParameterInteraction()
     return true;
 }
 
+bool CEDCWallet::BackupWallet(const std::string& strDest)
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+    if (!fFileBacked)
+        return false;
+
+    while (true)
+    {
+        {
+            LOCK(bitdb.cs_db);
+            if (!bitdb.mapFileUseCount.count(strWalletFile) || 
+				 bitdb.mapFileUseCount[strWalletFile] == 0)
+            {
+                // Flush log data to the dat file
+                bitdb.CloseDb(strWalletFile);
+                bitdb.CheckpointLSN(strWalletFile);
+                bitdb.mapFileUseCount.erase(strWalletFile);
+
+                // Copy wallet file
+                boost::filesystem::path pathSrc = edcGetDataDir() / strWalletFile;
+                boost::filesystem::path pathDest(strDest);
+
+                if (boost::filesystem::is_directory(pathDest))
+                    pathDest /= strWalletFile;
+
+                try {
+#if BOOST_VERSION >= 104000
+                    boost::filesystem::copy_file(pathSrc, pathDest, boost::filesystem::copy_option::overwrite_if_exists);
+#else
+                    boost::filesystem::copy_file(pathSrc, pathDest);
+#endif
+                    edcLogPrintf("copied %s to %s\n", strWalletFile, pathDest.string());
+                    return true;
+                } catch (const boost::filesystem::filesystem_error& e) {
+                    edcLogPrintf("error copying %s to %s - %s\n", strWalletFile, pathDest.string(), e.what());
+                    return false;
+                }
+            }
+        }
+        MilliSleep(100);
+    }
+    return false;
+}
+
 int CEDCMerkleTx::SetMerkleBranch(const CEDCBlock& block)
 {
     AssertLockHeld(EDC_cs_main);

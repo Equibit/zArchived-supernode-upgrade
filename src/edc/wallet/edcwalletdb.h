@@ -160,6 +160,5 @@ private:
 	);
 };
 
-bool BackupWallet(const CEDCWallet& wallet, const std::string& strDest);
 void edcThreadFlushWalletDB(const std::string& strFile);
 

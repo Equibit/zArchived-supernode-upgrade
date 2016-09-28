@@ -1144,52 +1144,6 @@ void edcThreadFlushWalletDB(const string& strFile)
     }
 }
 
-bool BackupWallet(const CEDCWallet& wallet, const string& strDest)
-{
-	EDCapp & theApp = EDCapp::singleton();
-
-    if (!wallet.fFileBacked)
-        return false;
-    while (true)
-    {
-        {
-            LOCK(theApp.bitdb().cs_db);
-            if (!theApp.bitdb().mapFileUseCount.count(wallet.strWalletFile) || 
-				 theApp.bitdb().mapFileUseCount[wallet.strWalletFile] == 0)
-            {
-                // Flush log data to the dat file
-                theApp.bitdb().CloseDb(wallet.strWalletFile);
-                theApp.bitdb().CheckpointLSN(wallet.strWalletFile);
-                theApp.bitdb().mapFileUseCount.erase(wallet.strWalletFile);
-
-                // Copy wallet file
-                boost::filesystem::path pathSrc = edcGetDataDir() / wallet.strWalletFile;
-                boost::filesystem::path pathDest(strDest);
-                if (boost::filesystem::is_directory(pathDest))
-                    pathDest /= wallet.strWalletFile;
-
-                try 
-				{
-#if BOOST_VERSION >= 104000
-                    boost::filesystem::copy_file(pathSrc, pathDest, boost::filesystem::copy_option::overwrite_if_exists);
-#else
-                    boost::filesystem::copy_file(pathSrc, pathDest);
-#endif
-                    edcLogPrintf("copied %s to %s\n", wallet.strWalletFile, pathDest.string());
-                    return true;
-                } 
-				catch (const boost::filesystem::filesystem_error& e) 
-				{
-                    edcLogPrintf("error copying %s to %s - %s\n", wallet.strWalletFile, pathDest.string(), e.what());
-                    return false;
-                }
-            }
-        }
-        MilliSleep(100);
-    }
-    return false;
-}
-
 //
 // Try to (very carefully!) recover wallet file if there is a problem.
 //

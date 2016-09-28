@@ -2130,7 +2130,7 @@ UniValue edcbackupwallet(const UniValue& params, bool fHelp)
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
     string strDest = params[0].get_str();
-    if (!BackupWallet(*theApp.walletMain(), strDest))
+    if (!theApp.walletMain()->BackupWallet(strDest))
         throw JSONRPCError(RPC_WALLET_ERROR, "Error: Wallet backup failed!");
 
     return NullUniValue;
