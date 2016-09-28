@@ -309,7 +309,7 @@ struct CEDCCoinsCacheEntry
     CEDCCoinsCacheEntry() : coins(), flags(0) {}
 };
 
-typedef boost::unordered_map<uint256, CEDCCoinsCacheEntry, CCoinsKeyHasher> CEDCCoinsMap;
+typedef boost::unordered_map<uint256, CEDCCoinsCacheEntry, SaltedTxidHasher> CEDCCoinsMap;
 
 /** Cursor for iterating over CoinsView state */
 class CEDCCoinsViewCursor
