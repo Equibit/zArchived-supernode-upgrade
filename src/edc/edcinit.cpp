@@ -977,12 +977,21 @@ bool EdcAppInit(
     	}
 
     	threadGroup.create_thread(boost::bind(&edcThreadImport, vImportFiles));
-    	if (theApp.chainActive().Tip() == NULL) 
+
+		// Wait for genesis block to be processed
+		bool fHaveGenesis = false;
+		while (!fHaveGenesis && !fRequestShutdown) 
 		{
-        	edcLogPrintf("Waiting for genesis block to be imported...\n");
-        	while (!fRequestShutdown && theApp.chainActive().Tip() == NULL)
+	   		{
+	        	LOCK(cs_main);
+	        	fHaveGenesis = (chainActive.Tip() != NULL);
+	    	}
+
+        	if (!fHaveGenesis) 
+			{
             	MilliSleep(10);
-    	}
+			}
+        }
 
     	// ************************************************* Step 11: start node
     	if (!edcCheckDiskSpace())
