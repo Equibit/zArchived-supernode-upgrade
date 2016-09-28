@@ -3333,6 +3333,44 @@ set< set<CTxDestination> > CEDCWallet::GetAddressGroupings()
     return ret;
 }
 
+CAmount CEDCWallet::GetAccountBalance(
+	const std::string & strAccount, 
+					int nMinDepth, 
+   const isminefilter & filter)
+{
+    CEDCWalletDB walletdb(strWalletFile);
+    return GetAccountBalance(walletdb, strAccount, nMinDepth, filter);
+}
+
+CAmount CEDCWallet::GetAccountBalance(
+		  CEDCWalletDB & walletdb, 
+	 const std::string & strAccount, 
+					 int nMinDepth, 
+	const isminefilter & filter)
+{
+    CAmount nBalance = 0;
+
+    // Tally wallet transactions
+    for (map<uint256, CEDCWalletTx>::iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
+    {
+        const CEDCWalletTx & wtx = (*it).second;
+        if (!CheckFinalTx(wtx) || wtx.GetBlocksToMaturity() > 0 || wtx.GetDepthInMainChain() < 0)
+            continue;
+
+        CAmount nReceived, nSent, nFee;
+        wtx.GetAccountAmounts(strAccount, nReceived, nSent, nFee, filter);
+
+        if (nReceived != 0 && wtx.GetDepthInMainChain() >= nMinDepth)
+            nBalance += nReceived;
+        nBalance -= nSent + nFee;
+    }
+
+    // Tally internal accounting entries
+    nBalance += walletdb.GetAccountCreditDebit(strAccount);
+
+    return nBalance;
+}
+
 std::set<CTxDestination> CEDCWallet::GetAccountAddresses(const std::string& strAccount) const
 {
     LOCK(cs_wallet);

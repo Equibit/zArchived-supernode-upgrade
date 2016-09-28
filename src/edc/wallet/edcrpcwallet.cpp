@@ -947,51 +947,6 @@ UniValue edcgetreceivedbyaccount(const UniValue& params, bool fHelp)
     return (double)nAmount / (double)COIN;
 }
 
-
-CAmount edcGetAccountBalance(
-          CEDCWalletDB & walletdb, 
-	      const string & strAccount, 
-	                 int nMinDepth, 
-	const isminefilter & filter)
-{
-	EDCapp & theApp = EDCapp::singleton();
-
-    CAmount nBalance = 0;
-
-    // Tally wallet transactions
-    for (map<uint256, CEDCWalletTx>::iterator it = theApp.walletMain()->mapWallet.begin(); 
-	it != theApp.walletMain()->mapWallet.end(); ++it)
-    {
-        const CEDCWalletTx& wtx = (*it).second;
-        if (!CheckFinalTx(wtx) || wtx.GetBlocksToMaturity() > 0 || wtx.GetDepthInMainChain() < 0)
-            continue;
-
-        CAmount nReceived, nSent, nFee;
-        wtx.GetAccountAmounts(strAccount, nReceived, nSent, nFee, filter);
-
-        if (nReceived != 0 && wtx.GetDepthInMainChain() >= nMinDepth)
-            nBalance += nReceived;
-        nBalance -= nSent + nFee;
-    }
-
-    // Tally internal accounting entries
-    nBalance += walletdb.GetAccountCreditDebit(strAccount);
-
-    return nBalance;
-}
-
-CAmount edcGetAccountBalance(
-	    const string & strAccount, 
-	               int nMinDepth, 
-  const isminefilter & filter)
-{
-	EDCapp & theApp = EDCapp::singleton();
-
-    CEDCWalletDB walletdb(theApp.walletMain()->strWalletFile);
-    return edcGetAccountBalance(walletdb, strAccount, nMinDepth, filter);
-}
-
-
 UniValue edcgetbalance(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
@@ -1067,7 +1022,7 @@ UniValue edcgetbalance(const UniValue& params, bool fHelp)
 
     string strAccount = edcAccountFromValue(params[0]);
 
-    CAmount nBalance = edcGetAccountBalance(strAccount, nMinDepth, filter);
+    CAmount nBalance = theApp.walletMain()->GetAccountBalance(strAccount, nMinDepth, filter);
 
     return ValueFromAmount(nBalance);
 }
@@ -1223,7 +1178,7 @@ UniValue edcsendfrom(const UniValue& params, bool fHelp)
     edcEnsureWalletIsUnlocked();
 
     // Check funds
-    CAmount nBalance = edcGetAccountBalance(strAccount, nMinDepth, ISMINE_SPENDABLE);
+    CAmount nBalance = theApp.walletMain()->GetAccountBalance(strAccount, nMinDepth, ISMINE_SPENDABLE);
     if (nAmount > nBalance)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Account has insufficient funds");
 
@@ -1329,7 +1284,7 @@ UniValue edcsendmany(const UniValue& params, bool fHelp)
     edcEnsureWalletIsUnlocked();
 
     // Check funds
-    CAmount nBalance = edcGetAccountBalance(strAccount, nMinDepth, ISMINE_SPENDABLE);
+    CAmount nBalance = theApp.walletMain()->GetAccountBalance(strAccount, nMinDepth, ISMINE_SPENDABLE);
     if (totalAmount > nBalance)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Account has insufficient funds");
 
