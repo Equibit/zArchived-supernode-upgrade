@@ -171,7 +171,8 @@ bool Socks5(
     if (!InterruptibleRecv(pchRet1, 2, SOCKS5_RECV_TIMEOUT, hSocket)) 
 	{
         CloseSocket(hSocket);
-        return error("Error reading proxy response");
+        edcLogPrintf("Socks5() connect to %s:%d failed: InterruptibleRecv() timeout or other failure\n", strDest, port);
+        return false;
     }
 
     if (pchRet1[0] != 0x05) 
