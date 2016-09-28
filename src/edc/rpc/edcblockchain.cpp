@@ -316,6 +316,82 @@ UniValue edcgetrawmempool(const UniValue& params, bool fHelp)
     return edcmempoolToJSON(fVerbose);
 }
 
+UniValue edcgetmempoolancestors(const UniValue& params, bool fHelp)
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+    if (fHelp || params.size() < 1 || params.size() > 2) 
+	{
+        throw runtime_error(
+            "eb_getmempoolancestors txid (verbose)\n"
+            "\nIf txid is in the mempool, returns all in-mempool ancestors.\n"
+            "\nArguments:\n"
+            "1. \"txid\"                   (string, required) The transaction id (must be in mempool)\n"
+            "2. verbose                  (boolean, optional, default=false) true for a json object, false for array of transaction ids\n"
+            "\nResult (for verbose=false):\n"
+            "[                       (json array of string)\n"
+            "  \"transactionid\"           (string) The transaction id of an in-mempool ancestor transaction\n"
+            "  ,...\n"
+            "]\n"
+            "\nResult (for verbose=true):\n"
+            "{                           (json object)\n"
+            "  \"transactionid\" : {       (json object)\n"
+            + EntryDescriptionString()
+            + "  }, ...\n"
+            "}\n"
+            "\nExamples\n"
+            + HelpExampleCli("eb_getmempoolancestors", "\"mytxid\"")
+            + HelpExampleRpc("eb_getmempoolancestors", "\"mytxid\"")
+            );
+    }
+
+    bool fVerbose = false;
+    if (params.size() > 1)
+        fVerbose = params[1].get_bool();
+
+    uint256 hash = ParseHashV(params[0], "parameter 1");
+
+    LOCK(theApp.mempool().cs);
+
+    CEDCTxMemPool::txiter it = theApp.mempool().mapTx.find(hash);
+    if (it == theApp.mempool().mapTx.end()) 
+	{
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Transaction not in mempool");
+    }
+
+    CEDCTxMemPool::setEntries setAncestors;
+    uint64_t noLimit = std::numeric_limits<uint64_t>::max();
+
+    std::string dummy;
+    theApp.mempool().CalculateMemPoolAncestors(*it, setAncestors, noLimit, noLimit, noLimit, 
+		noLimit, dummy, false);
+
+    if (!fVerbose) 
+	{
+        UniValue o(UniValue::VARR);
+        BOOST_FOREACH(CEDCTxMemPool::txiter ancestorIt, setAncestors) 
+		{
+            o.push_back(ancestorIt->GetTx().GetHash().ToString());
+        }
+
+        return o;
+    } 
+	else 
+	{
+        UniValue o(UniValue::VOBJ);
+        BOOST_FOREACH(CEDCTxMemPool::txiter ancestorIt, setAncestors) 
+		{
+            const CEDCTxMemPoolEntry &e = *ancestorIt;
+            const uint256& hash = e.GetTx().GetHash();
+            UniValue info(UniValue::VOBJ);
+
+            entryToJSON(info, e);
+            o.push_back(Pair(hash.ToString(), info));
+        }
+        return o;
+    }
+}
+
 UniValue edcgetblockhash(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
@@ -1090,6 +1166,7 @@ static const CRPCCommand edcCommands[] =
     { "blockchain",         "eb_getblockheader",         &edcgetblockheader,         true  },
     { "blockchain",         "eb_getchaintips",           &edcgetchaintips,           true  },
     { "blockchain",         "eb_getdifficulty",          &edcgetdifficulty,          true  },
+    { "blockchain",         "eb_getmempoolancestors",    &edcgetmempoolancestors,    true  },
     { "blockchain",         "eb_getmempoolinfo",         &edcgetmempoolinfo,         true  },
     { "blockchain",         "eb_getrawmempool",          &edcgetrawmempool,          true  },
     { "blockchain",         "eb_gettxout",               &edcgettxout,               true  },
