@@ -5955,6 +5955,13 @@ bool ProcessMessage(
     }
     else if (strCommand == NetMsgType::MEMPOOL)
     {
+        if (!(theApp.localServices() & NODE_BLOOM) && !pfrom->fWhitelisted)
+        {
+            edcLogPrint("net", "mempool request with bloom filters disabled, disconnect peer=%d\n", pfrom->GetId());
+            pfrom->fDisconnect = true;
+            return true;
+        }
+
         if (CEDCNode::OutboundTargetReached(false) && !pfrom->fWhitelisted)
         {
             edcLogPrint("net", "mempool request with bandwidth limit reached, disconnect peer=%d\n", pfrom->GetId());
