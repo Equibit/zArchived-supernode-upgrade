@@ -56,11 +56,44 @@ public:
     }
 };
 
+EDCBlockAssembler::EDCBlockAssembler(const CEDCChainParams& _chainparams)
+    : chainparams(_chainparams)
+{
+	EDCparams & params = EDCparams::singleton();
+
+	// Largest block you're willing to create:
+    nBlockMaxSize = params.blockmaxsize;
+
+    // Limit to between 1K and MAX_BLOCK_SIZE-1K for sanity:
+    nBlockMaxSize = std::max((unsigned int)1000, std::min((unsigned int)(EDC_MAX_BLOCK_SIZE-1000), nBlockMaxSize));
+
+    // Minimum block size you want to create; block will be filled with free transactions
+    // until there are no more or the block reaches this size:
+    nBlockMinSize = params.blockminsize;
+    nBlockMinSize = std::min(nBlockMaxSize, nBlockMinSize);
+}
+
+void EDCBlockAssembler::resetBlock()
+{
+    inBlock.clear();
+
+    // Reserve space for coinbase tx
+    nBlockSize = 1000;
+    nBlockSigOps = 100;
+
+    // These counters do not include coinbase tx
+    nBlockTx = 0;
+    nFees = 0;
+
+    lastFewTxs = 0;
+    blockFinished = false;
+}
+
 int64_t edcGetAdjustedTime();
 
 CAmount edcGetBlockSubsidy(
-	                      int nHeight, 
-	const Consensus::Params & consensusParams )
+                          int nHeight,
+    const Consensus::Params & consensusParams )
 {
     int halvings = nHeight / consensusParams.nSubsidyHalvingInterval;
 
@@ -70,272 +103,340 @@ CAmount edcGetBlockSubsidy(
 
     CAmount nSubsidy = 50 * COIN;
 
-    // Subsidy is cut in half every 210,000 blocks which will occur 
-	// approximately every 4 years.
+    // Subsidy is cut in half every 210,000 blocks which will occur
+    // approximately every 4 years.
     nSubsidy >>= halvings;
 
 // TODO: Chris wants EDC to get 1,000,000 EQB for its mining prior to opening
 //       the network to customers. This function will need to be modified to
-//       handle this requirement. 
-//		 For example, if nHeight == 0, nSubsidy = 1000000.
+//       handle this requirement.
+//       For example, if nHeight == 0, nSubsidy = 1000000.
     return nSubsidy;
 }
 
-CEDCBlockTemplate* edcCreateNewBlock(
-	const CEDCChainParams & chainparams, 
-			const CScript & scriptPubKeyIn)
+CEDCBlockTemplate* EDCBlockAssembler::CreateNewBlock(const CScript& scriptPubKeyIn)
 {
-    // Create new block
-    std::unique_ptr<CEDCBlockTemplate> pblocktemplate(new CEDCBlockTemplate());
+	EDCapp & theApp = EDCapp::singleton();
+	EDCparams & params = EDCparams::singleton();
+
+    resetBlock();
+
+    pblocktemplate.reset(new CEDCBlockTemplate());
+
     if(!pblocktemplate.get())
         return NULL;
-    CEDCBlock *pblock = &pblocktemplate->block; // pointer for convenience
 
-    // Create coinbase tx
-    CEDCMutableTransaction txNew;
-    txNew.vin.resize(1);
-    txNew.vin[0].prevout.SetNull();
-    txNew.vout.resize(1);
-    txNew.vout[0].scriptPubKey = scriptPubKeyIn;
+    pblock = &pblocktemplate->block; // pointer for convenience
 
     // Add dummy coinbase tx as first transaction
     pblock->vtx.push_back(CEDCTransaction());
     pblocktemplate->vTxFees.push_back(-1); // updated at end
     pblocktemplate->vTxSigOps.push_back(-1); // updated at end
 
-    // Largest block you're willing to create:
-    EDCparams & params = EDCparams::singleton();
-    unsigned int nBlockMaxSize = params.blockmaxsize;
-    // Limit to between 1K and EDC_MAX_BLOCK_SIZE-1K for sanity:
-    nBlockMaxSize = std::max((unsigned int)1000, std::min((unsigned int)(EDC_MAX_BLOCK_SIZE-1000), nBlockMaxSize));
+    LOCK2(cs_main, theApp.mempool().cs);
+    CBlockIndex* pindexPrev = chainActive.Tip();
+    nHeight = pindexPrev->nHeight + 1;
+
+    pblock->nVersion = edcComputeBlockVersion(pindexPrev, chainparams.GetConsensus());
+    // -regtest only: allow overriding block.nVersion with
+    // -blockversion=N to test forking scenarios
+    if (chainparams.MineBlocksOnDemand())
+        pblock->nVersion = params.blockversion;
+
+    pblock->nTime = edcGetAdjustedTime();
+    const int64_t nMedianTimePast = pindexPrev->GetMedianTimePast();
+
+    nLockTimeCutoff = (STANDARD_LOCKTIME_VERIFY_FLAGS & EDC_LOCKTIME_MEDIAN_TIME_PAST)
+                       ? nMedianTimePast
+                       : pblock->GetBlockTime();
+
+    addPriorityTxs();
+    addScoreTxs();
+
+	theApp.lastBlockTx( nBlockTx );
+	theApp.lastBlockSize( nBlockSize );
+
+    edcLogPrintf("CreateNewBlock(): total size %u txs: %u fees: %ld sigops %d\n", 
+		nBlockSize, nBlockTx, nFees, nBlockSigOps);
+
+    // Create coinbase transaction.
+    CEDCMutableTransaction coinbaseTx;
+
+    coinbaseTx.vin.resize(1);
+    coinbaseTx.vin[0].prevout.SetNull();
+    coinbaseTx.vout.resize(1);
+    coinbaseTx.vout[0].scriptPubKey = scriptPubKeyIn;
+    coinbaseTx.vout[0].nValue = nFees + edcGetBlockSubsidy(nHeight, chainparams.GetConsensus());
+    coinbaseTx.vin[0].scriptSig = CScript() << nHeight << OP_0;
+
+    pblock->vtx[0] = coinbaseTx;
+    pblocktemplate->vTxFees[0] = -nFees;
+
+    // Fill in header
+    pblock->hashPrevBlock  = pindexPrev->GetBlockHash();
+    UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
+    pblock->nBits          = GetNextWorkRequired(pindexPrev, pblock, chainparams.GetConsensus());
+    pblock->nNonce         = 0;
+    pblocktemplate->vTxSigOps[0] = GetLegacySigOpCount(pblock->vtx[0]);
+
+    CValidationState state;
+    if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
+        throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
+    }
+
+    return pblocktemplate.release();
+}
+
+bool EDCBlockAssembler::isStillDependent(CEDCTxMemPool::txiter iter)
+{
+	EDCapp & theApp = EDCapp::singleton();
+    BOOST_FOREACH(CEDCTxMemPool::txiter parent, theApp.mempool().GetMemPoolParents(iter))
+    {
+        if (!inBlock.count(parent)) 
+		{
+            return true;
+        }
+    }
+    return false;
+}
+
+
+bool EDCBlockAssembler::TestForBlock(CEDCTxMemPool::txiter iter)
+{
+    if (nBlockSize + iter->GetTxSize() >= nBlockMaxSize) 
+	{
+        // If the block is so close to full that no more txs will fit
+        // or if we've tried more than 50 times to fill remaining space
+        // then flag that the block is finished
+        if (nBlockSize >  nBlockMaxSize - 100 || lastFewTxs > 50) 
+		{
+             blockFinished = true;
+             return false;
+        }
+
+        // Once we're within 1000 bytes of a full block, only look at 50 more txs
+        // to try to fill the remaining space.
+        if (nBlockSize > nBlockMaxSize - 1000) 
+		{
+            lastFewTxs++;
+        }
+        return false;
+    }
+
+    if (nBlockSigOps + iter->GetSigOpCount() >= EDC_MAX_BLOCK_SIGOPS) 
+	{
+        // If the block has room for no more sig ops then
+        // flag that the block is finished
+        if (nBlockSigOps > EDC_MAX_BLOCK_SIGOPS - 2) 
+		{
+            blockFinished = true;
+            return false;
+        }
+        // Otherwise attempt to find another tx with fewer sigops
+        // to put in the block.
+        return false;
+    }
+
+    // Must check that lock times are still valid
+    // This can be removed once MTP is always enforced
+    // as long as reorgs keep the mempool consistent.
+    if (!IsFinalTx(iter->GetTx(), nHeight, nLockTimeCutoff))
+        return false;
+
+    return true;
+}
+
+void EDCBlockAssembler::AddToBlock(CEDCTxMemPool::txiter iter)
+{
+    pblock->vtx.push_back(iter->GetTx());
+    pblocktemplate->vTxFees.push_back(iter->GetFee());
+    pblocktemplate->vTxSigOps.push_back(iter->GetSigOpCount());
+    nBlockSize += iter->GetTxSize();
+    ++nBlockTx;
+    nBlockSigOps += iter->GetSigOpCount();
+    nFees += iter->GetFee();
+    inBlock.insert(iter);
+
+	EDCparams & params = EDCparams::singleton();
+    bool fPrintPriority = params.printpriority;
+
+	EDCapp & theApp = EDCapp::singleton();
+
+    if (fPrintPriority) 
+	{
+        double dPriority = iter->GetPriority(nHeight);
+        CAmount dummy;
+        theApp.mempool().ApplyDeltas(iter->GetTx().GetHash(), dPriority, dummy);
+
+        edcLogPrintf("priority %.1f fee %s txid %s\n",
+                  dPriority,
+                  CFeeRate(iter->GetModifiedFee(), iter->GetTxSize()).ToString(),
+                  iter->GetTx().GetHash().ToString());
+    }
+}
+
+void EDCBlockAssembler::addScoreTxs()
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+    std::priority_queue<CEDCTxMemPool::txiter, 
+						std::vector<CEDCTxMemPool::txiter>, ScoreCompare> clearedTxs;
+
+    CEDCTxMemPool::setEntries waitSet;
+    CEDCTxMemPool::indexed_transaction_set::index<mining_score>::type::iterator mi = theApp.mempool().mapTx.get<mining_score>().begin();
+    CEDCTxMemPool::txiter iter;
+
+    while (!blockFinished && 
+	(mi != theApp.mempool().mapTx.get<mining_score>().end() || !clearedTxs.empty()))
+    {
+        // If no txs that were previously postponed are available to try
+        // again, then try the next highest score tx
+        if (clearedTxs.empty()) {
+            iter = theApp.mempool().mapTx.project<0>(mi);
+            mi++;
+        }
+
+        // If a previously postponed tx is available to try again, then it
+        // has higher score than all untried so far txs
+        else 
+		{
+            iter = clearedTxs.top();
+            clearedTxs.pop();
+        }
+
+        // If tx is dependent on other mempool txs which haven't yet been included
+        // then put it in the waitSet
+        if (isStillDependent(iter)) 
+		{
+            waitSet.insert(iter);
+            continue;
+        }
+
+        // If the fee rate is below the min fee rate for mining, then we're done
+        // adding txs based on score (fee rate)
+        if (iter->GetModifiedFee() < ::minRelayTxFee.GetFee(iter->GetTxSize()) && 
+		nBlockSize >= nBlockMinSize) 
+		{
+            return;
+        }
+
+        // If this tx fits in the block add it, otherwise keep looping
+        if (TestForBlock(iter)) 
+		{
+            AddToBlock(iter);
+
+            // This tx was successfully added, so
+            // add transactions that depend on this one to the priority queue to try again
+            BOOST_FOREACH(CEDCTxMemPool::txiter child, 
+				theApp.mempool().GetMemPoolChildren(iter))
+            {
+                if (waitSet.count(child)) 
+				{
+                    clearedTxs.push(child);
+                    waitSet.erase(child);
+                }
+            }
+        }
+    }
+}
+
+void EDCBlockAssembler::addPriorityTxs()
+{
+	EDCparams & params = EDCparams::singleton();
 
     // How much of the block should be dedicated to high-priority transactions,
     // included regardless of the fees they pay
     unsigned int nBlockPrioritySize = params.blockprioritysize;
     nBlockPrioritySize = std::min(nBlockMaxSize, nBlockPrioritySize);
 
-    // Minimum block size you want to create; block will be filled with free transactions
-    // until there are no more or the block reaches this size:
-    unsigned int nBlockMinSize = params.blockminsize;
-    nBlockMinSize = std::min(nBlockMaxSize, nBlockMinSize);
+    if (nBlockPrioritySize == 0) 
+	{
+        return;
+    }
 
-    // Collect memory pool transactions into the block
-    CEDCTxMemPool::setEntries inBlock;
-    CEDCTxMemPool::setEntries waitSet;
+	EDCapp & theApp = EDCapp::singleton();
 
     // This vector will be sorted into a priority queue:
     vector<EDCTxCoinAgePriority> vecPriority;
     EDCTxCoinAgePriorityCompare pricomparer;
+
     std::map<CEDCTxMemPool::txiter, double, CEDCTxMemPool::CompareIteratorByHash> waitPriMap;
-    typedef std::map<CEDCTxMemPool::txiter, double, CEDCTxMemPool::CompareIteratorByHash>::iterator waitPriIter;
+    typedef std::map<CEDCTxMemPool::txiter, double, 
+					CEDCTxMemPool::CompareIteratorByHash>::iterator waitPriIter;
+
     double actualPriority = -1;
 
-    std::priority_queue<CEDCTxMemPool::txiter, std::vector<CEDCTxMemPool::txiter>, ScoreCompare> clearedTxs;
-    bool fPrintPriority = params.printpriority;
-    uint64_t nBlockSize = 1000;
-    uint64_t nBlockTx = 0;
-    unsigned int nBlockSigOps = 100;
-    int lastFewTxs = 0;
-    CAmount nFees = 0;
+    vecPriority.reserve(theApp.mempool().mapTx.size());
 
+    for (CEDCTxMemPool::indexed_transaction_set::iterator mi = theApp.mempool().mapTx.begin();
+         mi != theApp.mempool().mapTx.end(); ++mi)
     {
-		EDCapp & theApp = EDCapp::singleton();
+        double dPriority = mi->GetPriority(nHeight);
+        CAmount dummy;
+        theApp.mempool().ApplyDeltas(mi->GetTx().GetHash(), dPriority, dummy);
+        vecPriority.push_back(EDCTxCoinAgePriority(dPriority, mi));
+    }
+    std::make_heap(vecPriority.begin(), vecPriority.end(), pricomparer);
 
-        LOCK2(EDC_cs_main, theApp.mempool().cs);
+    CEDCTxMemPool::txiter iter;
+    while (!vecPriority.empty() && !blockFinished) 
+	{ 
+		// add a tx from priority queue to fill the blockprioritysize
+        iter = vecPriority.front().second;
+        actualPriority = vecPriority.front().first;
 
-        CBlockIndex* pindexPrev = theApp.chainActive().Tip();
-        const int nHeight = pindexPrev->nHeight + 1;
-        pblock->nTime = edcGetAdjustedTime();
-        const int64_t nMedianTimePast = pindexPrev->GetMedianTimePast();
+        std::pop_heap(vecPriority.begin(), vecPriority.end(), pricomparer);
+        vecPriority.pop_back();
 
-        pblock->nVersion = edcComputeBlockVersion(pindexPrev, chainparams.GetConsensus());
-        // -eb_regtest only: allow overriding block.nVersion with
-        // -eb_blockversion=N to test forking scenarios
-        if (chainparams.MineBlocksOnDemand())
-            pblock->nVersion = params.blockversion;
-
-        int64_t nLockTimeCutoff = (STANDARD_LOCKTIME_VERIFY_FLAGS & EDC_LOCKTIME_MEDIAN_TIME_PAST)
-                                ? nMedianTimePast
-                                : pblock->GetBlockTime();
-
-        bool fPriorityBlock = nBlockPrioritySize > 0;
-        if (fPriorityBlock) 
+        // If tx already in block, skip
+        if (inBlock.count(iter)) 
 		{
-            vecPriority.reserve( theApp.mempool().mapTx.size());
-            for (CEDCTxMemPool::indexed_transaction_set::iterator mi = theApp.mempool().mapTx.begin();
-                 mi != theApp.mempool().mapTx.end(); ++mi)
-            {
-                double dPriority = mi->GetPriority(nHeight);
-                CAmount dummy;
-                theApp.mempool().ApplyDeltas(mi->GetTx().GetHash(), dPriority, dummy);
-                vecPriority.push_back(EDCTxCoinAgePriority(dPriority, mi));
-            }
-            std::make_heap(vecPriority.begin(), vecPriority.end(), pricomparer);
+            assert(false); // shouldn't happen for priority txs
+            continue;
         }
 
-        CEDCTxMemPool::indexed_transaction_set::index<mining_score>::type::iterator mi = theApp.mempool().mapTx.get<mining_score>().begin();
-        CEDCTxMemPool::txiter iter;
-
-        while (mi != theApp.mempool().mapTx.get<mining_score>().end() || !clearedTxs.empty())
-        {
-            bool priorityTx = false;
-            if (fPriorityBlock && !vecPriority.empty()) 
-			{ // add a tx from priority queue to fill the blockprioritysize
-                priorityTx = true;
-                iter = vecPriority.front().second;
-                actualPriority = vecPriority.front().first;
-                std::pop_heap(vecPriority.begin(), vecPriority.end(), pricomparer);
-                vecPriority.pop_back();
-            }
-            else if (clearedTxs.empty()) 
-			{ // add tx with next highest score
-                iter = theApp.mempool().mapTx.project<0>(mi);
-                mi++;
-            }
-            else 
-			{  // try to add a previously postponed child tx
-                iter = clearedTxs.top();
-                clearedTxs.pop();
-            }
-
-            if (inBlock.count(iter))
-                continue; // could have been added to the priorityBlock
-
-            const CEDCTransaction& tx = iter->GetTx();
-
-            bool fOrphan = false;
-            BOOST_FOREACH(CEDCTxMemPool::txiter parent, theApp.mempool().GetMemPoolParents(iter))
-            {
-                if (!inBlock.count(parent)) 
-				{
-                    fOrphan = true;
-                    break;
-                }
-            }
-            if (fOrphan) 
-			{
-                if (priorityTx)
-                    waitPriMap.insert(std::make_pair(iter,actualPriority));
-                else
-                    waitSet.insert(iter);
-                continue;
-            }
-
-            unsigned int nTxSize = iter->GetTxSize();
-            if (fPriorityBlock &&
-                (nBlockSize + nTxSize >= nBlockPrioritySize || !AllowFree(actualPriority))) 
-			{
-                fPriorityBlock = false;
-                waitPriMap.clear();
-            }
-            if (!priorityTx &&
-                (iter->GetModifiedFee() < theApp.minRelayTxFee().GetFee(nTxSize) && nBlockSize >= nBlockMinSize)) 
-			{
-                break;
-            }
-            if (nBlockSize + nTxSize >= nBlockMaxSize) 
-			{
-                if (nBlockSize >  nBlockMaxSize - 100 || lastFewTxs > 50) 
-				{
-                    break;
-                }
-                // Once we're within 1000 bytes of a full block, only look at 50 more txs
-                // to try to fill the remaining space.
-                if (nBlockSize > nBlockMaxSize - 1000) 
-				{
-                    lastFewTxs++;
-                }
-                continue;
-            }
-
-            if (!IsFinalTx(tx, nHeight, nLockTimeCutoff))
-                continue;
-
-            unsigned int nTxSigOps = iter->GetSigOpCount();
-            if (nBlockSigOps + nTxSigOps >= EDC_MAX_BLOCK_SIGOPS) 
-			{
-                if (nBlockSigOps > EDC_MAX_BLOCK_SIGOPS - 2) 
-				{
-                    break;
-                }
-                continue;
-            }
-
-            CAmount nTxFees = iter->GetFee();
-            // Added
-            pblock->vtx.push_back(tx);
-            pblocktemplate->vTxFees.push_back(nTxFees);
-            pblocktemplate->vTxSigOps.push_back(nTxSigOps);
-            nBlockSize += nTxSize;
-            ++nBlockTx;
-            nBlockSigOps += nTxSigOps;
-            nFees += nTxFees;
-
-            if (fPrintPriority)
-            {
-                double dPriority = iter->GetPriority(nHeight);
-                CAmount dummy;
-                theApp.mempool().ApplyDeltas(tx.GetHash(), dPriority, dummy);
-                edcLogPrintf("priority %.1f fee %s txid %s\n",
-                          dPriority , CFeeRate(iter->GetModifiedFee(), nTxSize).ToString(), tx.GetHash().ToString());
-            }
-
-            inBlock.insert(iter);
-
-            // Add transactions that depend on this one to the priority queue
-            BOOST_FOREACH(CEDCTxMemPool::txiter child, theApp.mempool().GetMemPoolChildren(iter))
-            {
-                if (fPriorityBlock) 
-				{
-                    waitPriIter wpiter = waitPriMap.find(child);
-                    if (wpiter != waitPriMap.end()) 
-					{
-                        vecPriority.push_back(EDCTxCoinAgePriority(wpiter->second,child));
-                        std::push_heap(vecPriority.begin(), vecPriority.end(), pricomparer);
-                        waitPriMap.erase(wpiter);
-                    }
-                }
-                else 
-				{
-                    if (waitSet.count(child)) 
-					{
-                        clearedTxs.push(child);
-                        waitSet.erase(child);
-                    }
-                }
-            }
-        }
-        theApp.lastBlockTx( nBlockTx );
-        theApp.lastBlockSize( nBlockSize );
-        edcLogPrintf("CreateNewBlock(): total size %u txs: %u fees: %ld sigops %d\n", nBlockSize, nBlockTx, nFees, nBlockSigOps);
-
-        // Compute final coinbase transaction.
-        txNew.vout[0].nValue = nFees + edcGetBlockSubsidy(nHeight, chainparams.GetConsensus());
-        txNew.vin[0].scriptSig = CScript() << nHeight << OP_0;
-        pblock->vtx[0] = txNew;
-        pblocktemplate->vTxFees[0] = -nFees;
-
-        // Fill in header
-        pblock->hashPrevBlock  = pindexPrev->GetBlockHash();
-        UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
-        pblock->nBits          = GetNextWorkRequired(pindexPrev, pblock, chainparams.GetConsensus());
-        pblock->nNonce         = 0;
-        pblocktemplate->vTxSigOps[0] = GetLegacySigOpCount(pblock->vtx[0]);
-
-        CValidationState state;
-        if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) 
+        // If tx is dependent on other mempool txs which haven't yet been included
+        // then put it in the waitSet
+        if (isStillDependent(iter)) 
 		{
-            throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
+            waitPriMap.insert(std::make_pair(iter, actualPriority));
+            continue;
+        }
+
+        // If this tx fits in the block add it, otherwise keep looping
+        if (TestForBlock(iter)) 
+		{
+            AddToBlock(iter);
+
+            // If now that this txs is added we've surpassed our desired priority size
+            // or have dropped below the AllowFreeThreshold, then we're done adding priority txs
+            if (nBlockSize + iter->GetTxSize() >= nBlockPrioritySize || 
+			!AllowFree(actualPriority)) 
+			{
+                return;
+            }
+
+            // This tx was successfully added, so
+            // add transactions that depend on this one to the priority queue to try again
+            BOOST_FOREACH(CEDCTxMemPool::txiter child,theApp.mempool().GetMemPoolChildren(iter))
+            {
+                waitPriIter wpiter = waitPriMap.find(child);
+
+                if (wpiter != waitPriMap.end()) 
+				{
+                    vecPriority.push_back(EDCTxCoinAgePriority(wpiter->second,child));
+                    std::push_heap(vecPriority.begin(), vecPriority.end(), pricomparer);
+                    waitPriMap.erase(wpiter);
+                }
+            }
         }
     }
-
-    return pblocktemplate.release();
 }
 
 void IncrementExtraNonce(
-			CEDCBlock * pblock, 
-	const CBlockIndex * pindexPrev, 
-		 unsigned int & nExtraNonce)
+	CEDCBlock* pblock, 
+	const CBlockIndex* pindexPrev, 
+	unsigned int& nExtraNonce )
 {
     // Update nExtraNonce
     static uint256 hashPrevBlock;
@@ -347,8 +448,7 @@ void IncrementExtraNonce(
     ++nExtraNonce;
     unsigned int nHeight = pindexPrev->nHeight+1; // Height first in coinbase required for block.version=2
     CEDCMutableTransaction txCoinbase(pblock->vtx[0]);
-	EDCapp & theApp = EDCapp::singleton();
-    txCoinbase.vin[0].scriptSig = (CScript() << nHeight << CScriptNum(nExtraNonce)) + theApp.coinbaseFlags();
+    txCoinbase.vin[0].scriptSig = (CScript() << nHeight << CScriptNum(nExtraNonce)) + COINBASE_FLAGS;
     assert(txCoinbase.vin[0].scriptSig.size() <= 100);
 
     pblock->vtx[0] = txCoinbase;

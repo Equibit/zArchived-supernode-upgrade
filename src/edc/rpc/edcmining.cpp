@@ -123,7 +123,8 @@ UniValue edcgenerateBlocks(
     UniValue blockHashes(UniValue::VARR);
     while (nHeight < nHeightEnd)
     {
-        std::unique_ptr<CEDCBlockTemplate> pblocktemplate(edcCreateNewBlock(edcParams(), coinbaseScript->reserveScript));
+		std::unique_ptr<CEDCBlockTemplate> pblocktemplate(EDCBlockAssembler(edcParams()).CreateNewBlock(coinbaseScript->reserveScript));
+
         if (!pblocktemplate.get())
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Couldn't create new block");
 
@@ -521,7 +522,7 @@ UniValue edcgetblocktemplate(const UniValue& params, bool fHelp)
             pblocktemplate = NULL;
         }
         CScript scriptDummy = CScript() << OP_TRUE;
-        pblocktemplate = edcCreateNewBlock(edcParams(), scriptDummy);
+        pblocktemplate = EDCBlockAssembler(edcParams()).CreateNewBlock(scriptDummy);
         if (!pblocktemplate)
             throw JSONRPCError(RPC_OUT_OF_MEMORY, "Out of memory");
 
