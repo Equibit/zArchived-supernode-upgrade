@@ -38,6 +38,10 @@
 #define MSG_NOSIGNAL 0
 #endif
 
+
+std::string Socks5ErrorString(int err);
+
+
 namespace
 {
 
@@ -136,7 +140,7 @@ bool Socks5(
 	const ProxyCredentials * auth, 
 					SOCKET & hSocket)
 {
-    edcLogPrintf("SOCKS5 connecting %s\n", strDest);
+    edcLogPrint("net", "SOCKS5 connecting %s\n", strDest);
 
     if (strDest.size() > 255) 
 	{
@@ -261,20 +265,10 @@ bool Socks5(
     }
     if (pchRet2[1] != 0x00) 
 	{
+		// Failures to connect to a peer that are not proxy errors
         CloseSocket(hSocket);
-
-        switch (pchRet2[1])
-        {
-            case 0x01: return error("Proxy error: general failure");
-            case 0x02: return error("Proxy error: connection not allowed");
-            case 0x03: return error("Proxy error: network unreachable");
-            case 0x04: return error("Proxy error: host unreachable");
-            case 0x05: return error("Proxy error: connection refused");
-            case 0x06: return error("Proxy error: TTL expired");
-            case 0x07: return error("Proxy error: protocol error");
-            case 0x08: return error("Proxy error: address type not supported");
-            default:   return error("Proxy error: unknown");
-        }
+		edcLogPrintf("Socks5() connect to %s:%d failed: %s\n", strDest, port, Socks5ErrorString(pchRet2[1]));
+		return false;
     }
 
     if (pchRet2[2] != 0x00) 
@@ -313,7 +307,7 @@ bool Socks5(
         CloseSocket(hSocket);
         return error("Error reading from proxy");
     }
-    edcLogPrintf("SOCKS5 connected %s\n", strDest);
+    edcLogPrint("net", "SOCKS5 connected %s\n", strDest);
     return true;
 }
 
