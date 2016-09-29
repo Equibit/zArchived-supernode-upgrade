@@ -66,8 +66,8 @@ CWaitableCriticalSection edccsBestBlock;
 
 namespace
 {
-bool edcCheckBlock(const CEDCBlock& block, CValidationState& state, bool fCheckPOW = true, bool fCheckMerkleRoot = true);
-bool edcContextualCheckBlock(const CEDCBlock& block, CValidationState& state, CBlockIndex *pindexPrev);
+bool edcCheckBlock(const CEDCBlock& block, CValidationState& state, const Consensus::Params & consensusParams, int64_t nAdjustedTime, bool fCheckPOW = true, bool fCheckMerkleRoot = true);
+bool edcContextualCheckBlock(const CBlockHeader& block, CValidationState& state, const Consensus::Params& consensusParams, CBlockIndex* pindexPrev);
 
 /** Apply the effects of this block (with given index) on the UTXO set represented by coins.
  *  Validity checks that depend on the UTXO set are also done; ConnectBlock()
@@ -2543,7 +2543,7 @@ bool edcConnectBlock(
     int64_t nTimeStart = GetTimeMicros();
 
     // Check it again in case a previous version let a bad block in
-    if (!edcCheckBlock(block, state, !fJustCheck, !fJustCheck))
+    if (!edcCheckBlock(block, state, chainparams.GetConsensus(), edcGetAdjustedTime(), !fJustCheck, !fJustCheck))
         return edcError("%s: Consensus::CheckBlock: %s", __func__, FormatStateMessage(state));
 
     // verify that the view's current state corresponds to the previous block
@@ -3701,16 +3701,18 @@ bool edcFindUndoPos(
 }
 
 bool edcCheckBlockHeader(
-  const CBlockHeader & block, 
-	CValidationState & state, 
-				  bool fCheckPOW = true )
+	 const CBlockHeader & block, 
+	   CValidationState & state, 
+const Consensus::Params & consensusParams, 
+				  int64_t nAdjustedTime,
+					 bool fCheckPOW = true )
 {
     // Check proof of work matches claimed amount
-    if (fCheckPOW && !CheckProofOfWork(block.GetHash(), block.nBits, edcParams().GetConsensus()))
+    if (fCheckPOW && !CheckProofOfWork(block.GetHash(), block.nBits, consensusParams))
         return state.DoS(50, false, REJECT_INVALID, "high-hash", false, "proof of work failed");
 
     // Check timestamp
-    if (block.GetBlockTime() > edcGetAdjustedTime() + 2 * 60 * 60)
+    if (block.GetBlockTime() > nAdjustedTime + 2 * 60 * 60)
         return state.Invalid(false, REJECT_INVALID, "time-too-new", "block timestamp too far in the future");
 
     return true;
@@ -3720,10 +3722,12 @@ namespace
 {
 
 bool edcCheckBlock(
-	 const CEDCBlock & block, 
-	CValidationState & state, 
-				  bool fCheckPOW, 
-				  bool fCheckMerkleRoot)
+		const CEDCBlock & block, 
+	   CValidationState & state, 
+const Consensus::Params & consensusParams, 
+				  int64_t nAdjustedTime,
+					 bool fCheckPOW, 
+					 bool fCheckMerkleRoot)
 {
     // These are checks that are independent of context.
     if (block.fChecked)
@@ -3731,7 +3735,7 @@ bool edcCheckBlock(
 
     // Check that the header is valid (particularly PoW).  This is mostly
     // redundant with the call in AcceptBlockHeader.
-    if (!edcCheckBlockHeader(block, state, fCheckPOW))
+    if (!edcCheckBlockHeader(block, state, consensusParams, nAdjustedTime, fCheckPOW))
         return false;
 
     // Check the merkle root.
@@ -3803,11 +3807,11 @@ bool CheckIndexAgainstCheckpoint(
 }
 
 bool edcContextualCheckBlockHeader(
-	const CBlockHeader & block, 
-	  CValidationState & state, 
-		   CBlockIndex * const pindexPrev)
+	 const CBlockHeader & block, 
+	   CValidationState & state, 
+const Consensus::Params & consensusParams,
+		    CBlockIndex * const pindexPrev)
 {
-    const Consensus::Params& consensusParams = edcParams().GetConsensus();
     // Check proof of work
     if (block.nBits != GetNextWorkRequired(pindexPrev, &block, consensusParams))
         return state.DoS(100, false, REJECT_INVALID, "bad-diffbits", false, "incorrect proof of work");
@@ -3896,7 +3900,7 @@ bool AcceptBlockHeader(
             return true;
         }
 
-        if (!edcCheckBlockHeader(block, state))
+        if (!edcCheckBlockHeader(block, state, chainparams.GetConsensus(), edcGetAdjustedTime()))
             return edcError("%s: Consensus::CheckBlockHeader: %s, %s", __func__, hash.ToString(), FormatStateMessage(state));
 
         // Get prev block index
@@ -3913,7 +3917,7 @@ bool AcceptBlockHeader(
         if (params.checkpoints && !CheckIndexAgainstCheckpoint(pindexPrev, state, chainparams, hash))
             return edcError("%s: CheckIndexAgainstCheckpoint(): %s", __func__, state.GetRejectReason().c_str());
 
-        if (!edcContextualCheckBlockHeader(block, state, pindexPrev))
+        if (!edcContextualCheckBlockHeader(block, state, chainparams.GetConsensus(), pindexPrev))
             return edcError("%s: Consensus::ContextualCheckBlockHeader: %s, %s", __func__, hash.ToString(), FormatStateMessage(state));
     }
     if (pindex == NULL)
@@ -3970,7 +3974,7 @@ bool AcceptBlock(
         if (fTooFarAhead) return true;      // Block height is too high
     }
 
-    if ((!edcCheckBlock(block, state)) || 
+    if ((!edcCheckBlock(block, state, chainparams.GetConsensus(), edcGetAdjustedTime() )) || 
 	!edcContextualCheckBlock(block, state, pindex->pprev)) 
 	{
         if (state.IsInvalid() && !state.CorruptionPossible()) 
@@ -4080,10 +4084,10 @@ bool TestBlockValidity(
     indexDummy.pprev = pindexPrev;
     indexDummy.nHeight = pindexPrev->nHeight + 1;
 
-    // NOTE: CheckBlockHeader is called by CheckBlock
-    if (!edcContextualCheckBlockHeader(block, state, pindexPrev))
+    // NOTE: edcCheckBlockHeader is called by edcCheckBlock
+    if (!edcContextualCheckBlockHeader(block, state, chainparams.GetConsensus(), pindexPrev))
         return edcError("%s: Consensus::ContextualCheckBlockHeader: %s", __func__, FormatStateMessage(state));
-    if (!edcCheckBlock(block, state, fCheckPOW, fCheckMerkleRoot))
+    if (!edcCheckBlock(block, state, chainparams.GetConsensus(), edcGetAdjustedTime(), fCheckPOW, fCheckMerkleRoot))
         return edcError("%s: Consensus::CheckBlock: %s", __func__, FormatStateMessage(state));
     if (!edcContextualCheckBlock(block, state, pindexPrev))
         return edcError("%s: Consensus::ContextualCheckBlock: %s", __func__, FormatStateMessage(state));
@@ -4420,7 +4424,7 @@ bool CEDCVerifyDB::VerifyDB(
 				pindex->GetBlockHash().ToString());
 
         // check level 1: verify block validity
-        if (nCheckLevel >= 1 && !edcCheckBlock(block, state))
+        if (nCheckLevel >= 1 && !edcCheckBlock(block, state, chainparams.GetConsensus(), edcGetAdjustedTime()))
             return edcError("%s: *** found bad block at %d, hash=%s (%s)\n", __func__, 
                          pindex->nHeight, pindex->GetBlockHash().ToString(), FormatStateMessage(state));
 
