@@ -850,8 +850,8 @@ bool EdcAppInit(
 	                edcUiInterface.InitMessage(_("Verifying blocks..."));
 	                if (theApp.havePruned() && params.checkblocks > MIN_BLOCKS_TO_KEEP) 
 					{
-	                    edcLogPrintf("Prune: pruned datadir may not have more than %d blocks; -eb_checkblocks=%d may fail\n",
-	                        MIN_BLOCKS_TO_KEEP, params.checkblocks );
+	                    edcLogPrintf("Prune: pruned datadir may not have more than %d blocks; only checking available blocks",
+	                        MIN_BLOCKS_TO_KEEP );
 	                }
 	
 	                {

@@ -4415,7 +4415,11 @@ bool CEDCVerifyDB::VerifyDB(
 
         if (pindex->nHeight < theApp.chainActive().Height()-nCheckDepth)
             break;
-
+        if (fPruneMode && !(pindex->nStatus & BLOCK_HAVE_DATA)) {
+            // If pruning, only go back as far as we have data.
+            edcLogPrintf("VerifyDB(): block verification stopping at height %d (pruning, no data)\n", pindex->nHeight);
+            break;
+        }
         CEDCBlock block;
 
         // check level 0: read from disk
