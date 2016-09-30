@@ -44,6 +44,7 @@
 #include <sstream>
 
 #include <boost/algorithm/string/replace.hpp>
+#include <boost/algorithm/string/join.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/math/distributions/poisson.hpp>
@@ -2942,16 +2943,10 @@ void UpdateTip(
     edcnTimeBestReceived = GetTime();
     theApp.mempool().AddTransactionsUpdated(1);
 
-    edcLogPrintf("%s: new best=%s height=%d version=0x%08x log2_work=%.8g tx=%lu date='%s' progress=%f cache=%.1fMiB(%utx)\n", __func__,
-      theApp.chainActive().Tip()->GetBlockHash().ToString(), theApp.chainActive().Height(), theApp.chainActive().Tip()->nVersion,
-      log(theApp.chainActive().Tip()->nChainWork.getdouble())/log(2.0), (unsigned long)theApp.chainActive().Tip()->nChainTx,
-      DateTimeStrFormat("%Y-%m-%d %H:%M:%S", theApp.chainActive().Tip()->GetBlockTime()),
-      Checkpoints::GuessVerificationProgress(chainParams.Checkpoints(), theApp.chainActive().Tip()), theApp.coinsTip()->DynamicMemoryUsage() * (1.0 / (1<<20)), theApp.coinsTip()->GetCacheSize());
-
     theApp.blockChange().notify_all();
 
-    // Check the version of the last 100 blocks to see if we need to upgrade:
     static bool fWarned = false;
+	std::vector<std::string> warningMessages;
     if (!edcIsInitialBlockDownload())
     {
         int nUpgraded = 0;
@@ -2973,10 +2968,11 @@ void UpdateTip(
                 } 
 				else 
 				{
-                    edcLogPrintf("%s: unknown new rules are about to activate (versionbit %i)\n", __func__, bit);
+					warningMessages.push_back(strprintf("unknown new rules are about to activate (versionbit %i)", bit));
                 }
             }
         }
+		// Check the version of the last 100 blocks to see if we need to upgrade:
         for (int i = 0; i < 100 && pindex != NULL; i++)
         {
             int32_t nExpectedVersion = edcComputeBlockVersion(pindex->pprev, chainParams.GetConsensus());
@@ -2985,7 +2981,7 @@ void UpdateTip(
             pindex = pindex->pprev;
         }
         if (nUpgraded > 0)
-            edcLogPrintf("%s: %d of last 100 blocks have unexpected version\n", __func__, nUpgraded);
+			warningMessages.push_back(strprintf("%d of last 100 blocks have unexpected version", nUpgraded));
         if (nUpgraded > 100/2)
         {
             // edcstrMiscWarning is read by edcGetWarnings(), called by Qt and the JSON-RPC code to warn the user:
@@ -2997,9 +2993,17 @@ void UpdateTip(
             }
         }
     }
+    edcLogPrintf("%s: new best=%s height=%d version=0x%08x log2_work=%.8g tx=%lu date='%s' progress=%f cache=%.1fMiB(%utx)", __func__,
+      chainActive.Tip()->GetBlockHash().ToString(), chainActive.Height(), chainActive.Tip()->nVersion,
+      log(chainActive.Tip()->nChainWork.getdouble())/log(2.0), (unsigned long)chainActive.Tip()->nChainTx,
+      DateTimeStrFormat("%Y-%m-%d %H:%M:%S", chainActive.Tip()->GetBlockTime()),
+      Checkpoints::GuessVerificationProgress(chainParams.Checkpoints(), chainActive.Tip()), pcoinsTip->DynamicMemoryUsage() * (1.0 / (1<<20)), pcoinsTip->GetCacheSize());
+    if (!warningMessages.empty())
+        edcLogPrintf(" warning='%s'", boost::algorithm::join(warningMessages, ", "));
+    edcLogPrintf("\n");
 }
 
-/** Disconnect theApp.chainActive()'s tip. You probably want to call mempool.removeForReorg and manually re-limit mempool size after this, with EDC_cs_main held. */
+/** Disconnect chainActive's tip. You probably want to call mempool.removeForReorg and manually re-limit mempool size after this, with EDC_cs_main held. */
 bool DisconnectTip(
 	  	 CValidationState & state, 
 	const CEDCChainParams & chainparams)
