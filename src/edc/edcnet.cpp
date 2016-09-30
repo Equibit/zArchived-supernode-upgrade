@@ -95,8 +95,8 @@ static CSemaphore *semOutbound = NULL;
 boost::condition_variable edcmessageHandlerCondition;
 
 // Signals for message handling
-static CEDCNodeSignals g_signals;
-CEDCNodeSignals& edcGetNodeSignals() { return g_signals; }
+static CEDCNodeSignals g_edcsignals;
+CEDCNodeSignals& edcGetNodeSignals() { return g_edcsignals; }
 
 
 unsigned short edcGetListenPort()
@@ -400,7 +400,7 @@ void CEDCNode::CloseSocketDisconnect()
 
 void CEDCNode::PushVersion()
 {
-    int nBestHeight = g_signals.GetHeight().get_value_or(0);
+    int nBestHeight = edcGetNodeSignals().GetHeight().get_value_or(0);
 
     int64_t nTime = (fInbound ? edcGetAdjustedTime() : GetTime());
 
@@ -1940,7 +1940,7 @@ void edcThreadMessageHandler()
                 TRY_LOCK(pnode->cs_vRecvMsg, lockRecv);
                 if (lockRecv)
                 {
-                    if (!g_signals.ProcessMessages(pnode))
+                    if (!edcGetNodeSignals().ProcessMessages(pnode))
                         pnode->CloseSocketDisconnect();
 
                     if (pnode->nSendSize < edcSendBufferSize())
@@ -1960,7 +1960,7 @@ void edcThreadMessageHandler()
             {
                 TRY_LOCK(pnode->cs_vSend, lockSend);
                 if (lockSend)
-                    g_signals.SendMessages(pnode);
+                    edcGetNodeSignals().SendMessages(pnode);
             }
             boost::this_thread::interruption_point();
         }
@@ -1995,7 +1995,7 @@ void edcThreadMessageHandler()
                 TRY_LOCK(pnode->cs_vRecvMsg, lockRecv);
                 if (lockRecv)
                 {
-                    if (!g_signals.ProcessMessages(pnode))
+                    if (!edcGetNodeSignals().ProcessMessages(pnode))
                         pnode->CloseSocketDisconnect();
 
                     if (pnode->nSendSize < edcSendBufferSize())
@@ -2015,7 +2015,7 @@ void edcThreadMessageHandler()
             {
                 TRY_LOCK(pnode->cs_vSend, lockSend);
                 if (lockSend)
-                    g_signals.SendMessages(pnode);
+                    edcGetNodeSignals().SendMessages(pnode);
             }
             boost::this_thread::interruption_point();
         }
