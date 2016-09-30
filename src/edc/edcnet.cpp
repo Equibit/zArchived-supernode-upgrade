@@ -2254,6 +2254,7 @@ void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
             edcLogPrintf("Loaded %i addresses from peers.dat  %dms\n", theApp.addrman().size(), GetTimeMillis() - nStart);
         else 
 		{
+			theApp.addrman().Clear(); // Addrman can be in an inconsistent state after failure, reset it
             edcLogPrintf("Invalid or missing peers.dat; recreating\n");
             edcDumpAddresses();
         }
@@ -2668,7 +2669,11 @@ bool CEDCAddrDB::Read(CAddrMan& addr)
     uint256 hashTmp = Hash(ssPeers.begin(), ssPeers.end());
     if (hashIn != hashTmp)
         return edcError("%s: Checksum mismatch, data corrupted", __func__);
+    return Read(addr, ssPeers);
+}
 
+bool CAddrDB::Read(CAddrMan& addr, CDataStream& ssPeers)
+{
     unsigned char pchMsgTmp[4];
     try 
 	{
@@ -2684,6 +2689,8 @@ bool CEDCAddrDB::Read(CAddrMan& addr)
     }
     catch (const std::exception& e) 
 	{
+        // de-serialization has failed, ensure addrman is left in a clean state
+        addr.Clear();
         return edcError("%s: Deserialize or I/O error - %s", __func__, e.what());
     }
 
