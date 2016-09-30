@@ -96,7 +96,7 @@ boost::condition_variable edcmessageHandlerCondition;
 
 // Signals for message handling
 static CEDCNodeSignals g_edcsignals;
-CEDCNodeSignals& edcGetNodeSignals() { return g_edcsignals; }
+CEDCNodeSignals & edcGetNodeSignals() { return g_edcsignals; }
 
 
 unsigned short edcGetListenPort()
@@ -742,59 +742,26 @@ void SocketSendData(CEDCNode *pnode)
 
 static std::list<CEDCNode*> vNodesDisconnected;
 
-class CEDCNodeRef 
+struct NodeEvictionCandidate
 {
-public:
-    CEDCNodeRef(CEDCNode *pnode) : _pnode(pnode) 
-	{
-		EDCapp & theApp = EDCapp::singleton();
-        LOCK(theApp.vNodesCS());
-        _pnode->AddRef();
-    }
-
-    ~CEDCNodeRef() 
-	{
-		EDCapp & theApp = EDCapp::singleton();
-        LOCK(theApp.vNodesCS());
-        _pnode->Release();
-    }
-
-    CEDCNode& operator *() const {return *_pnode;};
-    CEDCNode* operator ->() const {return _pnode;};
-
-    CEDCNodeRef& operator =(const CEDCNodeRef& other)
-    {
-		EDCapp & theApp = EDCapp::singleton();
-        if (this != &other) 
-		{
-            LOCK(theApp.vNodesCS());
-
-            _pnode->Release();
-            _pnode = other._pnode;
-            _pnode->AddRef();
-        }
-        return *this;
-    }
-
-    CEDCNodeRef(const CEDCNodeRef& other):
-        _pnode(other._pnode)
-    {
-		EDCapp & theApp = EDCapp::singleton();
-        LOCK(theApp.vNodesCS());
-        _pnode->AddRef();
-    }
-private:
-    CEDCNode *_pnode;
+    NodeId id;
+    int64_t nTimeConnected;
+    int64_t nMinPingUsecTime;
+    CAddress addr;
 };
 
-static bool ReverseCompareNodeMinPingTime(const CEDCNodeRef &a, const CEDCNodeRef &b)
+static bool ReverseCompareNodeMinPingTime(
+	const NodeEvictionCandidate &a, 
+	const NodeEvictionCandidate &b)
 {
-    return a->nMinPingUsecTime > b->nMinPingUsecTime;
+    return a.nMinPingUsecTime > b.nMinPingUsecTime;
 }
 
-static bool ReverseCompareNodeTimeConnected(const CEDCNodeRef &a, const CEDCNodeRef &b)
+static bool ReverseCompareNodeTimeConnected(
+	const NodeEvictionCandidate &a, 
+	const NodeEvictionCandidate &b)
 {
-    return a->nTimeConnected > b->nTimeConnected;
+    return a.nTimeConnected > b.nTimeConnected;
 }
 
 class CompareNetGroupKeyed
@@ -807,14 +774,14 @@ public:
         GetRandBytes(vchSecretKey.data(), vchSecretKey.size());
     }
 
-    bool operator()(const CEDCNodeRef &a, const CEDCNodeRef &b)
+	bool operator()(const NodeEvictionCandidate &a, const NodeEvictionCandidate &b)
     {
         std::vector<unsigned char> vchGroupA, vchGroupB;
         CSHA256 hashA, hashB;
         std::vector<unsigned char> vchA(32), vchB(32);
 
-        vchGroupA = a->addr.GetGroup();
-        vchGroupB = b->addr.GetGroup();
+        vchGroupA = a.addr.GetGroup();
+        vchGroupB = b.addr.GetGroup();
 
         hashA.Write(begin_ptr(vchGroupA), vchGroupA.size());
         hashB.Write(begin_ptr(vchGroupB), vchGroupB.size());
@@ -840,7 +807,7 @@ public:
 static bool AttemptToEvictConnection(bool fPreferNewConnection) 
 {
 	EDCapp & theApp = EDCapp::singleton();
-    std::vector<CEDCNodeRef> vEvictionCandidates;
+    std::vector<NodeEvictionCandidate> vEvictionCandidates;
     {
         LOCK(theApp.vNodesCS());
 
@@ -852,7 +819,8 @@ static bool AttemptToEvictConnection(bool fPreferNewConnection)
                 continue;
             if (node->fDisconnect)
                 continue;
-            vEvictionCandidates.push_back(CEDCNodeRef(node));
+			NodeEvictionCandidate candidate = {node->id, node->nTimeConnected, node->nMinPingUsecTime, node->addr};
+            vEvictionCandidates.push_back(candidate);
         }
     }
 
@@ -887,18 +855,19 @@ static bool AttemptToEvictConnection(bool fPreferNewConnection)
     std::vector<unsigned char> naMostConnections;
     unsigned int nMostConnections = 0;
     int64_t nMostConnectionsTime = 0;
-    std::map<std::vector<unsigned char>, std::vector<CEDCNodeRef> > mapAddrCounts;
-    BOOST_FOREACH(const CEDCNodeRef &node, vEvictionCandidates) 
+
+    std::map<std::vector<unsigned char>, std::vector<NodeEvictionCandidate> > mapAddrCounts;
+    BOOST_FOREACH(const NodeEvictionCandidate &node, vEvictionCandidates) 
 	{
-        mapAddrCounts[node->addr.GetGroup()].push_back(node);
-        int64_t grouptime = mapAddrCounts[node->addr.GetGroup()][0]->nTimeConnected;
-        size_t groupsize = mapAddrCounts[node->addr.GetGroup()].size();
+        mapAddrCounts[node.addr.GetGroup()].push_back(node);
+        int64_t grouptime = mapAddrCounts[node.addr.GetGroup()][0].nTimeConnected;
+        size_t groupsize = mapAddrCounts[node.addr.GetGroup()].size();
 
         if (groupsize > nMostConnections || (groupsize == nMostConnections && grouptime > nMostConnectionsTime)) 
 		{
             nMostConnections = groupsize;
             nMostConnectionsTime = grouptime;
-            naMostConnections = node->addr.GetGroup();
+            naMostConnections = node.addr.GetGroup();
         }
     }
 
@@ -912,10 +881,18 @@ static bool AttemptToEvictConnection(bool fPreferNewConnection)
         if (!fPreferNewConnection)
             return false;
 
-    // Disconnect from the network group with the most connections
-    vEvictionCandidates[0]->fDisconnect = true;
-
-    return true;
+	// Disconnect from the network group with the most connections
+    NodeId evicted = vEvictionCandidates.front().id;
+    LOCK(theApp.vNodesCS());
+    for(std::vector<CNode*>::const_iterator it(vNodes.begin()); it != vNodes.end(); ++it) 
+	{
+        if ((*it)->GetId() == evicted) 
+		{
+            (*it)->fDisconnect = true;
+            return true;
+        }
+    }
+    return false;
 }
 
 static void AcceptConnection(const ListenSocket& hListenSocket) 
