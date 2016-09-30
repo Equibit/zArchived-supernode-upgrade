@@ -2198,6 +2198,7 @@ set<pair<const CEDCWalletTx*,unsigned int> > & setCoinsRet,
 bool CEDCWallet::FundTransaction(
 	CEDCMutableTransaction & tx, 
 				   CAmount & nFeeRet, 
+						bool overrideEstimatedFeeRate,
 			const CFeeRate & specificFeeRate, 
 					   int & nChangePosInOut, 
 			   std::string & strFailReason, 
@@ -2218,6 +2219,7 @@ bool CEDCWallet::FundTransaction(
     coinControl.destChange = destChange;
     coinControl.fAllowOtherInputs = true;
     coinControl.fAllowWatchOnly = includeWatching;
+	coinControl.fOverrideFeeRate = overrideEstimatedFeeRate;
 	coinControl.nFeeRate = specificFeeRate;
 
     BOOST_FOREACH(const CEDCTxIn& txin, tx.vin)
@@ -2545,7 +2547,7 @@ bool CEDCWallet::CreateTransaction(
 				{
                     nFeeNeeded = coinControl->nMinimumTotalFee;
                 }
-                if (coinControl && coinControl->nFeeRate > CFeeRate(0))
+				if (coinControl && coinControl->fOverrideFeeRate)
                     nFeeNeeded = coinControl->nFeeRate.GetFee(nBytes);
 
                 // If we made it here and we aren't even able to meet the relay

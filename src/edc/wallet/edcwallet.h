@@ -624,6 +624,7 @@ public:
     bool FundTransaction(
 		CEDCMutableTransaction & tx, 
 					   CAmount & nFeeRet, 
+							bool overrideEstimatedFeeRate,
 				const CFeeRate & specificFeeRate, 
 						   int & nChangePosInOut, 
 				   std::string & strFailReason, 
