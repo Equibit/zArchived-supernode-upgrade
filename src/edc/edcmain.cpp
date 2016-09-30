@@ -3373,16 +3373,17 @@ bool ActivateBestChain(
 {
 	EDCapp & theApp = EDCapp::singleton();
 
-    CBlockIndex *pindexMostWork = NULL;
+    CBlockIndex * pindexMostWork = NULL;
+	CBlockIndex * pindexNewTip = NULL;
     do 
 	{
         boost::this_thread::interruption_point();
         if (ShutdownRequested())
             break;
 
-        CBlockIndex *pindexNewTip = NULL;
         const CBlockIndex *pindexFork;
         bool fInitialDownload;
+		int nNewHeight;
         {
             LOCK(EDC_cs_main);
             CBlockIndex *pindexOldTip = theApp.chainActive().Tip();
@@ -3408,6 +3409,7 @@ bool ActivateBestChain(
             pindexNewTip = theApp.chainActive().Tip();
             pindexFork = theApp.chainActive().FindFork(pindexOldTip);
             fInitialDownload = edcIsInitialBlockDownload();
+			nNewHeight = chainActive.Height();
         }
         // When we reach this point, we switched to a new tip (stored in pindexNewTip).
 
@@ -3442,7 +3444,8 @@ bool ActivateBestChain(
                     LOCK(theApp.vNodesCS());
                     BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes()) 
 					{
-                        if (theApp.chainActive().Height() > (pnode->nStartingHeight != -1 ? pnode->nStartingHeight - 2000 : nBlockEstimate)) 
+						if (nNewHeight > (pnode->nStartingHeight != -1 ? 
+						pnode->nStartingHeight - 2000 : nBlockEstimate)) 
 						{
                             BOOST_REVERSE_FOREACH(const uint256& hash, vHashes)
 							{
@@ -3458,7 +3461,7 @@ bool ActivateBestChain(
                 }
             }
         }
-    } while(pindexMostWork != theApp.chainActive().Tip());
+	} while (pindexNewTip != pindexMostWork);
     edcCheckBlockIndex(chainparams.GetConsensus());
 
     // Write changes periodically to disk, after relay.
