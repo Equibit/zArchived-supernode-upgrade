@@ -624,6 +624,7 @@ public:
     bool FundTransaction(
 		CEDCMutableTransaction & tx, 
 					   CAmount & nFeeRet, 
+				const CFeeRate & specificFeeRate, 
 						   int & nChangePosInOut, 
 				   std::string & strFailReason, 
 							bool includeWatching, 

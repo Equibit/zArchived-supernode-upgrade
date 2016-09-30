@@ -2850,6 +2850,7 @@ UniValue edcfundrawtransaction(const UniValue& params, bool fHelp)
             "     \"changePosition\"    (numeric, optional, default random) The index of the change output\n"
             "     \"includeWatching\"   (boolean, optional, default false) Also select inputs which are watch only\n"
             "     \"lockUnspents\"      (boolean, optional, default false) Lock selected unspent outputs\n"
+			"     \"feeRate\"           (numeric, optional, default 0=estimate) Set a specific feerate (fee per KB)\n"
             "   }\n"
             "                         for backward compatibility: passing in a true instead of an object will result in {\"includeWatching\":true}\n"
             "\nResult:\n"
@@ -2876,6 +2877,7 @@ UniValue edcfundrawtransaction(const UniValue& params, bool fHelp)
     int changePosition = -1;
     bool includeWatching = false;
     bool lockUnspents = false;
+	CFeeRate feeRate = CFeeRate(0);
 
     if (params.size() > 1) 
 	{
@@ -2890,8 +2892,7 @@ UniValue edcfundrawtransaction(const UniValue& params, bool fHelp)
 
         	UniValue options = params[1];
 
-        	RPCTypeCheckObj(options, boost::assign::map_list_of("changeAddress", UniValue::VSTR)("changePosition", 
-				UniValue::VNUM)("includeWatching", UniValue::VBOOL)("lockUnspents", UniValue::VBOOL), true, true);
+			RPCTypeCheckObj(options, boost::assign::map_list_of("changeAddress", UniValue::VSTR)("changePosition", UniValue::VNUM)("includeWatching", UniValue::VBOOL)("lockUnspents", UniValue::VBOOL)("feeRate", UniValue::VNUM), true, true);
 
         if (options.exists("changeAddress")) 
 		{
@@ -2911,6 +2912,9 @@ UniValue edcfundrawtransaction(const UniValue& params, bool fHelp)
 
         if (options.exists("lockUnspents"))
             lockUnspents = options["lockUnspents"].get_bool();
+
+        if (options.exists("feeRate"))
+            feeRate = CFeeRate(options["feeRate"].get_real());
       }
     }
 
@@ -2926,16 +2930,16 @@ UniValue edcfundrawtransaction(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "changePosition out of bounds");
 
     CEDCMutableTransaction tx(origTx);
-    CAmount nFee;
+    CAmount nFeeOut;
     string strFailReason;
 
-    if(!theApp.walletMain()->FundTransaction(tx, nFee, changePosition, strFailReason, includeWatching, lockUnspents, changeAddress))
+	if(!theApp.walletMain()->FundTransaction(tx, nFeeOut, feeRate, changePosition, strFailReason, includeWatching, lockUnspents, changeAddress))
         throw JSONRPCError(RPC_INTERNAL_ERROR, strFailReason);
 
     UniValue result(UniValue::VOBJ);
     result.push_back(Pair("hex", EncodeHexTx(tx)));
     result.push_back(Pair("changepos", changePosition));
-    result.push_back(Pair("fee", ValueFromAmount(nFee)));
+    result.push_back(Pair("fee", ValueFromAmount(nFeeOut)));
 
     return result;
 }
