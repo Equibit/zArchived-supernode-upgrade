@@ -62,7 +62,6 @@
 #endif
 #endif
 
-using namespace std;
 
 namespace 
 {
@@ -84,15 +83,15 @@ namespace
 bool vfLimited[NET_MAX] = {};
 CEDCNode* pnodeLocalHost = NULL;
 std::vector<ListenSocket> vhListenSocket;
-deque<pair<int64_t, uint256> > relayExpiration;
+std::deque<std::pair<int64_t, uint256> > relayExpiration;
 }
 
 bool edcfAddressesInitialized = false;
 
-static deque<string> vOneShots;
+static std::deque<std::string> vOneShots;
 CCriticalSection edccs_vOneShots;
 
-set<CNetAddr> edcsetservAddNodeAddresses;
+std::set<CNetAddr> edcsetservAddNodeAddresses;
 CCriticalSection edccs_setservAddNodeAddresses;
 
 static CSemaphore *semOutbound = NULL;
@@ -128,7 +127,7 @@ bool edcGetLocal(CService& addr, const CNetAddr *paddrPeer)
     int nBestReachability = -1;
     {
         LOCK(theApp.mapLocalHostCS());
-        for (map<CNetAddr, LocalServiceInfo>::iterator it = theApp.mapLocalHost().begin(); it != theApp.mapLocalHost().end(); it++)
+        for (std::map<CNetAddr, LocalServiceInfo>::iterator it = theApp.mapLocalHost().begin(); it != theApp.mapLocalHost().end(); it++)
         {
             int nScore = (*it).second.nScore;
             int nReachability = (*it).first.GetReachabilityFrom(paddrPeer);
@@ -744,7 +743,7 @@ void SocketSendData(CEDCNode *pnode)
     pnode->vSendMsg.erase(pnode->vSendMsg.begin(), it);
 }
 
-static list<CEDCNode*> vNodesDisconnected;
+static std::list<CEDCNode*> vNodesDisconnected;
 
 class CEDCNodeRef 
 {
@@ -1058,7 +1057,7 @@ void edcThreadSocketHandler()
         {
             LOCK(theApp.vNodesCS());
             // Disconnect unused nodes
-            vector<CEDCNode*> vNodesCopy = theApp.vNodes();
+            std::vector<CEDCNode*> vNodesCopy = theApp.vNodes();
 			vNodesCopy.insert( vNodesCopy.end(), theApp.vSSLNodes().begin(), theApp.vSSLNodes().end());
             BOOST_FOREACH(CEDCNode* pnode, vNodesCopy)
             {
@@ -1087,7 +1086,7 @@ void edcThreadSocketHandler()
         }
         {
             // Delete disconnected nodes
-            list<CEDCNode*> vNodesDisconnectedCopy = vNodesDisconnected;
+            std::list<CEDCNode*> vNodesDisconnectedCopy = vNodesDisconnected;
             BOOST_FOREACH(CEDCNode* pnode, vNodesDisconnectedCopy)
             {
                 // wait until threads are done using it
@@ -1140,7 +1139,7 @@ void edcThreadSocketHandler()
         BOOST_FOREACH(const ListenSocket& hListenSocket, vhListenSocket) 
 		{
             FD_SET(hListenSocket.socket, &fdsetRecv);
-            hSocketMax = max(hSocketMax, hListenSocket.socket);
+            hSocketMax = std::max(hSocketMax, hListenSocket.socket);
             have_fds = true;
         }
 
@@ -1151,7 +1150,7 @@ void edcThreadSocketHandler()
                 if (pnode->invalidSocket())
                     continue;
                 FD_SET(pnode->socket(), &fdsetError);
-                hSocketMax = max(hSocketMax, pnode->socket());
+                hSocketMax = std::max(hSocketMax, pnode->socket());
                 have_fds = true;
 
                 // Implement the following logic:
@@ -1190,7 +1189,7 @@ void edcThreadSocketHandler()
                 if (pnode->invalidSocket())
                     continue;
                 FD_SET(pnode->socket(), &fdsetError);
-                hSocketMax = max(hSocketMax, pnode->socket());
+                hSocketMax = std::max(hSocketMax, pnode->socket());
                 have_fds = true;
 
                 // Implement the following logic:
@@ -1258,7 +1257,7 @@ void edcThreadSocketHandler()
         //
         // Service each socket
         //
-        vector<CEDCNode*> vNodesCopy;
+        std::vector<CEDCNode*> vNodesCopy;
         {
             LOCK(theApp.vNodesCS());
             vNodesCopy = theApp.vNodes();
@@ -1411,7 +1410,7 @@ void ThreadMapPort()
             }
         }
 
-        string strDesc = "Equibit " + FormatFullVersion();
+        std::string strDesc = "Equibit " + FormatFullVersion();
 
         try 
 		{
@@ -1503,7 +1502,7 @@ void edcThreadDNSAddressSeed()
         }
     }
 
-    const vector<CDNSSeedData> &vSeeds = edcParams().DNSSeeds();
+    const std::vector<CDNSSeedData> &vSeeds = edcParams().DNSSeeds();
     int found = 0;
 
     edcLogPrintf("Loading addresses from DNS seeds (could take a while)\n");
@@ -1516,8 +1515,8 @@ void edcThreadDNSAddressSeed()
         } 
 		else 
 		{
-            vector<CNetAddr> vIPs;
-            vector<CAddress> vAdd;
+            std::vector<CNetAddr> vIPs;
+            std::vector<CAddress> vAdd;
             if (LookupHost(seed.host.c_str(), vIPs, 0, true))
             {
                 BOOST_FOREACH(const CNetAddr& ip, vIPs)
@@ -1712,7 +1711,7 @@ bool edcOpenNetworkConnection(
 
 void ProcessOneShot()
 {
-    string strDest;
+    std::string strDest;
     {
         LOCK(edccs_vOneShots);
         if (vOneShots.empty())
@@ -1786,7 +1785,7 @@ void edcThreadOpenConnections()
         // Only connect out to one peer per network group (/16 for IPv4).
         // Do this here so we don't have to critsect theApp.vNodes() inside mapAddresses critsect.
         int nOutbound = 0;
-        set<vector<unsigned char> > setConnected;
+        std::set<std::vector<unsigned char> > setConnected;
         {
             LOCK(theApp.vNodesCS());
             BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes()) 
@@ -1852,7 +1851,7 @@ void edcThreadOpenAddedConnections()
 	{
         while(true) 
 		{
-            list<string> lAddresses(0);
+            std::list<std::string> lAddresses(0);
             {
                 LOCK(theApp.addedNodesCS());
                 BOOST_FOREACH(const std::string& strAddNode, theApp.addedNodes())
@@ -1872,17 +1871,17 @@ void edcThreadOpenAddedConnections()
 
     for (unsigned int i = 0; true; i++)
     {
-        list<string> lAddresses(0);
+        std::list<std::string> lAddresses(0);
         {
             LOCK(theApp.addedNodesCS());
             BOOST_FOREACH(const std::string& strAddNode, theApp.addedNodes())
                 lAddresses.push_back(strAddNode);
         }
 
-        list<vector<CService> > lservAddressesToAdd(0);
+        std::list<std::vector<CService> > lservAddressesToAdd(0);
         BOOST_FOREACH(const std::string& strAddNode, lAddresses) 
 		{
-            vector<CService> vservNode(0);
+            std::vector<CService> vservNode(0);
             if(Lookup(strAddNode.c_str(), vservNode, 
 			edcParams().GetDefaultPort(), params.dns, 0))
             {
@@ -1901,7 +1900,7 @@ void edcThreadOpenAddedConnections()
         {
             LOCK(theApp.vNodesCS());
             BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
-                for (list<vector<CService> >::iterator it = lservAddressesToAdd.begin(); it != lservAddressesToAdd.end(); it++)
+                for (std::list<std::vector<CService> >::iterator it = lservAddressesToAdd.begin(); it != lservAddressesToAdd.end(); it++)
                     BOOST_FOREACH(const CService& addrNode, *(it))
                         if (pnode->addr == addrNode)
                         {
@@ -1910,7 +1909,7 @@ void edcThreadOpenAddedConnections()
                             break;
                         }
         }
-        BOOST_FOREACH(vector<CService>& vserv, lservAddressesToAdd)
+        BOOST_FOREACH(std::vector<CService>& vserv, lservAddressesToAdd)
         {
             CSemaphoreGrant grant(*semOutbound);
             CSemaphoreGrant sgrant(*semOutbound);
@@ -1929,7 +1928,7 @@ void edcThreadMessageHandler()
 
     while (true)
     {
-        vector<CEDCNode*> vNodesCopy;
+        std::vector<CEDCNode*> vNodesCopy;
         {
             LOCK(theApp.vNodesCS());
             vNodesCopy = theApp.vNodes();
@@ -1982,7 +1981,7 @@ void edcThreadMessageHandler()
                 pnode->Release();
         }
 
-        vector<CEDCSSLNode*> vSSLNodesCopy;
+        std::vector<CEDCSSLNode*> vSSLNodesCopy;
         {
             LOCK(theApp.vNodesCS());
             vSSLNodesCopy = theApp.vSSLNodes();
@@ -2046,7 +2045,7 @@ void edcThreadMessageHandler()
 
 bool edcBindListenPort(
 	const CService & addrBind, 
-			string & strError, 
+       std::string & strError, 
 				bool fWhitelisted)
 {
     strError = "";
@@ -2159,7 +2158,7 @@ void static Discover(boost::thread_group& threadGroup)
     char pszHostName[256] = "";
     if (gethostname(pszHostName, sizeof(pszHostName)) != SOCKET_ERROR)
     {
-        vector<CNetAddr> vaddr;
+        std::vector<CNetAddr> vaddr;
         if (LookupHost(pszHostName, vaddr, 0, true))
         {
             BOOST_FOREACH (const CNetAddr &addr, vaddr)
@@ -2647,7 +2646,7 @@ bool CEDCAddrDB::Read(CAddrMan& addr)
     // Don't try to resize to a negative number if file is small
     if (fileSize >= sizeof(uint256))
         dataSize = fileSize - sizeof(uint256);
-    vector<unsigned char> vchData;
+    std::vector<unsigned char> vchData;
     vchData.resize(dataSize);
     uint256 hashIn;
 
@@ -2672,7 +2671,7 @@ bool CEDCAddrDB::Read(CAddrMan& addr)
     return Read(addr, ssPeers);
 }
 
-bool CAddrDB::Read(CAddrMan& addr, CDataStream& ssPeers)
+bool CEDCAddrDB::Read(CAddrMan& addr, CDataStream& ssPeers)
 {
     unsigned char pchMsgTmp[4];
     try 
@@ -2966,7 +2965,7 @@ bool CEDCBanDB::Read(banmap_t& banSet)
     // Don't try to resize to a negative number if file is small
     if (fileSize >= sizeof(uint256))
         dataSize = fileSize - sizeof(uint256);
-    vector<unsigned char> vchData;
+    std::vector<unsigned char> vchData;
     vchData.resize(dataSize);
     uint256 hashIn;
 
