@@ -91,9 +91,6 @@ bool edcfAddressesInitialized = false;
 static std::deque<std::string> vOneShots;
 CCriticalSection edccs_vOneShots;
 
-std::set<CNetAddr> edcsetservAddNodeAddresses;
-CCriticalSection edccs_setservAddNodeAddresses;
-
 static CSemaphore *semOutbound = NULL;
 boost::condition_variable edcmessageHandlerCondition;
 
@@ -1884,14 +1881,7 @@ void edcThreadOpenAddedConnections()
             std::vector<CService> vservNode(0);
             if(Lookup(strAddNode.c_str(), vservNode, 
 			edcParams().GetDefaultPort(), params.dns, 0))
-            {
                 lservAddressesToAdd.push_back(vservNode);
-                {
-                    LOCK(edccs_setservAddNodeAddresses);
-                    BOOST_FOREACH(const CService& serv, vservNode)
-                        edcsetservAddNodeAddresses.insert(serv);
-                }
-            }
         }
         // Attempt to connect to each IP for each addnode entry until at least 
 		// one is successful per addnode entry
