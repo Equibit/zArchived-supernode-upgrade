@@ -5466,7 +5466,6 @@ bool ProcessMessage(
             const CInv &inv = vInv[nInv];
 
             boost::this_thread::interruption_point();
-            pfrom->AddInventoryKnown(inv);
 
             bool fAlreadyHave = AlreadyHave(inv);
             edcLogPrint("net", "got inv: %s  %s peer=%d\n", inv.ToString(), fAlreadyHave ? "have" : "new", pfrom->id);
@@ -5502,6 +5501,7 @@ bool ProcessMessage(
             }
             else
             {
+            	pfrom->AddInventoryKnown(inv);
                 if (fBlocksOnly)
                     edcLogPrint("net", "transaction (%s) inv sent in violation of protocol peer=%d\n", inv.hash.ToString(), pfrom->id);
                 else if (!fAlreadyHave && !theApp.importing() && !theApp.reindex() && !edcIsInitialBlockDownload())
@@ -5921,10 +5921,7 @@ bool ProcessMessage(
         CEDCBlock block;
         vRecv >> block;
 
-        CInv inv(MSG_BLOCK, block.GetHash());
-        edcLogPrint("net", "received block %s peer=%d\n", inv.hash.ToString(), pfrom->id);
-
-        pfrom->AddInventoryKnown(inv);
+        edcLogPrint("net", "received block %s peer=%d\n", block.GetHash().ToString(), pfrom->id);
 
         CValidationState state;
         // Process all blocks from whitelisted peers, even if not requested,
@@ -5938,7 +5935,7 @@ bool ProcessMessage(
 		{
             assert (state.GetRejectCode() < REJECT_INTERNAL); // Blocks are never rejected with internal reject codes
             pfrom->PushMessage(NetMsgType::REJECT, strCommand, (unsigned char)state.GetRejectCode(),
-                               state.GetRejectReason().substr(0, MAX_REJECT_MESSAGE_LENGTH), inv.hash);
+                               state.GetRejectReason().substr(0, MAX_REJECT_MESSAGE_LENGTH), block.GetHash());
             if (nDoS > 0) 
 			{
                 LOCK(EDC_cs_main);
@@ -6591,9 +6588,7 @@ bool edcSendMessages(CEDCNode* pto)
                             hashToAnnounce.ToString(), theApp.chainActive().Tip()->GetBlockHash().ToString());
                     }
 
-                    // If the peer announced this block to us, don't inv it back.
-                    // (Since block announcements may not be via inv's, we can't solely rely on
-                    // setInventoryKnown to track this.)
+					// If the peer's chain has this block, don't inv it back.
                     if (!PeerHasHeader(&state, pindex)) 
 					{
                         pto->PushInventory(CInv(MSG_BLOCK, hashToAnnounce));
