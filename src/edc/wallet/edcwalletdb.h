@@ -107,6 +107,9 @@ public:
     static bool Recover(CEDCDBEnv& dbenv, const std::string& filename, bool fOnlyKeys);
     static bool Recover(CEDCDBEnv& dbenv, const std::string& filename);
 
+    //! write the hdchain model (external chain child index counter)
+    bool WriteHDChain(const CHDChain& chain);
+
 	void Dump( std::ostream & out );
 
 	void ListIssuers( std::vector<std::pair<std::string,CIssuer>> & out );

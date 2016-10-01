@@ -235,6 +235,7 @@ EDCparams::EDCparams()
 	txindex             = GetBoolArg( "-eb_txindex", EDC_DEFAULT_TXINDEX );
 	upgradewallet       = GetBoolArg( "-eb_upgradewallet", false );
 	upnp                = GetBoolArg( "-eb_upnp", EDC_DEFAULT_UPNP );
+	usehd               = GetBoolArg( "-eb_usehd", EDC_DEFAULT_USE_HD_WALLET );
 	usehsm              = GetBoolArg( "-eb_usehsm", true );
 	walletbroadcast     = GetBoolArg( "-eb_walletbroadcast", EDC_DEFAULT_WALLETBROADCAST );
 	whitelistrelay      = GetBoolArg( "-eb_whitelistrelay", EDC_DEFAULT_WHITELISTRELAY );
@@ -1012,6 +1013,7 @@ void EDCparams::dumpToLog() const
 	printStrVec( "eb_uacomment           ", uacomment );
 	edcLogPrintf( "eb_upgradewallet        %s\n", toString( upgradewallet) );
 	edcLogPrintf( "eb_upnp                 %s\n", toString( upnp) );
+	edcLogPrintf( "eb_usehd                %s\n", toString( usehd) );
 	edcLogPrintf( "eb_usehsm               %s\n", toString( usehsm) );
 
 	edcLogPrintf( "eb_wallet               \"%s\"\n", wallet.c_str() );
@@ -1148,6 +1150,7 @@ void EDCparams::checkParams() const
 	validparams.insert("-upgradewallet");
 	validparams.insert("-upnp");
 	validparams.insert("-usehsm");
+	validparams.insert("-usehd");
 	validparams.insert("-wallet");
 	validparams.insert("-walletbroadcast");
 	validparams.insert("-walletnotify");
@@ -1275,6 +1278,7 @@ void EDCparams::checkParams() const
 	validparams.insert("-eb_uacomment");
 	validparams.insert("-eb_upgradewallet");
 	validparams.insert("-eb_upnp");
+	validparams.insert("-eb_usehd");
 	validparams.insert("-eb_usehsm");
 	validparams.insert("-eb_wallet");
 	validparams.insert("-eb_walletbroadcast");

@@ -35,6 +35,9 @@ class CEDCWallet;
 /**
  * Settings
  */
+//! if set, all keys will be derived by using BIP32
+static const bool EDC_DEFAULT_USE_HD_WALLET = true;
+
 extern const char * edcDEFAULT_WALLET_DAT;
 
 class CBlockIndex;
@@ -395,6 +398,9 @@ private:
     void MarkConflicted(const uint256& hashBlock, const uint256& hashTx);
 
     void SyncMetaData(std::pair<TxSpends::iterator, TxSpends::iterator>);
+
+    /* the hd chain data model (external chain counters) */
+    CHDChain hdChain;
 
     std::map< std::pair<std::string, uint256 >, CUserMessage *> messageMap;
 
@@ -852,6 +858,12 @@ public:
     static bool ParameterInteraction();
 
 	bool BackupWallet(const std::string& strDest);
+
+    /* Set the hd chain model (chain child index counters) */
+    bool SetHDChain(const CHDChain& chain, bool memonly);
+
+    /* Set the current hd master key (will reset the chain child index counters) */
+    bool SetHDMasterKey(const CKey& key);
 };
 
 /** A key allocated from the key pool. */

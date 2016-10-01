@@ -41,6 +41,7 @@ const std::string CKEY              = "ckey";              // CKEY:pub-key/privk
 const std::string CSCRIPT           = "cscript";           // CSCRIPT:hash/script
 const std::string DEFAULTKEY        = "defaultkey";        // DEFAULTKEY/pubkey
 const std::string DESTDATA          = "destdata";          // DESTDATA:(address:key)/value
+const std::string HDCHAIN			= "hdchain";		   // HDCHAIN/value
 const std::string ISSUER            = "issuer";            // ISSUER:issuer-name/issuer
 const std::string KEY               = "key";               // KEY:pubkey/(priv-key:hash(pubkey,privkey))
 const std::string KEYMETA           = "keymeta";           // KEYMETA:pub-key/key-meta
@@ -752,6 +753,16 @@ ReadKeyValue(
 				return false;
 			}
 		}
+        else if (strType == "hdchain")
+        {
+            CHDChain chain;
+            ssValue >> chain;
+            if (!pwallet->SetHDChain(chain, true))
+            {
+                strErr = "Error reading wallet database: SetHDChain failed";
+                return false;
+            }
+        }
 		else if( strType == USER_MSG )
 		{
 			std::string tag;
@@ -2237,4 +2248,11 @@ void CEDCWalletDB::DeleteMessages(
 			DeleteMessages( msgTypeTags[i], from, to, assets, senders, receivers );
 		}
 	}
+}
+
+
+bool CEDCWalletDB::WriteHDChain(const CHDChain& chain)
+{
+    nWalletDBUpdated++;
+    return Write(std::string(HDCHAIN), chain);
 }
