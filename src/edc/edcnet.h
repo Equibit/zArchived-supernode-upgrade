@@ -645,8 +645,6 @@ public:
     bool Read(banmap_t& banSet);
 };
 
-void edcDumpBanlist();
-
 /** Return a timestamp in the future (in microseconds) for exponentially distributed events. */
 int64_t edcPoissonNextSend(int64_t nNow, int average_interval_seconds);
 

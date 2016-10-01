@@ -1554,6 +1554,31 @@ void edcDumpAddresses()
            theApp.addrman().size(), GetTimeMillis() - nStart);
 }
 
+namespace
+{
+
+void edcDumpBanlist()
+{
+    CEDCNode::SweepBanned(); // clean unused entries (if bantime has expired)
+
+    if (!CEDCNode::BannedSetIsDirty())
+        return;
+
+    int64_t nStart = GetTimeMillis();
+
+    CEDCBanDB bandb;
+    banmap_t banmap;
+    CEDCNode::SetBannedSetDirty(false);
+    CEDCNode::GetBanned(banmap);
+    if (!bandb.Write(banmap))
+        CEDCNode::SetBannedSetDirty(true);
+
+    edcLogPrint("net", "Flushed %d banned node ips/subnets to banlist.dat  %dms\n",
+        banmap.size(), GetTimeMillis() - nStart);
+}
+
+}
+
 void edcDumpData()
 {
     edcDumpAddresses();
@@ -2996,26 +3021,6 @@ bool CEDCBanDB::Read(banmap_t& banSet)
     }
 
     return true;
-}
-
-void edcDumpBanlist()
-{
-    CEDCNode::SweepBanned(); // clean unused entries (if bantime has expired)
-
-    if (!CEDCNode::BannedSetIsDirty())
-        return;
-
-    int64_t nStart = GetTimeMillis();
-
-    CEDCBanDB bandb;
-    banmap_t banmap;
-    CEDCNode::SetBannedSetDirty(false);
-    CEDCNode::GetBanned(banmap);
-    if (!bandb.Write(banmap))
-        CEDCNode::SetBannedSetDirty(true);
-
-    edcLogPrint("net", "Flushed %d banned node ips/subnets to banlist.dat  %dms\n",
-        banmap.size(), GetTimeMillis() - nStart);
 }
 
 int64_t edcPoissonNextSend(int64_t nNow, int average_interval_seconds) 
