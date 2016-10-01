@@ -5133,7 +5133,12 @@ void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
 				{
                     CEDCTransaction tx;
 					EDCapp & theApp = EDCapp::singleton();
-                    if (theApp.mempool().lookup(inv.hash, tx)) 
+
+                    int64_t txtime;
+                    // To protect privacy, do not answer getdata using the mempool when
+                    // that TX couldn't have been INVed in reply to a MEMPOOL request.
+                    if (theApp.mempool().lookup(inv.hash, tx, txtime) && 
+					txtime <= pfrom->timeLastMempoolReq) 
 					{
                         pfrom->PushMessage(NetMsgType::TX, tx);
                         pushed = true;
@@ -6694,6 +6699,7 @@ bool edcSendMessages(CEDCNode* pto)
                         vInv.clear();
                     }
                 }
+				pto->timeLastMempoolReq = GetTime();
             }
             // Determine transactions to relay
             if (fSendTrickle) 

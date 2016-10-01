@@ -911,13 +911,20 @@ void CEDCTxMemPool::queryHashes(vector<uint256>& vtxid)
     std::sort(vtxid.begin(), vtxid.end(), DepthAndScoreComparator(this));
 }
 
-bool CEDCTxMemPool::lookup(uint256 hash, CEDCTransaction& result) const
+bool CEDCTxMemPool::lookup(uint256 hash, CEDCTransaction& result, int64_t& time) const
 {
     LOCK(cs);
     indexed_transaction_set::const_iterator i = mapTx.find(hash);
     if (i == mapTx.end()) return false;
     result = i->GetTx();
+	time = i->GetTime();
     return true;
+}
+
+bool CEDCTxMemPool::lookup(uint256 hash, CEDCTransaction& result) const
+{
+    int64_t time;
+    return CEDCTxMemPool::lookup(hash, result, time);
 }
 
 bool CEDCTxMemPool::lookupFeeRate(const uint256& hash, CFeeRate& feeRate) const

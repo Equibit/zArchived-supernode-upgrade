@@ -2766,6 +2766,7 @@ CEDCNode::CEDCNode(
     fRelayTxes = false;
     fSentAddr = false;
     pfilter = new CEDCBloomFilter();
+	timeLastMempoolReq = 0;
     nPingNonceSent = 0;
     nPingUsecStart = 0;
     nPingUsecTime = 0;
