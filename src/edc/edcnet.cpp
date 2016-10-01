@@ -83,7 +83,6 @@ namespace
 bool vfLimited[NET_MAX] = {};
 CEDCNode* pnodeLocalHost = NULL;
 std::vector<ListenSocket> vhListenSocket;
-std::deque<std::pair<int64_t, uint256> > relayExpiration;
 }
 
 bool edcfAddressesInitialized = false;
@@ -2416,18 +2415,6 @@ void RelayTransaction(const CEDCTransaction& tx)
 {
 	EDCapp & theApp = EDCapp::singleton();
     CInv inv(MSG_TX, tx.GetHash());
-    {
-        LOCK(theApp.mapRelayCS());
-        // Expire old relay messages
-        while (!relayExpiration.empty() && relayExpiration.front().first < GetTime())
-        {
-            theApp.mapRelay().erase(relayExpiration.front().second);
-            relayExpiration.pop_front();
-        }
-
-        theApp.mapRelay().insert(std::make_pair(inv.hash, tx));
-        relayExpiration.push_back(std::make_pair(GetTime() + 15 * 60, inv.hash));
-    }
     LOCK(theApp.vNodesCS());
     BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
     {
