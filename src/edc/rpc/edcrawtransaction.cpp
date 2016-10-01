@@ -811,6 +811,10 @@ UniValue edcsignrawtransaction(const UniValue& params, bool fHelp)
     // Script verification errors
     UniValue vErrors(UniValue::VARR);
 
+    // Use CTransaction for the constant parts of the
+    // transaction to avoid rehashing.
+    const CEDCTransaction txConst(mergedTx);
+
     // Sign what we can:
     for (unsigned int i = 0; i < mergedTx.vin.size(); i++) 
 	{
@@ -831,11 +835,11 @@ UniValue edcsignrawtransaction(const UniValue& params, bool fHelp)
         // ... and merge in other signatures:
         BOOST_FOREACH(const CEDCMutableTransaction& txv, txVariants) 
 		{
-            txin.scriptSig = edcCombineSignatures(prevPubKey, mergedTx, i, txin.scriptSig, txv.vin[i].scriptSig);
+            txin.scriptSig = edcCombineSignatures(prevPubKey, txConst, i, txin.scriptSig, txv.vin[i].scriptSig);
         }
         ScriptError serror = SCRIPT_ERR_OK;
         if (!edcVerifyScript(txin.scriptSig, prevPubKey, STANDARD_SCRIPT_VERIFY_FLAGS, 
-		EDCMutableTransactionSignatureChecker(&mergedTx, i), &serror)) 
+		EDCTransactionSignatureChecker(&txConst, i), &serror)) 
 		{
             TxInErrorToJSON(txin, vErrors, ScriptErrorString(serror));
         }
