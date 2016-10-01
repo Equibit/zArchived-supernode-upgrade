@@ -518,6 +518,12 @@ libbitcoinconsensus_la_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 endif
 #
 
+CTAES_DIST =  crypto/ctaes/bench.c
+CTAES_DIST += crypto/ctaes/ctaes.c
+CTAES_DIST += crypto/ctaes/ctaes.h
+CTAES_DIST += crypto/ctaes/README.md
+CTAES_DIST += crypto/ctaes/test.c
+
 CLEANFILES = leveldb/libleveldb.a leveldb/libmemenv.a
 CLEANFILES += $(EXTRA_LIBRARIES)
 CLEANFILES += *.gcda *.gcno
@@ -535,7 +541,7 @@ CLEANFILES += zmq/*.gcda zmq/*.gcno
 
 DISTCLEANFILES = obj/build.h
 
-EXTRA_DIST = leveldb crypto/ctaes
+EXTRA_DIST = leveldb $(CTAES_DIST)
 
 clean-local:
 	-$(MAKE) -C leveldb clean
