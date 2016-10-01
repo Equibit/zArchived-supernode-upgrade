@@ -2601,8 +2601,6 @@ UniValue edcsettxfee(const UniValue& params, bool fHelp)
             "\nSet the transaction fee per kB. Overwrites the paytxfee parameter.\n"
             "\nArguments:\n"
             "1. amount         (numeric or sting, required) The transaction fee in " + CURRENCY_UNIT + "/kB\n"
-            "\nResult\n"
-            "true|false        (boolean) Returns true if successful\n"
             "\nExamples:\n"
             + HelpExampleCli("eb_settxfee", "0.00001")
             + HelpExampleRpc("eb_settxfee", "0.00001")
