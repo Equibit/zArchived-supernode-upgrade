@@ -29,7 +29,7 @@ void edcRegisterAllCoreRPCCommands( CEDCRPCTable & edcTableRPC );
 void edcRegisterWalletRPCCommands(CEDCRPCTable & edcTableRPC );
 int64_t edcGetAdjustedTime();
 
-extern volatile sig_atomic_t fRequestShutdown;
+extern std::atomic<bool> fRequestShutdown;
 
 
 namespace

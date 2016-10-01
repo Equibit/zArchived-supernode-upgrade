@@ -416,7 +416,7 @@ void EDCBlockAssembler::addPriorityTxs()
 
             // If now that this txs is added we've surpassed our desired priority size
             // or have dropped below the AllowFreeThreshold, then we're done adding priority txs
-			if (nBlockSize >= nBlockPrioritySize || !AllowFree(actualPriority)) {
+			if (nBlockSize >= nBlockPrioritySize || !AllowFree(actualPriority))
 			{
                 return;
             }
