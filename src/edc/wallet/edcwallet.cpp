@@ -4041,8 +4041,6 @@ bool CEDCWallet::ParameterInteraction()
 
 bool CEDCWallet::BackupWallet(const std::string& strDest)
 {
-	EDCapp & theApp = EDCapp::singleton();
-
     if (!fFileBacked)
         return false;
 

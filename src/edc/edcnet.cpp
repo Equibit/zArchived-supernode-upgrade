@@ -1589,7 +1589,7 @@ void edcDumpData()
 
 namespace
 {
-CEDCNode* edcConnectNode(CAddress addrConnect, const char *pszDest, bool secure )
+CEDCNode* edcConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure )
 {
     if (pszDest == NULL) 
 	{
@@ -1597,7 +1597,7 @@ CEDCNode* edcConnectNode(CAddress addrConnect, const char *pszDest, bool secure 
             return NULL;
 
         // Look for an existing connection
-        CEDCNode* pnode = edcFindNode((CService)addrConnect, secure );
+        CEDCNode* pnode = edcFindNode((CService)addrConnect, fCountFailure );
         if (pnode)
         {
             pnode->AddRef();
@@ -1620,7 +1620,7 @@ CEDCNode* edcConnectNode(CAddress addrConnect, const char *pszDest, bool secure 
 			addrConnect, 
 			hSocket, 
 			pszDest, 
-			secure ? edcParams().GetDefaultSecurePort() : edcParams().GetDefaultPort(), 
+			fCountFailure ? edcParams().GetDefaultSecurePort() : edcParams().GetDefaultPort(), 
 			theApp.connectTimeout(), &proxyConnectionFailed) :
         edcConnectSocket(
 			addrConnect, 
@@ -1635,11 +1635,11 @@ CEDCNode* edcConnectNode(CAddress addrConnect, const char *pszDest, bool secure 
             return NULL;
         }
 
-        theApp.addrman().Attempt(addrConnect);
+        theApp.addrman().Attempt(addrConnect, fCountFailure );
 
 		// If this is a secure connection, then do the SSL handshake first
        	CEDCNode * pnode;
-		if(secure)
+		if(fCountFailure)
 		{
 			if( SSL * ssl = CEDCSSLNode::sslConnect(hSocket))
 			{
@@ -1661,7 +1661,7 @@ CEDCNode* edcConnectNode(CAddress addrConnect, const char *pszDest, bool secure 
 
         {
             LOCK(theApp.vNodesCS());
-			if(secure)
+			if(fCountFailure)
 	            theApp.vSSLNodes().push_back(static_cast<CEDCSSLNode *>(pnode));
 			else
 	            theApp.vNodes().push_back(pnode);
@@ -1675,7 +1675,7 @@ CEDCNode* edcConnectNode(CAddress addrConnect, const char *pszDest, bool secure 
 	{
         // If connecting to the node failed, and failure is not caused by a problem connecting to
         // the proxy, mark this as an attempt.
-        theApp.addrman().Attempt(addrConnect);
+        theApp.addrman().Attempt(addrConnect, fCountFailure );
     }
 
     edcLogPrint("net", "WARNING:FAILED to connect %s\n", pszDest ? pszDest : addrConnect.ToString());
@@ -1683,13 +1683,16 @@ CEDCNode* edcConnectNode(CAddress addrConnect, const char *pszDest, bool secure 
     return NULL;
 }
 
+}
+
 // if successful, this moves the passed grant to the constructed node
 bool edcOpenNetworkConnection(
 	 const CAddress & addrConnect, 
-	CSemaphoreGrant * grantOutbound  = NULL, 
-	CSemaphoreGrant * sgrantOutbound = NULL, 
-	     const char * pszDest = NULL, 
-	             bool fOneShot = false )
+                 bool fCountFailure,
+	CSemaphoreGrant * grantOutbound, 
+	CSemaphoreGrant * sgrantOutbound, 
+	     const char * pszDest, 
+	             bool fOneShot )
 {
     //
     // Initiate outbound network connection
@@ -1706,7 +1709,7 @@ bool edcOpenNetworkConnection(
 	else if (edcFindNode(std::string(pszDest), false ))
         return false;
 
-    CEDCNode* pnode = edcConnectNode(addrConnect, pszDest, false );
+    CEDCNode* pnode = edcConnectNode(addrConnect, pszDest, fCountFailure );
     boost::this_thread::interruption_point();
 
     if (!pnode)
@@ -1732,6 +1735,9 @@ bool edcOpenNetworkConnection(
     return true;
 }
 
+namespace
+{
+
 void ProcessOneShot()
 {
     std::string strDest;
@@ -1747,7 +1753,7 @@ void ProcessOneShot()
     CSemaphoreGrant sgrant(*semOutbound, true);
     if (grant) 
 	{
-        if (!edcOpenNetworkConnection(addr, &grant, &sgrant, strDest.c_str(), true))
+        if (!edcOpenNetworkConnection(addr, false, &grant, &sgrant, strDest.c_str(), true))
             AddOneShot(strDest);
     }
 }
@@ -1766,7 +1772,7 @@ void edcThreadOpenConnections()
             BOOST_FOREACH(const std::string& strAddr, params.connect)
             {
                 CAddress addr;
-                edcOpenNetworkConnection(addr, NULL, NULL, strAddr.c_str());
+                edcOpenNetworkConnection(addr, false, NULL, NULL, strAddr.c_str());
                 for (int i = 0; i < 10 && i < nLoop; i++)
                 {
                     MilliSleep(500);
@@ -1857,7 +1863,7 @@ void edcThreadOpenConnections()
         CSemaphoreGrant grant(*semOutbound);
         CSemaphoreGrant sgrant(*semOutbound);
         if (addrConnect.IsValid())
-            edcOpenNetworkConnection(addrConnect, &grant, &sgrant );
+            edcOpenNetworkConnection(addrConnect, (int)setConnected.size() >= std::min(nMaxConnections - 1, 2), &grant, &sgrant );
     }
 }
 
@@ -1885,7 +1891,7 @@ void edcThreadOpenAddedConnections()
                 CAddress addr;
                 CSemaphoreGrant grant(*semOutbound);
                 CSemaphoreGrant sgrant(*semOutbound);
-                edcOpenNetworkConnection(addr, &grant, &sgrant, strAddNode.c_str());
+                edcOpenNetworkConnection(addr, false, &grant, &sgrant, strAddNode.c_str());
                 MilliSleep(500);
             }
             MilliSleep(120000); // Retry every 2 minutes
@@ -1929,7 +1935,7 @@ void edcThreadOpenAddedConnections()
         {
             CSemaphoreGrant grant(*semOutbound);
             CSemaphoreGrant sgrant(*semOutbound);
-            edcOpenNetworkConnection(CAddress(vserv[i % vserv.size()]), &grant, &sgrant );
+            edcOpenNetworkConnection(CAddress(vserv[i % vserv.size()]), false, &grant, &sgrant );
             MilliSleep(500);
         }
         MilliSleep(120000); // Retry every 2 minutes

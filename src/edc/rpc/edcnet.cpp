@@ -238,7 +238,7 @@ UniValue edcaddnode(const UniValue& params, bool fHelp)
     if (strCommand == "onetry")
     {
         CAddress addr;
-        OpenNetworkConnection(addr, NULL, strNode.c_str());
+        edcOpenNetworkConnection(addr, false, NULL, NULL, strNode.c_str());
         return NullUniValue;
     }
 
