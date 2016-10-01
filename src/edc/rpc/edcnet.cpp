@@ -609,19 +609,12 @@ UniValue edcsetban(const UniValue& params, bool fHelp)
             absolute = true;
 
         isSubnet ? CEDCNode::Ban(subNet, BanReasonManuallyAdded, banTime, absolute) : CEDCNode::Ban(netAddr, BanReasonManuallyAdded, banTime, absolute);
-
-        //disconnect possible nodes
-        while(CEDCNode *bannedNode = (isSubnet ? edcFindNode(subNet, false ) : edcFindNode(netAddr, false )))
-            bannedNode->fDisconnect = true;
     }
     else if(strCommand == "remove")
     {
         if (!( isSubnet ? CEDCNode::Unban(subNet) : CEDCNode::Unban(netAddr) ))
             throw JSONRPCError(RPC_MISC_ERROR, "Error: Unban failed");
     }
-
-    DumpBanlist(); //store banlist to disk
-    edcUiInterface.BannedListChanged();
 
     return NullUniValue;
 }
@@ -668,8 +661,6 @@ UniValue edcclearbanned(const UniValue& params, bool fHelp)
                             );
 
     CEDCNode::ClearBanned();
-    DumpBanlist(); //store banlist to disk
-    edcUiInterface.BannedListChanged();
 
     return NullUniValue;
 }
