@@ -435,6 +435,31 @@ banmap_t CEDCNode::setBanned;
 CCriticalSection CEDCNode::cs_setBanned;
 bool CEDCNode::setBannedIsDirty;
 
+namespace
+{
+
+void edcDumpBanlist()
+{
+    CEDCNode::SweepBanned(); // clean unused entries (if bantime has expired)
+
+    if (!CEDCNode::BannedSetIsDirty())
+        return;
+
+    int64_t nStart = GetTimeMillis();
+
+    CEDCBanDB bandb;
+    banmap_t banmap;
+    CEDCNode::SetBannedSetDirty(false);
+    CEDCNode::GetBanned(banmap);
+    if (!bandb.Write(banmap))
+        CEDCNode::SetBannedSetDirty(true);
+
+    edcLogPrint("net", "Flushed %d banned node ips/subnets to banlist.dat  %dms\n",
+        banmap.size(), GetTimeMillis() - nStart);
+}
+
+}
+
 void CEDCNode::ClearBanned()
 {
     {
@@ -442,7 +467,7 @@ void CEDCNode::ClearBanned()
         setBanned.clear();
         setBannedIsDirty = true;
     }
-    DumpBanlist(); //store banlist to disk
+    edcDumpBanlist(); //store banlist to disk
 	edcUiInterface.BannedListChanged();
 }
 
@@ -525,7 +550,7 @@ void CEDCNode::Ban(
         }
     }
     if(banReason == BanReasonManuallyAdded)
-        DumpBanlist(); //store banlist to disk immediately if user requested ban
+        edcDumpBanlist(); //store banlist to disk immediately if user requested ban
 }
 
 bool CEDCNode::Unban(const CNetAddr &addr) 
@@ -543,7 +568,7 @@ bool CEDCNode::Unban(const CSubNet &subNet)
         setBannedIsDirty = true;
     }
     edcUiInterface.BannedListChanged();
-    DumpBanlist(); //store banlist to disk immediately
+    edcDumpBanlist(); //store banlist to disk immediately
     return true;
 }
 
@@ -1552,31 +1577,6 @@ void edcDumpAddresses()
 
     edcLogPrint("net", "Flushed %d addresses to peers.dat  %dms\n",
            theApp.addrman().size(), GetTimeMillis() - nStart);
-}
-
-namespace
-{
-
-void edcDumpBanlist()
-{
-    CEDCNode::SweepBanned(); // clean unused entries (if bantime has expired)
-
-    if (!CEDCNode::BannedSetIsDirty())
-        return;
-
-    int64_t nStart = GetTimeMillis();
-
-    CEDCBanDB bandb;
-    banmap_t banmap;
-    CEDCNode::SetBannedSetDirty(false);
-    CEDCNode::GetBanned(banmap);
-    if (!bandb.Write(banmap))
-        CEDCNode::SetBannedSetDirty(true);
-
-    edcLogPrint("net", "Flushed %d banned node ips/subnets to banlist.dat  %dms\n",
-        banmap.size(), GetTimeMillis() - nStart);
-}
-
 }
 
 void edcDumpData()
