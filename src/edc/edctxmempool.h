@@ -295,20 +295,6 @@ public:
 
 class CEDCBlockPolicyEstimator;
 
-/** An inpoint - a combination of a transaction and an index n into its vin */
-class CEDCInPoint
-{
-public:
-    const CEDCTransaction* ptx;
-    uint32_t n;
-
-    CEDCInPoint() { SetNull(); }
-    CEDCInPoint(const CEDCTransaction* ptxIn, uint32_t nIn) { ptx = ptxIn; n = nIn; }
-    void SetNull() { ptx = NULL; n = (uint32_t) -1; }
-    bool IsNull() const { return (ptx == NULL && n == (uint32_t) -1); }
-    size_t DynamicMemoryUsage() const { return 0; }
-};
-
 /**
  * CTxMemPool stores valid-according-to-the-current-best-chain
  * transactions that may be included in the next block.
@@ -470,7 +456,7 @@ private:
     void UpdateChild(txiter entry, txiter child, bool add);
 
 public:
-    std::map<COutPoint, CEDCInPoint> mapNextTx;
+	indirectmap<COutPoint, const CEDCTransaction*> mapNextTx;
     std::map<uint256, std::pair<double, CAmount> > mapDeltas;
 
     /** Create a new CEDCTxMemPool.

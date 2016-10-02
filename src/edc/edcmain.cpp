@@ -1169,9 +1169,10 @@ bool AcceptToMemoryPoolWorker(
     LOCK(pool.cs); // protect pool.mapNextTx
     BOOST_FOREACH(const CEDCTxIn &txin, tx.vin)
     {
-        if (pool.mapNextTx.count(txin.prevout))
+        auto itConflicting = pool.mapNextTx.find(txin.prevout);
+        if (itConflicting != pool.mapNextTx.end())
         {
-            const CEDCTransaction *ptxConflicting = pool.mapNextTx[txin.prevout].ptx;
+			const CEDCTransaction *ptxConflicting = itConflicting->second;
             if (!setConflicts.count(ptxConflicting->GetHash()))
             {
                 // Allow opt-out of transaction replacement by setting
@@ -6307,6 +6308,12 @@ bool edcProcessMessages(CEDCNode* pfrom)
             {
                 // Allow exceptions from over-long size
                 edcLogPrintf("%s(%s, %u bytes): Exception '%s' caught\n", __func__, SanitizeString(strCommand), nMessageSize, e.what());
+            }
+            else if (strstr(e.what(), "non-canonical ReadCompactSize()"))
+            {
+                // Allow exceptions from non-canonical encoding
+                edcLogPrintf("%s(%s, %u bytes): Exception '%s' caught\n", __func__, 
+					SanitizeString(strCommand), nMessageSize, e.what());
             }
             else
             {

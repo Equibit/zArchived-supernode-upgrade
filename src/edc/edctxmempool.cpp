@@ -169,12 +169,12 @@ void CEDCTxMemPool::UpdateTransactionsFromBlock(const std::vector<uint256> &vHas
 		{
             continue;
         }
-        std::map<COutPoint, CEDCInPoint>::iterator iter = mapNextTx.lower_bound(COutPoint(hash, 0));
+		auto iter = mapNextTx.lower_bound(COutPoint(hash, 0));
         // First calculate the children, and update setMemPoolChildren to
         // include them, and update their setMemPoolParents to include this tx.
-        for (; iter != mapNextTx.end() && iter->first.hash == hash; ++iter) 
+		for (; iter != mapNextTx.end() && iter->first->hash == hash; ++iter) 
 		{
-            const uint256 &childHash = iter->second.ptx->GetHash();
+			const uint256 & childHash = iter->second->GetHash();
             txiter childIter = mapTx.find(childHash);
             assert(childIter != mapTx.end());
             // We can skip updating entries we've encountered before or that
@@ -433,12 +433,12 @@ void CEDCTxMemPool::pruneSpent(const uint256 &hashTx, CEDCCoins &coins)
 {
     LOCK(cs);
 
-    std::map<COutPoint, CEDCInPoint>::iterator it = mapNextTx.lower_bound(COutPoint(hashTx, 0));
+	auto it = mapNextTx.lower_bound(COutPoint(hashTx, 0));
 
     // iterate over all COutPoints in mapNextTx whose hash equals the provided hashTx
-    while (it != mapNextTx.end() && it->first.hash == hashTx) 
+    while (it != mapNextTx.end() && it->first->hash == hashTx) 
 	{
-        coins.Spend(it->first.n); // and remove those outputs from coins
+        coins.Spend(it->first->n); // and remove those outputs from coins
         it++;
     }
 }
@@ -490,7 +490,7 @@ bool CEDCTxMemPool::addUnchecked(
     std::set<uint256> setParentTransactions;
     for (unsigned int i = 0; i < tx.vin.size(); i++) 
 	{
-        mapNextTx[tx.vin[i].prevout] = CEDCInPoint(&tx, i);
+		mapNextTx.insert(std::make_pair(&tx.vin[i].prevout, &tx));
         setParentTransactions.insert(tx.vin[i].prevout.hash);
     }
     // Don't bother worrying about child transactions of this one.
@@ -586,10 +586,10 @@ void CEDCTxMemPool::removeRecursive(const CEDCTransaction &origTx, std::list<CED
             // the mempool for any reason.
             for (unsigned int i = 0; i < origTx.vout.size(); i++) 
 			{
-                std::map<COutPoint, CEDCInPoint>::iterator it = mapNextTx.find(COutPoint(origTx.GetHash(), i));
+				auto it = mapNextTx.find(COutPoint(origTx.GetHash(), i));
                 if (it == mapNextTx.end())
                     continue;
-                txiter nextit = mapTx.find(it->second.ptx->GetHash());
+				txiter nextit = mapTx.find(it->second->GetHash());
                 assert(nextit != mapTx.end());
                 txToRemove.insert(nextit);
             }
@@ -662,10 +662,10 @@ void CEDCTxMemPool::removeConflicts(const CEDCTransaction &tx, std::list<CEDCTra
     LOCK(cs);
     BOOST_FOREACH(const CEDCTxIn &txin, tx.vin) 
 	{
-        std::map<COutPoint, CEDCInPoint>::iterator it = mapNextTx.find(txin.prevout);
+		auto it = mapNextTx.find(txin.prevout);
         if (it != mapNextTx.end()) 
 		{
-            const CEDCTransaction &txConflict = *it->second.ptx;
+			const CEDCTransaction &txConflict = *it->second;
             if (txConflict != tx)
             {
                 removeRecursive(txConflict, removed);
@@ -783,10 +783,10 @@ void CEDCTxMemPool::check(const CEDCCoinsViewCache *pcoins) const
                 assert(coins && coins->IsAvailable(txin.prevout.n));
             }
             // Check whether its inputs are marked in mapNextTx.
-            std::map<COutPoint, CEDCInPoint>::const_iterator it3 = mapNextTx.find(txin.prevout);
+			auto it3 = mapNextTx.find(txin.prevout);
             assert(it3 != mapNextTx.end());
-            assert(it3->second.ptx == &tx);
-            assert(it3->second.n == i);
+            assert(it3->first == &txin.prevout);
+            assert(it3->second == &tx);
             i++;
         }
         assert(setParentCheck == GetMemPoolParents(it));
@@ -814,12 +814,12 @@ void CEDCTxMemPool::check(const CEDCCoinsViewCache *pcoins) const
 
         // Check children against mapNextTx
         CEDCTxMemPool::setEntries setChildrenCheck;
-        std::map<COutPoint, CEDCInPoint>::const_iterator iter = mapNextTx.lower_bound(COutPoint(it->GetTx().GetHash(), 0));
+		auto iter = mapNextTx.lower_bound(COutPoint(it->GetTx().GetHash(), 0));
         int64_t childSizes = 0;
 
-        for (; iter != mapNextTx.end() && iter->first.hash == it->GetTx().GetHash(); ++iter) 
+        for (; iter != mapNextTx.end() && iter->first->hash == it->GetTx().GetHash(); ++iter) 
 		{
-            txiter childit = mapTx.find(iter->second.ptx->GetHash());
+            txiter childit = mapTx.find(iter->second->GetHash());
             assert(childit != mapTx.end()); // mapNextTx points to in-mempool transactions
             if (setChildrenCheck.insert(childit).second) 
 			{
@@ -859,15 +859,13 @@ void CEDCTxMemPool::check(const CEDCCoinsViewCache *pcoins) const
             stepsSinceLastRemove = 0;
         }
     }
-    for (std::map<COutPoint, CEDCInPoint>::const_iterator it = mapNextTx.begin(); it != mapNextTx.end(); it++) 
+    for (auto it = mapNextTx.cbegin(); it != mapNextTx.cend(); it++) 
 	{
-        uint256 hash = it->second.ptx->GetHash();
+        uint256 hash = it->second->GetHash();
         indexed_transaction_set::const_iterator it2 = mapTx.find(hash);
         const CEDCTransaction& tx = it2->GetTx();
         assert(it2 != mapTx.end());
-        assert(&tx == it->second.ptx);
-        assert(tx.vin.size() > it->second.n);
-        assert(it->first == it->second.ptx->vin[it->second.n].prevout);
+		assert(&tx == it->second);
     }
 
     assert(totalTxSize == checkTotal);
@@ -1258,8 +1256,8 @@ void CEDCTxMemPool::TrimToSize(
 				{
                     if (exists(txin.prevout.hash))
                         continue;
-                    std::map<COutPoint, CEDCInPoint>::iterator it = mapNextTx.lower_bound(COutPoint(txin.prevout.hash, 0));
-                    if (it == mapNextTx.end() || it->first.hash != txin.prevout.hash)
+                    auto it = mapNextTx.lower_bound(COutPoint(txin.prevout.hash, 0));
+                    if (it == mapNextTx.end() || it->first->hash != txin.prevout.hash)
                         pvNoSpendsRemaining->push_back(txin.prevout.hash);
                 }
             }
