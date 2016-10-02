@@ -193,6 +193,14 @@ void edcImportScript(
             throw JSONRPCError(RPC_WALLET_ERROR, "Error adding p2sh redeemScript to wallet");
         edcImportAddress(CEDCBitcoinAddress(CScriptID(script)), strLabel);
     }
+	else 
+	{
+        CTxDestination destination;
+        if (ExtractDestination(script, destination)) 
+		{
+            pwalletMain->SetAddressBook(destination, strLabel, "receive");
+		}
+	}
 }
 
 void edcImportAddress(const CEDCBitcoinAddress& address, const string& strLabel)
@@ -222,6 +230,8 @@ UniValue edcimportaddress(const UniValue& params, bool fHelp)
             "4. p2sh                 (boolean, optional, default=false) Add the P2SH version of the script as well\n"
             "\nNote: This call can take minutes to complete if rescan is true.\n"
             "If you have the full public key, you should call eb_importpubkey instead of this.\n"
+            "\nNote: If you import a non-standard raw script in hex form, outputs sending to it will be treated\n"
+            "as change, and not show up in many RPCs.\n"
             "\nExamples:\n"
             "\nImport a script with rescan\n"
             + HelpExampleCli("eb_importaddress", "\"myscript\"") +
