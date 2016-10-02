@@ -749,6 +749,49 @@ int64_t CEDCWallet::IncOrderPosNext(CEDCWalletDB *pwalletdb)
     return nRet;
 }
 
+int64_t edcGetAdjustedTime();
+
+bool CEDCWallet::AccountMove(
+	std::string strFrom, 
+	std::string strTo, 
+	    CAmount nAmount, 
+	std::string strComment)
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+    CEDCWalletDB walletdb(theApp.walletMain()->strWalletFile);
+
+    if (!walletdb.TxnBegin())
+        return false;
+
+    int64_t nNow = edcGetAdjustedTime();
+
+    // Debit
+    CAccountingEntry debit;
+    debit.nOrderPos = theApp.walletMain()->IncOrderPosNext(&walletdb);
+    debit.strAccount = strFrom;
+    debit.nCreditDebit = -nAmount;
+    debit.nTime = nNow;
+    debit.strOtherAccount = strTo;
+    debit.strComment = strComment;
+    theApp.walletMain()->AddAccountingEntry(debit, walletdb);
+
+    // Credit
+    CAccountingEntry credit;
+    credit.nOrderPos = theApp.walletMain()->IncOrderPosNext(&walletdb);
+    credit.strAccount = strTo;
+    credit.nCreditDebit = nAmount;
+    credit.nTime = nNow;
+    credit.strOtherAccount = strFrom;
+    credit.strComment = strComment;
+    theApp.walletMain()->AddAccountingEntry(credit, walletdb);
+
+    if (!walletdb.TxnCommit())
+		return false;
+
+	return true;
+}
+
 void CEDCWallet::MarkDirty()
 {
     {

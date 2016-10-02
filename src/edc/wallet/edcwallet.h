@@ -608,6 +608,7 @@ public:
      */
     int64_t IncOrderPosNext(CEDCWalletDB *pwalletdb = NULL);
 
+    bool AccountMove(std::string strFrom, std::string strTo, CAmount nAmount, std::string strComment = "");
     void MarkDirty();
     bool AddToWallet(const CEDCWalletTx& wtxIn, bool fFromLoadWallet, CEDCWalletDB* pwalletdb);
     void SyncTransaction(const CEDCTransaction& tx, const CBlockIndex *pindex, const CEDCBlock* pblock);

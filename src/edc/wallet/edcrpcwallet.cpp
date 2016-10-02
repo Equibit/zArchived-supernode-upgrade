@@ -1044,8 +1044,6 @@ UniValue edcgetunconfirmedbalance(const UniValue &params, bool fHelp)
     return ValueFromAmount(theApp.walletMain()->GetUnconfirmedBalance());
 }
 
-int64_t edcGetAdjustedTime();
-
 UniValue edcmovecmd(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
@@ -1088,34 +1086,7 @@ UniValue edcmovecmd(const UniValue& params, bool fHelp)
     if (params.size() > 4)
         strComment = params[4].get_str();
 
-    CEDCWalletDB walletdb(theApp.walletMain()->strWalletFile);
-
-    if (!walletdb.TxnBegin())
-        throw JSONRPCError(RPC_DATABASE_ERROR, "database error");
-
-    int64_t nNow = edcGetAdjustedTime();
-
-    // Debit
-    CAccountingEntry debit;
-    debit.nOrderPos = theApp.walletMain()->IncOrderPosNext(&walletdb);
-    debit.strAccount = strFrom;
-    debit.nCreditDebit = -nAmount;
-    debit.nTime = nNow;
-    debit.strOtherAccount = strTo;
-    debit.strComment = strComment;
-    theApp.walletMain()->AddAccountingEntry(debit, walletdb);
-
-    // Credit
-    CAccountingEntry credit;
-    credit.nOrderPos = theApp.walletMain()->IncOrderPosNext(&walletdb);
-    credit.strAccount = strTo;
-    credit.nCreditDebit = nAmount;
-    credit.nTime = nNow;
-    credit.strOtherAccount = strFrom;
-    credit.strComment = strComment;
-    theApp.walletMain()->AddAccountingEntry(credit, walletdb);
-
-    if (!walletdb.TxnCommit())
+	if (!theApp.walletMain()->AccountMove(strFrom, strTo, nAmount, strComment))
         throw JSONRPCError(RPC_DATABASE_ERROR, "database error");
 
     return true;
