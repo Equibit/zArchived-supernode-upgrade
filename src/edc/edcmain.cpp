@@ -41,6 +41,7 @@
 #include "edc/message/edcmessage.h"
 #include "edc/wallet/edcwallet.h"
 
+#include <atomic>
 #include <sstream>
 
 #include <boost/algorithm/string/replace.hpp>
@@ -1784,19 +1785,27 @@ bool edcIsInitialBlockDownload()
 	EDCapp & theApp = EDCapp::singleton();
 
     const CEDCChainParams& chainParams = edcParams();
+
+    // Once this function has returned false, it must remain false.
+    static std::atomic<bool> latchToFalse{false};
+
+    // Optimization: pre-test latch before taking the lock.
+    if (latchToFalse.load(std::memory_order_relaxed))
+        return false;
+
     LOCK(EDC_cs_main);
+    if (latchToFalse.load(std::memory_order_relaxed))
+        return false;
+
     if (theApp.importing() || theApp.reindex() )
         return true;
 	EDCparams & params = EDCparams::singleton();
     if (params.checkpoints && theApp.chainActive().Height() < Checkpoints::GetTotalBlocksEstimate(chainParams.Checkpoints()))
         return true;
-    static bool lockIBDState = false;
-    if (lockIBDState)
-        return false;
     bool state = (theApp.chainActive().Height() < theApp.indexBestHeader()->nHeight - 24 * 6 ||
             std::max(theApp.chainActive().Tip()->GetBlockTime(), theApp.indexBestHeader()->GetBlockTime()) < GetTime() - params.maxtipage );
     if (!state)
-        lockIBDState = true;
+		latchToFalse.store(true, std::memory_order_relaxed);
     return state;
 }
 
