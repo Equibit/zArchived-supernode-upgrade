@@ -5138,12 +5138,12 @@ void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
 				{
 					EDCapp & theApp = EDCapp::singleton();
 
-                    int64_t txtime;
+					auto txinfo = theApp.mempool().info(inv.hash);
                     // To protect privacy, do not answer getdata using the mempool when
                     // that TX couldn't have been INVed in reply to a MEMPOOL request.
-                    if (theApp.mempool().lookup(inv.hash, tx, txtime) && 
-					txtime <= pfrom->timeLastMempoolReq) 
+					if (txinfo.tx && txinfo.nTime <= pfrom->timeLastMempoolReq) 
 					{
+                        tx = *txinfo.tx;
                         push = true;
                     }
                 }
@@ -6674,8 +6674,7 @@ bool edcSendMessages(CEDCNode* pto)
             // Respond to BIP35 mempool requests
             if (fSendTrickle && pto->fSendMempool) 
 			{
-                std::vector<uint256> vtxid;
-                theApp.mempool().queryHashes(vtxid);
+				auto vtxinfo = theApp.mempool().infoAll();
                 pto->fSendMempool = false;
                 CAmount filterrate = 0;
                 {
@@ -6684,24 +6683,21 @@ bool edcSendMessages(CEDCNode* pto)
                 }
                 LOCK(pto->cs_filter);
 
-                BOOST_FOREACH(const uint256& hash, vtxid) 
+                for (const auto& txinfo : vtxinfo) 
 				{
+                    const uint256& hash = txinfo.tx->GetHash();
                     CInv inv(MSG_TX, hash);
                     pto->setInventoryTxToSend.erase(hash);
                     if (filterrate) 
 					{
-                        CFeeRate feeRate;
-                        theApp.mempool().lookupFeeRate(hash, feeRate);
-                        if (feeRate.GetFeePerK() < filterrate)
+						if (txinfo.feeRate.GetFeePerK() < filterrate)
                             continue;
                     }
                     if (pto->pfilter) 
 					{
-                        CEDCTransaction tx;
 						EDCapp & theApp = EDCapp::singleton();
-                        bool fInMemPool = theApp.mempool().lookup(hash, tx);
-                        if (!fInMemPool) continue; // another thread removed since queryHashes, maybe...
-                        if (!pto->pfilter->IsRelevantAndUpdate(tx)) continue;
+						if (!pto->pfilter->IsRelevantAndUpdate(*txinfo.tx)) 
+							continue;
                     }
                     pto->filterInventoryKnown.insert(hash);
                     vInv.push_back(inv);
@@ -6759,20 +6755,17 @@ bool edcSendMessages(CEDCNode* pto)
                         continue;
                     }
                     // Not in the mempool anymore? don't bother sending it.
-                    CFeeRate feeRate;
-                    if (!theApp.mempool().lookupFeeRate(hash, feeRate)) 
+                    auto txinfo = theApp.mempool().info(hash);
+                    if (!txinfo.tx)
 					{
                         continue;
                     }
-                    if (filterrate && feeRate.GetFeePerK() < filterrate) 
+					if (filterrate && txinfo.feeRate.GetFeePerK() < filterrate)
 					{
                         continue;
                     }
-                    CEDCTransaction tx;
-                    if (!theApp.mempool().lookup(hash, tx)) 
-						continue;
 
-                    if (pto->pfilter && !pto->pfilter->IsRelevantAndUpdate(tx)) 
+					if (pto->pfilter && !pto->pfilter->IsRelevantAndUpdate(*txinfo.tx)) 
 						continue;
 
                     // Send
@@ -6788,7 +6781,7 @@ bool edcSendMessages(CEDCNode* pto)
                             relayExpiration.pop_front();
                         }
 
-                        auto ret = theApp.mapRelay().insert(std::make_pair(hash, tx));
+						auto ret = theApp.mapRelay().insert(std::make_pair(hash, *txinfo.tx));
                         if (ret.second) 
 						{
                             relayExpiration.push_back(std::make_pair(GetTime() + 15 * 60, hash));

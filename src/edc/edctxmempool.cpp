@@ -32,18 +32,19 @@ CEDCTxMemPoolEntry::CEDCTxMemPoolEntry(
                         bool _spendsCoinbase, 
 				unsigned int _sigOps, 
 				  LockPoints lp):
-    tx(_tx), nFee(_nFee), nTime(_nTime), entryPriority(_entryPriority), entryHeight(_entryHeight),
+	tx(std::make_shared<CEDCTransaction>(_tx)), nFee(_nFee), nTime(_nTime), 
+	entryPriority(_entryPriority), entryHeight(_entryHeight),
     hadNoDependencies(poolHasNoInputsOf), inChainInputValue(_inChainInputValue),
     spendsCoinbase(_spendsCoinbase), sigOpCount(_sigOps), lockPoints(lp)
 {
-    nTxSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
-    nModSize = tx.CalculateModifiedSize(nTxSize);
-    nUsageSize = RecursiveDynamicUsage(tx);
+    nTxSize = ::GetSerializeSize(_tx, SER_NETWORK, PROTOCOL_VERSION);
+    nModSize = _tx.CalculateModifiedSize(nTxSize);
+    nUsageSize = RecursiveDynamicUsage(*tx) + memusage::DynamicUsage(tx);
 
     nCountWithDescendants = 1;
     nSizeWithDescendants = nTxSize;
     nModFeesWithDescendants = nFee;
-    CAmount nValueIn = tx.GetValueOut()+nFee;
+	CAmount nValueIn = _tx.GetValueOut()+nFee;
     assert(inChainInputValue <= nValueIn);
 
     feeDelta = 0;
@@ -890,49 +891,95 @@ bool CEDCTxMemPool::CompareDepthAndScore(const uint256& hasha, const uint256& ha
 namespace {
 class DepthAndScoreComparator
 {
-    CEDCTxMemPool *mp;
 public:
-    DepthAndScoreComparator(CEDCTxMemPool *mempool) : mp(mempool) {}
-    bool operator()(const uint256& a, const uint256& b) { return mp->CompareDepthAndScore(a, b); }
+    bool operator()(
+		const CEDCTxMemPool::indexed_transaction_set::const_iterator& a, 
+		const CEDCTxMemPool::indexed_transaction_set::const_iterator& b)
+    {
+        uint64_t counta = a->GetCountWithAncestors();
+        uint64_t countb = b->GetCountWithAncestors();
+        if (counta == countb) {
+            return EDCCompareTxMemPoolEntryByScore()(*a, *b);
+        }
+        return counta < countb;
+    }
 };
+}
+
+std::vector<CEDCTxMemPool::indexed_transaction_set::const_iterator> 
+CEDCTxMemPool::GetSortedDepthAndScore() const
+{
+    std::vector<indexed_transaction_set::const_iterator> iters;
+    AssertLockHeld(cs);
+
+    iters.reserve(mapTx.size());
+
+    for (indexed_transaction_set::iterator mi = mapTx.begin(); mi != mapTx.end(); ++mi) 
+	{
+        iters.push_back(mi);
+    }
+    std::sort(iters.begin(), iters.end(), DepthAndScoreComparator());
+    return iters;
 }
 
 void CEDCTxMemPool::queryHashes(vector<uint256>& vtxid)
 {
-    vtxid.clear();
-
     LOCK(cs);
-    vtxid.reserve(mapTx.size());
-    for (indexed_transaction_set::iterator mi = mapTx.begin(); mi != mapTx.end(); ++mi)
-        vtxid.push_back(mi->GetTx().GetHash());
+	auto iters = GetSortedDepthAndScore();
 
-    std::sort(vtxid.begin(), vtxid.end(), DepthAndScoreComparator(this));
+    vtxid.clear();
+    vtxid.reserve(mapTx.size());
+
+    for (auto it : iters) 
+	{
+        vtxid.push_back(it->GetTx().GetHash());
+    }
 }
 
-bool CEDCTxMemPool::lookup(uint256 hash, CEDCTransaction& result, int64_t& time) const
+std::vector<EDCTxMempoolInfo> CEDCTxMemPool::infoAll() const
+{
+    LOCK(cs);
+    auto iters = GetSortedDepthAndScore();
+
+    std::vector<EDCTxMempoolInfo> ret;
+    ret.reserve(mapTx.size());
+    for (auto it : iters) 
+	{
+        ret.push_back(EDCTxMempoolInfo{it->GetSharedTx(), it->GetTime(), 
+			CFeeRate(it->GetFee(), it->GetTxSize())});
+    }
+
+    return ret;
+}
+
+std::shared_ptr<const CEDCTransaction> CEDCTxMemPool::get(const uint256& hash) const
 {
     LOCK(cs);
     indexed_transaction_set::const_iterator i = mapTx.find(hash);
-    if (i == mapTx.end()) return false;
-    result = i->GetTx();
-	time = i->GetTime();
-    return true;
+
+    if (i == mapTx.end())
+        return nullptr;
+    return i->GetSharedTx();
 }
 
 bool CEDCTxMemPool::lookup(uint256 hash, CEDCTransaction& result) const
 {
-    int64_t time;
-    return CEDCTxMemPool::lookup(hash, result, time);
+    auto tx = get(hash);
+    if (tx) 
+	{
+        result = *tx;
+        return true;
+    }
+    return false;
 }
 
-bool CEDCTxMemPool::lookupFeeRate(const uint256& hash, CFeeRate& feeRate) const
+EDCTxMempoolInfo CEDCTxMemPool::info(const uint256& hash) const
 {
     LOCK(cs);
     indexed_transaction_set::const_iterator i = mapTx.find(hash);
     if (i == mapTx.end())
-        return false;
-    feeRate = CFeeRate(i->GetFee(), i->GetTxSize());
-    return true;
+        return EDCTxMempoolInfo();
+    return EDCTxMempoolInfo{i->GetSharedTx(), i->GetTime(), CFeeRate(i->GetFee(), i->GetTxSize())};
 }
 
 CFeeRate CEDCTxMemPool::estimateFee(int nBlocks) const
