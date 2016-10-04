@@ -5138,7 +5138,7 @@ void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
                     pfrom->PushMessage(NetMsgType::TX, *mi->second);
                     push = true;
                 } 
-				else
+				else if (pfrom->timeLastMempoolReq)
 				{
 					EDCapp & theApp = EDCapp::singleton();
 
