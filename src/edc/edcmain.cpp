@@ -68,8 +68,9 @@ CWaitableCriticalSection edccsBestBlock;
 
 namespace
 {
+/** Expiration-time ordered list of (expire time, relay map entry) pairs, protected by cs_main). */
+std::deque<std::pair<int64_t, MapRelay::iterator>> relayExpiration;
 
-std::deque<std::pair<int64_t, uint256> > relayExpiration;
 
 bool edcCheckBlock(const CEDCBlock& block, CValidationState& state, const Consensus::Params & consensusParams, int64_t nAdjustedTime, bool fCheckPOW = true, bool fCheckMerkleRoot = true);
 
@@ -5127,23 +5128,17 @@ void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
                     }
                 }
             }
-            else if (inv.IsKnownType())
+            else if (inv.type == MSG_TX)
             {
-				CEDCTransaction	tx;
-
-                // Send stream from relay memory
+				// Send stream from relay memory
                 bool push = false;
-                {
-                    LOCK(theApp.mapRelayCS());
-                    map<uint256, CEDCTransaction>::iterator mi = 
-						theApp.mapRelay().find(inv.hash);
-                    if (mi != theApp.mapRelay().end()) 
-					{
-						tx = (*mi).second;
-                        push = true;
-                    }
-                }
-                if (!push && inv.type == MSG_TX) 
+                auto mi = theApp.mapRelay().find(inv.hash);
+                if (mi != theApp.mapRelay().end()) 
+				{
+                    pfrom->PushMessage(NetMsgType::TX, *mi->second);
+                    push = true;
+                } 
+				else
 				{
 					EDCapp & theApp = EDCapp::singleton();
 
@@ -5152,15 +5147,11 @@ void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
                     // that TX couldn't have been INVed in reply to a MEMPOOL request.
 					if (txinfo.tx && txinfo.nTime <= pfrom->timeLastMempoolReq) 
 					{
-                        tx = *txinfo.tx;
+						pfrom->PushMessage(NetMsgType::TX, *txinfo.tx);
                         push = true;
                     }
                 }
-                if (push) 
-				{
-                    pfrom->PushMessage(inv.GetCommand(), tx );
-                }
-				else
+				if(!push)
 				{
 					vNotFound.push_back(inv);
 				}
@@ -6704,7 +6695,6 @@ bool edcSendMessages(CEDCNode* pto)
                     }
                     if (pto->pfilter) 
 					{
-						EDCapp & theApp = EDCapp::singleton();
 						if (!pto->pfilter->IsRelevantAndUpdate(*txinfo.tx)) 
 							continue;
                     }
@@ -6781,7 +6771,6 @@ bool edcSendMessages(CEDCNode* pto)
                     vInv.push_back(CInv(MSG_TX, hash));
                     nRelayedTransactions++;
                     {
-                        LOCK(theApp.mapRelayCS());
                         // Expire old relay messages
                         while (!relayExpiration.empty() && 
 						relayExpiration.front().first < GetTime())
@@ -6790,10 +6779,11 @@ bool edcSendMessages(CEDCNode* pto)
                             relayExpiration.pop_front();
                         }
 
-						auto ret = theApp.mapRelay().insert(std::make_pair(hash, *txinfo.tx));
+						auto ret = theApp.mapRelay().insert(std::make_pair(hash, std::move(txinfo.tx)));
                         if (ret.second) 
 						{
-                            relayExpiration.push_back(std::make_pair(GetTime() + 15 * 60, hash));
+                            relayExpiration.push_back(std::make_pair(GetTime() + 15 * 60, ret.first));
+
                         }
                     }
 

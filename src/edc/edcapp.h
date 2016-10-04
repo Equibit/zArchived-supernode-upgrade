@@ -31,6 +31,9 @@ class CEDCCoinsViewCache;
 class CEDCWallet;
 struct event_base;
 
+/** Relay map, protected by cs_main. */
+typedef std::map<uint256, std::shared_ptr<const CEDCTransaction>> MapRelay;
+
 
 /**
  * The application object. It manages all global data.
@@ -104,8 +107,8 @@ public:
 	std::vector<CEDCSSLNode*>	& vSSLNodes()	{ return vSSLNodes_; }
 	CCriticalSection 			& vNodesCS()	{ return vNodesCS_; }
 
-	std::map<uint256, CEDCTransaction> & mapRelay()	{ return mapRelay_; }
-	CCriticalSection & mapRelayCS()					{ return mapRelayCS_; }
+	MapRelay & mapRelay()						{ return mapRelay_; }
+	CCriticalSection & mapRelayCS()				{ return mapRelayCS_; }
 
 	bool havePruned() const		{ return havePruned_; }
 	void havePruned( bool b )	{ havePruned_ = b; }
@@ -235,7 +238,7 @@ private:
 	/* Subversion as sent to the P2P network in `version` messages */
 	std::string	strSubVersion_;
 
-	std::map<uint256, CEDCTransaction> mapRelay_;
+	MapRelay mapRelay_;
 	CCriticalSection mapRelayCS_;
 
 	std::vector<CEDCNode*> 		vNodes_;
