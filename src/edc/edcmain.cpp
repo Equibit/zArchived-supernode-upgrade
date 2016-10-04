@@ -6773,7 +6773,7 @@ bool edcSendMessages(CEDCNode* pto)
                     {
                         // Expire old relay messages
                         while (!relayExpiration.empty() && 
-						relayExpiration.front().first < GetTime())
+						relayExpiration.front().first < nNow)
                         {
                             theApp.mapRelay().erase(relayExpiration.front().second);
                             relayExpiration.pop_front();
@@ -6782,7 +6782,7 @@ bool edcSendMessages(CEDCNode* pto)
 						auto ret = theApp.mapRelay().insert(std::make_pair(hash, std::move(txinfo.tx)));
                         if (ret.second) 
 						{
-                            relayExpiration.push_back(std::make_pair(GetTime() + 15 * 60, ret.first));
+                            relayExpiration.push_back(std::make_pair(nNow + 15 * 60 * 1000000, ret.first));
 
                         }
                     }
