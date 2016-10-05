@@ -795,7 +795,7 @@ struct NodeEvictionCandidate
     int64_t nTimeConnected;
     int64_t nMinPingUsecTime;
     CAddress addr;
-	std::vector<unsigned char> vchKeyedNetGroup;
+	uint64_t nKeyedNetGroup;
 };
 
 static bool ReverseCompareNodeMinPingTime(
@@ -814,7 +814,7 @@ static bool ReverseCompareNodeTimeConnected(
 
 static bool CompareNetGroupKeyed(const NodeEvictionCandidate &a, const NodeEvictionCandidate &b) 
 {
-    return a.vchKeyedNetGroup < b.vchKeyedNetGroup;
+    return a.nKeyedNetGroup < b.nKeyedNetGroup;
 }
 
 /** Try to find a connection to evict when the node is full.
@@ -840,7 +840,7 @@ static bool AttemptToEvictConnection(bool fPreferNewConnection)
                 continue;
             if (node->fDisconnect)
                 continue;
-			NodeEvictionCandidate candidate = {node->id, node->nTimeConnected, node->nMinPingUsecTime, node->addr, node->vchKeyedNetGroup};
+			NodeEvictionCandidate candidate = {node->id, node->nTimeConnected, node->nMinPingUsecTime, node->addr, node->nKeyedNetGroup};
             vEvictionCandidates.push_back(candidate);
         }
     }
@@ -872,27 +872,26 @@ static bool AttemptToEvictConnection(bool fPreferNewConnection)
 
     // Identify the network group with the most connections and youngest member.
     // (vEvictionCandidates is already sorted by reverse connect time)
-    std::vector<unsigned char> naMostConnections;
+	uint64_t naMostConnections;
     unsigned int nMostConnections = 0;
     int64_t nMostConnectionsTime = 0;
-
-    std::map<std::vector<unsigned char>, std::vector<NodeEvictionCandidate> > mapAddrCounts;
+	std::map<uint64_t, std::vector<NodeEvictionCandidate> > mapAddrCounts;
     BOOST_FOREACH(const NodeEvictionCandidate &node, vEvictionCandidates) 
 	{
-        mapAddrCounts[node.addr.GetGroup()].push_back(node);
-        int64_t grouptime = mapAddrCounts[node.addr.GetGroup()][0].nTimeConnected;
-        size_t groupsize = mapAddrCounts[node.addr.GetGroup()].size();
+        mapAddrCounts[node.nKeyedNetGroup].push_back(node);
+        int64_t grouptime = mapAddrCounts[node.nKeyedNetGroup][0].nTimeConnected;
+        size_t groupsize = mapAddrCounts[node.nKeyedNetGroup].size();
 
         if (groupsize > nMostConnections || (groupsize == nMostConnections && grouptime > nMostConnectionsTime)) 
 		{
             nMostConnections = groupsize;
             nMostConnectionsTime = grouptime;
-            naMostConnections = node.addr.GetGroup();
+            naMostConnections = node.nKeyedNetGroup;
         }
     }
 
     // Reduce to the network group with the most connections
-    vEvictionCandidates = mapAddrCounts[naMostConnections];
+	vEvictionCandidates = std::move(mapAddrCounts[naMostConnections]);
 
     // Do not disconnect peers if there is only one unprotected connection from their network group.
     // This step excessively favors netgroup diversity, and should be removed once more protective criteria are established.
@@ -2696,6 +2695,8 @@ CEDCNode::CEDCNode(
 	const std::string & addrNameIn, 
 				   bool fInboundIn) :
     ssSend(SER_NETWORK, INIT_PROTO_VERSION),
+    addr(addrIn),
+    nKeyedNetGroup(CalculateKeyedNetGroup(addrIn)),
     addrKnown(5000, 0.001),
     filterInventoryKnown(50000, 0.000001)
 {
@@ -2708,7 +2709,6 @@ CEDCNode::CEDCNode(
     nRecvBytes = 0;
     nTimeConnected = GetTime();
     nTimeOffset = 0;
-    addr = addrIn;
     addrName = addrNameIn == "" ? addr.ToStringIPPort() : addrNameIn;
     nVersion = 0;
     strSubVer = "";
@@ -2742,8 +2742,6 @@ CEDCNode::CEDCNode(
     minFeeFilter = 0;
     lastSentFeeFilter = 0;
     nextSendTimeFeeFilter = 0;
-
-	CalculateKeyedNetGroup();
 
     BOOST_FOREACH(const std::string &msg, edcgetAllNetMessageTypes())
         mapRecvBytesPerMsgCmd[msg] = 0;
@@ -3252,4 +3250,19 @@ ssize_t CEDCSSLNode::recv( void *buf, size_t len, int )
 		edcLogPrintf( "ERROR:SSL read error:%s\n", sslError(err) );
 		return -1;
 	}
+}
+
+/* static */ uint64_t CNode::CalculateKeyedNetGroup(const CAddress& ad)
+{
+    static uint64_t k0 = 0, k1 = 0;
+    while (k0 == 0 && k1 == 0) 
+	{
+        // Make sure this only runs on the first invocation.
+        GetRandBytes((unsigned char*)&k0, sizeof(k0));
+        GetRandBytes((unsigned char*)&k1, sizeof(k1));
+    }
+
+    std::vector<unsigned char> vchNetGroup(ad.GetGroup());
+
+    return CSipHasher(k0, k1).Write(&vchNetGroup[0], vchNetGroup.size()).Finalize();
 }
