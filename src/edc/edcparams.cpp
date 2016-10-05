@@ -368,8 +368,9 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
 		_("Specify data directory"));
     strUsage += HelpMessageOpt("-eb_dbcache=<n>", 
 		strprintf(_("Set database cache size in megabytes (%d to %d, default: %d)"), EDC_MIN_DB_CACHE, EDC_MAX_DB_CACHE, EDC_DEFAULT_DB_CACHE));
-    strUsage += HelpMessageOpt("-eb_feefilter", 
-		strprintf(_("Tell other nodes to filter invs to us by our mempool min fee (default: %u)"), EDC_DEFAULT_FEEFILTER));
+	if(showDebug)
+	    strUsage += HelpMessageOpt("-eb_feefilter", 
+			strprintf(_("Tell other nodes to filter invs to us by our mempool min fee (default: %u)"), EDC_DEFAULT_FEEFILTER));
     strUsage += HelpMessageOpt("-eb_loadblock=<file>", 
 		_("Imports blocks from external blk000??.dat file on startup"));
     strUsage += HelpMessageOpt("-eb_maxorphantx=<n>", 
