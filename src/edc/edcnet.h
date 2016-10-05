@@ -10,6 +10,8 @@
 #include "amount.h"
 #include "edc/edcbloom.h"
 #include "compat.h"
+#include "crypto/common.h"
+#include "crypto/sha256.h"
 #include "limitedmap.h"
 #include "edcnetbase.h"
 #include "edcprotocol.h"
@@ -135,6 +137,8 @@ public:
     CEDCBloomFilter* pfilter;
     int nRefCount;
     NodeId id;
+
+	std::vector<unsigned char> vchKeyedNetGroup;
 protected:
 
     // Denial-of-service detection/prevention
@@ -251,6 +255,25 @@ private:
 
     CEDCNode(const CEDCNode&);
     void operator=(const CEDCNode&);
+
+    void CalculateKeyedNetGroup() 
+	{
+        static std::vector<unsigned char> vchSecretKey;
+        if (vchSecretKey.empty()) 
+		{
+            vchSecretKey.resize(32, 0);
+            GetRandBytes(vchSecretKey.data(), vchSecretKey.size());
+        }
+
+        std::vector<unsigned char> vchNetGroup(this->addr.GetGroup());
+
+        CSHA256 hash;
+        hash.Write(begin_ptr(vchNetGroup), vchNetGroup.size());
+        hash.Write(begin_ptr(vchSecretKey), vchSecretKey.size());
+
+        vchKeyedNetGroup.resize(32, 0);
+        hash.Finalize(begin_ptr(vchKeyedNetGroup));
+    }
 
 public:
 
