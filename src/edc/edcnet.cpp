@@ -542,8 +542,10 @@ void CEDCNode::Ban(
     }
     edcUiInterface.BannedListChanged();
     {
+		EDCapp & theApp = EDCapp::singleton();
+
         LOCK(cs_vNodes);
-        BOOST_FOREACH(CNode* pnode, vNodes) 
+        BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes()) 
 		{
             if (subNet.Match((CNetAddr)pnode->addr))
                 pnode->fDisconnect = true;
@@ -903,7 +905,8 @@ static bool AttemptToEvictConnection(bool fPreferNewConnection)
 	// Disconnect from the network group with the most connections
     NodeId evicted = vEvictionCandidates.front().id;
     LOCK(theApp.vNodesCS());
-    for(std::vector<CNode*>::const_iterator it(vNodes.begin()); it != vNodes.end(); ++it) 
+    for(std::vector<CEDCNode*>::const_iterator it(theApp.vNodes().begin()); 
+	it != theApp.vNodes().end(); ++it) 
 	{
         if ((*it)->GetId() == evicted) 
 		{
@@ -3252,15 +3255,10 @@ ssize_t CEDCSSLNode::recv( void *buf, size_t len, int )
 	}
 }
 
-/* static */ uint64_t CNode::CalculateKeyedNetGroup(const CAddress& ad)
+/* static */ uint64_t CEDCNode::CalculateKeyedNetGroup(const CAddress& ad)
 {
-    static uint64_t k0 = 0, k1 = 0;
-    while (k0 == 0 && k1 == 0) 
-	{
-        // Make sure this only runs on the first invocation.
-        GetRandBytes((unsigned char*)&k0, sizeof(k0));
-        GetRandBytes((unsigned char*)&k1, sizeof(k1));
-    }
+    static const uint64_t k0 = GetRand(std::numeric_limits<uint64_t>::max());
+    static const uint64_t k1 = GetRand(std::numeric_limits<uint64_t>::max());
 
     std::vector<unsigned char> vchNetGroup(ad.GetGroup());
 
