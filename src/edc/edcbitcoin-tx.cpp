@@ -214,7 +214,7 @@ static void MutateTxAddInput(CEDCMutableTransaction& tx, const string& strInput)
     // extract the optional sequence number
     uint32_t nSequenceIn=std::numeric_limits<unsigned int>::max();
     if (vStrInputParts.size() > 2)
-        nSequenceIn = atoi(vStrInputParts[2]);
+        nSequenceIn = std::stoul(vStrInputParts[2]);
 
     // append to transaction input list
 	CEDCTxIn txin(txid, vout, CScript(), nSequenceIn);
