@@ -4425,12 +4425,22 @@ bool CEDCVerifyDB::VerifyDB(
     CBlockIndex* pindexFailure = NULL;
     int nGoodTransactions = 0;
     CValidationState state;
+    int reportDone = 0;
+
+    edcLogPrintf("[0%]...");
 
     for (CBlockIndex* pindex = theApp.chainActive().Tip(); pindex && pindex->pprev; pindex = pindex->pprev)
     {
         boost::this_thread::interruption_point();
-        edcUiInterface.ShowProgress(_("Verifying blocks..."), std::max(1, std::min(99, 
-			(int)(((double)(theApp.chainActive().Height() - pindex->nHeight)) / (double)nCheckDepth * (nCheckLevel >= 4 ? 50 : 100)))));
+        int percentageDone = std::max(1, std::min(99, (int)(((double)(theApp.chainActive().Height() - pindex->nHeight)) / (double)nCheckDepth * (nCheckLevel >= 4 ? 50 : 100))));
+        if (reportDone < percentageDone/10) 
+		{
+            // report every 10% step
+            edcLogPrintf("[%d%%]...", percentageDone);
+            reportDone = percentageDone/10;
+        }
+        edcUiInterface.ShowProgress(_("Verifying blocks..."), percentageDone);
+
 
         if (pindex->nHeight < theApp.chainActive().Height()-nCheckDepth)
             break;
@@ -4517,6 +4527,7 @@ bool CEDCVerifyDB::VerifyDB(
         }
     }
 
+	edcLogPrintf("[DONE].\n");
     edcLogPrintf("No coin database inconsistencies in last %i blocks (%i transactions)\n", 
 		theApp.chainActive().Height() - pindexState->nHeight, nGoodTransactions);
 
