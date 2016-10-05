@@ -599,7 +599,6 @@ public:
         return (mapTx.count(hash) != 0);
     }
 
-    bool lookup(uint256 hash, CEDCTransaction& result) const;
     std::shared_ptr<const CEDCTransaction> get(const uint256& hash) const;
     EDCTxMempoolInfo info(const uint256& hash) const;
     std::vector<EDCTxMempoolInfo> infoAll() const;

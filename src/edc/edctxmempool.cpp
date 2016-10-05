@@ -962,17 +962,6 @@ std::shared_ptr<const CEDCTransaction> CEDCTxMemPool::get(const uint256& hash) c
     return i->GetSharedTx();
 }
 
-bool CEDCTxMemPool::lookup(uint256 hash, CEDCTransaction& result) const
-{
-    auto tx = get(hash);
-    if (tx) 
-	{
-        result = *tx;
-        return true;
-    }
-    return false;
-}
-
 EDCTxMempoolInfo CEDCTxMemPool::info(const uint256& hash) const
 {
     LOCK(cs);
@@ -1108,16 +1097,16 @@ CEDCCoinsViewMemPool::CEDCCoinsViewMemPool(
 	const CEDCTxMemPool & mempoolIn) : CEDCCoinsViewBacked(baseIn), mempool(mempoolIn) 
 { }
 
-bool CEDCCoinsViewMemPool::GetCoins(const uint256 &txid, CEDCCoins &coins) const
+bool CEDCCoinsViewMemPool::GetCoins(const uint256 &txid, CEDCCoins & coins ) const
 {
     // If an entry in the mempool exists, always return that one, as it's guaranteed to never
     // conflict with the underlying cache, and it cannot have pruned entries (as it contains full)
     // transactions. First checking the underlying cache risks returning a pruned entry instead.
-    CEDCTransaction tx;
 	EDCapp & theApp = EDCapp::singleton();
-    if (theApp.mempool().lookup(txid, tx)) 
+    shared_ptr<const CEDCTransaction> ptx = theApp.mempool().get(txid);
+    if (ptx) 
 	{
-        coins = CEDCCoins(tx, MEMPOOL_HEIGHT);
+        coins = CEDCCoins(*ptx, MEMPOOL_HEIGHT);
         return true;
     }
     return (base->GetCoins(txid, coins) && !coins.IsPruned());

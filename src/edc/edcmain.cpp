@@ -1642,8 +1642,10 @@ bool GetTransaction(
     LOCK(EDC_cs_main);
 
 	EDCapp & theApp = EDCapp::singleton();
-    if (theApp.mempool().lookup(hash, txOut))
+    std::shared_ptr<const CEDCTransaction> ptx = theApp.mempool().get(hash);
+    if (ptx)
     {
+        txOut = *ptx;
         return true;
     }
 
