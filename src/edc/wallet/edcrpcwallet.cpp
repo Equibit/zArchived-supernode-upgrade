@@ -249,42 +249,13 @@ CEDCBitcoinAddress edcGetAccountAddress(string strAccount, bool bForceNew=false)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
-    CEDCWalletDB walletdb(theApp.walletMain()->strWalletFile);
-
-    CAccount account;
-    walletdb.ReadAccount(strAccount, account);
-
-    if (!bForceNew) 
+    CPubKey pubKey;
+	if (!theApp.walletMain()->GetAccountPubkey(pubKey, strAccount, bForceNew)) 
 	{
-        if (!account.vchPubKey.IsValid())
-            bForceNew = true;
-        else 
-		{
-            // Check if the current key has been used
-            CScript scriptPubKey = GetScriptForDestination(account.vchPubKey.GetID());
-            for (map<uint256, CEDCWalletTx>::iterator it = theApp.walletMain()->mapWallet.begin();
-                 it != theApp.walletMain()->mapWallet.end() && account.vchPubKey.IsValid();
-                 ++it)
-                BOOST_FOREACH(const CEDCTxOut& txout, (*it).second.vout)
-                    if (txout.scriptPubKey == scriptPubKey) 
-					{
-                        bForceNew = true;
-                        break;
-                    }
-        }
-    }
-
-    // Generate a new key
-    if (bForceNew) 
-	{
-        if (!theApp.walletMain()->GetKeyFromPool(account.vchPubKey))
-            throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call eb_keypoolrefill first");
-
-        theApp.walletMain()->SetAddressBook(account.vchPubKey.GetID(), strAccount, "receive");
-        walletdb.WriteAccount(strAccount, account);
-    }
-
-    return CEDCBitcoinAddress(account.vchPubKey.GetID());
+		throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
+	}
+ 
+    return CEDCBitcoinAddress(pubKey.GetID());
 }
 
 UniValue edcgetaccountaddress(const UniValue& params, bool fHelp)
