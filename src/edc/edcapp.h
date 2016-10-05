@@ -10,6 +10,7 @@
 #include "main.h"
 #include "net.h"
 #include "edc/wallet/edcdb.h"
+#include "versionbits.h"
 #include <openssl/ssl.h>
 
 #ifdef USE_HSM
@@ -151,7 +152,8 @@ public:
 
 	CEDCDBEnv & bitdb()	{ return bitdb_; }
 
-	CConditionVariable & blockChange() { return blockChange_; }
+	CConditionVariable & blockChange() 		{ return blockChange_; }
+	VersionBitsCache & versionbitscache() 	{ return versionbitscache_; }
 
 	event_base * eventBase()				{ return eventBase_; }
 	void	eventBase( event_base * eb )	{ eventBase_ = eb; }
@@ -277,6 +279,8 @@ private:
 	event_base	* eventBase_;
 
 	SSL_CTX	* sslCtx_;
+
+	VersionBitsCache versionbitscache_;
 
 #ifdef USE_HSM
 	NFast::App              * nfApp_;

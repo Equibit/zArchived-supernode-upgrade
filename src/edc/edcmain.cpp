@@ -36,7 +36,6 @@
 #include "utilmoneystr.h"
 #include "utilstrencodings.h"
 #include "edcvalidationinterface.h"
-#include "versionbits.h"
 #include "edcapp.h"
 #include "edc/message/edcmessage.h"
 #include "edc/wallet/edcwallet.h"
@@ -2479,21 +2478,17 @@ void edcPartitionCheck(
     }
 }
 
-// Protected by EDC_cs_main
-namespace
-{
-VersionBitsCache versionbitscache;
-}
-
 int32_t edcComputeBlockVersion(const CBlockIndex* pindexPrev, const Consensus::Params& params)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     LOCK(EDC_cs_main);
     int32_t nVersion = VERSIONBITS_TOP_BITS;
 
     for (int i = 0; i < (int)Consensus::MAX_VERSION_BITS_DEPLOYMENTS; i++) 
 	{
         ThresholdState state = VersionBitsState(pindexPrev, params, 
-			(Consensus::DeploymentPos)i, versionbitscache);
+			(Consensus::DeploymentPos)i, theApp.versionbitscache());
         if (state == THRESHOLD_LOCKED_IN || state == THRESHOLD_STARTED) 
 		{
             nVersion |= VersionBitsMask(params, (Consensus::DeploymentPos)i);
@@ -2647,7 +2642,10 @@ bool edcConnectBlock(
 
     // Start enforcing BIP68 (sequence locks) and BIP112 (CHECKSEQUENCEVERIFY) using versionbits logic.
     int nLockTimeFlags = 0;
-    if (VersionBitsState(pindex->pprev, chainparams.GetConsensus(), Consensus::DEPLOYMENT_CSV, versionbitscache) == THRESHOLD_ACTIVE) 
+	EDCapp & theApp = EDCapp::singleton();
+
+    if (VersionBitsState(pindex->pprev, chainparams.GetConsensus(), Consensus::DEPLOYMENT_CSV, 
+	theApp.versionbitscache()) == THRESHOLD_ACTIVE) 
 	{
         flags |= SCRIPT_VERIFY_CHECKSEQUENCEVERIFY;
         nLockTimeFlags |= EDC_LOCKTIME_VERIFY_SEQUENCE;
@@ -2658,7 +2656,6 @@ bool edcConnectBlock(
 
     CEDCBlockUndo blockundo;
 
-	EDCapp & theApp = EDCapp::singleton();
     CCheckQueueControl<CEDCScriptCheck> control(fScriptChecks && theApp.scriptCheckThreads() ? &scriptcheckqueue : NULL);
 
     std::vector<int> prevheights;
@@ -3854,13 +3851,15 @@ bool edcContextualCheckBlock(
 	CValidationState & state, 
 		 CBlockIndex * const pindexPrev)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     const int nHeight = pindexPrev == NULL ? 0 : pindexPrev->nHeight + 1;
     const Consensus::Params& consensusParams = edcParams().GetConsensus();
 
     // Start enforcing BIP113 (Median Time Past) using versionbits logic.
     int nLockTimeFlags = 0;
     if (VersionBitsState(pindexPrev, consensusParams, 
-	Consensus::DEPLOYMENT_CSV, versionbitscache) == THRESHOLD_ACTIVE) 
+	Consensus::DEPLOYMENT_CSV, theApp.versionbitscache()) == THRESHOLD_ACTIVE) 
 	{
         nLockTimeFlags |= EDC_LOCKTIME_MEDIAN_TIME_PAST;
     }
@@ -4548,7 +4547,7 @@ void edcUnloadBlockIndex()
     setDirtyFileInfo.clear();
     mapNodeState.clear();
     recentRejects.reset(NULL);
-    versionbitscache.Clear();
+    theApp.versionbitscache().Clear();
 
     for (int b = 0; b < VERSIONBITS_NUM_BITS; b++) 
 	{
@@ -6949,7 +6948,7 @@ ThresholdState edcVersionBitsTipState(const Consensus::Params& params, Consensus
 	EDCapp & theApp = EDCapp::singleton();
 
     LOCK(EDC_cs_main);
-    return VersionBitsState(theApp.chainActive().Tip(), params, pos, versionbitscache);
+    return VersionBitsState(theApp.chainActive().Tip(), params, pos, theApp.versionbitscache() );
 }
 
 class CMainCleanup
