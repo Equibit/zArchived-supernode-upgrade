@@ -103,6 +103,7 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "setban", 2 },
     { "setban", 3 },
 	{ "getmempoolancestors", 1 },
+	{ "getmempooldescendants", 1 },
 // EDC BEGIN
     { "eb_stop", 0 },
     { "eb_setmocktime", 0 },
@@ -184,6 +185,7 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "eb_setban", 3 },
 	{ "eb_authorizeequibit", 2 },
 	{ "eb_getmempoolancestors", 1 },
+	{ "eb_getmempooldescendants", 1 },
 // EDC END
 };
 
