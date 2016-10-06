@@ -17,7 +17,7 @@
 #include "edc/primitives/edctransaction.h"
 #include "script/script.h"
 #include "edc/script/edcsign.h"
-#include <univalue.h>
+#include "univalue.h"
 #include "edcutil.h"
 #include "utilmoneystr.h"
 #include "utilstrencodings.h"

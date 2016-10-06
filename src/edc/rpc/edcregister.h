@@ -31,6 +31,8 @@ void edcRegisterIssuerRPCCommands(CEDCRPCTable & edcTableRPC);
 /** Register messaging related RPC commands */
 void edcRegisterMessagingRPCCommands(CEDCRPCTable & edcTableRPC);
 
+/** Register web-of-trust related RPC commands */
+void edcRegisterWoTRPCCommands(CEDCRPCTable & edcTableRPC);
 
 inline void edcRegisterAllCoreRPCCommands(CEDCRPCTable & edcTableRPC)
 {
@@ -41,5 +43,6 @@ inline void edcRegisterAllCoreRPCCommands(CEDCRPCTable & edcTableRPC)
     edcRegisterRawTransactionRPCCommands(edcTableRPC);
 	edcRegisterIssuerRPCCommands(edcTableRPC);
 	edcRegisterMessagingRPCCommands(edcTableRPC);
+	edcRegisterWoTRPCCommands(edcTableRPC);
 }
 
