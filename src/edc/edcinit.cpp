@@ -103,7 +103,7 @@ enum BindFlags
 void edcInitLogging()
 {
     edcLogPrintf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-    edcLogPrintf("Equibit version %s (%s)\n", FormatFullVersion(), CLIENT_DATE);
+	edcLogPrintf("Equibit version %s\n", FormatFullVersion());
 }
 
 std::string ResolveErrMsg(const char * const optname, const std::string& strBind)

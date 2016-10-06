@@ -662,7 +662,7 @@ UniValue edcdumpwallet(const UniValue& params, bool fHelp)
     std::sort(vKeyBirth.begin(), vKeyBirth.end());
 
     // produce output
-    file << strprintf("# Wallet dump created by Equibit %s (%s)\n", CLIENT_BUILD, CLIENT_DATE);
+	file << strprintf("# Wallet dump created by Equibit %s\n", CLIENT_BUILD);
     file << strprintf("# * Created on %s\n", EncodeDumpTime(GetTime()));
     file << strprintf("# * Best block at time of backup was %i (%s),\n", theApp.chainActive().Height(), 
 		theApp.chainActive().Tip()->GetBlockHash().ToString());
