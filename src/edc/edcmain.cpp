@@ -5291,6 +5291,12 @@ bool ProcessMessage(
         CAddress addrFrom;
         uint64_t nNonce = 1;
         vRecv >> pfrom->nVersion >> pfrom->nServices >> nTime >> addrMe;
+
+        if (!pfrom->fInbound)
+        {
+            theApp.addrman().SetServices(pfrom->addr, pfrom->nServices);
+        }
+
         if (pfrom->nVersion < MIN_PEER_PROTO_VERSION)
         {
             // disconnect from peers older than this proto version
