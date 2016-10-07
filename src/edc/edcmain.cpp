@@ -2673,6 +2673,7 @@ bool edcConnectBlock(
 
     CCheckQueueControl<CEDCScriptCheck> control(fScriptChecks && theApp.scriptCheckThreads() ? &scriptcheckqueue : NULL);
 
+	std::vector<uint256> vOrphanErase;
     std::vector<int> prevheights;
     CAmount nFees = 0;
     int nInputs = 0;
@@ -2704,6 +2705,20 @@ bool edcConnectBlock(
             for (size_t j = 0; j < tx.vin.size(); j++) 
 			{
                 prevheights[j] = view.AccessCoins(tx.vin[j].prevout.hash)->nHeight;
+            }
+
+            // Which orphan pool entries must we evict?
+            for (size_t j = 0; j < tx.vin.size(); j++) 
+			{
+                auto itByPrev = edcMapOrphanTransactionsByPrev.find(tx.vin[j].prevout);
+                if (itByPrev == edcMapOrphanTransactionsByPrev.end()) 
+					continue;
+                for (auto mi = itByPrev->second.begin(); mi != itByPrev->second.end(); ++mi) 
+				{
+                    const CEDCTransaction& orphanTx = (*mi)->second.tx;
+                    const uint256& orphanHash = orphanTx.GetHash();
+                    vOrphanErase.push_back(orphanHash);
+                }
             }
 
             if (!SequenceLocks(tx, nLockTimeFlags, &prevheights, *pindex)) 
@@ -2795,6 +2810,17 @@ bool edcConnectBlock(
     static uint256 hashPrevBestCoinBase;
     edcGetMainSignals().UpdatedTransaction(hashPrevBestCoinBase);
     hashPrevBestCoinBase = block.vtx[0].GetHash();
+
+    // Erase orphan transactions include or precluded by this block
+    if (vOrphanErase.size()) 
+	{
+        int nErased = 0;
+        BOOST_FOREACH(uint256 &orphanHash, vOrphanErase) 
+		{
+            nErased += EraseOrphanTx(orphanHash);
+        }
+        edcLogPrint("mempool", "Erased %d orphan tx included or conflicted by block\n", nErased);
+    }
 
     int64_t nTime6 = GetTimeMicros(); nTimeCallbacks += nTime6 - nTime5;
     edcLogPrint("bench", "    - Callbacks: %.2fms [%.2fs]\n", 0.001 * (nTime6 - nTime5), nTimeCallbacks * 0.000001);
