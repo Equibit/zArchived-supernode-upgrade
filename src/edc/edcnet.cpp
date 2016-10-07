@@ -75,12 +75,12 @@ namespace
 
         ListenSocket(SOCKET socket, bool whitelisted) : socket(socket), whitelisted(whitelisted) {}
     };
-}
 
-const static std::string NET_MESSAGE_COMMAND_OTHER = "*other*";
+const std::string NET_MESSAGE_COMMAND_OTHER = "*other*";
 
-namespace
-{
+/** Services this node implementation cares about */
+static const uint64_t nRelevantServices = NODE_NETWORK;
+
 bool vfLimited[NET_MAX] = {};
 CEDCNode* pnodeLocalHost = NULL;
 std::vector<ListenSocket> vhListenSocket;
@@ -1642,6 +1642,7 @@ CEDCNode* edcConnectNode(CAddress addrConnect, const char *pszDest, bool fCountF
 	            theApp.vNodes().push_back(pnode);
         }
 
+		pnode->nServicesExpected = addrConnect.nServices & nRelevantServices;
         pnode->nTimeConnected = GetTime();
 
         return pnode;
@@ -2704,6 +2705,7 @@ CEDCNode::CEDCNode(
     filterInventoryKnown(50000, 0.000001)
 {
     nServices = 0;
+	nServicesExpected = 0;
     hSocket = hSocketIn;
     nRecvVersion = INIT_PROTO_VERSION;
     nLastSend = 0;
