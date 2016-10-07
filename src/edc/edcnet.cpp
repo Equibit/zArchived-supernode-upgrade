@@ -153,7 +153,7 @@ static std::vector<CAddress> convertSeed6(const std::vector<SeedSpec6> &vSeedsIn
     {
         struct in6_addr ip;
         memcpy(&ip, i->addr, sizeof(ip));
-        CAddress addr(CService(ip, i->port));
+        CAddress addr(CService(ip, i->port), NODE_NETWORK );
         addr.nTime = GetTime() - GetRand(nOneWeek) - nOneWeek;
         vSeedsOut.push_back(addr);
     }
@@ -168,14 +168,14 @@ int64_t edcGetAdjustedTime();
 // one by discovery.
 CAddress edcGetLocalAddress(const CNetAddr *paddrPeer)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     CAddress ret(CService("0.0.0.0", edcGetListenPort()), 0);
     CService addr;
     if (edcGetLocal(addr, paddrPeer))
     {
-        ret = CAddress(addr);
+        ret = CAddress(addr, theApp.localServices() );
     }
-	EDCapp & theApp = EDCapp::singleton();
-    ret.nServices = theApp.localServices();
     ret.nTime = edcGetAdjustedTime();
     return ret;
 }
@@ -405,7 +405,7 @@ void CEDCNode::PushVersion()
     int64_t nTime = (fInbound ? edcGetAdjustedTime() : GetTime());
 
     CAddress addrYou = (addr.IsRoutable() && !edcIsProxy(addr) ? addr : 
-		CAddress(CService("0.0.0.0",0)));
+		CAddress(CService("0.0.0.0",0), addr.nServices ));
 
     CAddress addrMe = edcGetLocalAddress(&addr);
 	uint64_t localHostNonce;
@@ -1514,7 +1514,7 @@ void edcThreadDNSAddressSeed()
             std::vector<CNetAddr> vIPs;
             std::vector<CAddress> vAdd;
 
-            uint64_t requiredServiceBits = NODE_NETWORK;
+            uint64_t requiredServiceBits = nRelevantServices;
             if (LookupHost(seed.getHost(requiredServiceBits).c_str(), vIPs, 0, true))
             {
                 BOOST_FOREACH(const CNetAddr& ip, vIPs)
@@ -1747,7 +1747,7 @@ void edcThreadOpenConnections()
             ProcessOneShot();
             BOOST_FOREACH(const std::string& strAddr, params.connect)
             {
-                CAddress addr;
+                CAddress addr(CService(), 0);
                 edcOpenNetworkConnection(addr, false, NULL, NULL, strAddr.c_str());
                 for (int i = 0; i < 10 && i < nLoop; i++)
                 {
@@ -1915,7 +1915,9 @@ void edcThreadOpenAddedConnections()
         {
             CSemaphoreGrant grant(*semOutbound);
             CSemaphoreGrant sgrant(*semOutbound);
-            edcOpenNetworkConnection(CAddress(vserv[i % vserv.size()]), false, &grant, &sgrant );
+            /* We want -addnode to work even for nodes that don't provide all
+             * wanted services, so pass in nServices=0 to CAddress. */
+            edcOpenNetworkConnection(CAddress(vserv[i % vserv.size()], 0), false, &grant, &sgrant );
             MilliSleep(500);
         }
         MilliSleep(120000); // Retry every 2 minutes
