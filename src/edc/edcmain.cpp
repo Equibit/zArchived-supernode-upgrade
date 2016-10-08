@@ -67,6 +67,12 @@ CWaitableCriticalSection edccsBestBlock;
 
 namespace
 {
+/** Expiration time for orphan transactions in seconds */
+const int64_t EDC_ORPHAN_TX_EXPIRE_TIME = 20 * 60;
+
+/** Minimum time between orphan transactions expire time checks in seconds */
+const int64_t EDC_ORPHAN_TX_EXPIRE_INTERVAL = 5 * 60;
+
 /** Expiration-time ordered list of (expire time, relay map entry) pairs, protected by cs_main). */
 std::deque<std::pair<int64_t, MapRelay::iterator>> relayExpiration;
 
@@ -103,6 +109,7 @@ struct COrphanTx
 {
     CEDCTransaction tx;
     NodeId fromPeer;
+	int64_t nTimeExpire;
 };
 map<uint256, COrphanTx> edcMapOrphanTransactions GUARDED_BY(EDC_cs_main);
 map<COutPoint, set<map<uint256, COrphanTx>::iterator, IteratorComparator>> edcMapOrphanTransactionsByPrev GUARDED_BY(cs_main);
@@ -705,7 +712,7 @@ bool AddOrphanTx(const CEDCTransaction& tx, NodeId peer) EXCLUSIVE_LOCKS_REQUIRE
         return false;
     }
 
-    auto ret = edcMapOrphanTransactions.emplace(hash, COrphanTx{tx, peer});
+	auto ret = edcMapOrphanTransactions.emplace(hash, COrphanTx{tx, peer, GetTime() + EDC_ORPHAN_TX_EXPIRE_TIME});
     assert(ret.second);
     BOOST_FOREACH(const CEDCTxIn & txin, tx.vin) 
 	{
@@ -760,6 +767,35 @@ void edcEraseOrphansFor(NodeId peer)
 unsigned int edcLimitOrphanTxSize(unsigned int nMaxOrphans) EXCLUSIVE_LOCKS_REQUIRED(EDC_cs_main)
 {
     unsigned int nEvicted = 0;
+    static int64_t nNextSweep;
+    int64_t nNow = GetTime();
+
+    if (nNextSweep <= nNow) 
+	{
+        // Sweep out expired orphan pool entries:
+        int nErased = 0;
+        int64_t nMinExpTime = nNow + EDC_ORPHAN_TX_EXPIRE_TIME - EDC_ORPHAN_TX_EXPIRE_INTERVAL;
+        map<uint256, COrphanTx>::iterator iter = edcMapOrphanTransactions.begin();
+
+        while (iter != edcMapOrphanTransactions.end())
+        {
+            map<uint256, COrphanTx>::iterator maybeErase = iter++;
+
+            if (maybeErase->second.nTimeExpire <= nNow) 
+			{
+                nErased += EraseOrphanTx(maybeErase->second.tx.GetHash());
+            } 
+			else 
+			{
+                nMinExpTime = std::min(maybeErase->second.nTimeExpire, nMinExpTime);
+            }
+        }
+        // Sweep again 5 minutes after the next entry that expires in order to batch the linear scan.
+        nNextSweep = nMinExpTime + EDC_ORPHAN_TX_EXPIRE_INTERVAL;
+        if (nErased > 0) 
+			edcLogPrint("mempool", "Erased %d orphan tx due to expiration\n", nErased);
+    }
+
     while (edcMapOrphanTransactions.size() > nMaxOrphans)
     {
         // Evict a random orphan:
