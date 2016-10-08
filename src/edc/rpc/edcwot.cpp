@@ -6,6 +6,127 @@
 #include "edc/edcapp.h"
 #include "edc/rpc/edcserver.h"
 #include "utilstrencodings.h"
+#include "edc/edcbase58.h"
+#include "./edc/edcnet.h"
+#include "edc/message/edcmessage.h"
+
+namespace
+{
+std::string buildJSON( 
+	const std::string & pubkey, 
+	const std::string & name, 
+	const std::string & gaddr, 
+	const std::string & phone, 
+	const std::string & email, 
+	const std::string & http,
+	uint64_t expire )
+{
+	std::stringstream ans;
+
+	ans << "{";
+	ans <<  "\"pubkey\":\""  << pubkey << "\"";
+	ans << ",\"name\":\""    << name   << "\"";
+	ans << ",\"address\":\"" << gaddr  << "\"";
+	ans << ",\"phone\":\""   << phone  << "\"";
+	ans << ",\"email\":\""   << email  << "\"";
+	ans << ",\"http\":\""    << http   << "\"";
+	ans << ",\"expire\":\""  << expire << "\"";
+	ans << "}";
+
+	return ans.str();
+}
+
+void insertStr( 
+	std::vector<unsigned char>::iterator & it,
+					   const std::string & str )
+{
+	uint16_t len = static_cast<uint16_t>(str.size());
+
+	*it++ = len >> 8;
+	*it++ = len & 0xf;
+
+	auto i = str.begin();
+	auto e = str.end();
+	while( i != e )
+	{
+		*it++ = *i;
+		++i;
+	}
+}
+
+const std::string WoT_MAGIC = "!WoT";
+const uint16_t	CERT_VERSION = (0x1 << 8) + 0x0;	// 1.0
+
+std::vector<unsigned char> buildWoTCertificate(
+	const std::string & pubkey,
+	const std::string & saddr,
+	const std::string & oname,
+	const std::string & ogaddr,
+	const std::string & ophone,
+	const std::string & oemail,
+	const std::string & ohttp,
+	const std::string & sname,
+	const std::string & sgaddr,
+	const std::string & sphone,
+	const std::string & semail,
+	const std::string & shttp,
+	uint32_t expire )
+{
+	std::vector<unsigned char>	ans;
+
+	size_t size = WoT_MAGIC.size() + sizeof(unsigned short);
+
+	size += pubkey.size() + sizeof(uint16_t);
+	size += saddr.size()  + sizeof(uint16_t);
+	size += oname.size()  + sizeof(uint16_t);
+	size += ogaddr.size() + sizeof(uint16_t);
+	size += ophone.size() + sizeof(uint16_t);
+	size += oemail.size() + sizeof(uint16_t);
+	size += ohttp.size()  + sizeof(uint16_t);
+	size += sname.size()  + sizeof(uint16_t);
+	size += sgaddr.size() + sizeof(uint16_t);
+	size += sphone.size() + sizeof(uint16_t);
+	size += semail.size() + sizeof(uint16_t);
+	size += shttp.size()  + sizeof(uint16_t);
+	size += sizeof(uint32_t);
+	
+	ans.resize(size);
+
+	auto ai = ans.begin();
+
+	auto i = WoT_MAGIC.begin();
+	auto e = WoT_MAGIC.end();
+	while( i != e )
+	{
+		*ai++ = *i;
+		++i;
+	}
+
+	*ai++ = CERT_VERSION >> 8;
+	*ai++ = CERT_VERSION & 0xf;
+
+	insertStr( ai, pubkey );
+	insertStr( ai, saddr );
+	insertStr( ai, oname );
+	insertStr( ai, ogaddr );
+	insertStr( ai, ophone );
+	insertStr( ai, oemail );
+	insertStr( ai, ohttp );
+	insertStr( ai, sname );
+	insertStr( ai, sgaddr );
+	insertStr( ai, sphone );
+	insertStr( ai, semail );
+	insertStr( ai, shttp );
+
+	*ai++ = expire >> 24;
+	*ai++ = (expire >> 16) & 0xf;
+	*ai++ = (expire >> 8) & 0xf;
+	*ai++ = expire & 0xf;
+
+	return ans;
+}
+
+}
 
 /******************************************************************************
 eb_requestwotcertificate
@@ -37,9 +158,7 @@ eb_requestwotcertificate
 
 UniValue edcrequestwotcertificate(const UniValue& params, bool fHelp)
 {
-	EDCapp & theApp = EDCapp::singleton();
-
-    if (fHelp || params.size() < 1 || params.size() > 4)
+    if (fHelp || params.size() < 7 || params.size() > 8 )
         throw std::runtime_error(
             "eb_requestwotcertificate \"pubkey\" \"signer-address\" \"name\" \"geo-address\" \"phone#\" \"email-addr\" \"http-addr\" ( expiration )\n"
     		"\nAn owner of a public key is requesting another user certify his pubkey.\n"
@@ -63,9 +182,51 @@ UniValue edcrequestwotcertificate(const UniValue& params, bool fHelp)
             + HelpExampleRpc("eb_requestwotcertificate", "\"39sdfd34341q5q45qdfaert2gfgrD301\" \"dvj4entdva4tqkdaadfv\" \"ACME Corp.\" \"100 Avenue Road\" \"519 435-1932\" \"\" \"\"" )
         );
 
-    UniValue result(UniValue::VOBJ);
+	std::string pubkey = params[0].get_str();
+	std::string saddr  = params[1].get_str();
+	std::string name   = params[2].get_str();
+	std::string gaddr  = params[3].get_str();
+	std::string phone  = params[4].get_str();
+	std::string email  = params[5].get_str();
+	std::string http   = params[6].get_str();
 
-    return result;
+	uint32_t expirBlocks = 0;
+	if( params.size() == 8 )
+		expirBlocks = static_cast<uint32_t>(params[7].get_int());
+
+	// Convert pubkey string to CPubkey
+	CPubKey pk;
+	if (IsHex(pubkey))
+	{
+		CPubKey vchPubKey(ParseHex(pubkey));
+		if (!vchPubKey.IsFullyValid())
+			throw std::runtime_error("Invalid public key: " + pubkey );
+		pk = vchPubKey;
+	}
+	else
+	{
+		throw std::runtime_error("Invalid public key: " + pubkey );
+	}
+
+	// Convert signer address string to bitcoin address
+	CEDCBitcoinAddress	signerAddr(saddr);
+
+    CKeyID signerID;
+    if (!signerAddr.IsValid())
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid signer address");
+
+    if(!signerAddr.GetKeyID(signerID))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid signer address");
+
+	// Build message content from pubkey, name, gaddr, phone, email, http
+	std::string data = buildJSON( pubkey, name, gaddr, phone, email, http, expirBlocks );
+
+	// Send message
+    CPeerToPeer * msg = CPeerToPeer::create( "WoT-certificate-request", pk.GetID(), signerID, data);
+
+	RelayUserMessage( msg, true );
+
+    return NullUniValue;
 }
 
 /******************************************************************************
@@ -100,9 +261,7 @@ eb_getwotcertificate
 
 UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
 {
-	EDCapp & theApp = EDCapp::singleton();
-
-    if (fHelp || params.size() < 1 || params.size() > 4)
+    if (fHelp || params.size() < 12 || params.size() > 13 )
         throw std::runtime_error(
             "eb_requestwotcertificate \"pubkey\" \"address\" \"oname\" \"ogeo-addr\" \"ophone\" \"oe-mail\" \"ohttp\" \"sname\" \"sgeo-addr\" \"sphone\" \"semail\" \"shttp\" ( expire )\n"
     		"\nCreates a new WOT certificate.\n"
@@ -126,9 +285,41 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
             + HelpExampleRpc("eb_signrawtransaction", "\"39sdfd34341q5q45qdfaert2gfgrD301\" \"dvj4entdva4tqkdaadfv\" \"ACME Corp.\" \"100 Avenue Road\" \"519 435-1932\" \"pr@acme.com\" \"www.acme.com\" \"Western Ratings\" \"1210 Main Street\" \"\" \"\" \"www.western-ratings.com\" 5000\n" )
         );
 
-    UniValue result(UniValue::VOBJ);
+	std::string pubkey = params[0].get_str();
+	std::string saddr  = params[1].get_str();
+	std::string oname  = params[2].get_str();
+	std::string ogaddr = params[3].get_str();
+	std::string ophone = params[4].get_str();
+	std::string oemail = params[5].get_str();
+	std::string ohttp  = params[6].get_str();
+	std::string sname  = params[7].get_str();
+	std::string sgaddr = params[8].get_str();
+	std::string sphone = params[9].get_str();
+	std::string semail = params[10].get_str();
+	std::string shttp  = params[11].get_str();
 
-    return result;
+	uint32_t expire = 0;
+	if( params.size() == 13 )
+		expire = static_cast<uint32_t>(params[7].get_int());
+
+	std::vector<unsigned char>	cert = buildWoTCertificate(
+		pubkey,
+		saddr,
+		oname,
+		ogaddr,
+		ophone,
+		oemail,
+		ohttp,
+		sname,
+		sgaddr,
+		sphone,
+		semail,
+		shttp,
+		expire );
+
+	// TODO:
+
+    return NullUniValue;
 }
 
 /******************************************************************************
@@ -152,15 +343,13 @@ eb_revokewotcertificate
 
 UniValue edcrevokewotcertificate(const UniValue& params, bool fHelp)
 {
-	EDCapp & theApp = EDCapp::singleton();
-
-    if (fHelp || params.size() < 1 || params.size() > 4)
+    if (fHelp || params.size() < 2 || params.size() > 3 )
         throw std::runtime_error(
             "eb_requestwotcertificate \"pubkey\" \"address\" ( \"reason\" )\n"
     		"\nRevokes a WOT certificate.\n"
             "\nArguments:\n"
 			"1. \"pubkey\"    (string, required) Public key to be revoked\n"
-			"2. \"address\"   (string, required) Address of signer\n"
+			"2. \"pubkey\"    (string, required) Public key of signer\n"
 			"3. \"reason\"    (string, optional) Reason for revocation\n"
             "\nResult: true or false\n"
             "\nExamples:\n"
@@ -168,8 +357,16 @@ UniValue edcrevokewotcertificate(const UniValue& params, bool fHelp)
             + HelpExampleRpc("eb_signrawtransaction", "\"1234d20sdmDScedc2edscad\" \"0cmscadc9dcadsadvadvava\"")
         );
 
-    UniValue result(UniValue::VOBJ);
+	std::string pubkey = params[0].get_str();
+	std::string spubkey  = params[1].get_str();
 
+	std::string reason;
+	if( params.size() == 3 )
+		reason  = params[2].get_str();
+
+	// TODO
+
+    UniValue result(true);	// or false
     return result;
 }
 
@@ -207,9 +404,7 @@ eb_wotchainexists
 
 UniValue edcwotchainexists(const UniValue& params, bool fHelp)
 {
-	EDCapp & theApp = EDCapp::singleton();
-
-    if (fHelp || params.size() < 1 || params.size() > 4)
+    if (fHelp || params.size() < 2 || params.size() > 3 )
         throw std::runtime_error(
             "eb_requestwotcertificate \"epubkey\" \"bpubkey\" ( maxlen )\n"
 			"\nDetermines if a trust chain exists between two entities (indentified by\n"
@@ -224,8 +419,16 @@ UniValue edcwotchainexists(const UniValue& params, bool fHelp)
             + HelpExampleRpc("eb_wotchainexists", "\"1234d20sdmDScedc2edscad\" \"0cmscadc9dcadsadvadvava\"")
         );
 
-    UniValue result(UniValue::VOBJ);
+	std::string epubkey = params[0].get_str();
+	std::string bpubkey  = params[1].get_str();
 
+	uint64_t maxlen = 0;
+	if( params.size() == 3 )
+		maxlen  = params[2].get_int();
+
+	// TODO
+
+    UniValue result(true);	// or false
     return result;
 }
 
