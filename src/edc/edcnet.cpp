@@ -79,7 +79,7 @@ namespace
 const std::string NET_MESSAGE_COMMAND_OTHER = "*other*";
 
 /** Services this node implementation cares about */
-static const uint64_t nRelevantServices = NODE_NETWORK;
+static const ServiceFlags nRelevantServices = NODE_NETWORK;
 
 bool vfLimited[NET_MAX] = {};
 CEDCNode* pnodeLocalHost = NULL;
@@ -170,7 +170,7 @@ CAddress edcGetLocalAddress(const CNetAddr *paddrPeer)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
-    CAddress ret(CService("0.0.0.0", edcGetListenPort()), 0);
+    CAddress ret(CService("0.0.0.0", edcGetListenPort()), NODE_NONE);
     CService addr;
     if (edcGetLocal(addr, paddrPeer))
     {
@@ -404,8 +404,8 @@ void CEDCNode::PushVersion()
 
     int64_t nTime = (fInbound ? edcGetAdjustedTime() : GetTime());
 
-    CAddress addrYou = (addr.IsRoutable() && !edcIsProxy(addr) ? addr : 
-		CAddress(CService("0.0.0.0",0), addr.nServices ));
+	CAddress addrYou = (addr.IsRoutable() && !edcIsProxy(addr) ? addr : 
+		CAddress(CService("0.0.0.0", 0), addr.nServices));
 
     CAddress addrMe = edcGetLocalAddress(&addr);
 	uint64_t localHostNonce;
@@ -421,7 +421,9 @@ void CEDCNode::PushVersion()
         edcLogPrint("net", "send version message: version %d, blocks=%d, us=%s, peer=%d\n", PROTOCOL_VERSION, nBestHeight, addrMe.ToString(), id);
 
     PushMessage(
-		NetMsgType::VERSION, PROTOCOL_VERSION, theApp.localServices(), 
+		NetMsgType::VERSION, 
+		PROTOCOL_VERSION, 
+		(uint64_t)theApp.localServices(), 
 		nTime, 
 		addrYou, 
 		addrMe,
@@ -1514,7 +1516,7 @@ void edcThreadDNSAddressSeed()
             std::vector<CNetAddr> vIPs;
             std::vector<CAddress> vAdd;
 
-            uint64_t requiredServiceBits = nRelevantServices;
+            ServiceFlags requiredServiceBits = nRelevantServices;
             if (LookupHost(seed.getHost(requiredServiceBits).c_str(), vIPs, 0, true))
             {
                 BOOST_FOREACH(const CNetAddr& ip, vIPs)
@@ -1642,7 +1644,7 @@ CEDCNode* edcConnectNode(CAddress addrConnect, const char *pszDest, bool fCountF
 	            theApp.vNodes().push_back(pnode);
         }
 
-		pnode->nServicesExpected = addrConnect.nServices & nRelevantServices;
+		pnode->nServicesExpected = ServiceFlags(addrConnect.nServices & nRelevantServices);
         pnode->nTimeConnected = GetTime();
 
         return pnode;
@@ -1747,7 +1749,7 @@ void edcThreadOpenConnections()
             ProcessOneShot();
             BOOST_FOREACH(const std::string& strAddr, params.connect)
             {
-                CAddress addr(CService(), 0);
+                CAddress addr(CService(), NODE_NONE);
                 edcOpenNetworkConnection(addr, false, NULL, NULL, strAddr.c_str());
                 for (int i = 0; i < 10 && i < nLoop; i++)
                 {
@@ -1916,8 +1918,9 @@ void edcThreadOpenAddedConnections()
             CSemaphoreGrant grant(*semOutbound);
             CSemaphoreGrant sgrant(*semOutbound);
             /* We want -addnode to work even for nodes that don't provide all
-             * wanted services, so pass in nServices=0 to CAddress. */
-            edcOpenNetworkConnection(CAddress(vserv[i % vserv.size()], 0), false, &grant, &sgrant );
+             * wanted services, so pass in nServices=NODE_NONE to CAddress. */
+            edcOpenNetworkConnection(CAddress(vserv[i % vserv.size()], NODE_NONE), false, &grant, &sgrant );
+
             MilliSleep(500);
         }
         MilliSleep(120000); // Retry every 2 minutes
@@ -2710,8 +2713,8 @@ CEDCNode::CEDCNode(
     addrKnown(5000, 0.001),
     filterInventoryKnown(50000, 0.000001)
 {
-    nServices = 0;
-	nServicesExpected = 0;
+    nServices = NODE_NONE;
+	nServicesExpected = NODE_NONE;
     hSocket = hSocketIn;
     nRecvVersion = INIT_PROTO_VERSION;
     nLastSend = 0;

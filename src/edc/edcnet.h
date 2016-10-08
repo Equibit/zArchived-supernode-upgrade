@@ -90,8 +90,8 @@ class CEDCNode
 {
 public:
     // socket
-    uint64_t nServices;
-	uint64_t nServicesExpected;
+    ServiceFlags nServices;
+	ServiceFlags nServicesExpected;
     CDataStream ssSend;
     size_t nSendSize; // total size of all vSendMsg entries
     size_t nSendOffset; // offset inside the first vSendMsg already sent

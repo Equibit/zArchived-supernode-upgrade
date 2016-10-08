@@ -72,8 +72,8 @@ public:
 	CAmount maxTxFee() const		{ return maxTxFee_; }
 	void maxTxFee( CAmount & m )	{ maxTxFee_ = m; }
 
-	uint64_t localServices() const	{ return localServices_; }
-	void localServices( uint64_t l ){ localServices_ = l; }
+	ServiceFlags localServices() const	{ return localServices_; }
+	void localServices( ServiceFlags l ){ localServices_ = l; }
 
 	uint64_t localHostNonce() const	{ return localHostNonce_; }
 	void localHostNonce( uint64_t l){ localHostNonce_ = l; }
@@ -213,9 +213,9 @@ private:
 	uint64_t pruneTarget_;
 	uint64_t localHostNonce_;
 	uint64_t lastBlockSize_;
-	
-	uint64_t localServices_;
 	uint64_t lastBlockTx_;
+
+	ServiceFlags localServices_;
 
 	/** Absolute maximum transaction fee (in satoshis) used by wallet
 	 *  and mempool (rejects high fee in sendrawtransaction) 

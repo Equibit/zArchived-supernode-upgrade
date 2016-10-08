@@ -469,7 +469,7 @@ bool EdcAppInit(
 #endif // ENABLE_WALLET
 
 	    if ( params.peerbloomfilters )
-   	    	theApp.localServices( theApp.localServices() | NODE_BLOOM );
+   	    	theApp.localServices( ServiceFlags( theApp.localServices() | NODE_BLOOM ) );
 
     	// ** Step 4:app initialization: dir lock, daemonize, pidfile, debug log
 
@@ -962,7 +962,7 @@ bool EdcAppInit(
     	if (theApp.pruneMode()) 
 		{
         	edcLogPrintf("Unsetting NODE_NETWORK on prune mode\n");
-        	theApp.localServices( theApp.localServices()  & ~NODE_NETWORK );
+        	theApp.localServices( ServiceFlags( theApp.localServices()  & ~NODE_NETWORK ) );
         	if (!theApp.reindex()) 
 			{
             	edcUiInterface.InitMessage(_("Pruning blockstore..."));
