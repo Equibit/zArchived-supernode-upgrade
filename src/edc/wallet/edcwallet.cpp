@@ -4069,6 +4069,16 @@ bool CEDCWallet::InitLoadWallet()
 
         walletInstance->SetBestChain(theApp.chainActive().GetLocator());
     }
+    else if (params.usehd) 
+	{
+        bool useHD = params.usehd;
+
+        if (!walletInstance->hdChain.masterKeyID.IsNull() && !useHD)
+            return InitError(strprintf(_("Error loading %s: You can't disable HD on a already existing HD wallet"), walletFile));
+        if (walletInstance->hdChain.masterKeyID.IsNull() && useHD)
+            return edcInitError(strprintf(_("Error loading %s: You can't enable HD on a already existing non-HD wallet"), walletFile));
+    }
+
 
     edcLogPrintf(" wallet      %15dms\n", GetTimeMillis() - nStart);
 
