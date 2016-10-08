@@ -663,4 +663,4 @@ CEDCNode * edcFindNode(const std::string& addrName, bool );
 CEDCNode * edcFindNode(const CService& ip, bool );
 bool edcOpenNetworkConnection( const CAddress & addrConnect, bool fCountFailure, CSemaphoreGrant * grantOutbound  = NULL, CSemaphoreGrant * sgrantOutbound  = NULL, const char * pszDest = NULL, bool fOneShot = false ); 
 void edcSetLimited(enum Network net, bool fLimited);
-
+std::vector<AddedNodeInfo> edcGetAddedNodeInfo();

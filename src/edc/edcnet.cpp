@@ -1738,6 +1738,77 @@ void ProcessOneShot()
 
 }
 
+std::vector<AddedNodeInfo> edcGetAddedNodeInfo()
+{
+	EDCapp & theApp = EDCapp::singleton();
+    std::vector<AddedNodeInfo> ret;
+
+    std::list<std::string> lAddresses(0);
+    {
+        LOCK(theApp.addedNodesCS());
+        ret.reserve(theApp.addedNodes().size());
+        BOOST_FOREACH(const std::string& strAddNode, theApp.addedNodes())
+            lAddresses.push_back(strAddNode);
+    }
+
+
+    // Build a map of all already connected addresses (by IP:port and by name) to 
+	// inbound/outbound and resolved CService
+    std::map<CService, bool> mapConnected;
+    std::map<std::string, std::pair<bool, CService>> mapConnectedByName;
+    {
+        LOCK(theApp.vNodesCS());
+        for (const CEDCNode* pnode : theApp.vNodes()) 
+		{
+            if (pnode->addr.IsValid()) 
+			{
+                mapConnected[pnode->addr] = pnode->fInbound;
+            }
+            if (!pnode->addrName.empty()) 
+			{
+                mapConnectedByName[pnode->addrName] = 
+					std::make_pair(pnode->fInbound, static_cast<const CService&>(pnode->addr));
+            }
+        }
+    }
+
+    BOOST_FOREACH(const std::string& strAddNode, lAddresses) 
+	{
+        CService service(strAddNode, edcParams().GetDefaultPort());
+
+        if (service.IsValid()) 
+		{
+            // strAddNode is an IP:port
+            auto it = mapConnected.find(service);
+
+            if (it != mapConnected.end()) 
+			{
+                ret.push_back(AddedNodeInfo{strAddNode, service, true, it->second});
+            } 
+			else 
+			{
+                ret.push_back(AddedNodeInfo{strAddNode, CService(), false, false});
+            }
+        } 
+		else 
+		{
+            // strAddNode is a name
+            auto it = mapConnectedByName.find(strAddNode);
+
+            if (it != mapConnectedByName.end()) 
+			{
+                ret.push_back(AddedNodeInfo{strAddNode, it->second.second, true, it->second.first});
+            } 
+			else 
+			{
+                ret.push_back(AddedNodeInfo{strAddNode, CService(), false, false});
+            }
+        }
+    }
+
+    return ret;
+}
+
 void edcThreadOpenConnections()
 {
 	EDCparams & params = EDCparams::singleton();
@@ -1858,71 +1929,26 @@ void edcThreadOpenAddedConnections()
         theApp.addedNodes() = params.addnode;
     }
 
-    if (edcHaveNameProxy()) 
-	{
-        while(true) 
-		{
-            std::list<std::string> lAddresses(0);
-            {
-                LOCK(theApp.addedNodesCS());
-                BOOST_FOREACH(const std::string& strAddNode, theApp.addedNodes())
-                    lAddresses.push_back(strAddNode);
-            }
-            BOOST_FOREACH(const std::string& strAddNode, lAddresses) 
-			{
-                CAddress addr;
-                CSemaphoreGrant grant(*semOutbound);
-                CSemaphoreGrant sgrant(*semOutbound);
-                edcOpenNetworkConnection(addr, false, &grant, &sgrant, strAddNode.c_str());
-                MilliSleep(500);
-            }
-            MilliSleep(120000); // Retry every 2 minutes
-        }
-    }
-
     for (unsigned int i = 0; true; i++)
     {
-        std::list<std::string> lAddresses(0);
-        {
-            LOCK(theApp.addedNodesCS());
-            BOOST_FOREACH(const std::string& strAddNode, theApp.addedNodes())
-                lAddresses.push_back(strAddNode);
-        }
+        std::vector<AddedNodeInfo> vInfo = edcGetAddedNodeInfo();
 
-        std::list<std::vector<CService> > lservAddressesToAdd(0);
-        BOOST_FOREACH(const std::string& strAddNode, lAddresses) 
+        for (const AddedNodeInfo& info : vInfo) 
 		{
-            std::vector<CService> vservNode(0);
-            if(Lookup(strAddNode.c_str(), vservNode, 
-			edcParams().GetDefaultPort(), params.dns, 0))
-                lservAddressesToAdd.push_back(vservNode);
-        }
-        // Attempt to connect to each IP for each addnode entry until at least 
-		// one is successful per addnode entry
-        // (keeping in mind that addnode entries can have many IPs if 
-		// params.dns)
-        {
-            LOCK(theApp.vNodesCS());
-            BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
-                for (std::list<std::vector<CService> >::iterator it = lservAddressesToAdd.begin(); it != lservAddressesToAdd.end(); it++)
-                    BOOST_FOREACH(const CService& addrNode, *(it))
-                        if (pnode->addr == addrNode)
-                        {
-                            it = lservAddressesToAdd.erase(it);
-                            it--;
-                            break;
-                        }
-        }
-        BOOST_FOREACH(std::vector<CService>& vserv, lservAddressesToAdd)
-        {
-            CSemaphoreGrant grant(*semOutbound);
-            CSemaphoreGrant sgrant(*semOutbound);
-            /* We want -addnode to work even for nodes that don't provide all
-             * wanted services, so pass in nServices=NODE_NONE to CAddress. */
-            edcOpenNetworkConnection(CAddress(vserv[i % vserv.size()], NODE_NONE), false, &grant, &sgrant );
+            if (!info.fConnected) 
+			{
+                CSemaphoreGrant grant(*semOutbound);
+                CSemaphoreGrant sgrant(*semOutbound);
 
-            MilliSleep(500);
+                // If strAddedNode is an IP/port, decode it immediately, so
+                // OpenNetworkConnection can detect existing connections to that IP/port.
+                CService service(info.strAddedNode, edcParams().GetDefaultPort());
+                edcOpenNetworkConnection(CAddress(service, NODE_NONE), false, &grant, &sgrant,
+					info.strAddedNode.c_str(), false);
+                MilliSleep(500);
+            }
         }
+
         MilliSleep(120000); // Retry every 2 minutes
     }
 }
