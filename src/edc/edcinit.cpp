@@ -1028,18 +1028,6 @@ bool EdcAppInit(
 
     	edcStartNode(threadGroup, scheduler);
 
-    	// Monitor the chain, and alert if we get blocks much quicker or 
-		// slower than expected
-    	int64_t nPowTargetSpacing =edcParams().GetConsensus().nPowTargetSpacing;
-
-    	CScheduler::Function f = boost::bind(&edcPartitionCheck, 
-			&edcIsInitialBlockDownload, 
-			boost::ref(EDC_cs_main), 
-			boost::cref(theApp.indexBestHeader()), 
-			nPowTargetSpacing);
-
-    	scheduler.scheduleEvery(f, nPowTargetSpacing);
-    
 		// *************************************************** Step 12: finished
 		edcSetRPCWarmupFinished();
 

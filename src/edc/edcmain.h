@@ -87,9 +87,6 @@ bool edcSendMessages(CEDCNode* pto);
 /** Run an instance of the script checking thread */
 void edcThreadScriptCheck();
 
-/** Try to detect Partition (network isolation) attacks against us */
-void edcPartitionCheck(bool (*initialDownloadCheck)(), CCriticalSection& cs, const CBlockIndex *const &bestHeader, int64_t nPowTargetSpacing);
-
 /** Check whether we are doing an initial block download (synchronizing from disk or network) */
 bool edcIsInitialBlockDownload();
 
