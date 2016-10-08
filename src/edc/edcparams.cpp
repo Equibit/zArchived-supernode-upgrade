@@ -62,8 +62,8 @@ const bool         EDC_DEFAULT_LOGIPS                  = false;
 const bool         EDC_DEFAULT_LOGTIMESTAMPS           = true;
 const bool         EDC_DEFAULT_LOGTIMEMICROS           = false;
 
-const unsigned int EDC_DEFAULT_MAX_ORPHAN_TRANSACTIONS = 100;
 const unsigned int EDC_DEFAULT_MAX_MEMPOOL_SIZE        = 300;
+const unsigned int EDC_DEFAULT_MAX_ORPHAN_TRANSACTIONS = 100;
 const unsigned int EDC_DEFAULT_MAX_PEER_CONNECTIONS    = 125;
 const unsigned int EDC_DEFAULT_MAX_SIG_CACHE_SIZE      = 40;
 const int64_t      EDC_DEFAULT_MAX_TIME_ADJUSTMENT     = 70 * 60;

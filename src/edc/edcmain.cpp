@@ -5784,14 +5784,40 @@ bool ProcessMessage(
         }
         else if (fMissingInputs)
         {
-            AddOrphanTx(tx, pfrom->GetId());
+            bool fRejectedParents = false; // It may be the case that the orphans parents have all been rejected
+            BOOST_FOREACH(const CEDCTxIn & txin, tx.vin) 
+			{
+                if (recentRejects->contains(txin.prevout.hash)) 
+				{
+                    fRejectedParents = true;
+                    break;
+                }
+            }
 
-            // DoS prevention: do not allow edcMapOrphanTransactions to grow unbounded
-            unsigned int nMaxOrphanTx = (unsigned int)std::max((int64_t)0, 
-				params.maxorphantx );
-            unsigned int nEvicted = edcLimitOrphanTxSize(nMaxOrphanTx);
-            if (nEvicted > 0)
-                edcLogPrint("mempool", "mapOrphan overflow, removed %u tx\n", nEvicted);
+            if (!fRejectedParents) 
+			{
+                BOOST_FOREACH(const CEDCTxIn & txin, tx.vin) 
+				{
+                    CInv inv(MSG_TX, txin.prevout.hash);
+                    pfrom->AddInventoryKnown(inv);
+
+                    if (!AlreadyHave(inv)) 
+						pfrom->AskFor(inv);
+                }
+                AddOrphanTx(tx, pfrom->GetId());
+
+                // DoS prevention: do not allow mapOrphanTransactions to grow unbounded
+                unsigned int nMaxOrphanTx = (unsigned int)std::max((int64_t)0, params.maxorphantx);
+                unsigned int nEvicted = edcLimitOrphanTxSize(nMaxOrphanTx);
+
+                if (nEvicted > 0)
+                    edcLogPrint("mempool", "mapOrphan overflow, removed %u tx\n", nEvicted);
+            } 
+			else 
+			{
+                edcLogPrint("mempool", "not keeping orphan with rejected parents %s\n",
+					tx.GetHash().ToString());
+            }
         } 
 		else 
 		{
