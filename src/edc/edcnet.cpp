@@ -1612,6 +1612,29 @@ CEDCNode* edcConnectNode(CAddress addrConnect, const char *pszDest, bool fCountF
             return NULL;
         }
 
+        if (pszDest && addrConnect.IsValid()) 
+		{
+            // It is possible that we already have a connection to the IP/port pszDest resolved to.
+            // In that case, drop the connection that was just created, and return the existing 
+			// CEDCNode instead. Also store the name we used to connect in that CNode, so that 
+			// future edcFindNode() calls to that name catch this early.
+            CEDCNode * pnode = edcFindNode((CService)addrConnect, false );
+
+            if (pnode)
+            {
+                pnode->AddRef();
+                {
+                    LOCK(theApp.vNodesCS());
+                    if (pnode->addrName.empty()) 
+					{
+                        pnode->addrName = std::string(pszDest);
+                    }
+                }
+                CloseSocket(hSocket);
+                return pnode;
+            }
+        }
+
         theApp.addrman().Attempt(addrConnect, fCountFailure );
 
 		// If this is a secure connection, then do the SSL handshake first
