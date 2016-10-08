@@ -538,13 +538,15 @@ bool edcConnectSocketByName(
     proxyType nameProxy;
     edcGetNameProxy(nameProxy);
 
-    CService addrResolved;
-    if (Lookup(strDest.c_str(), addrResolved, port, params.dns && 
-	!edcHaveNameProxy())) 
+    std::vector<CService> addrResolved;
+    if (Lookup(strDest.c_str(), addrResolved, port, fNameLookup && 
+	!edcHaveNameProxy(), 256)) 
 	{
-        if (addrResolved.IsValid()) 
+        if (addrResolved.size() > 0) 
 		{
-            addr = addrResolved;
+            addr = addrResolved[GetRand(addrResolved.size())];
+
+
             return ConnectSocket(addr, hSocketRet, nTimeout);
         }
     }
