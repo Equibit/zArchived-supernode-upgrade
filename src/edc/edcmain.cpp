@@ -5922,10 +5922,10 @@ bool ProcessMessage(
             }
         }
 
-        if (pindexLast)
-            UpdateBlockAvailability(pfrom->GetId(), pindexLast->GetBlockHash());
+        assert(pindexLast);
+        UpdateBlockAvailability(pfrom->GetId(), pindexLast->GetBlockHash());
 
-        if (nCount == MAX_HEADERS_RESULTS && pindexLast && hasNewHeaders) 
+		if (nCount == MAX_HEADERS_RESULTS && hasNewHeaders)
 		{
             // Headers message had its maximum size; the peer may have more headers.
             // TODO: optimize: if pindexLast is an ancestor of theApp.chainActive(). Tip 
