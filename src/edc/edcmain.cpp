@@ -291,6 +291,10 @@ struct CNodeState
     bool fPreferredDownload;
     //! Whether this peer wants invs or headers (when possible) for block announcements.
     bool fPreferHeaders;
+    //! Whether this peer wants invs or cmpctblocks (when possible) for block announcements.
+    bool fPreferHeaderAndIDs;
+    //! Whether this peer will send us cmpctblocks if we request them
+    bool fProvidesHeaderAndIDs;
 
     CNodeState() 
 	{
@@ -308,6 +312,8 @@ struct CNodeState
         nBlocksInFlightValidHeaders = 0;
         fPreferredDownload = false;
         fPreferHeaders = false;
+        fPreferHeaderAndIDs = false;
+        fProvidesHeaderAndIDs = false;
     }
 };
 
@@ -5073,7 +5079,9 @@ void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
             boost::this_thread::interruption_point();
             it++;
 
-            if (inv.type == MSG_BLOCK || inv.type == MSG_FILTERED_BLOCK)
+			if (inv.type == MSG_BLOCK || 
+				inv.type == MSG_FILTERED_BLOCK || 
+				inv.type == MSG_CMPCT_BLOCK)
             {
                 bool send = false;
                 BlockMap::iterator mi = theApp.mapBlockIndex().find(inv.hash);
@@ -5119,7 +5127,7 @@ void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
                         assert(!"cannot load block from disk");
                     if (inv.type == MSG_BLOCK)
                         pfrom->PushMessage(NetMsgType::BLOCK, block);
-                    else // MSG_FILTERED_BLOCK)
+					else if (inv.type == MSG_FILTERED_BLOCK)
                     {
                         LOCK(pfrom->cs_filter);
                         if (pfrom->pfilter)
@@ -5138,6 +5146,20 @@ void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
                         }
                         // else
                             // no response
+                    }
+                    else if (inv.type == MSG_CMPCT_BLOCK)
+                    {
+                        // If a peer is asking for old blocks, we're almost guaranteed
+                        // they wont have a useful mempool to match against a compact block,
+                        // and we dont feel like constructing the object for them, so
+                        // instead we respond with the full, non-compact block.
+                        if (mi->second->nHeight >= chainActive.Height() - 10) 
+						{
+                            CBlockHeaderAndShortTxIDs cmpctblock(block);
+                            pfrom->PushMessage(NetMsgType::CMPCTBLOCK, cmpctblock);
+                        } 
+						else
+                            pfrom->PushMessage(NetMsgType::BLOCK, block);
                     }
 
                     // Trigger the peer node to send a getblocks request for the next batch of inventory
@@ -5492,6 +5514,19 @@ bool ProcessMessage(
         LOCK(EDC_cs_main);
         State(pfrom->GetId())->fPreferHeaders = true;
     }
+    else if (strCommand == NetMsgType::SENDCMPCT)
+    {
+        bool fAnnounceUsingCMPCTBLOCK = false;
+        uint64_t nCMPCTBLOCKVersion = 1;
+        vRecv >> fAnnounceUsingCMPCTBLOCK >> nCMPCTBLOCKVersion;
+
+        if (nCMPCTBLOCKVersion == 1) 
+		{
+            LOCK(cs_main);
+            State(pfrom->GetId())->fProvidesHeaderAndIDs = true;
+            State(pfrom->GetId())->fPreferHeaderAndIDs = fAnnounceUsingCMPCTBLOCK;
+        }
+    }
     else if (strCommand == NetMsgType::INV)
     {
         vector<CInv> vInv;
@@ -5634,6 +5669,41 @@ bool ProcessMessage(
                 break;
             }
         }
+    }
+    else if (strCommand == NetMsgType::GETBLOCKTXN)
+    {
+        BlockTransactionsRequest req;
+        vRecv >> req;
+
+        BlockMap::iterator it = mapBlockIndex.find(req.blockhash);
+        if (it == mapBlockIndex.end() || !(it->second->nStatus & BLOCK_HAVE_DATA)) 
+		{
+            Misbehaving(pfrom->GetId(), 100);
+            LogPrintf("Peer %d sent us a getblocktxn for a block we don't have", pfrom->id);
+            return true;
+        }
+
+        if (it->second->nHeight < chainActive.Height() - 10) 
+		{
+            LogPrint("net", "Peer %d sent us a getblocktxn for a block > 10 deep", pfrom->id);
+            return true;
+        }
+
+        CBlock block;
+        assert(ReadBlockFromDisk(block, it->second, chainparams.GetConsensus()));
+
+        BlockTransactions resp(req);
+        for (size_t i = 0; i < req.indexes.size(); i++) 
+		{
+            if (req.indexes[i] >= block.vtx.size()) 
+			{
+                Misbehaving(pfrom->GetId(), 100);
+                LogPrintf("Peer %d sent us a getblocktxn with out-of-bounds tx indices", pfrom->id);
+                return true;
+            }
+            resp.txn[i] = block.vtx[req.indexes[i]];
+        }
+        pfrom->PushMessage(NetMsgType::BLOCKTXN, resp);
     }
     else if (strCommand == NetMsgType::GETHEADERS)
     {
@@ -6600,7 +6670,9 @@ bool edcSendMessages(CEDCNode* pto)
             // add all to the inv queue.
             LOCK(pto->cs_inventory);
             vector<CEDCBlock> vHeaders;
-            bool fRevertToInv = (!state.fPreferHeaders || pto->vBlockHashesToAnnounce.size() > MAX_BLOCKS_TO_ANNOUNCE);
+			bool fRevertToInv = ((!state.fPreferHeaders &&
+                          (!state.fPreferHeaderAndIDs || pto->vBlockHashesToAnnounce.size() > 1)) ||
+                           pto->vBlockHashesToAnnounce.size() > MAX_BLOCKS_TO_ANNOUNCE);
             CBlockIndex *pBestIndex = NULL; // last header queued for delivery
             ProcessBlockAvailability(pto->id); // ensure pindexBestKnownBlock is up-to-date
 
@@ -6664,6 +6736,43 @@ bool edcSendMessages(CEDCNode* pto)
                     }
                 }
             }
+            if (!fRevertToInv && !vHeaders.empty()) 
+			{
+                if (vHeaders.size() == 1 && state.fPreferHeaderAndIDs) 
+				{
+                    // We only send up to 1 block as header-and-ids, as otherwise
+                    // probably means we're doing an initial-ish-sync or they're slow
+                    edcLogPrint("net", "%s sending header-and-ids %s to peer %d\n", __func__,
+                            vHeaders.front().GetHash().ToString(), pto->id);
+
+                    //TODO: Shouldn't need to reload block from disk, but requires refactor
+                    CEDCBlock block;
+                    assert(ReadBlockFromDisk(block, pBestIndex, consensusParams));
+                    CBlockHeaderAndShortTxIDs cmpctblock(block);
+                    pto->PushMessage(NetMsgType::CMPCTBLOCK, cmpctblock);
+                    state.pindexBestHeaderSent = pBestIndex;
+                } 
+				else if (state.fPreferHeaders) 
+				{
+                    if (vHeaders.size() > 1) 
+					{
+                        edcLogPrint("net", "%s: %u headers, range (%s, %s), to peer=%d\n", __func__,
+                                vHeaders.size(),
+                                vHeaders.front().GetHash().ToString(),
+                                vHeaders.back().GetHash().ToString(), pto->id);
+                    } 
+					else 
+					{
+                        edcLogPrint("net", "%s: sending header %s to peer=%d\n", __func__,
+                                vHeaders.front().GetHash().ToString(), pto->id);
+                    }
+                    pto->PushMessage(NetMsgType::HEADERS, vHeaders);
+                    state.pindexBestHeaderSent = pBestIndex;
+                } 
+				else
+                    fRevertToInv = true;
+            }
+
             if (fRevertToInv) 
 			{
                 // If falling back to using an inv, just try to inv the tip.
@@ -6694,23 +6803,6 @@ bool edcSendMessages(CEDCNode* pto)
                     }
                 }
             } 
-			else if (!vHeaders.empty()) 
-			{
-                if (vHeaders.size() > 1) 
-				{
-                    edcLogPrint("net", "%s: %u headers, range (%s, %s), to peer=%d\n", __func__,
-                            vHeaders.size(),
-                            vHeaders.front().GetHash().ToString(),
-                            vHeaders.back().GetHash().ToString(), pto->id);
-                } 
-				else 
-				{
-                    edcLogPrint("net", "%s: sending header %s to peer=%d\n", __func__,
-                            vHeaders.front().GetHash().ToString(), pto->id);
-                }
-                pto->PushMessage(NetMsgType::HEADERS, vHeaders);
-                state.pindexBestHeaderSent = pBestIndex;
-            }
             pto->vBlockHashesToAnnounce.clear();
         }
 
