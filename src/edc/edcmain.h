@@ -66,7 +66,7 @@ void UnregisterNodeSignals(CEDCNodeSignals& nodeSignals);
  * @param[out]  dbp     The already known disk position of pblock, or NULL if not yet stored.
  * @return True if state.IsValid()
  */
-bool ProcessNewBlock(CValidationState& state, const CEDCChainParams& chainparams, const CEDCNode* pfrom, const CEDCBlock* pblock, bool fForceProcessing, const CDiskBlockPos* dbp);
+bool ProcessNewBlock(CValidationState& state, const CEDCChainParams& chainparams, CEDCNode* pfrom, const CEDCBlock* pblock, bool fForceProcessing, const CDiskBlockPos* dbp);
 /** Initialize a new block tree database + block data on disk */
 bool edcInitBlockIndex(const CEDCChainParams& chainparams);
 /** Load the block tree and coins database from disk */

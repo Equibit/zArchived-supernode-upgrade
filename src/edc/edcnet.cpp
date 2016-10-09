@@ -798,6 +798,11 @@ struct NodeEvictionCandidate
     NodeId id;
     int64_t nTimeConnected;
     int64_t nMinPingUsecTime;
+    int64_t nLastBlockTime;
+    int64_t nLastTXTime;
+    bool fNetworkNode;
+    bool fRelayTxes;
+    bool fBloomFilter;
     CAddress addr;
 	uint64_t nKeyedNetGroup;
 };
@@ -821,6 +826,23 @@ static bool CompareNetGroupKeyed(const NodeEvictionCandidate &a, const NodeEvict
     return a.nKeyedNetGroup < b.nKeyedNetGroup;
 }
 
+static bool CompareNodeBlockTime(const NodeEvictionCandidate &a, const NodeEvictionCandidate &b)
+{
+    // There is a fall-through here because it is common for a node to have many peers which have not yet relayed a block.
+    if (a.nLastBlockTime != b.nLastBlockTime) return a.nLastBlockTime < b.nLastBlockTime;
+    if (a.fNetworkNode != b.fNetworkNode) return b.fNetworkNode;
+    return a.nTimeConnected > b.nTimeConnected;
+}
+
+static bool CompareNodeTXTime(const NodeEvictionCandidate &a, const NodeEvictionCandidate &b)
+{
+    // There is a fall-through here because it is common for a node to have more than a few peers that have not yet relayed txn.
+    if (a.nLastTXTime != b.nLastTXTime) return a.nLastTXTime < b.nLastTXTime;
+    if (a.fRelayTxes != b.fRelayTxes) return b.fRelayTxes;
+    if (a.fBloomFilter != b.fBloomFilter) return a.fBloomFilter;
+    return a.nTimeConnected > b.nTimeConnected;
+}
+
 /** Try to find a connection to evict when the node is full.
   *  Extreme care must be taken to avoid opening the node to attacker
   *   triggered network partitioning.
@@ -829,7 +851,7 @@ static bool CompareNetGroupKeyed(const NodeEvictionCandidate &a, const NodeEvict
   *   to forge.  In order to partition a node the attacker must be
   *   simultaneously better at all of them than honest peers.
   */
-static bool AttemptToEvictConnection(bool fPreferNewConnection) 
+static bool AttemptToEvictConnection() 
 {
 	EDCapp & theApp = EDCapp::singleton();
     std::vector<NodeEvictionCandidate> vEvictionCandidates;
@@ -844,10 +866,27 @@ static bool AttemptToEvictConnection(bool fPreferNewConnection)
                 continue;
             if (node->fDisconnect)
                 continue;
-			NodeEvictionCandidate candidate = {node->id, node->nTimeConnected, node->nMinPingUsecTime, node->addr, node->nKeyedNetGroup};
+			NodeEvictionCandidate candidate = {
+				node->id, node->nTimeConnected, node->nMinPingUsecTime,
+                node->nLastBlockTime, node->nLastTXTime, node->fNetworkNode,
+                node->fRelayTxes, node->pfilter != NULL, node->addr, node->nKeyedNetGroup};
             vEvictionCandidates.push_back(candidate);
         }
     }
+
+    if (vEvictionCandidates.empty()) return false;
+
+    // Protect 4 nodes that most recently sent us transactions.
+    // An attacker cannot manipulate this metric without performing useful work.
+    std::sort(vEvictionCandidates.begin(), vEvictionCandidates.end(), CompareNodeTXTime);
+    vEvictionCandidates.erase(vEvictionCandidates.end() - std::min(4, static_cast<int>(vEvictionCandidates.size())), vEvictionCandidates.end());
+
+    if (vEvictionCandidates.empty()) return false;
+
+    // Protect 4 nodes that most recently sent us blocks.
+    // An attacker cannot manipulate this metric without performing useful work.
+    std::sort(vEvictionCandidates.begin(), vEvictionCandidates.end(), CompareNodeBlockTime);
+    vEvictionCandidates.erase(vEvictionCandidates.end() - std::min(4, static_cast<int>(vEvictionCandidates.size())), vEvictionCandidates.end());
 
     if (vEvictionCandidates.empty()) return false;
 
@@ -974,7 +1013,7 @@ static void AcceptConnection(const ListenSocket& hListenSocket)
 
     if (nInbound >= nMaxInbound)
     {
-        if (!AttemptToEvictConnection(whitelisted)) 
+        if (!AttemptToEvictConnection()) 
 		{
             // No connection to evict, disconnect the new connection
             edcLogPrint("net", "failed to find an eviction candidate - connection dropped (full)\n");
@@ -2814,6 +2853,8 @@ CEDCNode::CEDCNode(
     fSentAddr = false;
     pfilter = new CEDCBloomFilter();
 	timeLastMempoolReq = 0;
+    nLastBlockTime = 0;
+    nLastTXTime = 0;
     nPingNonceSent = 0;
     nPingUsecStart = 0;
     nPingUsecTime = 0;

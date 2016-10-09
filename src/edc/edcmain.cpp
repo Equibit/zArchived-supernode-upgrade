@@ -3966,8 +3966,10 @@ bool AcceptBlock(
 	const CEDCChainParams & chainparams, 
 	         CBlockIndex ** ppindex, 
 	                   bool fRequested, 
-	  const CDiskBlockPos * dbp)
+	  const CDiskBlockPos * dbp,
+					 bool * fNewBlock )
 {
+	if (fNewBlock) *fNewBlock = false;
     AssertLockHeld(EDC_cs_main);
 
 	EDCapp & theApp = EDCapp::singleton();
@@ -4003,6 +4005,7 @@ bool AcceptBlock(
         if (!fHasMoreWork) return true;     // Don't process less-work chains
         if (fTooFarAhead) return true;      // Block height is too high
     }
+	if (fNewBlock) *fNewBlock = true;
 
     if ((!edcCheckBlock(block, state, chainparams.GetConsensus(), edcGetAdjustedTime() )) || 
 	!edcContextualCheckBlock(block, state, pindex->pprev)) 
@@ -4063,7 +4066,7 @@ const Consensus::Params & consensusParams)
 bool ProcessNewBlock(
 	     CValidationState & state, 
 	const CEDCChainParams & chainparams, 
-	       const CEDCNode * pfrom, 
+				 CEDCNode * pfrom, 
 	      const CEDCBlock * pblock, 
 	                   bool fForceProcessing, 
 	  const CDiskBlockPos * dbp)
@@ -4075,10 +4078,12 @@ bool ProcessNewBlock(
 
         // Store to disk
         CBlockIndex *pindex = NULL;
-        bool ret = AcceptBlock(*pblock, state, chainparams, &pindex, fRequested, dbp);
+		bool fNewBlock = false;
+        bool ret = AcceptBlock(*pblock, state, chainparams, &pindex, fRequested, dbp, &fNewBlock);
         if (pindex && pfrom) 
 		{
             mapBlockSource[pindex->GetBlockHash()] = pfrom->GetId();
+			if (fNewBlock) pfrom->nLastBlockTime = GetTime();
         }
         edcCheckBlockIndex(chainparams.GetConsensus());
         if (!ret)
@@ -4720,7 +4725,7 @@ bool edcLoadExternalBlockFile(
 				{
 					LOCK(cs_main);
                     CValidationState state;
-                    if (AcceptBlock(block, state, chainparams, NULL, true, dbp))
+                    if (AcceptBlock(block, state, chainparams, NULL, true, dbp, NULL))
                         nLoaded++;
                     if (state.IsError())
                         break;
@@ -4763,7 +4768,7 @@ bool edcLoadExternalBlockFile(
                                     head.ToString());
 							LOCK(cs_main);
                             CValidationState dummy;
-                            if (AcceptBlock(block, dummy, chainparams, NULL, true, &it->second))
+                            if (AcceptBlock(block, dummy, chainparams, NULL, true, &it->second, NULL))
                             {
                                 nLoaded++;
                                 queue.push_back(block.GetHash());
