@@ -26,7 +26,8 @@ const char * ppszTypeName[] =
     "ERROR", // Should never occur
     NetMsgType::TX,
     NetMsgType::BLOCK,
-    "filtered block" // Should never occur
+    "filtered block", // Should never occur
+	"compact block"  // Should never occur
 };
 
 /** All known message types. Keep this in the same order as the list of
@@ -87,6 +88,10 @@ const std::string edcallNetMessageTypes[] =
 							// "inv".
     NetMsgType::FEEFILTER,	// Tells the receiving peer not to inv us any txs 
 							// which do not meet the specified min fee rate.
+    NetMsgType::SENDCMPCT,
+    NetMsgType::CMPCTBLOCK,
+    NetMsgType::GETBLOCKTXN,
+    NetMsgType::BLOCKTXN,
 	NetMsgType::USER		// User-to-user message
 };
 
