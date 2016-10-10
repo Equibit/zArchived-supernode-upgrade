@@ -11,6 +11,7 @@
 #include "streams.h"
 #include "edctxmempool.h"
 #include "main.h"
+#include "edcutil.h"
 
 #include <unordered_map>
 
@@ -80,6 +81,8 @@ EDCReadStatus EDCPartiallyDownloadedBlock::InitData(const CEDCBlockHeaderAndShor
         txn_available[lastprefilledindex] = std::make_shared<CEDCTransaction>(cmpctblock.prefilledtxn[i].tx);
     }
 
+	prefilled_count = cmpctblock.prefilledtxn.size();
+
     // Calculate map of txids -> positions and check mempool to see what we have (or dont)
     // Because well-formed cmpctblock messages will have a (relatively) uniform distribution
     // of short IDs, any highly-uneven distribution of elements can be safely treated as a
@@ -114,13 +117,18 @@ EDCReadStatus EDCPartiallyDownloadedBlock::InitData(const CEDCBlockHeaderAndShor
 			{
                 txn_available[idit->second] = it->GetSharedTx();
                 have_txn[idit->second]  = true;
+				++mempool_count;
             } 
 			else 
 			{
                 // If we find two mempool txn that match the short id, just request it.
                 // This should be rare enough that the extra bandwidth doesn't matter,
                 // but eating a round-trip due to FillBlock failure would be annoying
-                txn_available[idit->second].reset();
+                if (txn_available[idit->second]) 
+				{
+                    txn_available[idit->second].reset();
+                    --mempool_count;
+                }
             }
         }
         // Though ideally we'd continue scanning for the two-txn-match-shortid case,
@@ -129,6 +137,10 @@ EDCReadStatus EDCPartiallyDownloadedBlock::InitData(const CEDCBlockHeaderAndShor
         if (mempool_count == shorttxids.size())
             break;
     }
+
+    edcLogPrint("cmpctblock", "Initialized PartiallyDownloadedBlock for block %s using a "
+		"cmpctblock of size %lu\n", cmpctblock.header.GetHash().ToString(), 
+		cmpctblock.GetSerializeSize(SER_NETWORK, PROTOCOL_VERSION));
 
     return READ_STATUS_OK;
 }
@@ -172,6 +184,16 @@ EDCReadStatus EDCPartiallyDownloadedBlock::FillBlock(
         if (state.CorruptionPossible())
             return READ_STATUS_FAILED; // Possible Short ID collision
         return READ_STATUS_INVALID;
+    }
+
+    edcLogPrint("cmpctblock", "Successfully reconstructed block %s with %lu txn prefilled, "
+		"%lu txn from mempool and %lu txn requested\n", header.GetHash().ToString(), 
+		prefilled_count, mempool_count, vtx_missing.size());
+    if (vtx_missing.size() < 5) 
+	{
+        for(const CEDCTransaction& tx : vtx_missing)
+            edcLogPrint("cmpctblock", "Reconstructed block %s required tx %s\n", 
+				header.GetHash().ToString(), tx.GetHash().ToString());
     }
 
     return READ_STATUS_OK;
