@@ -8,6 +8,7 @@
 #include "edcparams.h"
 #include "addrman.h"
 #include "arith_uint256.h"
+#include "edcblockencodings.h"
 #include "edcchainparams.h"
 #include "checkpoints.h"
 #include "checkqueue.h"
@@ -214,8 +215,9 @@ uint256 hashRecentRejectsChainTip;
 struct QueuedBlock 	
 {
     uint256 hash;
-    CBlockIndex* pindex;     //!< Optional.
-    bool fValidatedHeaders;  //!< Whether this block has validated headers at the time of request.
+    CBlockIndex* pindex;       //!< Optional.
+    bool fValidatedHeaders;    //!< Whether this block has validated headers at the time of request.
+    std::unique_ptr<EDCPartiallyDownloadedBlock> partialBlock;  //!< Optional, used for CMPCTBLOCK downloads
 };
 map<uint256, pair<NodeId, list<QueuedBlock>::iterator> > mapBlocksInFlight;
 
@@ -389,6 +391,7 @@ void FinalizeNode(NodeId nodeid)
 
 // Requires EDC_cs_main.
 // Returns a bool indicating whether we requested this block.
+// Also used if a block was /not/ received and timed out or started with another peer
 bool MarkBlockAsReceived(const uint256& hash) 
 {
     map<uint256, pair<NodeId, list<QueuedBlock>::iterator> >::iterator itInFlight = mapBlocksInFlight.find(hash);
@@ -417,22 +420,37 @@ bool MarkBlockAsReceived(const uint256& hash)
 }
 
 // Requires EDC_cs_main.
-void MarkBlockAsInFlight(
-					   NodeId nodeid, 
-			  const uint256 & hash, 
-	const Consensus::Params & consensusParams, 
-				CBlockIndex * pindex = NULL) 
+// returns false, still setting pit, if the block was already in flight from the same peer
+// pit will only be valid as long as the same cs_main lock is being held
+bool MarkBlockAsInFlight(
+						NodeId nodeid, 
+			   const uint256 & hash, 
+  	 const Consensus::Params & consensusParams, 
+				 CBlockIndex * pindex = NULL, 
+list<QueuedBlock>::iterator ** pit = NULL) 
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     CNodeState *state = State(nodeid);
     assert(state != NULL);
+
+    // Short-circuit most stuff in case its from the same node
+	map<uint256, pair<NodeId, list<QueuedBlock>::iterator> >::iterator itInFlight = 
+		mapBlocksInFlight.find(hash); 
+	if (itInFlight != mapBlocksInFlight.end() && itInFlight->second.first == nodeid) 
+	{
+        *pit = &itInFlight->second.second;
+        return false;
+    }
 
     // Make sure it's not listed somewhere already.
     MarkBlockAsReceived(hash);
 
-    QueuedBlock newentry = {hash, pindex, pindex != NULL};
-    list<QueuedBlock>::iterator it = state->vBlocksInFlight.insert(state->vBlocksInFlight.end(), newentry);
+    list<QueuedBlock>::iterator it = state->vBlocksInFlight.insert(state->vBlocksInFlight.end(),
+            {hash, pindex, pindex != NULL, std::unique_ptr<EDCPartiallyDownloadedBlock>(pit ? new EDCPartiallyDownloadedBlock(&theApp.mempool()) : NULL)});
+
     state->nBlocksInFlight++;
-    state->nBlocksInFlightValidHeaders += newentry.fValidatedHeaders;
+	state->nBlocksInFlightValidHeaders += it->fValidatedHeaders;
 
     if (state->nBlocksInFlight == 1) 
 	{
@@ -443,7 +461,11 @@ void MarkBlockAsInFlight(
 	{
         nPeersWithValidatedDownloads++;
     }
-    mapBlocksInFlight[hash] = std::make_pair(nodeid, it);
+
+    itInFlight = mapBlocksInFlight.insert(std::make_pair(hash, std::make_pair(nodeid, it))).first;
+    if (pit)
+        *pit = &itInFlight->second.second;
+    return true;
 }
 
 /** Check whether the last unknown block a peer advertised is not yet known. */
@@ -5155,7 +5177,7 @@ void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
                         // instead we respond with the full, non-compact block.
                         if (mi->second->nHeight >= chainActive.Height() - 10) 
 						{
-                            CBlockHeaderAndShortTxIDs cmpctblock(block);
+                            CEDCBlockHeaderAndShortTxIDs cmpctblock(block);
                             pfrom->PushMessage(NetMsgType::CMPCTBLOCK, cmpctblock);
                         } 
 						else
@@ -5444,6 +5466,17 @@ bool ProcessMessage(
             // nodes)
             pfrom->PushMessage(NetMsgType::SENDHEADERS);
         }
+        if (pfrom->nVersion >= SHORT_IDS_BLOCKS_VERSION) 
+		{
+            // Tell our peer we are willing to provide version-1 cmpctblocks
+            // However, we do not request new block announcements using
+            // cmpctblock messages.
+            // We send this to non-NODE NETWORK peers as well, because
+            // they may wish to request compact blocks from us
+            bool fAnnounceUsingCMPCTBLOCK = false;
+            uint64_t nCMPCTBLOCKVersion = 1;
+            pfrom->PushMessage(NetMsgType::SENDCMPCT, fAnnounceUsingCMPCTBLOCK, nCMPCTBLOCKVersion);
+        }
     }
     else if (strCommand == NetMsgType::ADDR)
     {
@@ -5578,7 +5611,11 @@ bool ProcessMessage(
                     if (CanDirectFetch(chainparams.GetConsensus()) &&
                         nodestate->nBlocksInFlight < MAX_BLOCKS_IN_TRANSIT_PER_PEER) 
 					{
-                        vToFetch.push_back(inv);
+                        if (nodestate->fProvidesHeaderAndIDs)
+                            vToFetch.push_back(CInv(MSG_CMPCT_BLOCK, inv.hash));
+                        else
+                            vToFetch.push_back(inv);
+
                         // Mark block as in flight already, even though the actual "getdata" message only goes out
                         // later (within the same EDC_cs_main lock, though).
                         MarkBlockAsInFlight(pfrom->GetId(), inv.hash, chainparams.GetConsensus());
@@ -5672,33 +5709,33 @@ bool ProcessMessage(
     }
     else if (strCommand == NetMsgType::GETBLOCKTXN)
     {
-        BlockTransactionsRequest req;
+        EDCBlockTransactionsRequest req;
         vRecv >> req;
 
         BlockMap::iterator it = mapBlockIndex.find(req.blockhash);
         if (it == mapBlockIndex.end() || !(it->second->nStatus & BLOCK_HAVE_DATA)) 
 		{
             Misbehaving(pfrom->GetId(), 100);
-            LogPrintf("Peer %d sent us a getblocktxn for a block we don't have", pfrom->id);
+            edcLogPrintf("Peer %d sent us a getblocktxn for a block we don't have", pfrom->id);
             return true;
         }
 
         if (it->second->nHeight < chainActive.Height() - 10) 
 		{
-            LogPrint("net", "Peer %d sent us a getblocktxn for a block > 10 deep", pfrom->id);
+            edcLogPrint("net", "Peer %d sent us a getblocktxn for a block > 10 deep", pfrom->id);
             return true;
         }
 
-        CBlock block;
+        CEDCBlock block;
         assert(ReadBlockFromDisk(block, it->second, chainparams.GetConsensus()));
 
-        BlockTransactions resp(req);
+        EDCBlockTransactions resp(req);
         for (size_t i = 0; i < req.indexes.size(); i++) 
 		{
             if (req.indexes[i] >= block.vtx.size()) 
 			{
                 Misbehaving(pfrom->GetId(), 100);
-                LogPrintf("Peer %d sent us a getblocktxn with out-of-bounds tx indices", pfrom->id);
+                edcLogPrintf("Peer %d sent us a getblocktxn with out-of-bounds tx indices", pfrom->id);
                 return true;
             }
             resp.txn[i] = block.vtx[req.indexes[i]];
@@ -5934,6 +5971,203 @@ bool ProcessMessage(
         }
         FlushStateToDisk(state, FLUSH_STATE_PERIODIC);
     }
+    else if (strCommand == NetMsgType::CMPCTBLOCK && !theApp.importing() && !theApp.reindex()) // Ignore blocks received while importing
+    {
+        CEDCBlockHeaderAndShortTxIDs cmpctblock;
+        vRecv >> cmpctblock;
+
+        LOCK(cs_main);
+
+        if (mapBlockIndex.find(cmpctblock.header.hashPrevBlock) == mapBlockIndex.end()) 
+		{
+            // Doesn't connect (or is genesis), instead of DoSing in AcceptBlockHeader, request deeper headers
+            if (!IsInitialBlockDownload())
+                pfrom->PushMessage(NetMsgType::GETHEADERS, chainActive.GetLocator(pindexBestHeader)
+, uint256());
+            return true;
+        }
+
+        CBlockIndex *pindex = NULL;
+        CValidationState state;
+        if (!AcceptBlockHeader(cmpctblock.header, state, chainparams, &pindex)) 
+		{
+            int nDoS;
+            if (state.IsInvalid(nDoS)) 
+			{
+                if (nDoS > 0)
+                    Misbehaving(pfrom->GetId(), nDoS);
+                edcLogPrintf("Peer %d sent us invalid header via cmpctblock\n", pfrom->id);
+                return true;
+            }
+        }
+
+        // If AcceptBlockHeader returned true, it set pindex
+        assert(pindex);
+        UpdateBlockAvailability(pfrom->GetId(), pindex->GetBlockHash());
+
+        std::map<uint256, pair<NodeId, list<QueuedBlock>::iterator> >::iterator blockInFlightIt = mapBlocksInFlight.find(pindex->GetBlockHash());
+        bool fAlreadyInFlight = blockInFlightIt != mapBlocksInFlight.end();
+
+        if (pindex->nStatus & BLOCK_HAVE_DATA) // Nothing to do here
+            return true;
+
+        if (pindex->nChainWork <= chainActive.Tip()->nChainWork || // We know something better
+                pindex->nTx != 0) 
+		{ // We had this block at some point, but pruned it
+            if (fAlreadyInFlight) 
+			{
+                // We requested this block for some reason, but our mempool will probably be useless
+                // so we just grab the block via normal getdata
+                std::vector<CInv> vInv(1);
+                vInv[0] = CInv(MSG_BLOCK, cmpctblock.header.GetHash());
+                pfrom->PushMessage(NetMsgType::GETDATA, vInv);
+                return true;
+            }
+        }
+
+        // If we're not close to tip yet, give up and let parallel block fetch work its magic
+        if (!fAlreadyInFlight && !CanDirectFetch(chainparams.GetConsensus()))
+            return true;
+
+        CNodeState *nodestate = State(pfrom->GetId());
+
+        // We want to be a bit conservative just to be extra careful about DoS
+        // possibilities in compact block processing...
+        if (pindex->nHeight <= chainActive.Height() + 2) 
+		{
+            if ((!fAlreadyInFlight && nodestate->nBlocksInFlight < MAX_BLOCKS_IN_TRANSIT_PER_PEER) ||
+                 (fAlreadyInFlight && blockInFlightIt->second.first == pfrom->GetId())) 
+			{
+                list<QueuedBlock>::iterator *queuedBlockIt = NULL;
+                if (!MarkBlockAsInFlight(pfrom->GetId(), pindex->GetBlockHash(), chainparams.GetConsensus(), pindex, &queuedBlockIt)) 
+				{
+                    if (!(*queuedBlockIt)->partialBlock)
+                        (*queuedBlockIt)->partialBlock.reset(
+							new EDCPartiallyDownloadedBlock(&theApp.mempool()));
+                    else 
+					{
+                        // The block was already in flight using compact blocks from the same peer
+                        edcLogPrint("net", "Peer sent us compact block we were already syncing!\n");
+                        return true;
+                    }
+                }
+
+                EDCPartiallyDownloadedBlock& partialBlock = *(*queuedBlockIt)->partialBlock;
+                EDCReadStatus status = partialBlock.InitData(cmpctblock);
+                if (status == READ_STATUS_INVALID) 
+				{
+                    MarkBlockAsReceived(pindex->GetBlockHash()); // Reset in-flight state in case of whitelist
+                    Misbehaving(pfrom->GetId(), 100);
+                    edcLogPrintf("Peer %d sent us invalid compact block\n", pfrom->id);
+                    return true;
+                } 
+				else if (status == READ_STATUS_FAILED) 
+				{
+                    // Duplicate txindexes, the block is now in-flight, so just request it
+                    std::vector<CInv> vInv(1);
+                    vInv[0] = CInv(MSG_BLOCK, cmpctblock.header.GetHash());
+                    pfrom->PushMessage(NetMsgType::GETDATA, vInv);
+                    return true;
+                }
+
+                EDCBlockTransactionsRequest req;
+                for (size_t i = 0; i < cmpctblock.BlockTxCount(); i++) 
+				{
+                    if (!partialBlock.IsTxAvailable(i))
+                        req.indexes.push_back(i);
+                }
+                if (req.indexes.empty()) 
+				{
+                    // Dirty hack to jump to BLOCKTXN code (TODO: move message handling into their own functions)
+                    EDCBlockTransactions txn;
+                    txn.blockhash = cmpctblock.header.GetHash();
+                    CDataStream blockTxnMsg(SER_NETWORK, PROTOCOL_VERSION);
+                    blockTxnMsg << txn;
+                    return ProcessMessage(pfrom, NetMsgType::BLOCKTXN, blockTxnMsg, nTimeReceived, chainparams);
+                } 
+				else 
+				{
+                    req.blockhash = pindex->GetBlockHash();
+                    pfrom->PushMessage(NetMsgType::GETBLOCKTXN, req);
+                }
+            }
+        } 
+		else 
+		{
+            if (fAlreadyInFlight) 
+			{
+                // We requested this block, but its far into the future, so our
+                // mempool will probably be useless - request the block normally
+                std::vector<CInv> vInv(1);
+                vInv[0] = CInv(MSG_BLOCK, cmpctblock.header.GetHash());
+                pfrom->PushMessage(NetMsgType::GETDATA, vInv);
+                return true;
+            } 
+			else 
+			{
+                // If this was an announce-cmpctblock, we want the same treatment as a header message
+                // Dirty hack to process as if it were just a headers message (TODO: move message handling into their own functions)
+                std::vector<CBlock> headers;
+                headers.push_back(cmpctblock.header);
+                CDataStream vHeadersMsg(SER_NETWORK, PROTOCOL_VERSION);
+                vHeadersMsg << headers;
+                return ProcessMessage(pfrom, NetMsgType::HEADERS, vHeadersMsg, nTimeReceived, chainparams);
+            }
+        }
+
+        edcCheckBlockIndex(chainparams.GetConsensus());
+    }
+    else if (strCommand == NetMsgType::BLOCKTXN && 
+			!theApp.importing() && !theApp.reindex()) // Ignore blocks received while importing
+    {
+        EDCBlockTransactions resp;
+        vRecv >> resp;
+
+        LOCK(cs_main);
+
+        map<uint256, pair<NodeId, list<QueuedBlock>::iterator> >::iterator it = mapBlocksInFlight.find(resp.blockhash);
+        if (it == mapBlocksInFlight.end() || !it->second.second->partialBlock ||
+                it->second.first != pfrom->GetId()) 
+		{
+            edcLogPrint("net", "Peer %d sent us block transactions for block we weren't expecting\n", pfrom->id);
+            return true;
+        }
+
+        EDCPartiallyDownloadedBlock& partialBlock = *it->second.second->partialBlock;
+        CEDCBlock block;
+        EDCReadStatus status = partialBlock.FillBlock(block, resp.txn);
+        if (status == READ_STATUS_INVALID) 
+		{
+            MarkBlockAsReceived(resp.blockhash); // Reset in-flight state in case of whitelist
+            Misbehaving(pfrom->GetId(), 100);
+            edcLogPrintf("Peer %d sent us invalid compact block/non-matching block transactions\n", pfrom->id);
+            return true;
+        } 
+		else if (status == READ_STATUS_FAILED) 
+		{
+            // Might have collided, fall back to getdata now :(
+            std::vector<CInv> invs;
+            invs.push_back(CInv(MSG_BLOCK, resp.blockhash));
+            pfrom->PushMessage(NetMsgType::GETDATA, invs);
+        } 
+		else 
+		{
+            CValidationState state;
+            ProcessNewBlock(state, chainparams, pfrom, &block, false, NULL);
+            int nDoS;
+            if (state.IsInvalid(nDoS)) 
+			{
+                assert (state.GetRejectCode() < REJECT_INTERNAL); // Blocks are never rejected with internal reject codes
+                pfrom->PushMessage(NetMsgType::REJECT, strCommand, (unsigned char)state.GetRejectCode(),
+                                   state.GetRejectReason().substr(0, MAX_REJECT_MESSAGE_LENGTH), block.GetHash());
+                if (nDoS > 0) 
+				{
+                    LOCK(cs_main);
+                    Misbehaving(pfrom->GetId(), nDoS);
+                }
+            }
+        }
+    }
     else if (strCommand == NetMsgType::HEADERS && !theApp.importing() && !theApp.reindex() ) // Ignore headers received while importing
     {
         std::vector<CBlockHeader> headers;
@@ -6063,6 +6297,13 @@ bool ProcessMessage(
                 }
                 if (vGetData.size() > 0) 
 				{
+                    if (nodestate->fProvidesHeaderAndIDs && vGetData.size() == 1 && 
+						mapBlocksInFlight.size() == 1 && 
+						pindexLast->pprev->IsValid(BLOCK_VALID_CHAIN)) 
+					{
+                        vGetData[0] = CInv(MSG_CMPCT_BLOCK, vGetData[0].hash);
+                    }
+
                     pfrom->PushMessage(NetMsgType::GETDATA, vGetData);
                 }
             }
@@ -6748,7 +6989,7 @@ bool edcSendMessages(CEDCNode* pto)
                     //TODO: Shouldn't need to reload block from disk, but requires refactor
                     CEDCBlock block;
                     assert(ReadBlockFromDisk(block, pBestIndex, consensusParams));
-                    CBlockHeaderAndShortTxIDs cmpctblock(block);
+                    CEDCBlockHeaderAndShortTxIDs cmpctblock(block);
                     pto->PushMessage(NetMsgType::CMPCTBLOCK, cmpctblock);
                     state.pindexBestHeaderSent = pBestIndex;
                 } 
