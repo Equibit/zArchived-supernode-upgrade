@@ -32,7 +32,7 @@
 using namespace std;
 
 void TxToJSON(const CEDCTransaction& tx, const uint256 hashBlock, UniValue& entry);
-void ScriptPubKeyToJSON(const CScript& scriptPubKey, UniValue& out, bool fIncludeHex);
+void edcScriptPubKeyToJSON(const CScript& scriptPubKey, UniValue& out, bool fIncludeHex);
 
 double edcGetDifficulty(const CBlockIndex* blockindex)
 {
@@ -225,6 +225,8 @@ std::string EntryDescriptionString()
 
 void entryToJSON(UniValue &info, const CEDCTxMemPoolEntry &e)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     AssertLockHeld(mempool.cs);
 
     info.push_back(Pair("size", (int)e.GetTxSize()));
@@ -233,7 +235,7 @@ void entryToJSON(UniValue &info, const CEDCTxMemPoolEntry &e)
     info.push_back(Pair("time", e.GetTime()));
     info.push_back(Pair("height", (int)e.GetHeight()));
     info.push_back(Pair("startingpriority", e.GetPriority(e.GetHeight())));
-    info.push_back(Pair("currentpriority", e.GetPriority(chainActive.Height())));
+    info.push_back(Pair("currentpriority", e.GetPriority(theApp.chainActive().Height())));
     info.push_back(Pair("descendantcount", e.GetCountWithDescendants()));
     info.push_back(Pair("descendantsize", e.GetSizeWithDescendants()));
     info.push_back(Pair("descendantfees", e.GetModFeesWithDescendants()));
@@ -850,7 +852,7 @@ UniValue edcgettxout(const UniValue& params, bool fHelp)
         ret.push_back(Pair("confirmations", pindex->nHeight - coins.nHeight + 1));
     ret.push_back(Pair("value", ValueFromAmount(coins.vout[n].nValue)));
     UniValue o(UniValue::VOBJ);
-    ScriptPubKeyToJSON(coins.vout[n].scriptPubKey, o, true);
+    edcScriptPubKeyToJSON(coins.vout[n].scriptPubKey, o, true);
     ret.push_back(Pair("scriptPubKey", o));
     ret.push_back(Pair("version", coins.nVersion));
     ret.push_back(Pair("coinbase", coins.fCoinBase));

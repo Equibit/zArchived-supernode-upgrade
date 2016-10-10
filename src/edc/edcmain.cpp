@@ -77,9 +77,6 @@ const int64_t EDC_ORPHAN_TX_EXPIRE_INTERVAL = 5 * 60;
 /** Expiration-time ordered list of (expire time, relay map entry) pairs, protected by cs_main). */
 std::deque<std::pair<int64_t, MapRelay::iterator>> relayExpiration;
 
-
-bool edcCheckBlock(const CEDCBlock& block, CValidationState& state, const Consensus::Params & consensusParams, bool fCheckPOW = true, bool fCheckMerkleRoot = true);
-
 /** Apply the effects of this block (with given index) on the UTXO set represented by coins.
  *  Validity checks that depend on the UTXO set are also done; ConnectBlock()
  *  can fail if those validity checks fail (among other reasons). */
@@ -113,7 +110,7 @@ struct COrphanTx
 	int64_t nTimeExpire;
 };
 map<uint256, COrphanTx> edcMapOrphanTransactions GUARDED_BY(EDC_cs_main);
-map<COutPoint, set<map<uint256, COrphanTx>::iterator, IteratorComparator>> edcMapOrphanTransactionsByPrev GUARDED_BY(cs_main);
+map<COutPoint, set<map<uint256, COrphanTx>::iterator, IteratorComparator>> edcMapOrphanTransactionsByPrev GUARDED_BY(EDC_cs_main);
 void edcEraseOrphansFor(NodeId peer) EXCLUSIVE_LOCKS_REQUIRED(EDC_cs_main);
 
 /**
@@ -424,7 +421,7 @@ bool MarkBlockAsReceived(const uint256& hash)
 
 // Requires EDC_cs_main.
 // returns false, still setting pit, if the block was already in flight from the same peer
-// pit will only be valid as long as the same cs_main lock is being held
+// pit will only be valid as long as the same EDC_cs_main lock is being held
 bool MarkBlockAsInFlight(
 						NodeId nodeid, 
 			   const uint256 & hash, 
@@ -789,7 +786,7 @@ bool AddOrphanTx(const CEDCTransaction& tx, NodeId peer) EXCLUSIVE_LOCKS_REQUIRE
 namespace
 {
 
-int EraseOrphanTx(uint256 hash) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
+int EraseOrphanTx(uint256 hash) EXCLUSIVE_LOCKS_REQUIRED(EDC_cs_main)
 {
     map<uint256, COrphanTx>::iterator it = edcMapOrphanTransactions.find(hash);
     if (it == edcMapOrphanTransactions.end())
@@ -2548,13 +2545,13 @@ int32_t edcComputeBlockVersion(const CBlockIndex* pindexPrev, const Consensus::P
 /**
  * Threshold condition checker that triggers when unknown versionbits are seen on the network.
  */
-class WarningBitsConditionChecker : public AbstractThresholdConditionChecker
+class EDCWarningBitsConditionChecker : public AbstractThresholdConditionChecker
 {
 private:
     int bit;
 
 public:
-    WarningBitsConditionChecker(int bitIn) : bit(bitIn) {}
+    EDCWarningBitsConditionChecker(int bitIn) : bit(bitIn) {}
 
     int64_t BeginTime(const Consensus::Params& params) const 
 	{ return 0; }
@@ -2933,7 +2930,7 @@ bool FlushStateToDisk(CValidationState &state, FlushStateMode mode)
     	if (fDoFullFlush || fPeriodicWrite) 
 		{
         	// Depend on nMinDiskSpace to ensure we can write block index
-        	if (!CheckDiskSpace(0))
+        	if (!edcCheckDiskSpace(0))
             	return state.Error("out of disk space");
         	// First make sure all block and undo data is flushed to disk.
         	FlushBlockFile();
@@ -2973,7 +2970,7 @@ bool FlushStateToDisk(CValidationState &state, FlushStateMode mode)
         	// twice (once in the log, and once in the tables). This is already
         	// an overestimation, as most will delete an existing entry or
         	// overwrite one. Still, use a conservative safety factor of 2.
-        	if (!CheckDiskSpace(128 * 2 * 2 *theApp.coinsTip()->GetCacheSize()))
+        	if (!edcCheckDiskSpace(128 * 2 * 2 *theApp.coinsTip()->GetCacheSize()))
             	return state.Error("out of disk space");
         	// Flush the chainstate (which may refer to block index entries).
         	if (!theApp.coinsTip()->Flush())
@@ -3036,7 +3033,7 @@ void UpdateTip(
         const CBlockIndex* pindex = theApp.chainActive().Tip();
         for (int bit = 0; bit < VERSIONBITS_NUM_BITS; bit++) 
 		{
-            WarningBitsConditionChecker checker(bit);
+            EDCWarningBitsConditionChecker checker(bit);
             ThresholdState state = checker.GetStateFor(pindex, chainParams.GetConsensus(), warningcache[bit]);
             if (state == THRESHOLD_ACTIVE || state == THRESHOLD_LOCKED_IN) 
 			{
@@ -3077,10 +3074,10 @@ void UpdateTip(
         }
     }
     edcLogPrintf("%s: new best=%s height=%d version=0x%08x log2_work=%.8g tx=%lu date='%s' progress=%f cache=%.1fMiB(%utx)", __func__,
-      chainActive.Tip()->GetBlockHash().ToString(), chainActive.Height(), chainActive.Tip()->nVersion,
-      log(chainActive.Tip()->nChainWork.getdouble())/log(2.0), (unsigned long)chainActive.Tip()->nChainTx,
-      DateTimeStrFormat("%Y-%m-%d %H:%M:%S", chainActive.Tip()->GetBlockTime()),
-      Checkpoints::GuessVerificationProgress(chainParams.Checkpoints(), chainActive.Tip()), pcoinsTip->DynamicMemoryUsage() * (1.0 / (1<<20)), pcoinsTip->GetCacheSize());
+      theApp.chainActive().Tip()->GetBlockHash().ToString(), theApp.chainActive().Height(), theApp.chainActive().Tip()->nVersion,
+      log(theApp.chainActive().Tip()->nChainWork.getdouble())/log(2.0), (unsigned long)theApp.chainActive().Tip()->nChainTx,
+      DateTimeStrFormat("%Y-%m-%d %H:%M:%S", theApp.chainActive().Tip()->GetBlockTime()),
+      Checkpoints::GuessVerificationProgress(chainParams.Checkpoints(), theApp.chainActive().Tip()), theApp.coinsTip()->DynamicMemoryUsage() * (1.0 / (1<<20)), theApp.coinsTip()->GetCacheSize());
     if (!warningMessages.empty())
         edcLogPrintf(" warning='%s'", boost::algorithm::join(warningMessages, ", "));
     edcLogPrintf("\n");
@@ -3422,7 +3419,7 @@ void NotifyHeaderTip()
     static CBlockIndex* pindexHeaderOld = NULL;
     CBlockIndex* pindexHeader = NULL;
     {
-        LOCK(cs_main);
+        LOCK(EDC_cs_main);
         if (!setBlockIndexCandidates.empty()) 
 		{
             pindexHeader = *setBlockIndexCandidates.rbegin();
@@ -3434,10 +3431,10 @@ void NotifyHeaderTip()
             pindexHeaderOld = pindexHeader;
         }
     }
-    // Send block tip changed notifications without cs_main
+    // Send block tip changed notifications without EDC_cs_main
     if (fNotify) 
 	{
-        uiInterface.NotifyHeaderTip(fInitialBlockDownload, pindexHeader);
+        edcUiInterface.NotifyHeaderTip(fInitialBlockDownload, pindexHeader);
     }
 }
 
@@ -3492,7 +3489,7 @@ bool ActivateBestChain(
             pindexNewTip = theApp.chainActive().Tip();
             pindexFork = theApp.chainActive().FindFork(pindexOldTip);
             fInitialDownload = edcIsInitialBlockDownload();
-			nNewHeight = chainActive.Height();
+			nNewHeight = theApp.chainActive().Height();
         }
         // When we reach this point, we switched to a new tip (stored in pindexNewTip).
 
@@ -3773,7 +3770,7 @@ bool edcFindUndoPos(
 	{
         if (theApp.pruneMode() )
             fCheckForPruning = true;
-        if (CheckDiskSpace(nNewChunks * UNDOFILE_CHUNK_SIZE - pos.nPos)) 
+        if (edcCheckDiskSpace(nNewChunks * UNDOFILE_CHUNK_SIZE - pos.nPos)) 
 		{
             FILE *file = edcOpenUndoFile(pos);
             if (file) 
@@ -3802,9 +3799,6 @@ const Consensus::Params & consensusParams,
 
     return true;
 }
-
-namespace
-{
 
 bool edcCheckBlock(
 		const CEDCBlock & block, 
@@ -3871,6 +3865,9 @@ const Consensus::Params & consensusParams,
 
     return true;
 }
+
+namespace
+{
 
 bool CheckIndexAgainstCheckpoint(
 	    const CBlockIndex * pindexPrev, 
@@ -4521,7 +4518,7 @@ bool CEDCVerifyDB::VerifyDB(
 
         if (pindex->nHeight < theApp.chainActive().Height()-nCheckDepth)
             break;
-        if (fPruneMode && !(pindex->nStatus & BLOCK_HAVE_DATA)) {
+        if (theApp.pruneMode() && !(pindex->nStatus & BLOCK_HAVE_DATA)) {
             // If pruning, only go back as far as we have data.
             edcLogPrintf("VerifyDB(): block verification stopping at height %d (pruning, no data)\n", pindex->nHeight);
             break;
@@ -4784,7 +4781,7 @@ bool edcLoadExternalBlockFile(
                 if (theApp.mapBlockIndex().count(hash) == 0 || 
 				(theApp.mapBlockIndex()[hash]->nStatus & BLOCK_HAVE_DATA) == 0) 
 				{
-					LOCK(cs_main);
+					LOCK(EDC_cs_main);
                     CValidationState state;
                     if (AcceptBlock(block, state, chainparams, NULL, true, dbp, NULL))
                         nLoaded++;
@@ -4794,7 +4791,7 @@ bool edcLoadExternalBlockFile(
 				else if (hash != chainparams.GetConsensus().hashGenesisBlock &&
 				theApp.mapBlockIndex()[hash]->nHeight % 1000 == 0) 
 				{
-					edcLogPrint("reindex", "Block Import: already had block %s at height %d\n", hash.ToString(), mapBlockIndex[hash]->nHeight);
+					edcLogPrint("reindex", "Block Import: already had block %s at height %d\n", hash.ToString(), theApp.mapBlockIndex()[hash]->nHeight);
                 }
 
                 // Activate the genesis block so normal node progress can continue
@@ -4827,7 +4824,7 @@ bool edcLoadExternalBlockFile(
                         {
 							edcLogPrint("reindex", "%s: Processing out of order child %s of %s\n", __func__, block.GetHash().ToString(),
                                     head.ToString());
-							LOCK(cs_main);
+							LOCK(EDC_cs_main);
                             CValidationState dummy;
                             if (AcceptBlock(block, dummy, chainparams, NULL, true, &it->second, NULL))
                             {
@@ -5209,7 +5206,7 @@ void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
                         // they wont have a useful mempool to match against a compact block,
                         // and we dont feel like constructing the object for them, so
                         // instead we respond with the full, non-compact block.
-                        if (mi->second->nHeight >= chainActive.Height() - 10) 
+                        if (mi->second->nHeight >= theApp.chainActive().Height() - 10) 
 						{
                             CEDCBlockHeaderAndShortTxIDs cmpctblock(block);
                             pfrom->PushMessage(NetMsgType::CMPCTBLOCK, cmpctblock);
@@ -5315,7 +5312,7 @@ bool ProcessMessage(
     {
         if (pfrom->nVersion >= NO_BLOOM_VERSION) 
 		{
-			LOCK(cs_main);
+			LOCK(EDC_cs_main);
             edcMisbehaving(pfrom->GetId(), 100);
             return false;
         } 
@@ -5333,7 +5330,7 @@ bool ProcessMessage(
         if (pfrom->nVersion != 0)
         {
             pfrom->PushMessage(NetMsgType::REJECT, strCommand, REJECT_DUPLICATE, string("Duplicate version message"));
-			LOCK(cs_main);
+			LOCK(EDC_cs_main);
             edcMisbehaving(pfrom->GetId(), 1);
             return false;
         }
@@ -5413,7 +5410,7 @@ bool ProcessMessage(
 
         // Potentially mark this peer as a preferred download peer.
 		{
-		LOCK(cs_main);
+		LOCK(EDC_cs_main);
         UpdatePreferredDownload(pfrom, State(pfrom->GetId()));
 		}
 
@@ -5477,7 +5474,7 @@ bool ProcessMessage(
     else if (pfrom->nVersion == 0)
     {
         // Must have a version message before anything else
-		LOCK(cs_main);
+		LOCK(EDC_cs_main);
         edcMisbehaving(pfrom->GetId(), 1);
         return false;
     }
@@ -5522,7 +5519,7 @@ bool ProcessMessage(
             return true;
         if (vAddr.size() > 1000)
         {
-			LOCK(cs_main);
+			LOCK(EDC_cs_main);
             edcMisbehaving(pfrom->GetId(), 20);
             return edcError("message addr size() = %u", vAddr.size());
         }
@@ -5589,7 +5586,7 @@ bool ProcessMessage(
 
         if (nCMPCTBLOCKVersion == 1) 
 		{
-            LOCK(cs_main);
+            LOCK(EDC_cs_main);
             State(pfrom->GetId())->fProvidesHeaderAndIDs = true;
             State(pfrom->GetId())->fPreferHeaderAndIDs = fAnnounceUsingCMPCTBLOCK;
         }
@@ -5600,7 +5597,7 @@ bool ProcessMessage(
         vRecv >> vInv;
         if (vInv.size() > MAX_INV_SZ)
         {
-			LOCK(cs_main);
+			LOCK(EDC_cs_main);
             edcMisbehaving(pfrom->GetId(), 20);
             return edcError("message inv size() = %u", vInv.size());
         }
@@ -5685,7 +5682,7 @@ bool ProcessMessage(
         vRecv >> vInv;
         if (vInv.size() > MAX_INV_SZ)
         {
-			LOCK(cs_main);
+			LOCK(EDC_cs_main);
             edcMisbehaving(pfrom->GetId(), 20);
             return edcError("message getdata size() = %u", vInv.size());
         }
@@ -5746,15 +5743,15 @@ bool ProcessMessage(
         EDCBlockTransactionsRequest req;
         vRecv >> req;
 
-        BlockMap::iterator it = mapBlockIndex.find(req.blockhash);
-        if (it == mapBlockIndex.end() || !(it->second->nStatus & BLOCK_HAVE_DATA)) 
+        BlockMap::iterator it = theApp.mapBlockIndex().find(req.blockhash);
+        if (it == theApp.mapBlockIndex().end() || !(it->second->nStatus & BLOCK_HAVE_DATA)) 
 		{
-            Misbehaving(pfrom->GetId(), 100);
+            edcMisbehaving(pfrom->GetId(), 100);
             edcLogPrintf("Peer %d sent us a getblocktxn for a block we don't have", pfrom->id);
             return true;
         }
 
-        if (it->second->nHeight < chainActive.Height() - 10) 
+        if (it->second->nHeight < theApp.chainActive().Height() - 10) 
 		{
             edcLogPrint("net", "Peer %d sent us a getblocktxn for a block > 10 deep", pfrom->id);
             return true;
@@ -5768,7 +5765,7 @@ bool ProcessMessage(
 		{
             if (req.indexes[i] >= block.vtx.size()) 
 			{
-                Misbehaving(pfrom->GetId(), 100);
+                edcMisbehaving(pfrom->GetId(), 100);
                 edcLogPrintf("Peer %d sent us a getblocktxn with out-of-bounds tx indices", pfrom->id);
                 return true;
             }
@@ -6010,14 +6007,13 @@ bool ProcessMessage(
         CEDCBlockHeaderAndShortTxIDs cmpctblock;
         vRecv >> cmpctblock;
 
-        LOCK(cs_main);
+        LOCK(EDC_cs_main);
 
-        if (mapBlockIndex.find(cmpctblock.header.hashPrevBlock) == mapBlockIndex.end()) 
+        if (theApp.mapBlockIndex().find(cmpctblock.header.hashPrevBlock) == theApp.mapBlockIndex().end()) 
 		{
             // Doesn't connect (or is genesis), instead of DoSing in AcceptBlockHeader, request deeper headers
             if (!IsInitialBlockDownload())
-                pfrom->PushMessage(NetMsgType::GETHEADERS, chainActive.GetLocator(pindexBestHeader)
-, uint256());
+                pfrom->PushMessage(NetMsgType::GETHEADERS, theApp.chainActive().GetLocator(theApp.indexBestHeader() ) , uint256());
             return true;
         }
 
@@ -6029,7 +6025,7 @@ bool ProcessMessage(
             if (state.IsInvalid(nDoS)) 
 			{
                 if (nDoS > 0)
-                    Misbehaving(pfrom->GetId(), nDoS);
+                    edcMisbehaving(pfrom->GetId(), nDoS);
                 edcLogPrintf("Peer %d sent us invalid header via cmpctblock\n", pfrom->id);
                 return true;
             }
@@ -6045,7 +6041,7 @@ bool ProcessMessage(
         if (pindex->nStatus & BLOCK_HAVE_DATA) // Nothing to do here
             return true;
 
-        if (pindex->nChainWork <= chainActive.Tip()->nChainWork || // We know something better
+        if (pindex->nChainWork <= theApp.chainActive().Tip()->nChainWork || // We know something better
                 pindex->nTx != 0) 
 		{ // We had this block at some point, but pruned it
             if (fAlreadyInFlight) 
@@ -6067,7 +6063,7 @@ bool ProcessMessage(
 
         // We want to be a bit conservative just to be extra careful about DoS
         // possibilities in compact block processing...
-        if (pindex->nHeight <= chainActive.Height() + 2) 
+        if (pindex->nHeight <= theApp.chainActive().Height() + 2) 
 		{
             if ((!fAlreadyInFlight && nodestate->nBlocksInFlight < MAX_BLOCKS_IN_TRANSIT_PER_PEER) ||
                  (fAlreadyInFlight && blockInFlightIt->second.first == pfrom->GetId())) 
@@ -6091,7 +6087,7 @@ bool ProcessMessage(
                 if (status == READ_STATUS_INVALID) 
 				{
                     MarkBlockAsReceived(pindex->GetBlockHash()); // Reset in-flight state in case of whitelist
-                    Misbehaving(pfrom->GetId(), 100);
+                    edcMisbehaving(pfrom->GetId(), 100);
                     edcLogPrintf("Peer %d sent us invalid compact block\n", pfrom->id);
                     return true;
                 } 
@@ -6141,7 +6137,7 @@ bool ProcessMessage(
 			{
                 // If this was an announce-cmpctblock, we want the same treatment as a header message
                 // Dirty hack to process as if it were just a headers message (TODO: move message handling into their own functions)
-                std::vector<CBlock> headers;
+                std::vector<CEDCBlock> headers;
                 headers.push_back(cmpctblock.header);
                 CDataStream vHeadersMsg(SER_NETWORK, PROTOCOL_VERSION);
                 vHeadersMsg << headers;
@@ -6157,7 +6153,7 @@ bool ProcessMessage(
         EDCBlockTransactions resp;
         vRecv >> resp;
 
-        LOCK(cs_main);
+        LOCK(EDC_cs_main);
 
         map<uint256, pair<NodeId, list<QueuedBlock>::iterator> >::iterator it = mapBlocksInFlight.find(resp.blockhash);
         if (it == mapBlocksInFlight.end() || !it->second.second->partialBlock ||
@@ -6173,7 +6169,7 @@ bool ProcessMessage(
         if (status == READ_STATUS_INVALID) 
 		{
             MarkBlockAsReceived(resp.blockhash); // Reset in-flight state in case of whitelist
-            Misbehaving(pfrom->GetId(), 100);
+            edcMisbehaving(pfrom->GetId(), 100);
             edcLogPrintf("Peer %d sent us invalid compact block/non-matching block transactions\n", pfrom->id);
             return true;
         } 
@@ -6196,8 +6192,8 @@ bool ProcessMessage(
                                    state.GetRejectReason().substr(0, MAX_REJECT_MESSAGE_LENGTH), block.GetHash());
                 if (nDoS > 0) 
 				{
-                    LOCK(cs_main);
-                    Misbehaving(pfrom->GetId(), nDoS);
+                    LOCK(EDC_cs_main);
+                    edcMisbehaving(pfrom->GetId(), nDoS);
                 }
             }
         }
@@ -6210,7 +6206,7 @@ bool ProcessMessage(
         unsigned int nCount = ReadCompactSize(vRecv);
         if (nCount > MAX_HEADERS_RESULTS) 
 		{		
-			LOCK(cs_main);
+			LOCK(EDC_cs_main);
             edcMisbehaving(pfrom->GetId(), 20);
             return edcError("headers message size = %u", nCount);
         }
@@ -6235,7 +6231,7 @@ bool ProcessMessage(
         // more headers later.  This prevents multiple chains of redundant
         // getheader requests from running in parallel if triggered by incoming
         // blocks while the node is still in initial headers sync.
-        const bool hasNewHeaders = (mapBlockIndex.count(headers.back().GetHash()) == 0);
+        const bool hasNewHeaders = (theApp.mapBlockIndex().count(headers.back().GetHash()) == 0);
 
         CBlockIndex *pindexLast = NULL;
         BOOST_FOREACH(const CBlockHeader& header, headers) 
@@ -6528,7 +6524,7 @@ bool ProcessMessage(
         if (!filter.IsWithinSizeConstraints())
 		{
             // There is no excuse for sending a too-large filter
-			LOCK(cs_main);
+			LOCK(EDC_cs_main);
             edcMisbehaving(pfrom->GetId(), 100);
 		}
         else
@@ -6557,7 +6553,7 @@ bool ProcessMessage(
                 pfrom->pfilter->insert(vData);
             else
 			{
-				LOCK(cs_main);
+				LOCK(EDC_cs_main);
                 edcMisbehaving(pfrom->GetId(), 100);
 			}
         }
@@ -7485,7 +7481,7 @@ bool edcFindBlockPos(
 		{
             if (theApp.pruneMode() )
                 fCheckForPruning = true;
-            if (CheckDiskSpace(nNewChunks * BLOCKFILE_CHUNK_SIZE - pos.nPos)) 
+            if (edcCheckDiskSpace(nNewChunks * BLOCKFILE_CHUNK_SIZE - pos.nPos)) 
 			{
                 FILE *file = edcOpenBlockFile(pos);
                 if (file) 

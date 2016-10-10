@@ -29,11 +29,11 @@ void TxToJSON(const CEDCTransaction& tx, const uint256 hashBlock, UniValue& entr
 UniValue blockToJSON(const CEDCBlock& block, const CBlockIndex* blockindex, bool txDetails = false);
 UniValue edcmempoolInfoToJSON();
 UniValue edcmempoolToJSON(bool fVerbose = false);
-void ScriptPubKeyToJSON(const CScript& scriptPubKey, UniValue& out, bool fIncludeHex);
+void edcScriptPubKeyToJSON(const CScript& scriptPubKey, UniValue& out, bool fIncludeHex);
 UniValue blockheaderToJSON(const CBlockIndex* blockindex);
 
-// A bit of a hack - dependency on a function defined in rpc/blockchain.cpp
-UniValue getblockchaininfo(const UniValue& params, bool fHelp);
+// A bit of a hack - dependency on a function defined in edc/rpc/edcblockchain.cpp
+UniValue edcgetblockchaininfo(const UniValue& params, bool fHelp);
 
 
 namespace
@@ -148,6 +148,8 @@ bool rest_headers(
 	   EDCHTTPRequest * req,
     const std::string & strURIPart)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!CheckWarmup(req))
         return false;
     std::string param;
@@ -171,14 +173,14 @@ bool rest_headers(
     headers.reserve(count);
     {
         LOCK(EDC_cs_main);
-        BlockMap::const_iterator it = mapBlockIndex.find(hash);
-        const CBlockIndex *pindex = (it != mapBlockIndex.end()) ? it->second : NULL;
-        while (pindex != NULL && chainActive.Contains(pindex)) 
+        BlockMap::const_iterator it = theApp.mapBlockIndex().find(hash);
+        const CBlockIndex *pindex = (it != theApp.mapBlockIndex().end()) ? it->second : NULL;
+        while (pindex != NULL && theApp.chainActive().Contains(pindex)) 
 		{
             headers.push_back(pindex);
             if (headers.size() == (unsigned long)count)
                 break;
-            pindex = chainActive.Next(pindex);
+            pindex = theApp.chainActive().Next(pindex);
         }
     }
 
@@ -232,6 +234,8 @@ bool rest_block(
  const std::string & strURIPart,
                 bool showTxDetails)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!CheckWarmup(req))
         return false;
     std::string hashStr;
@@ -245,11 +249,12 @@ bool rest_block(
     CBlockIndex* pblockindex = NULL;
     {
         LOCK(EDC_cs_main);
-        if (mapBlockIndex.count(hash) == 0)
+        if (theApp.mapBlockIndex().count(hash) == 0)
             return RESTERR(req, HTTP_NOT_FOUND, hashStr + " not found");
 
-        pblockindex = mapBlockIndex[hash];
-        if (fHavePruned && !(pblockindex->nStatus & BLOCK_HAVE_DATA) && pblockindex->nTx > 0)
+        pblockindex = theApp.mapBlockIndex()[hash];
+        if (theApp.havePruned() && !(pblockindex->nStatus & BLOCK_HAVE_DATA) && 
+		pblockindex->nTx > 0)
             return RESTERR(req, HTTP_NOT_FOUND, hashStr + " not available (pruned data)");
 
         if (!ReadBlockFromDisk(block, pblockindex, edcParams().GetConsensus()))
@@ -318,7 +323,7 @@ bool rest_chaininfo(EDCHTTPRequest* req, const std::string& strURIPart)
     case RF_JSON: 
 	{
         UniValue rpcParams(UniValue::VARR);
-        UniValue chainInfoObject = getblockchaininfo(rpcParams, false);
+        UniValue chainInfoObject = edcgetblockchaininfo(rpcParams, false);
         string strJSON = chainInfoObject.write() + "\n";
         req->WriteHeader("Content-Type", "application/json");
         req->WriteReply(HTTP_OK, strJSON);
@@ -601,7 +606,7 @@ bool rest_getutxos(EDCHTTPRequest* req, const std::string& strURIPart)
         // serialize data
         // use exact same output as mentioned in Bip64
         CDataStream ssGetUTXOResponse(SER_NETWORK, PROTOCOL_VERSION);
-        ssGetUTXOResponse << chainActive.Height() << chainActive.Tip()->GetBlockHash() << bitmap << outs;
+        ssGetUTXOResponse << theApp.chainActive().Height() << theApp.chainActive().Tip()->GetBlockHash() << bitmap << outs;
         string ssGetUTXOResponseString = ssGetUTXOResponse.str();
 
         req->WriteHeader("Content-Type", "application/octet-stream");
@@ -612,7 +617,7 @@ bool rest_getutxos(EDCHTTPRequest* req, const std::string& strURIPart)
     case RF_HEX: 
 	{
         CDataStream ssGetUTXOResponse(SER_NETWORK, PROTOCOL_VERSION);
-        ssGetUTXOResponse << chainActive.Height() << chainActive.Tip()->GetBlockHash() << bitmap << outs;
+        ssGetUTXOResponse << theApp.chainActive().Height() << theApp.chainActive().Tip()->GetBlockHash() << bitmap << outs;
         string strHex = HexStr(ssGetUTXOResponse.begin(), ssGetUTXOResponse.end()) + "\n";
 
         req->WriteHeader("Content-Type", "text/plain");
@@ -626,8 +631,8 @@ bool rest_getutxos(EDCHTTPRequest* req, const std::string& strURIPart)
 
         // pack in some essentials
         // use more or less the same output as mentioned in Bip64
-        objGetUTXOResponse.push_back(Pair("chainHeight", chainActive.Height()));
-        objGetUTXOResponse.push_back(Pair("chaintipHash", chainActive.Tip()->GetBlockHash().GetHex()));
+        objGetUTXOResponse.push_back(Pair("chainHeight", theApp.chainActive().Height()));
+        objGetUTXOResponse.push_back(Pair("chaintipHash", theApp.chainActive().Tip()->GetBlockHash().GetHex()));
         objGetUTXOResponse.push_back(Pair("bitmap", bitmapStringRepresentation));
 
         UniValue utxos(UniValue::VARR);
@@ -640,7 +645,7 @@ bool rest_getutxos(EDCHTTPRequest* req, const std::string& strURIPart)
 
             // include the script in a json output
             UniValue o(UniValue::VOBJ);
-            ScriptPubKeyToJSON(coin.out.scriptPubKey, o, true);
+            edcScriptPubKeyToJSON(coin.out.scriptPubKey, o, true);
             utxo.push_back(Pair("scriptPubKey", o));
             utxos.push_back(utxo);
         }

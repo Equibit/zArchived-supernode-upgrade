@@ -4123,7 +4123,7 @@ bool CEDCWallet::InitLoadWallet()
         walletInstance->ScanForWalletTransactions(pindexRescan, true);
         edcLogPrintf(" rescan      %15dms\n", GetTimeMillis() - nStart);
         walletInstance->SetBestChain(theApp.chainActive().GetLocator());
-        nWalletDBUpdated++;
+        theApp.incWalletDBUpdated();
 
         // Restore wallet transaction metadata after -eb_zapwallettxes=1
         if ( params.zapwallettxes != 2 )
@@ -4227,14 +4227,16 @@ bool CEDCWallet::BackupWallet(const std::string& strDest)
     while (true)
     {
         {
-            LOCK(bitdb.cs_db);
-            if (!bitdb.mapFileUseCount.count(strWalletFile) || 
-				 bitdb.mapFileUseCount[strWalletFile] == 0)
+			EDCapp & theApp = EDCapp::singleton();
+
+            LOCK(theApp.bitdb().cs_db);
+            if (!theApp.bitdb().mapFileUseCount.count(strWalletFile) || 
+				 theApp.bitdb().mapFileUseCount[strWalletFile] == 0)
             {
                 // Flush log data to the dat file
-                bitdb.CloseDb(strWalletFile);
-                bitdb.CheckpointLSN(strWalletFile);
-                bitdb.mapFileUseCount.erase(strWalletFile);
+                theApp.bitdb().CloseDb(strWalletFile);
+                theApp.bitdb().CheckpointLSN(strWalletFile);
+                theApp.bitdb().mapFileUseCount.erase(strWalletFile);
 
                 // Copy wallet file
                 boost::filesystem::path pathSrc = edcGetDataDir() / strWalletFile;

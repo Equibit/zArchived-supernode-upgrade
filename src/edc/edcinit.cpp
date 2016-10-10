@@ -988,8 +988,8 @@ bool EdcAppInit(
 		while (!fHaveGenesis && !fRequestShutdown) 
 		{
 	   		{
-	        	LOCK(cs_main);
-	        	fHaveGenesis = (chainActive.Tip() != NULL);
+	        	LOCK(EDC_cs_main);
+	        	fHaveGenesis = (theApp.chainActive().Tip() != NULL);
 	    	}
 
         	if (!fHaveGenesis) 

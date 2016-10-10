@@ -563,7 +563,7 @@ UniValue edcgetblocktemplate(const UniValue& params, bool fHelp)
         pindexPrev = pindexPrevNew;
     }
     CEDCBlock* pblock = &pblocktemplate->block; // pointer for convenience
-	const Consensus::Params& consensusParams = Params().GetConsensus();
+	const Consensus::Params& consensusParams = edcParams().GetConsensus();
 
     // Update nTime
 	UpdateTime(pblock, consensusParams, pindexPrev);

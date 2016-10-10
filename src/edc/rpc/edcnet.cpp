@@ -147,7 +147,7 @@ UniValue edcgetpeerinfo(const UniValue& params, bool fHelp)
 	{
         UniValue obj(UniValue::VOBJ);
         CNodeStateStats statestats;
-        bool fStateStats = GetNodeStateStats(stats.nodeid, statestats);
+        bool fStateStats = edcGetNodeStateStats(stats.nodeid, statestats);
 
         obj.push_back(Pair("id", stats.nodeid));
         obj.push_back(Pair("addr", stats.addrName));
@@ -490,7 +490,7 @@ UniValue edcgetnetworkinfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("timeoffset",    edcGetTimeOffset()));
     obj.push_back(Pair("connections",   (int)theApp.vNodes().size()));
     obj.push_back(Pair("networks",      GetNetworksInfo()));
-    obj.push_back(Pair("relayfee",      ValueFromAmount(::minRelayTxFee.GetFeePerK())));
+    obj.push_back(Pair("relayfee",      ValueFromAmount(theApp.minRelayTxFee().GetFeePerK())));
     UniValue localAddresses(UniValue::VARR);
     {
         LOCK(theApp.mapLocalHostCS());

@@ -2253,6 +2253,8 @@ void CEDCWalletDB::DeleteMessages(
 
 bool CEDCWalletDB::WriteHDChain(const CHDChain& chain)
 {
-    nWalletDBUpdated++;
+	EDCapp & theApp = EDCapp::singleton();
+
+    theApp.incWalletDBUpdated();
     return Write(std::string(HDCHAIN), chain);
 }

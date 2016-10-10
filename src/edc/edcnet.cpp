@@ -383,7 +383,7 @@ CEDCNode* edcFindNode(const CService& addr, bool secure )
 }
 
 //TODO: This is used in only one place in main, and should be removed
-CEDCNode* FindNode(const NodeId nodeid, bool secure )
+CEDCNode * edcFindNode(const NodeId nodeid, bool secure )
 {
 	EDCapp & theApp = EDCapp::singleton();
     LOCK(theApp.vNodesCS());
@@ -568,7 +568,7 @@ void CEDCNode::Ban(
     {
 		EDCapp & theApp = EDCapp::singleton();
 
-        LOCK(cs_vNodes);
+        LOCK(theApp.vNodesCS());
         BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes()) 
 		{
             if (subNet.Match((CNetAddr)pnode->addr))
@@ -2010,7 +2010,7 @@ void edcThreadOpenConnections()
         CSemaphoreGrant grant(*semOutbound);
         CSemaphoreGrant sgrant(*semOutbound);
         if (addrConnect.IsValid())
-            edcOpenNetworkConnection(addrConnect, (int)setConnected.size() >= std::min(nMaxConnections - 1, 2), &grant, &sgrant );
+            edcOpenNetworkConnection(addrConnect, (int)setConnected.size() >= std::min(theApp.maxConnections() - 1, 2), &grant, &sgrant );
     }
 }
 

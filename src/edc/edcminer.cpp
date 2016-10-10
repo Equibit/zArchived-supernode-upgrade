@@ -133,8 +133,8 @@ CEDCBlockTemplate* EDCBlockAssembler::CreateNewBlock(const CScript& scriptPubKey
     pblocktemplate->vTxFees.push_back(-1); // updated at end
     pblocktemplate->vTxSigOps.push_back(-1); // updated at end
 
-    LOCK2(cs_main, theApp.mempool().cs);
-    CBlockIndex* pindexPrev = chainActive.Tip();
+    LOCK2(EDC_cs_main, theApp.mempool().cs);
+    CBlockIndex* pindexPrev = theApp.chainActive().Tip();
     nHeight = pindexPrev->nHeight + 1;
 
     pblock->nVersion = edcComputeBlockVersion(pindexPrev, chainparams.GetConsensus());
@@ -439,7 +439,7 @@ void EDCBlockAssembler::addPackageTxs()
             packageSigOps = modit->nSigOpCountWithAncestors;
         }
 
-        if (packageFees < ::minRelayTxFee.GetFee(packageSize) && nBlockSize >= nBlockMinSize) 
+        if (packageFees < theApp.minRelayTxFee().GetFee(packageSize) && nBlockSize >= nBlockMinSize) 
 		{
             // Everything else we might consider has a lower fee rate
             return;
@@ -568,7 +568,7 @@ void EDCBlockAssembler::addScoreTxs()
 
         // If the fee rate is below the min fee rate for mining, then we're done
         // adding txs based on score (fee rate)
-        if (iter->GetModifiedFee() < ::minRelayTxFee.GetFee(iter->GetTxSize()) && 
+        if (iter->GetModifiedFee() < theApp.minRelayTxFee().GetFee(iter->GetTxSize()) && 
 		nBlockSize >= nBlockMinSize) 
 		{
             return;

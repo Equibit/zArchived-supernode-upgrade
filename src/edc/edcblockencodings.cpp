@@ -5,12 +5,12 @@
 #include "edcblockencodings.h"
 #include "consensus/consensus.h"
 #include "consensus/validation.h"
-#include "chainparams.h"
+#include "edcchainparams.h"
 #include "hash.h"
 #include "random.h"
 #include "streams.h"
 #include "edctxmempool.h"
-#include "main.h"
+#include "edcmain.h"
 #include "edcutil.h"
 
 #include <unordered_map>
@@ -187,10 +187,10 @@ EDCReadStatus EDCPartiallyDownloadedBlock::FillBlock(
         return READ_STATUS_INVALID;
 
     CValidationState state;
-    if (!CheckBlock(block, state, Params().GetConsensus())) 
+    if (!edcCheckBlock(block, state, edcParams().GetConsensus())) 
 	{
         // TODO: We really want to just check merkle tree manually here,
-        // but that is expensive, and CheckBlock caches a block's
+        // but that is expensive, and edcCheckBlock caches a block's
         // "checked-status" (in the CBlock?). CBlock should be able to
         // check its own merkle root and cache that check.
         if (state.CorruptionPossible())

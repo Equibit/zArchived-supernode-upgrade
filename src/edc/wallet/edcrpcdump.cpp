@@ -198,7 +198,7 @@ void edcImportScript(
         CTxDestination destination;
         if (ExtractDestination(script, destination)) 
 		{
-            pwalletMain->SetAddressBook(destination, strLabel, "receive");
+            theApp.walletMain()->SetAddressBook(destination, strLabel, "receive");
 		}
 	}
 }

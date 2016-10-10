@@ -539,7 +539,7 @@ bool edcConnectSocketByName(
     edcGetNameProxy(nameProxy);
 
     std::vector<CService> addrResolved;
-    if (Lookup(strDest.c_str(), addrResolved, port, fNameLookup && 
+    if (Lookup(strDest.c_str(), addrResolved, port, params.dns && 
 	!edcHaveNameProxy(), 256)) 
 	{
         if (addrResolved.size() > 0) 
