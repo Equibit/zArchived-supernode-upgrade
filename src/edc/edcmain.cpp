@@ -221,6 +221,9 @@ struct QueuedBlock
 };
 map<uint256, pair<NodeId, list<QueuedBlock>::iterator> > mapBlocksInFlight;
 
+/** Stack of nodes which we have set to announce using compact blocks */
+list<NodeId> lNodesAnnouncingHeaderAndIDs;
+
 /** Number of preferable block download peers. */
 int nPreferredDownload = 0;
 
@@ -510,6 +513,37 @@ void UpdateBlockAvailability(NodeId nodeid, const uint256 &hash)
 	{
         // An unknown block was announced; just assume that the latest one is the best one.
         state->hashLastUnknownBlock = hash;
+    }
+}
+
+void MaybeSetPeerAsAnnouncingHeaderAndIDs( const CNodeState * nodestate, CEDCNode * pfrom ) 
+{
+    if (nodestate->fProvidesHeaderAndIDs) 
+	{
+        BOOST_FOREACH(const NodeId nodeid, lNodesAnnouncingHeaderAndIDs)
+            if (nodeid == pfrom->GetId())
+                return;
+
+        bool fAnnounceUsingCMPCTBLOCK = false;
+        uint64_t nCMPCTBLOCKVersion = 1;
+
+        if (lNodesAnnouncingHeaderAndIDs.size() >= 3) 
+		{
+            // As per BIP152, we only get 3 of our peers to announce
+            // blocks using compact encodings.
+            CEDCNode* pnodeStop = edcFindNode(lNodesAnnouncingHeaderAndIDs.front(), false );
+
+            if (pnodeStop) 
+			{
+                pnodeStop->PushMessage(NetMsgType::SENDCMPCT, fAnnounceUsingCMPCTBLOCK, 
+					nCMPCTBLOCKVersion);
+                lNodesAnnouncingHeaderAndIDs.pop_front();
+            }
+        }
+
+        fAnnounceUsingCMPCTBLOCK = true;
+        pfrom->PushMessage(NetMsgType::SENDCMPCT, fAnnounceUsingCMPCTBLOCK, nCMPCTBLOCKVersion);
+        lNodesAnnouncingHeaderAndIDs.push_back(pfrom->GetId());
     }
 }
 
@@ -6301,6 +6335,11 @@ bool ProcessMessage(
 						mapBlocksInFlight.size() == 1 && 
 						pindexLast->pprev->IsValid(BLOCK_VALID_CHAIN)) 
 					{
+                        // We seem to be rather well-synced, so it appears pfrom was the first to provide us
+                        // with this block! Let's get them to announce using compact blocks in the future.
+                        MaybeSetPeerAsAnnouncingHeaderAndIDs(nodestate, pfrom);
+                        // In any case, we want to download using a compact block, not a regular one
+
                         vGetData[0] = CInv(MSG_CMPCT_BLOCK, vGetData[0].hash);
                     }
 
