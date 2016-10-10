@@ -108,14 +108,19 @@ EDCReadStatus EDCPartiallyDownloadedBlock::InitData(const CEDCBlockHeaderAndShor
 
     std::vector<bool> have_txn(txn_available.size());
     LOCK(pool->cs);
-    for (CEDCTxMemPool::txiter it = pool->mapTx.begin(); it != pool->mapTx.end(); it++) 
+
+    const std::vector<std::pair<uint256, CEDCTxMemPool::txiter> > & vTxHashes = pool->vTxHashes;
+
+    for (size_t i = 0; i < vTxHashes.size(); i++) 
 	{
-        std::unordered_map<uint64_t, uint16_t>::iterator idit = shorttxids.find(cmpctblock.GetShortID(it->GetTx().GetHash()));
+        uint64_t shortid = cmpctblock.GetShortID(vTxHashes[i].first);
+        std::unordered_map<uint64_t, uint16_t>::iterator idit = shorttxids.find(shortid);
+
         if (idit != shorttxids.end()) 
 		{
             if (!have_txn[idit->second]) 
 			{
-                txn_available[idit->second] = it->GetSharedTx();
+				txn_available[idit->second] = vTxHashes[i].second->GetSharedTx();
                 have_txn[idit->second]  = true;
 				++mempool_count;
             } 
