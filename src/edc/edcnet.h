@@ -47,6 +47,8 @@ namespace boost
 unsigned int edcReceiveFloodSize();
 unsigned int edcSendBufferSize();
 
+typedef int NodeId;
+
 void edcAddressCurrentlyConnected(const CService& addr);
 void edcMapPort(bool fUseUPnP);
 unsigned short edcGetListenPort();
@@ -55,8 +57,6 @@ bool edcBindListenPort(const CService &bindAddr, std::string& strError, bool fWh
 void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler);
 bool edcStopNode();
 void SocketSendData(CEDCNode *pnode);
-
-typedef int NodeId;
 
 // Signals for message handling
 struct CEDCNodeSignals
@@ -665,6 +665,7 @@ CEDCNode * edcFindNode(const CNetAddr& ip, bool );
 CEDCNode * edcFindNode(const CSubNet& subNet, bool );
 CEDCNode * edcFindNode(const std::string& addrName, bool );
 CEDCNode * edcFindNode(const CService& ip, bool );
+CEDCNode * edcFindNode( const NodeId id, bool ); //TODO: Remove this
 bool edcOpenNetworkConnection( const CAddress & addrConnect, bool fCountFailure, CSemaphoreGrant * grantOutbound  = NULL, CSemaphoreGrant * sgrantOutbound  = NULL, const char * pszDest = NULL, bool fOneShot = false ); 
 void edcSetLimited(enum Network net, bool fLimited);
 std::vector<AddedNodeInfo> edcGetAddedNodeInfo();

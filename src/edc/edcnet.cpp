@@ -382,6 +382,28 @@ CEDCNode* edcFindNode(const CService& addr, bool secure )
     return NULL;
 }
 
+//TODO: This is used in only one place in main, and should be removed
+CEDCNode* FindNode(const NodeId nodeid, bool secure )
+{
+	EDCapp & theApp = EDCapp::singleton();
+    LOCK(theApp.vNodesCS());
+
+	if(!secure)
+	{
+    	BOOST_FOREACH(CEDCNode * pnode, theApp.vNodes() )
+       		if (pnode->GetId() == nodeid)
+            	return (pnode);
+	}
+	else
+	{
+	    BOOST_FOREACH(CEDCSSLNode * pnode, theApp.vSSLNodes() )
+   	     	if (pnode->GetId() == nodeid )
+            	return (pnode);
+	}
+
+    return NULL;
+}
+
 void CEDCNode::CloseSocketDisconnect()
 {
     fDisconnect = true;
