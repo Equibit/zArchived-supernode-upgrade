@@ -517,6 +517,9 @@ bool CEDCTxMemPool::addUnchecked(
     totalTxSize += entry.GetTxSize();
     minerPolicyEstimator->processTransaction(entry, fCurrentEstimate);
 
+    vTxHashes.emplace_back(hash, newit);
+    newit->vTxHashesIdx = vTxHashes.size() - 1;
+
     return true;
 }
 
@@ -525,6 +528,17 @@ void CEDCTxMemPool::removeUnchecked(txiter it)
     const uint256 hash = it->GetTx().GetHash();
     BOOST_FOREACH(const CEDCTxIn& txin, it->GetTx().vin)
         mapNextTx.erase(txin.prevout);
+
+    if (vTxHashes.size() > 1) 
+	{
+        vTxHashes[it->vTxHashesIdx] = std::move(vTxHashes.back());
+        vTxHashes[it->vTxHashesIdx].second->vTxHashesIdx = it->vTxHashesIdx;
+        vTxHashes.pop_back();
+        if (vTxHashes.size() * 2 < vTxHashes.capacity())
+            vTxHashes.shrink_to_fit();
+    } 
+	else
+        vTxHashes.clear();
 
     totalTxSize -= it->GetTxSize();
     cachedInnerUsage -= it->DynamicMemoryUsage();
@@ -1120,8 +1134,15 @@ bool CEDCCoinsViewMemPool::HaveCoins(const uint256 &txid) const
 size_t CEDCTxMemPool::DynamicMemoryUsage() const 
 {
     LOCK(cs);
-    // Estimate the overhead of mapTx to be 15 pointers + an allocation, as no exact formula for boost::multi_index_contained is implemented.
-    return memusage::MallocUsage(sizeof(CEDCTxMemPoolEntry) + 15 * sizeof(void*)) * mapTx.size() + memusage::DynamicUsage(mapNextTx) + memusage::DynamicUsage(mapDeltas) + memusage::DynamicUsage(mapLinks) + cachedInnerUsage;
+    // Estimate the overhead of mapTx to be 15 pointers + an allocation, as no exact formula for 
+	// boost::multi_index_contained is implemented.
+
+    return memusage::MallocUsage(sizeof(CEDCTxMemPoolEntry) + 15 * sizeof(void*)) * mapTx.size() + 
+		memusage::DynamicUsage(mapNextTx) + 
+		memusage::DynamicUsage(mapDeltas) + 
+		memusage::DynamicUsage(mapLinks) + 
+		memusage::DynamicUsage(vTxHashes) + 
+		cachedInnerUsage;
 }
 
 void CEDCTxMemPool::RemoveStaged(setEntries &stage, bool updateDescendants) 
