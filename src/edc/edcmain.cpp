@@ -5260,7 +5260,7 @@ void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
             // Track requests for our stuff.
             edcGetMainSignals().Inventory(inv.hash);
 
-            if (inv.type == MSG_BLOCK || inv.type == MSG_FILTERED_BLOCK)
+            if (inv.type == MSG_BLOCK || inv.type == MSG_FILTERED_BLOCK || inv.type == MSG_CMPCT_BLOCK)
                 break;
         }
     }
@@ -5751,9 +5751,9 @@ bool ProcessMessage(
             return true;
         }
 
-        if (it->second->nHeight < theApp.chainActive().Height() - 10) 
+        if (it->second->nHeight < theApp.chainActive().Height() - 15) 
 		{
-            edcLogPrint("net", "Peer %d sent us a getblocktxn for a block > 10 deep", pfrom->id);
+            edcLogPrint("net", "Peer %d sent us a getblocktxn for a block > 15 deep", pfrom->id);
             return true;
         }
 
