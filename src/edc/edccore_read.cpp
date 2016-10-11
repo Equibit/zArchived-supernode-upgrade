@@ -91,12 +91,30 @@ CScript edcParseScript(const std::string& s)
     return result;
 }
 
-bool DecodeHexTx(CEDCTransaction& tx, const std::string& strHexTx)
+bool DecodeHexTx(CEDCTransaction& tx, const std::string& strHexTx, bool fTryNoWitness )
 {
     if (!IsHex(strHexTx))
         return false;
 
     vector<unsigned char> txData(ParseHex(strHexTx));
+
+    if (fTryNoWitness) 
+	{
+        CDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION |SERIALIZE_TRANSACTION_NO_WITNESS);
+        try 
+		{
+            ssData >> tx;
+            if (ssData.eof()) 
+			{
+                return true;
+            }
+        }
+        catch (const std::exception&) 
+		{
+            // Fall through.
+        }
+    }
+
     CDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION);
     try 
 	{

@@ -17,7 +17,7 @@ class UniValue;
 
 // core_read.cpp
 CScript edcParseScript(const std::string& s);
-bool DecodeHexTx(CEDCTransaction& tx, const std::string& strHexTx);
+bool DecodeHexTx(CEDCTransaction& tx, const std::string& strHexTx, bool fTryNoWitness = false);
 bool DecodeHexBlk(CEDCBlock&, const std::string& strHexBlk);
 uint256 edcParseHashStr(const std::string&, const std::string& strName);
 std::vector<unsigned char> ParseHexUV(const UniValue& v, const std::string& strName);

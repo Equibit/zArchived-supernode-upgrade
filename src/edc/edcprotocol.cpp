@@ -21,15 +21,6 @@ const char *USER="user";
 namespace
 {
 
-const char * ppszTypeName[] =
-{
-    "ERROR", // Should never occur
-    NetMsgType::TX,
-    NetMsgType::BLOCK,
-    "filtered block", // Should never occur
-	"compact block"  // Should never occur
-};
-
 /** All known message types. Keep this in the same order as the list of
  * messages above and in protocol.h.
  */

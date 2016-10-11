@@ -23,7 +23,7 @@ static inline size_t RecursiveDynamicUsage(const CEDCTxOut& out)
 
 static inline size_t RecursiveDynamicUsage(const CEDCTransaction& tx) 
 {
-    size_t mem = memusage::DynamicUsage(tx.vin) + memusage::DynamicUsage(tx.vout);
+    size_t mem = memusage::DynamicUsage(tx.vin) + memusage::DynamicUsage(tx.vout) + RecursiveDynamicUsage(tx.wit);
     for (std::vector<CEDCTxIn>::const_iterator it = tx.vin.begin(); it != tx.vin.end(); it++) 
 	{
         mem += RecursiveDynamicUsage(*it);
@@ -37,7 +37,7 @@ static inline size_t RecursiveDynamicUsage(const CEDCTransaction& tx)
 
 static inline size_t RecursiveDynamicUsage(const CEDCMutableTransaction& tx) 
 {
-    size_t mem = memusage::DynamicUsage(tx.vin) + memusage::DynamicUsage(tx.vout);
+    size_t mem = memusage::DynamicUsage(tx.vin) + memusage::DynamicUsage(tx.vout) + RecursiveDynamicUsage(tx.wit);
     for (std::vector<CEDCTxIn>::const_iterator it = tx.vin.begin(); it != tx.vin.end(); it++) 
 	{
         mem += RecursiveDynamicUsage(*it);

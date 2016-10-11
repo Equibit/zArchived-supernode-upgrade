@@ -8,6 +8,7 @@
 
 #include "wallet/walletdb.h"
 #include "amount.h"
+#include "edc/primitives/edctransaction.h"
 #include "edc/wallet/edcdb.h"
 #include "key.h"
 

@@ -11,7 +11,12 @@
 
 void CEDCTransaction::UpdateHash() const
 {
-	*const_cast<uint256*>(&hash) = SerializeHash(*this);
+	*const_cast<uint256*>(&hash) = SerializeHash(*this, SER_GETHASH, SERIALIZE_TRANSACTION_NO_WITNESS);
+}
+
+uint256 CEDCTransaction::GetWitnessHash() const
+{
+    return SerializeHash(*this, SER_GETHASH, 0);
 }
 
 CEDCTransaction::CEDCTransaction() : 
@@ -26,6 +31,7 @@ CEDCTransaction::CEDCTransaction(const CEDCMutableTransaction &tx) :
 	nVersion(tx.nVersion), 
 	vin(tx.vin), 
 	vout(tx.vout), 
+	wit(tx.wit), 
 	nLockTime(tx.nLockTime) 
 {
 	UpdateHash();
@@ -36,6 +42,7 @@ CEDCTransaction& CEDCTransaction::operator=(const CEDCTransaction &tx)
 	*const_cast<int*>(&nVersion) = tx.nVersion;
 	*const_cast<std::vector<CEDCTxIn>*>(&vin) = tx.vin;
 	*const_cast<std::vector<CEDCTxOut>*>(&vout) = tx.vout;
+	*const_cast<CTxWitness*>(&wit) = tx.wit;
 	*const_cast<unsigned int*>(&nLockTime) = tx.nLockTime;
 	*const_cast<uint256*>(&hash) = tx.hash;
 	return *this;
@@ -85,12 +92,12 @@ unsigned int CEDCTransaction::CalculateModifiedSize(unsigned int nTxSize) const
 CEDCMutableTransaction::CEDCMutableTransaction() : nVersion(CEDCTransaction::CURRENT_VERSION), nLockTime(0) {}
 
 CEDCMutableTransaction::CEDCMutableTransaction(const CEDCTransaction& tx) : 
-	nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime) 
+	nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), wit(tx.wit), nLockTime(tx.nLockTime) 
 {}
 
 uint256 CEDCMutableTransaction::GetHash() const
 {
-    return SerializeHash(*this);
+    return SerializeHash(*this, SER_GETHASH, SERIALIZE_TRANSACTION_NO_WITNESS);
 }
 
 CEDCTxOut::CEDCTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn):
@@ -129,6 +136,8 @@ std::string CEDCTransaction::ToString() const
 
     for (unsigned int i = 0; i < vin.size(); i++)
         str += "    " + vin[i].ToString() + "\n";
+    for (unsigned int i = 0; i < wit.vtxinwit.size(); i++)
+        str += "    " + wit.vtxinwit[i].scriptWitness.ToString() + "\n";
     for (unsigned int i = 0; i < vout.size(); i++)
         str += "    " + vout[i].ToString() + "\n";
     return str;

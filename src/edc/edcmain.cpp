@@ -1167,8 +1167,8 @@ bool CheckTransaction(const CEDCTransaction& tx, CValidationState &state)
         return state.DoS(10, false, REJECT_INVALID, "bad-txns-vin-empty");
     if (tx.vout.empty())
         return state.DoS(10, false, REJECT_INVALID, "bad-txns-vout-empty");
-    // Size limits
-    if (::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION) > EDC_MAX_BLOCK_SIZE)
+    // Size limits (this doesn't take the witness into account, as that hasn't been checked for malleability)
+    if (::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) > MAX_BLOCK_SIZE)
         return state.DoS(100, false, REJECT_INVALID, "bad-txns-oversize");
 
     // Check for negative or overflow output values
@@ -3836,7 +3836,7 @@ const Consensus::Params & consensusParams,
     // because we receive the wrong transactions for it.
 
     // Size limits
-    if (block.vtx.empty() || block.vtx.size() > EDC_MAX_BLOCK_SIZE || ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION) > EDC_MAX_BLOCK_SIZE)
+	if (block.vtx.empty() || block.vtx.size() > MAX_BLOCK_SIZE || ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) > MAX_BLOCK_SIZE)
         return state.DoS(100, false, REJECT_INVALID, "bad-blk-length", false, "size limits failed");
 
     // First transaction must be coinbase, the rest must not be
@@ -5083,6 +5083,7 @@ bool AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(EDC_cs_main)
     switch (inv.type)
     {
     case MSG_TX:
+	case MSG_WITNESS_TX:
     {
         assert(recentRejects);
         if (theApp.chainActive().Tip()->GetBlockHash() != hashRecentRejectsChainTip)
@@ -5104,6 +5105,7 @@ bool AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(EDC_cs_main)
                theApp.coinsTip()->HaveCoinsInCache(inv.hash);
     }
     case MSG_BLOCK:
+	case MSG_WITNESS_BLOCK:
         return theApp.mapBlockIndex().count(inv.hash);
     }
 
@@ -5134,7 +5136,8 @@ void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
 
 			if (inv.type == MSG_BLOCK || 
 				inv.type == MSG_FILTERED_BLOCK || 
-				inv.type == MSG_CMPCT_BLOCK)
+				inv.type == MSG_CMPCT_BLOCK || 
+				inv.type == MSG_WITNESS_BLOCK)
             {
                 bool send = false;
                 BlockMap::iterator mi = theApp.mapBlockIndex().find(inv.hash);
@@ -5179,6 +5182,8 @@ void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
                     if (!ReadBlockFromDisk(block, (*mi).second, consensusParams))
                         assert(!"cannot load block from disk");
                     if (inv.type == MSG_BLOCK)
+						pfrom->PushMessageWithFlag(SERIALIZE_TRANSACTION_NO_WITNESS, NetMsgType::BLOCK, block);
+					else if (inv.type == MSG_WITNESS_BLOCK)
                         pfrom->PushMessage(NetMsgType::BLOCK, block);
 					else if (inv.type == MSG_FILTERED_BLOCK)
                     {
@@ -5195,7 +5200,7 @@ void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
                             // however we MUST always provide at least what the remote peer needs
                             typedef std::pair<unsigned int, uint256> PairType;
                             BOOST_FOREACH(PairType& pair, merkleBlock.vMatchedTxn)
-                                pfrom->PushMessage(NetMsgType::TX, block.vtx[pair.first]);
+								pfrom->PushMessageWithFlag(SERIALIZE_TRANSACTION_NO_WITNESS, NetMsgType::TX, block.vtx[pair.first]);
                         }
                         // else
                             // no response
@@ -5209,10 +5214,10 @@ void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
                         if (mi->second->nHeight >= theApp.chainActive().Height() - 10) 
 						{
                             CEDCBlockHeaderAndShortTxIDs cmpctblock(block);
-                            pfrom->PushMessage(NetMsgType::CMPCTBLOCK, cmpctblock);
+							pfrom->PushMessageWithFlag(SERIALIZE_TRANSACTION_NO_WITNESS, NetMsgType::CMPCTBLOCK, cmpctblock);
                         } 
 						else
-                            pfrom->PushMessage(NetMsgType::BLOCK, block);
+							pfrom->PushMessageWithFlag(SERIALIZE_TRANSACTION_NO_WITNESS, NetMsgType::BLOCK, block);
                     }
 
                     // Trigger the peer node to send a getblocks request for the next batch of inventory
@@ -5228,14 +5233,14 @@ void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
                     }
                 }
             }
-            else if (inv.type == MSG_TX)
+			else if (inv.type == MSG_TX || inv.type == MSG_WITNESS_TX)
             {
 				// Send stream from relay memory
                 bool push = false;
                 auto mi = theApp.mapRelay().find(inv.hash);
                 if (mi != theApp.mapRelay().end()) 
 				{
-                    pfrom->PushMessage(NetMsgType::TX, *mi->second);
+					pfrom->PushMessageWithFlag(inv.type == MSG_TX ? SERIALIZE_TRANSACTION_NO_WITNESS : 0, NetMsgType::TX, *mi->second);
                     push = true;
                 } 
 				else if (pfrom->timeLastMempoolReq)
@@ -5247,7 +5252,7 @@ void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
                     // that TX couldn't have been INVed in reply to a MEMPOOL request.
 					if (txinfo.tx && txinfo.nTime <= pfrom->timeLastMempoolReq) 
 					{
-						pfrom->PushMessage(NetMsgType::TX, *txinfo.tx);
+						pfrom->PushMessageWithFlag(inv.type == MSG_TX ? SERIALIZE_TRANSACTION_NO_WITNESS : 0, NetMsgType::TX, *txinfo.tx);
                         push = true;
                     }
                 }
@@ -5260,7 +5265,7 @@ void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
             // Track requests for our stuff.
             edcGetMainSignals().Inventory(inv.hash);
 
-            if (inv.type == MSG_BLOCK || inv.type == MSG_FILTERED_BLOCK || inv.type == MSG_CMPCT_BLOCK)
+			if (inv.type == MSG_BLOCK || inv.type == MSG_FILTERED_BLOCK || inv.type == MSG_CMPCT_BLOCK || inv.type == MSG_WITNESS_BLOCK)
                 break;
         }
     }
@@ -5771,7 +5776,7 @@ bool ProcessMessage(
             }
             resp.txn[i] = block.vtx[req.indexes[i]];
         }
-        pfrom->PushMessage(NetMsgType::BLOCKTXN, resp);
+		pfrom->PushMessageWithFlag(SERIALIZE_TRANSACTION_NO_WITNESS, NetMsgType::BLOCKTXN, resp);
     }
     else if (strCommand == NetMsgType::GETHEADERS)
     {

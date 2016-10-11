@@ -212,6 +212,101 @@ public:
 
 struct CEDCMutableTransaction;
 
+/**
+ * Basic transaction serialization format:
+ * - int32_t nVersion
+ * - std::vector<CTxIn> vin
+ * - std::vector<CTxOut> vout
+ * - uint32_t nLockTime
+ *
+ * Extended transaction serialization format:
+ * - int32_t nVersion
+ * - unsigned char dummy = 0x00
+ * - unsigned char flags (!= 0)
+ * - std::vector<CTxIn> vin
+ * - std::vector<CTxOut> vout
+ * - if (flags & 1):
+ *   - CTxWitness wit;
+ * - uint32_t nLockTime
+ */
+template<typename Stream, typename Operation, typename TxType>
+inline void edcSerializeTransaction(
+	TxType & tx, 
+	Stream & s, 
+	Operation ser_action, 
+	int nType, 
+	int nVersion) 
+{
+    READWRITE(*const_cast<int32_t*>(&tx.nVersion));
+    unsigned char flags = 0;
+
+    if (ser_action.ForRead()) 
+	{
+        const_cast<std::vector<CEDCTxIn>*>(&tx.vin)->clear();
+        const_cast<std::vector<CEDCTxOut>*>(&tx.vout)->clear();
+        const_cast<CTxWitness*>(&tx.wit)->SetNull();
+        /* Try to read the vin. In case the dummy is there, this will be read as an empty vector. */
+        READWRITE(*const_cast<std::vector<CEDCTxIn>*>(&tx.vin));
+
+        if (tx.vin.size() == 0 && !(nVersion & SERIALIZE_TRANSACTION_NO_WITNESS)) 
+		{
+            /* We read a dummy or an empty vin. */
+            READWRITE(flags);
+            if (flags != 0) 
+			{
+                READWRITE(*const_cast<std::vector<CEDCTxIn>*>(&tx.vin));
+                READWRITE(*const_cast<std::vector<CEDCTxOut>*>(&tx.vout));
+            }
+        } 
+		else 
+		{
+            /* We read a non-empty vin. Assume a normal vout follows. */
+            READWRITE(*const_cast<std::vector<CEDCTxOut>*>(&tx.vout));
+        }
+        if ((flags & 1) && !(nVersion & SERIALIZE_TRANSACTION_NO_WITNESS)) 
+		{
+            /* The witness flag is present, and we support witnesses. */
+            flags ^= 1;
+            const_cast<CTxWitness*>(&tx.wit)->vtxinwit.resize(tx.vin.size());
+            READWRITE(tx.wit);
+        }
+        if (flags) 
+		{
+            /* Unknown flag in the serialization */
+            throw std::ios_base::failure("Unknown transaction optional data");
+        }
+    } 
+	else 
+	{
+        // Consistency check
+        assert(tx.wit.vtxinwit.size() <= tx.vin.size());
+        if (!(nVersion & SERIALIZE_TRANSACTION_NO_WITNESS)) 
+		{
+            /* Check whether witnesses need to be serialized. */
+            if (!tx.wit.IsNull()) 
+			{
+                flags |= 1;
+            }
+        }
+        if (flags) 
+		{
+            /* Use extended format in case witnesses are to be serialized. */
+            std::vector<CEDCTxIn> vinDummy;
+            READWRITE(vinDummy);
+            READWRITE(flags);
+        }
+        READWRITE(*const_cast<std::vector<CEDCTxIn>*>(&tx.vin));
+        READWRITE(*const_cast<std::vector<CEDCTxOut>*>(&tx.vout));
+        if (flags & 1) 
+		{
+            const_cast<CTxWitness*>(&tx.wit)->vtxinwit.resize(tx.vin.size());
+            READWRITE(tx.wit);
+        }
+    }
+    READWRITE(*const_cast<uint32_t*>(&tx.nLockTime));
+}
+
+
 class CEDCTransaction
 {
 private:
@@ -237,6 +332,7 @@ public:
     const int32_t nVersion;
     const std::vector<CEDCTxIn> vin;
     const std::vector<CEDCTxOut> vout;
+	CTxWitness wit; // Not const: can change without invalidating the txid cache
     const uint32_t nLockTime;
 
 	/** Construct a CEDCTransaction that qualifies as IsNull() */
@@ -252,13 +348,11 @@ public:
 	template <typename Stream, typename Operation>
 	inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) 
 	{
-		READWRITE(*const_cast<int32_t*>(&this->nVersion));
-		nVersion = this->nVersion;
-		READWRITE(*const_cast<std::vector<CEDCTxIn>*>(&vin));
-		READWRITE(*const_cast<std::vector<CEDCTxOut>*>(&vout));
-		READWRITE(*const_cast<uint32_t*>(&nLockTime));
-		if (ser_action.ForRead())
-			UpdateHash();
+        edcSerializeTransaction(*this, s, ser_action, nType, nVersion);
+        if (ser_action.ForRead()) 
+		{
+            UpdateHash();
+        }
 	}
 
 	bool IsNull() const 
@@ -271,8 +365,12 @@ public:
 		return hash;
 	}
 
+    // Compute a hash that includes both transaction and witness data
+    uint256 GetWitnessHash() const;
+
 	// Return sum of txouts.
 	CAmount GetValueOut() const;
+
 	// GetValueIn() is a method on CCoinsViewCache, because
 	// inputs must be known to compute value in.
 
@@ -308,6 +406,7 @@ struct CEDCMutableTransaction
 	int32_t nVersion;
 	std::vector<CEDCTxIn> vin;
 	std::vector<CEDCTxOut> vout;
+    CTxWitness wit;
 	uint32_t nLockTime;
 
 	CEDCMutableTransaction();
@@ -318,11 +417,7 @@ struct CEDCMutableTransaction
 	template <typename Stream, typename Operation>
 	inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) 
 	{
-		READWRITE(this->nVersion);
-		nVersion = this->nVersion;
-		READWRITE(vin);
-		READWRITE(vout);
-		READWRITE(nLockTime);
+		edcSerializeTransaction(*this, s, ser_action, nType, nVersion);
 	}
 
 	/** Compute the hash of this CEDCMutableTransaction. This is computed on the
