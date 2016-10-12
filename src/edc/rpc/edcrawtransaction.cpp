@@ -855,8 +855,9 @@ UniValue edcsignrawtransaction(const UniValue& params, bool fHelp)
             txin.scriptSig = edcCombineSignatures(prevPubKey, txConst, i, txin.scriptSig, txv.vin[i].scriptSig);
         }
         ScriptError serror = SCRIPT_ERR_OK;
-        if (!edcVerifyScript(txin.scriptSig, prevPubKey, STANDARD_SCRIPT_VERIFY_FLAGS, 
-		EDCTransactionSignatureChecker(&txConst, i), &serror)) 
+		if (!edcVerifyScript(txin.scriptSig, prevPubKey, 
+		mergedTx.wit.vtxinwit.size() > i ? &mergedTx.wit.vtxinwit[i].scriptWitness : NULL, 
+		STANDARD_SCRIPT_VERIFY_FLAGS, EDCTransactionSignatureChecker(&txConst, i), &serror))
 		{
             TxInErrorToJSON(txin, vErrors, ScriptErrorString(serror));
         }
@@ -875,7 +876,7 @@ UniValue edcsignrawtransaction(const UniValue& params, bool fHelp)
     return result;
 }
 
-UniValue edcsendrawtransaction(const UniValue& params, bool fHelp)
+UniValue edcsendrawtransaction(const UniValue & params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(

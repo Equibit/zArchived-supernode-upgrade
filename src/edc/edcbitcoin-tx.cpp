@@ -494,7 +494,12 @@ static void MutateTxSign(CEDCMutableTransaction& tx, const string& flagStr)
 		{
             txin.scriptSig = edcCombineSignatures(prevPubKey, mergedTx, i, txin.scriptSig, txv.vin[i].scriptSig);
         }
-        if (!edcVerifyScript(txin.scriptSig, prevPubKey, STANDARD_SCRIPT_VERIFY_FLAGS, EDCMutableTransactionSignatureChecker(&mergedTx, i)))
+		if (!edcVerifyScript(
+			txin.scriptSig, 
+			prevPubKey, 
+			mergedTx.wit.vtxinwit.size() > i ? &mergedTx.wit.vtxinwit[i].scriptWitness : NULL, 
+			STANDARD_SCRIPT_VERIFY_FLAGS, 
+			EDCMutableTransactionSignatureChecker(&mergedTx, i)))
             fComplete = false;
     }
 

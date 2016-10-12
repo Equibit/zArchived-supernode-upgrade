@@ -2140,7 +2140,10 @@ void UpdateCoins(
 bool CEDCScriptCheck::operator()() 
 {
     const CScript &scriptSig = ptxTo->vin[nIn].scriptSig;
-    if (!edcVerifyScript(scriptSig, scriptPubKey, nFlags, 
+	const CScriptWitness *witness = (nIn < ptxTo->wit.vtxinwit.size()) ? 
+		&ptxTo->wit.vtxinwit[nIn].scriptWitness : NULL;
+
+    if (!edcVerifyScript(scriptSig, scriptPubKey, witness, nFlags, 
 	EDCCachingTransactionSignatureChecker(ptxTo, nIn, cacheStore), &error)) 
 	{
         return false;

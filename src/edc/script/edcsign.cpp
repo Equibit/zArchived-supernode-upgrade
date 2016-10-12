@@ -225,7 +225,7 @@ bool edcProduceSignature(
     }
 
     // Test solution
-    return edcVerifyScript(scriptSig, fromPubKey, STANDARD_SCRIPT_VERIFY_FLAGS, creator.Checker());
+    return edcVerifyScript(scriptSig, fromPubKey, NULL, STANDARD_SCRIPT_VERIFY_FLAGS, creator.Checker());
 }
 
 bool SignSignature(

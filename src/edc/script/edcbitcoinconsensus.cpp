@@ -99,9 +99,10 @@ int equibitconsensus_verify_script(
          // Regardless of the verification result, the tx did not error.
          set_error(err, bitcoinconsensus_ERR_OK);
 
-        return edcVerifyScript(tx.vin[nIn].scriptSig, 
-			CScript(scriptPubKey, scriptPubKey + scriptPubKeyLen), flags, 
-			EDCTransactionSignatureChecker(&tx, nIn), NULL);
+		return edcVerifyScript(tx.vin[nIn].scriptSig, 
+			CScript(scriptPubKey, scriptPubKey + scriptPubKeyLen), 
+			nIn < tx.wit.vtxinwit.size() ? &tx.wit.vtxinwit[nIn].scriptWitness : NULL, 
+			flags, EDCTransactionSignatureChecker(&tx, nIn), NULL);
     } 
 	catch (const std::exception&) 
 	{
