@@ -318,6 +318,7 @@ struct CNodeState
         fPreferHeaders = false;
         fPreferHeaderAndIDs = false;
         fProvidesHeaderAndIDs = false;
+		fHaveWitness = false;
     }
 };
 
@@ -5455,6 +5456,22 @@ void edcAddTimeData(const CNetAddr& ip, int64_t nOffsetSample);
 
 namespace
 {
+
+uint32_t GetFetchFlags(
+				   CEDCNode * pfrom, 
+				CBlockIndex * pprev, 
+	const Consensus::Params & chainparams) 
+{
+    uint32_t nFetchFlags = 0;
+
+    if (IsWitnessEnabled(pprev, chainparams) && State(pfrom->GetId())->fHaveWitness) 
+	{
+        nFetchFlags |= MSG_WITNESS_FLAG;
+    }
+
+    return nFetchFlags;
+}
+
 bool ProcessMessage(
 				 CEDCNode * pfrom, 
 					 string strCommand, 
@@ -5576,6 +5593,12 @@ bool ProcessMessage(
             pfrom->PushVersion();
 
         pfrom->fClient = !(pfrom->nServices & NODE_NETWORK);
+
+        if((pfrom->nServices & NODE_WITNESS))
+        {
+            LOCK(cs_main);
+            State(pfrom->GetId())->fHaveWitness = true;
+        }
 
         // Potentially mark this peer as a preferred download peer.
 		{
@@ -5779,16 +5802,23 @@ bool ProcessMessage(
 
         LOCK(EDC_cs_main);
 
+		uint32_t nFetchFlags = GetFetchFlags(pfrom, chainActive.Tip(), chainparams.GetConsensus());
+
         std::vector<CInv> vToFetch;
 
         for (unsigned int nInv = 0; nInv < vInv.size(); nInv++)
         {
-            const CInv &inv = vInv[nInv];
+            CInv &inv = vInv[nInv];
 
             boost::this_thread::interruption_point();
 
             bool fAlreadyHave = AlreadyHave(inv);
             edcLogPrint("net", "got inv: %s  %s peer=%d\n", inv.ToString(), fAlreadyHave ? "have" : "new", pfrom->id);
+
+            if (inv.type == MSG_TX) 
+			{
+                inv.type |= nFetchFlags;
+            }
 
             if (inv.type == MSG_BLOCK) 
 			{
@@ -5809,8 +5839,12 @@ bool ProcessMessage(
                     pfrom->PushMessage(NetMsgType::GETHEADERS, theApp.chainActive().GetLocator(theApp.indexBestHeader()), inv.hash);
                     CNodeState *nodestate = State(pfrom->GetId());
                     if (CanDirectFetch(chainparams.GetConsensus()) &&
-                        nodestate->nBlocksInFlight < MAX_BLOCKS_IN_TRANSIT_PER_PEER) 
+                        nodestate->nBlocksInFlight < MAX_BLOCKS_IN_TRANSIT_PER_PEER &&
+                        (!IsWitnessEnabled(chainActive.Tip(), chainparams.GetConsensus()) || 
+						State(pfrom->GetId())->fHaveWitness)) 
 					{
+                        inv.type |= nFetchFlags;
+
                         if (nodestate->fProvidesHeaderAndIDs)
                             vToFetch.push_back(CInv(MSG_CMPCT_BLOCK, inv.hash));
                         else
@@ -6465,7 +6499,9 @@ bool ProcessMessage(
 			vToFetch.size() <= MAX_BLOCKS_IN_TRANSIT_PER_PEER) 
 			{
                 if (!(pindexWalk->nStatus & BLOCK_HAVE_DATA) &&
-                        !mapBlocksInFlight.count(pindexWalk->GetBlockHash())) 
+                    !mapBlocksInFlight.count(pindexWalk->GetBlockHash()) &&
+                   (!IsWitnessEnabled(pindexWalk->pprev, chainparams.GetConsensus()) || 
+					 State(pfrom->GetId())->fHaveWitness)) 
 				{
                     // We don't have this block, and it's not yet in flight.
                     vToFetch.push_back(pindexWalk);
@@ -6494,7 +6530,9 @@ bool ProcessMessage(
                         // Can't download any more from this peer
                         break;
                     }
-                    vGetData.push_back(CInv(MSG_BLOCK, pindex->GetBlockHash()));
+                    uint32_t nFetchFlags = GetFetchFlags(pfrom, pindex->pprev, 
+						chainparams.GetConsensus());
+                    vGetData.push_back(CInv(MSG_BLOCK | nFetchFlags, pindex->GetBlockHash()));
                     MarkBlockAsInFlight(pfrom->GetId(), pindex->GetBlockHash(), chainparams.GetConsensus(), pindex);
                     edcLogPrint("net", "Requesting block %s from  peer=%d\n",
                             pindex->GetBlockHash().ToString(), pfrom->id);
@@ -7468,10 +7506,16 @@ bool edcSendMessages(CEDCNode* pto)
             FindNextBlocksToDownload(pto->GetId(), MAX_BLOCKS_IN_TRANSIT_PER_PEER - state.nBlocksInFlight, vToDownload, staller);
             BOOST_FOREACH(CBlockIndex *pindex, vToDownload) 
 			{
-                vGetData.push_back(CInv(MSG_BLOCK, pindex->GetBlockHash()));
-                MarkBlockAsInFlight(pto->GetId(), pindex->GetBlockHash(), consensusParams, pindex);
-                edcLogPrint("net", "Requesting block %s (%d) peer=%d\n", pindex->GetBlockHash().ToString(),
-                    pindex->nHeight, pto->id);
+                if (State(pto->GetId())->fHaveWitness || 
+				!IsWitnessEnabled(pindex->pprev, consensusParams)) 
+				{
+                    uint32_t nFetchFlags = GetFetchFlags(pto, pindex->pprev, consensusParams);
+                    vGetData.push_back(CInv(MSG_BLOCK | nFetchFlags, pindex->GetBlockHash()));
+                    MarkBlockAsInFlight(pto->GetId(), pindex->GetBlockHash(), consensusParams, 
+						pindex);
+                    edcLogPrint("net", "Requesting block %s (%d) peer=%d\n", 
+						pindex->GetBlockHash().ToString(), pindex->nHeight, pto->id);
+                }
             }
             if (state.nBlocksInFlight == 0 && staller != -1) 
 			{

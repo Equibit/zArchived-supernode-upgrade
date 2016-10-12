@@ -1587,7 +1587,7 @@ void edcThreadDNSAddressSeed()
             std::vector<CNetAddr> vIPs;
             std::vector<CAddress> vAdd;
 
-            ServiceFlags requiredServiceBits = nRelevantServices;
+            ServiceFlags requiredServiceBits = theApp.relevantServices();
 			if (LookupHost(edcGetDNSHost(seed, &requiredServiceBits).c_str(), vIPs, 0, true))
             {
                 BOOST_FOREACH(const CNetAddr& ip, vIPs)
@@ -1997,6 +1997,11 @@ void edcThreadOpenConnections()
 
             // only consider very recently tried nodes after 30 failed attempts
             if (nANow - addr.nLastTry < 600 && nTries < 30)
+                continue;
+
+            // only consider nodes missing relevant services after 40 failed attemps
+            if ((addr.nServices & theApp.relevantServices()) != theApp.relevantServices() && 
+			nTries < 40)
                 continue;
 
             // do not allow non-default ports, unless after 50 invalid addresses selected already
