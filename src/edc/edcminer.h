@@ -29,6 +29,7 @@ struct CEDCBlockTemplate
     CEDCBlock block;
     std::vector<CAmount> vTxFees;
     std::vector<int64_t> vTxSigOps;
+	std::vector<unsigned char> vchCoinbaseCommitment;
 };
 
 // Container for tracking updates to ancestor feerate as we include (parent)
@@ -145,6 +146,7 @@ private:
     CEDCBlock* pblock;
 
     // Configuration parameters for the block size
+	bool fIncludeWitness;
     unsigned int nBlockMaxSize, nBlockMinSize;
 
     // Information on the current status of the block

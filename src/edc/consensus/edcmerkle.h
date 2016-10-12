@@ -19,6 +19,12 @@
 uint256 edcBlockMerkleRoot(const CEDCBlock& block, bool* mutated = NULL);
 
 /*
+ * Compute the Merkle root of the witness transactions in a block.
+ * *mutated is set to true if a duplicated subtree was found.
+ */
+uint256 edcBlockWitnessMerkleRoot(const CEDCBlock& block, bool* mutated = NULL);
+
+/*
  * Compute the Merkle branch for the tree of transactions in a block, for a
  * given position.
  * This can be verified using ComputeMerkleRootFromBranch.

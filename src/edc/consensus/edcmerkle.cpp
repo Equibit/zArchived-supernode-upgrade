@@ -214,6 +214,20 @@ uint256 edcBlockMerkleRoot(const CEDCBlock& block, bool* mutated)
     return edcComputeMerkleRoot(leaves, mutated);
 }
 
+uint256 edcBlockWitnessMerkleRoot(const CEDCBlock& block, bool* mutated)
+{
+    std::vector<uint256> leaves;
+    leaves.resize(block.vtx.size());
+    leaves[0].SetNull(); // The witness hash of the coinbase is 0.
+
+	for (size_t s = 1; s < block.vtx.size(); s++) 
+	{
+        leaves[s] = block.vtx[s].GetWitnessHash();
+    }
+
+    return edcComputeMerkleRoot(leaves, mutated);
+}
+
 std::vector<uint256> edcBlockMerkleBranch(
 	const CEDCBlock & block, 
 			 uint32_t position)

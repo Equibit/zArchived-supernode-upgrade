@@ -312,7 +312,6 @@ class CEDCTransaction
 private:
     /** Memory only. */
 	const uint256 hash;
-	void UpdateHash() const;
 
 public:
     // Default transaction version.
@@ -398,6 +397,8 @@ public:
 	std::string ToString() const;
 
 	std::string toJSON( const char * ) const;
+
+	void UpdateHash() const;
 };
 
 /** A mutable version of CEDCTransaction. */

@@ -80,6 +80,7 @@ void EDCBlockAssembler::resetBlock()
     // Reserve space for coinbase tx
     nBlockSize = 1000;
     nBlockSigOps = 100;
+	fIncludeWitness = false;
 
     // These counters do not include coinbase tx
     nBlockTx = 0;
@@ -150,6 +151,14 @@ CEDCBlockTemplate* EDCBlockAssembler::CreateNewBlock(const CScript& scriptPubKey
                        ? nMedianTimePast
                        : pblock->GetBlockTime();
 
+    // Decide whether to include witness transactions
+    // This is only needed in case the witness softfork activation is reverted
+    // (which would require a very deep reorganization) or when
+    // -promiscuousmempoolflags is used.
+    // TODO: replace this with a call to main to assess validity of a mempool
+    // transaction (which in most cases can be a no-op).
+    fIncludeWitness = IsWitnessEnabled(pindexPrev, chainparams.GetConsensus());
+
     addPriorityTxs();
 	addPackageTxs();
 
@@ -170,6 +179,7 @@ CEDCBlockTemplate* EDCBlockAssembler::CreateNewBlock(const CScript& scriptPubKey
     coinbaseTx.vin[0].scriptSig = CScript() << nHeight << OP_0;
 
     pblock->vtx[0] = coinbaseTx;
+    pblocktemplate->vchCoinbaseCommitment = edcGenerateCoinbaseCommitment(*pblock, pindexPrev, chainparams.GetConsensus());
     pblocktemplate->vTxFees[0] = -nFees;
 
     // Fill in header
@@ -558,6 +568,10 @@ void EDCBlockAssembler::addScoreTxs()
             continue;
         }
 
+        // cannot accept witness transactions into a non-witness block
+        if (!fIncludeWitness && !iter->GetTx().wit.IsNull())
+            continue;
+
         // If tx is dependent on other mempool txs which haven't yet been included
         // then put it in the waitSet
         if (isStillDependent(iter)) 
@@ -648,6 +662,10 @@ void EDCBlockAssembler::addPriorityTxs()
             assert(false); // shouldn't happen for priority txs
             continue;
         }
+
+        // cannot accept witness transactions into a non-witness block
+        if (!fIncludeWitness && !iter->GetTx().wit.IsNull())
+            continue;
 
         // If tx is dependent on other mempool txs which haven't yet been included
         // then put it in the waitSet

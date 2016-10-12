@@ -369,7 +369,9 @@ UniValue edcgetblocktemplate(const UniValue& params, bool fHelp)
             "  \"transactions\" : [                (array) contents of non-coinbase transactions that should be included in the next block\n"
             "      {\n"
             "         \"data\" : \"xxxx\",          (string) transaction data encoded in hexadecimal (byte-for-byte)\n"
-            "         \"hash\" : \"xxxx\",          (string) hash/id encoded in little-endian hexadecimal\n"
+            "         \"txid\" : \"xxxx\",          (string) transaction id encoded in little-endian hexadecimal\n"
+            "         \"hash\" : \"xxxx\",          (string) hash encoded in little-endian hexadecimal\n"
+
             "         \"depends\" : [              (array) array of numbers \n"
             "             n                        (numeric) transactions before this one (by 1-based index in 'transactions' list) that must be present in the final block if this one is\n"
             "             ,...\n"
@@ -574,7 +576,7 @@ UniValue edcgetblocktemplate(const UniValue& params, bool fHelp)
     UniValue transactions(UniValue::VARR);
     map<uint256, int64_t> setTxIndex;
     int i = 0;
-    BOOST_FOREACH (const CEDCTransaction& tx, pblock->vtx) 
+    BOOST_FOREACH (CEDCTransaction& tx, pblock->vtx) 
 	{
         uint256 txHash = tx.GetHash();
         setTxIndex[txHash] = i++;
@@ -586,7 +588,8 @@ UniValue edcgetblocktemplate(const UniValue& params, bool fHelp)
 
         entry.push_back(Pair("data", EncodeHexTx(tx)));
 
-        entry.push_back(Pair("hash", txHash.GetHex()));
+        entry.push_back(Pair("txid", txHash.GetHex()));
+        entry.push_back(Pair("hash", tx.GetWitnessHash().GetHex()));
 
         UniValue deps(UniValue::VARR);
         BOOST_FOREACH (const CEDCTxIn &in, tx.vin)
@@ -700,6 +703,13 @@ UniValue edcgetblocktemplate(const UniValue& params, bool fHelp)
     result.push_back(Pair("curtime", pblock->GetBlockTime()));
     result.push_back(Pair("bits", strprintf("%08x", pblock->nBits)));
     result.push_back(Pair("height", (int64_t)(pindexPrev->nHeight+1)));
+    if (!pblocktemplate->vchCoinbaseCommitment.empty()) 
+	{
+        result.push_back(Pair("default_witness_commitment", 
+			HexStr(pblocktemplate->vchCoinbaseCommitment.begin(), 
+			pblocktemplate->vchCoinbaseCommitment.end())));
+    }
+
 
     return result;
 }
@@ -765,6 +775,15 @@ UniValue edcsubmitblock(const UniValue& params, bool fHelp)
                 return "duplicate-invalid";
             // Otherwise, we might only have the header - process the block before returning
             fBlockPresent = true;
+        }
+    }
+
+    {
+        LOCK(cs_main);
+        BlockMap::iterator mi = theApp.mapBlockIndex().find(block.hashPrevBlock);
+        if (mi != mapBlockIndex.end()) 
+		{
+            edcUpdateUncommittedBlockStructures(block, mi->second, edcParams().GetConsensus());
         }
     }
 
