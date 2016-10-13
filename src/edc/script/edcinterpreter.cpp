@@ -266,6 +266,7 @@ bool edcEvalScript(
 					 const CScript & script, 
 						unsigned int flags, 
 		const BaseSignatureChecker & checker, 
+						  SigVersion sigversion,
 					   ScriptError * serror)
 {
     static const CScriptNum bnZero(0);
@@ -912,7 +913,10 @@ bool edcEvalScript(
                     CScript scriptCode(pbegincodehash, pend);
 
                     // Drop the signature, since there's no way for a signature to sign itself
-                    scriptCode.FindAndDelete(CScript(vchSig));
+					if (sigversion == SIGVERSION_BASE) 
+					{
+                        scriptCode.FindAndDelete(CScript(vchSig));
+                    }
 
                     if (!edcCheckSignatureEncoding(vchSig, flags, serror) || 
 					!CheckPubKeyEncoding(vchPubKey, flags, serror)) 
@@ -920,7 +924,7 @@ bool edcEvalScript(
                         //serror is set
                         return false;
                     }
-                    bool fSuccess = checker.CheckSig(vchSig, vchPubKey, scriptCode);
+                    bool fSuccess = checker.CheckSig(vchSig, vchPubKey, scriptCode, sigversion);
 
                     popstack(stack);
                     popstack(stack);
@@ -970,7 +974,10 @@ bool edcEvalScript(
                     for (int k = 0; k < nSigsCount; k++)
                     {
                         valtype& vchSig = stacktop(-isig-k);
-                        scriptCode.FindAndDelete(CScript(vchSig));
+                        if (sigversion == SIGVERSION_BASE) 
+						{
+                            scriptCode.FindAndDelete(CScript(vchSig));
+                        }
                     }
 
                     bool fSuccess = true;
@@ -990,7 +997,7 @@ bool edcEvalScript(
                         }
 
                         // Check signature
-                        bool fOk = checker.CheckSig(vchSig, vchPubKey, scriptCode);
+                        bool fOk = checker.CheckSig(vchSig, vchPubKey, scriptCode, sigversion);
 
                         if (fOk) 
 						{
@@ -1163,12 +1170,80 @@ public:
 
 } // anon namespace
 
+
 uint256 SignatureHash(
-			const CScript & scriptCode, 
-	const CEDCTransaction & txTo, 
-			   unsigned int nIn, 
-						int nHashType)
+		 const CScript & scriptCode, 
+ const CEDCTransaction & txTo, 
+			unsigned int nIn, 
+					 int nHashType, 
+		 const CAmount & amount, 
+			  SigVersion sigversion)
 {
+    if (sigversion == SIGVERSION_WITNESS_V0) 
+	{
+        uint256 hashPrevouts;
+        uint256 hashSequence;
+        uint256 hashOutputs;
+
+        if (!(nHashType & SIGHASH_ANYONECANPAY)) 
+		{
+            CHashWriter ss(SER_GETHASH, 0);
+            for (unsigned int n = 0; n < txTo.vin.size(); n++) 
+			{
+                ss << txTo.vin[n].prevout;
+            }
+            hashPrevouts = ss.GetHash(); // TODO: cache this value for all signatures in a transaction
+        }
+
+        if (!(nHashType & SIGHASH_ANYONECANPAY) && (nHashType & 0x1f) != SIGHASH_SINGLE && (nHashType & 0x1f) != SIGHASH_NONE) 
+		{
+            CHashWriter ss(SER_GETHASH, 0);
+            for (unsigned int n = 0; n < txTo.vin.size(); n++) 
+			{
+                ss << txTo.vin[n].nSequence;
+            }
+            hashSequence = ss.GetHash(); // TODO: cache this value for all signatures in a transaction
+        }
+
+        if ((nHashType & 0x1f) != SIGHASH_SINGLE && (nHashType & 0x1f) != SIGHASH_NONE) 
+		{
+            CHashWriter ss(SER_GETHASH, 0);
+            for (unsigned int n = 0; n < txTo.vout.size(); n++) 
+			{
+                ss << txTo.vout[n];
+            }
+            hashOutputs = ss.GetHash(); // TODO: cache this value for all signatures in a transaction
+        } 
+		else if ((nHashType & 0x1f) == SIGHASH_SINGLE && nIn < txTo.vout.size()) 
+		{
+            CHashWriter ss(SER_GETHASH, 0);
+            ss << txTo.vout[nIn];
+            hashOutputs = ss.GetHash();
+        }
+
+        CHashWriter ss(SER_GETHASH, 0);
+        // Version
+        ss << txTo.nVersion;
+        // Input prevouts/nSequence (none/all, depending on flags)
+        ss << hashPrevouts;
+        ss << hashSequence;
+        // The input being signed (replacing the scriptSig with scriptCode + amount)
+        // The prevout may already be contained in hashPrevout, and the nSequence
+        // may already be contain in hashSequence.
+        ss << txTo.vin[nIn].prevout;
+        ss << static_cast<const CScriptBase&>(scriptCode);
+        ss << amount;
+        ss << txTo.vin[nIn].nSequence;
+        // Outputs (none/one/all, depending on flags)
+        ss << hashOutputs;
+        // Locktime
+        ss << txTo.nLockTime;
+        // Sighash type
+        ss << nHashType;
+
+        return ss.GetHash();
+    }
+
     static const uint256 one(uint256S("0000000000000000000000000000000000000000000000000000000000000001"));
     if (nIn >= txTo.vin.size()) 
 	{
@@ -1206,7 +1281,8 @@ bool EDCTransactionSignatureChecker::VerifySignature(
 bool EDCTransactionSignatureChecker::CheckSig(
 	const vector<unsigned char> & vchSigIn, 
 	const vector<unsigned char> & vchPubKey, 
-				  const CScript & scriptCode) const
+				  const CScript & scriptCode,
+					   SigVersion sigversion) const
 {
     CPubKey pubkey(vchPubKey);
     if (!pubkey.IsValid())
@@ -1219,7 +1295,7 @@ bool EDCTransactionSignatureChecker::CheckSig(
     int nHashType = vchSig.back();
     vchSig.pop_back();
 
-    uint256 sighash = SignatureHash(scriptCode, *txTo, nIn, nHashType);
+    uint256 sighash = SignatureHash(scriptCode, *txTo, nIn, nHashType, amount, sigversion);
 
     if (!VerifySignature(vchSig, pubkey, sighash))
         return false;
@@ -1382,7 +1458,7 @@ static bool VerifyWitnessProgram(
             return set_error(serror, SCRIPT_ERR_PUSH_SIZE);
     }
 
-    if (!edcEvalScript(stack, scriptPubKey, flags, checker, serror)) 
+    if (!edcEvalScript(stack, scriptPubKey, flags, checker, SIGVERSION_WITNESS_V0, serror)) 
 	{
         return false;
     }
@@ -1421,12 +1497,12 @@ const BaseSignatureChecker & checker,
     }
 
     vector<vector<unsigned char> > stack, stackCopy;
-    if (!edcEvalScript(stack, scriptSig, flags, checker, serror))
+    if (!edcEvalScript(stack, scriptSig, flags, checker, SIGVERSION_BASE, serror))
         // serror is set
         return false;
     if (flags & SCRIPT_VERIFY_P2SH)
         stackCopy = stack;
-    if (!edcEvalScript(stack, scriptPubKey, flags, checker, serror))
+    if (!edcEvalScript(stack, scriptPubKey, flags, checker, SIGVERSION_BASE, serror))
         // serror is set
         return false;
     if (stack.empty())
@@ -1479,7 +1555,7 @@ const BaseSignatureChecker & checker,
         CScript pubKey2(pubKeySerialized.begin(), pubKeySerialized.end());
         popstack(stack);
 
-        if (!edcEvalScript(stack, pubKey2, flags, checker, serror))
+        if (!edcEvalScript(stack, pubKey2, flags, checker, SIGVERSION_BASE, serror))
             // serror is set
             return false;
         if (stack.empty())

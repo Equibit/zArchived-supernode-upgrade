@@ -493,7 +493,7 @@ static void MutateTxSign(CEDCMutableTransaction& tx, const string& flagStr)
         // ... and merge in other signatures:
         BOOST_FOREACH(const CEDCTransaction& txv, txVariants) 
 		{
-            txin.scriptSig = edcCombineSignatures(prevPubKey, mergedTx, i, txin.scriptSig, txv.vin[i].scriptSig);
+            txin.scriptSig = edcCombineSignatures(prevPubKey, mergedTx, i, amount, txin.scriptSig, txv.vin[i].scriptSig);
         }
 	if (!edcVerifyScript(
 		txin.scriptSig, 

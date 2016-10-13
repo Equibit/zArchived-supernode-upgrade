@@ -46,23 +46,19 @@ using namespace std;
 
 typedef std::vector<unsigned char> valtype;
 
-namespace
-{
-const CAmount amountZero = 0;
-}
-
 EDCTransactionSignatureCreator::EDCTransactionSignatureCreator(
 		  const CKeyStore * keystoreIn, 
 	const CEDCTransaction * txToIn, 
 			   unsigned int nInIn, 
+			const CAmount & amountIn, 
 						int nHashTypeIn) : 
 	BaseSignatureCreator(keystoreIn), 
 	txTo(txToIn), 
 	nIn(nInIn), 
 	nHashType(nHashTypeIn), 
-	checker(txTo, nIn, amountZero) 
+	amount(amountIn), 
+	checker(txTo, nIn, amountIn) 
 {}
-
 
 bool EDCTransactionSignatureCreator::CreateSig(
 	std::vector<unsigned char> & vchSig, 
@@ -86,7 +82,7 @@ bool EDCTransactionSignatureCreator::CreateSig(
 				{
 					EDCapp & theApp = EDCapp::singleton();
 	
-   			 		uint256 hash = SignatureHash(scriptCode, *txTo, nIn, nHashType);
+   			 		uint256 hash = SignatureHash(scriptCode, *txTo, nIn, nHashType, amount, SIGVERSION_BASE);
    			 		if (!NFast::sign( *theApp.nfHardServer(), *theApp.nfModule(), 
 					hsmID, hash.begin(), 256, vchSig))
    	     				return false;
@@ -112,7 +108,7 @@ bool EDCTransactionSignatureCreator::CreateSig(
         return false;
 	}
 
-    uint256 hash = SignatureHash(scriptCode, *txTo, nIn, nHashType);
+    uint256 hash = SignatureHash(scriptCode, *txTo, nIn, nHashType, amount, SIGVERSION_BASE);
     if (!key.Sign(hash, vchSig))
         return false;
     vchSig.push_back((unsigned char)nHashType);
@@ -306,7 +302,7 @@ static CScript CombineMultisig(
             if (sigs.count(pubkey))
                 continue; // Already got a sig for this pubkey
 
-            if (checker.CheckSig(sig, pubkey, scriptPubKey))
+            if (checker.CheckSig(sig, pubkey, scriptPubKey, SIGVERSION_BASE))
             {
                 sigs[pubkey] = sig;
                 break;
@@ -387,10 +383,11 @@ CScript edcCombineSignatures(
 		    const CScript & scriptPubKey, 
 	const CEDCTransaction & txTo, 
 			   unsigned int nIn,
+			const CAmount & amount,
             const CScript & scriptSig1, 
 			const CScript & scriptSig2)
 {
-    EDCTransactionSignatureChecker checker(&txTo, nIn, amountZero);
+    EDCTransactionSignatureChecker checker(&txTo, nIn, amount);
     return edcCombineSignatures(scriptPubKey, checker, scriptSig1, scriptSig2);
 }
 
@@ -405,9 +402,9 @@ CScript edcCombineSignatures(
     Solver(scriptPubKey, txType, vSolutions);
 
     vector<valtype> stack1;
-    edcEvalScript(stack1, scriptSig1, SCRIPT_VERIFY_STRICTENC, BaseSignatureChecker());
+    edcEvalScript(stack1, scriptSig1, SCRIPT_VERIFY_STRICTENC, BaseSignatureChecker(), SIGVERSION_BASE);
     vector<valtype> stack2;
-    edcEvalScript(stack2, scriptSig2, SCRIPT_VERIFY_STRICTENC, BaseSignatureChecker());
+    edcEvalScript(stack2, scriptSig2, SCRIPT_VERIFY_STRICTENC, BaseSignatureChecker(), SIGVERSION_BASE);
 
     return edcCombineSignatures(scriptPubKey, checker, txType, vSolutions, stack1, stack2);
 }
@@ -419,7 +416,7 @@ class DummySignatureChecker : public BaseSignatureChecker
 public:
     DummySignatureChecker() {}
 
-    bool CheckSig(const std::vector<unsigned char>& scriptSig, const std::vector<unsigned char>& vchPubKey, const CScript& scriptCode) const
+    bool CheckSig(const std::vector<unsigned char>& scriptSig, const std::vector<unsigned char>& vchPubKey, const CScript& scriptCode, SigVersion sigversion) const
     {
         return true;
     }

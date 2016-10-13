@@ -853,7 +853,7 @@ UniValue edcsignrawtransaction(const UniValue& params, bool fHelp)
         // ... and merge in other signatures:
         BOOST_FOREACH(const CEDCMutableTransaction& txv, txVariants) 
 		{
-            txin.scriptSig = edcCombineSignatures(prevPubKey, txConst, i, txin.scriptSig, txv.vin[i].scriptSig);
+            txin.scriptSig = edcCombineSignatures(prevPubKey, txConst, i, amount, txin.scriptSig, txv.vin[i].scriptSig);
         }
         ScriptError serror = SCRIPT_ERR_OK;
 		if (!edcVerifyScript(txin.scriptSig, prevPubKey, 

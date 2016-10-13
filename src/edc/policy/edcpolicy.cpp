@@ -155,7 +155,7 @@ bool AreInputsStandard(const CEDCTransaction& tx, const CEDCCoinsViewCache& mapI
         {
             std::vector<std::vector<unsigned char> > stack;
             // convert the scriptSig into a stack, so we can inspect the redeemScript
-            if (!edcEvalScript(stack, tx.vin[i].scriptSig, SCRIPT_VERIFY_NONE, BaseSignatureChecker(), 0))
+            if (!edcEvalScript(stack, tx.vin[i].scriptSig, SCRIPT_VERIFY_NONE, BaseSignatureChecker(), SIGVERSION_BASE))
                 return false;
             if (stack.empty())
                 return false;

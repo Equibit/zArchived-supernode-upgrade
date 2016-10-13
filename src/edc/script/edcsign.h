@@ -22,13 +22,15 @@ class EDCTransactionSignatureCreator : public BaseSignatureCreator
     const CEDCTransaction* txTo;
     unsigned int nIn;
     int nHashType;
+	CAmount amount;
     const EDCTransactionSignatureChecker checker;
 
 public:
     EDCTransactionSignatureCreator(	const CKeyStore * keyStoreIn,
-									const CEDCTransaction* txToIn, 
-									unsigned int nInIn, 
-									int nHashTypeIn=SIGHASH_ALL);
+							  const CEDCTransaction * txToIn, 
+										 unsigned int nInIn, 
+									  const CAmount & amountIn,
+												  int nHashTypeIn=SIGHASH_ALL);
 
     const BaseSignatureChecker& Checker() const { return checker; }
 
@@ -43,5 +45,5 @@ bool SignSignature(const CKeyStore& keystore, const CScript& fromPubKey, CEDCMut
 bool SignSignature(const CKeyStore& keystore, const CEDCTransaction& txFrom, CEDCMutableTransaction& txTo, unsigned int nIn, int nHashType=SIGHASH_ALL);
 
 /** Combine two script signatures on transactions. */
-CScript edcCombineSignatures(const CScript& scriptPubKey, const CEDCTransaction& txTo, unsigned int nIn, const CScript& scriptSig1, const CScript& scriptSig2);
+CScript edcCombineSignatures(const CScript& scriptPubKey, const CEDCTransaction& txTo, unsigned int nIn, const CAmount& amount, const CScript& scriptSig1, const CScript& scriptSig2);
 
