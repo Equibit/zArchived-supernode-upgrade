@@ -33,7 +33,8 @@ protected:
     virtual bool VerifySignature(const std::vector<unsigned char>& vchSig, const CPubKey& vchPubKey, const uint256& sighash) const;
 
 public:
-    EDCTransactionSignatureChecker(const CEDCTransaction* txToIn, unsigned int nInIn) : txTo(txToIn), nIn(nInIn) {}
+	EDCTransactionSignatureChecker(const CEDCTransaction* txToIn, unsigned int nInIn, const CAmount& amount) : txTo(txToIn), nIn(nInIn) {}
+
     bool CheckSig(const std::vector<unsigned char>& scriptSig, const std::vector<unsigned char>& vchPubKey, const CScript& scriptCode) const;
     bool CheckLockTime(const CScriptNum& nLockTime) const;
     bool CheckSequence(const CScriptNum& nSequence) const;
@@ -45,7 +46,7 @@ private:
     const CEDCTransaction txTo;
 
 public:
-    EDCMutableTransactionSignatureChecker(const CEDCMutableTransaction* txToIn, unsigned int nInIn) : EDCTransactionSignatureChecker(&txTo, nInIn), txTo(*txToIn) {}
+	EDCMutableTransactionSignatureChecker(const C	EDCMutableTransaction* txToIn, unsigned int nInIn, const CAmount& amount) 	EDC: TransactionSignatureChecker(&txTo, nInIn, amount), txTo(*txToIn) {}
 };
 
 bool edcEvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* serror = NULL );

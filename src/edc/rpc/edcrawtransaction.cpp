@@ -843,6 +843,7 @@ UniValue edcsignrawtransaction(const UniValue& params, bool fHelp)
             continue;
         }
         const CScript& prevPubKey = coins->vout[txin.prevout.n].scriptPubKey;
+		const CAmount& amount = coins->vout[txin.prevout.n].nValue;
 
         txin.scriptSig.clear();
         // Only sign SIGHASH_SINGLE if there's a corresponding output:
@@ -857,7 +858,7 @@ UniValue edcsignrawtransaction(const UniValue& params, bool fHelp)
         ScriptError serror = SCRIPT_ERR_OK;
 		if (!edcVerifyScript(txin.scriptSig, prevPubKey, 
 		mergedTx.wit.vtxinwit.size() > i ? &mergedTx.wit.vtxinwit[i].scriptWitness : NULL, 
-		STANDARD_SCRIPT_VERIFY_FLAGS, EDCTransactionSignatureChecker(&txConst, i), &serror))
+		STANDARD_SCRIPT_VERIFY_FLAGS, EDCTransactionSignatureChecker(&txConst, i, amount), &serror))
 		{
             TxInErrorToJSON(txin, vErrors, ScriptErrorString(serror));
         }

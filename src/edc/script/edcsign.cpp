@@ -46,17 +46,23 @@ using namespace std;
 
 typedef std::vector<unsigned char> valtype;
 
+namespace
+{
+const CAmount amountZero = 0;
+}
+
 EDCTransactionSignatureCreator::EDCTransactionSignatureCreator(
-		const CKeyStore * keystoreIn, 
-  const CEDCTransaction * txToIn, 
-			 unsigned int nInIn, 
-					  int nHashTypeIn) : 
-		BaseSignatureCreator(keystoreIn), 
-		txTo(txToIn), 
-		nIn(nInIn), 
-		nHashType(nHashTypeIn), 
-		checker(txTo, nIn) 
+		  const CKeyStore * keystoreIn, 
+	const CEDCTransaction * txToIn, 
+			   unsigned int nInIn, 
+						int nHashTypeIn) : 
+	BaseSignatureCreator(keystoreIn), 
+	txTo(txToIn), 
+	nIn(nInIn), 
+	nHashType(nHashTypeIn), 
+	checker(txTo, nIn, amountZero) 
 {}
+
 
 bool EDCTransactionSignatureCreator::CreateSig(
 	std::vector<unsigned char> & vchSig, 
@@ -384,7 +390,7 @@ CScript edcCombineSignatures(
             const CScript & scriptSig1, 
 			const CScript & scriptSig2)
 {
-    EDCTransactionSignatureChecker checker(&txTo, nIn);
+    EDCTransactionSignatureChecker checker(&txTo, nIn, amountZero);
     return edcCombineSignatures(scriptPubKey, checker, scriptSig1, scriptSig2);
 }
 
