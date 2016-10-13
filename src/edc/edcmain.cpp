@@ -2166,7 +2166,7 @@ bool CEDCScriptCheck::operator()()
 		&ptxTo->wit.vtxinwit[nIn].scriptWitness : NULL;
 
     if (!edcVerifyScript(scriptSig, scriptPubKey, witness, nFlags, 
-	EDCCachingTransactionSignatureChecker(ptxTo, nIn, cacheStore), &error)) 
+	EDCCachingTransactionSignatureChecker(ptxTo, nIn, amount, cacheStore), &error))
 	{
         return false;
     }
