@@ -63,3 +63,5 @@ public:
     std::string ToString() const;
 };
 
+/** Compute the consensus-critical block cost (see BIP 141). */
+int64_t edcGetBlockCost(const CEDCBlock& tx);

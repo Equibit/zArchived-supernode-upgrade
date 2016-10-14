@@ -28,7 +28,7 @@ struct CEDCBlockTemplate
 {
     CEDCBlock block;
     std::vector<CAmount> vTxFees;
-    std::vector<int64_t> vTxSigOps;
+	std::vector<int64_t> vTxSigOpsCost;
 	std::vector<unsigned char> vchCoinbaseCommitment;
 };
 
@@ -41,13 +41,13 @@ struct CEDCTxMemPoolModifiedEntry
         iter = entry;
         nSizeWithAncestors = entry->GetSizeWithAncestors();
         nModFeesWithAncestors = entry->GetModFeesWithAncestors();
-        nSigOpCountWithAncestors = entry->GetSigOpCountWithAncestors();
+		nSigOpCostWithAncestors = entry->GetSigOpCostWithAncestors();
     }
 
     CEDCTxMemPool::txiter iter;
     uint64_t nSizeWithAncestors;
     CAmount nModFeesWithAncestors;
-    unsigned int nSigOpCountWithAncestors;
+	int64_t nSigOpCostWithAncestors;
 };
 
 /** Comparator for CTxMemPool::txiter objects.
@@ -129,7 +129,7 @@ struct EDCupdate_for_parent_inclusion
     {
         e.nModFeesWithAncestors -= iter->GetFee();
         e.nSizeWithAncestors -= iter->GetTxSize();
-        e.nSigOpCountWithAncestors -= iter->GetSigOpCount();
+		e.nSigOpCostWithAncestors -= iter->GetSigOpCost();
     }
 
     CEDCTxMemPool::txiter iter;
@@ -147,12 +147,14 @@ private:
 
     // Configuration parameters for the block size
 	bool fIncludeWitness;
-    unsigned int nBlockMaxSize, nBlockMinSize;
+    unsigned int nBlockMaxCost, nBlockMaxSize, nBlockMinSize;
+    bool fNeedSizeAccounting;
 
     // Information on the current status of the block
+	uint64_t nBlockCost;
     uint64_t nBlockSize;
     uint64_t nBlockTx;
-    unsigned int nBlockSigOps;
+	uint64_t nBlockSigOpsCost;
     CAmount nFees;
     CEDCTxMemPool::setEntries inBlock;
 
@@ -204,7 +206,7 @@ private:
     void onlyUnconfirmed(CEDCTxMemPool::setEntries& testSet);
 
     /** Test if a new package would "fit" in the block */
-    bool TestPackage(uint64_t packageSize, unsigned int packageSigOps);
+    bool TestPackage(uint64_t packageSize, int64_t packageSigOpsCost);
 
     /** Test if a set of transactions are all final */
     bool TestPackageFinality(const CEDCTxMemPool::setEntries& package);

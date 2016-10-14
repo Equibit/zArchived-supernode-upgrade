@@ -767,8 +767,8 @@ bool AddOrphanTx(const CEDCTransaction& tx, NodeId peer) EXCLUSIVE_LOCKS_REQUIRE
     // have been mined or received.
     // 100 orphans, each of which is at most 99,999 bytes big is
     // at most 10 megabytes of orphans and somewhat more byprev index (in the worst case):
-    unsigned int sz = tx.GetSerializeSize(SER_NETWORK, CEDCTransaction::CURRENT_VERSION);
-    if (sz > MAX_STANDARD_TX_SIZE)
+    unsigned int sz = edcGetTransactionCost(tx);
+    if (sz >= EDC_MAX_STANDARD_TX_COST)
     {
         edcLogPrint("mempool", "ignoring large orphan tx (size: %u, hash: %s)\n", sz, hash.ToString());
         return false;
@@ -788,6 +788,31 @@ bool AddOrphanTx(const CEDCTransaction& tx, NodeId peer) EXCLUSIVE_LOCKS_REQUIRE
 
 namespace
 {
+
+int64_t edcGetTransactionSigOpCost(
+	   const CEDCTransaction & tx, 
+	const CEDCCoinsViewCache & inputs, 
+						   int flags)
+{
+    int64_t nSigOps = edcGetLegacySigOpCount(tx) * WITNESS_SCALE_FACTOR;
+
+    if (tx.IsCoinBase())
+        return nSigOps;
+ 
+    if (flags & SCRIPT_VERIFY_P2SH) 
+	{
+        nSigOps += GetP2SHSigOpCount(tx, inputs) * WITNESS_SCALE_FACTOR;
+    }
+
+    for (unsigned int i = 0; i < tx.vin.size(); i++)
+    {
+        const CEDCTxOut &prevout = inputs.GetOutputFor(tx.vin[i]);
+        nSigOps += CountWitnessSigOps(tx.vin[i].scriptSig, prevout.scriptPubKey, 
+				i < tx.wit.vtxinwit.size() ? &tx.wit.vtxinwit[i].scriptWitness : NULL, flags);
+    }
+    return nSigOps;
+}
+
 
 int EraseOrphanTx(uint256 hash) EXCLUSIVE_LOCKS_REQUIRED(EDC_cs_main)
 {
@@ -1132,7 +1157,7 @@ bool CheckSequenceLocks(
     return EvaluateSequenceLocks(index, lockPair);
 }
 
-unsigned int GetLegacySigOpCount(const CEDCTransaction & tx)
+unsigned int edcGetLegacySigOpCount(const CEDCTransaction & tx)
 {
     unsigned int nSigOps = 0;
     BOOST_FOREACH(const CEDCTxIn& txin, tx.vin)
@@ -1171,7 +1196,7 @@ bool CheckTransaction(const CEDCTransaction& tx, CValidationState &state)
     if (tx.vout.empty())
         return state.DoS(10, false, REJECT_INVALID, "bad-txns-vout-empty");
     // Size limits (this doesn't take the witness into account, as that hasn't been checked for malleability)
-    if (::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) > MAX_BLOCK_SIZE)
+	if (::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) > MAX_BLOCK_BASE_SIZE)
         return state.DoS(100, false, REJECT_INVALID, "bad-txns-oversize");
 
     // Check for negative or overflow output values
@@ -1387,8 +1412,7 @@ bool AcceptToMemoryPoolWorker(
         if (!params.acceptnonstdtxn && !AreInputsStandard(tx, view))
             return state.Invalid(false, REJECT_NONSTANDARD, "bad-txns-nonstandard-inputs");
 
-        unsigned int nSigOps = GetLegacySigOpCount(tx);
-        nSigOps += GetP2SHSigOpCount(tx, view);
+		int64_t nSigOpsCost = edcGetTransactionSigOpCost(tx, view, STANDARD_SCRIPT_VERIFY_FLAGS);
 
         CAmount nValueOut = tx.GetValueOut();
         CAmount nFees = nValueIn-nValueOut;
@@ -1413,7 +1437,8 @@ bool AcceptToMemoryPoolWorker(
             }
         }
 
-        CEDCTxMemPoolEntry entry(tx, nFees, GetTime(), dPriority, theApp.chainActive().Height(), pool.HasNoInputsOf(tx), inChainInputValue, fSpendsCoinbase, nSigOps, lp);
+		CEDCTxMemPoolEntry entry(tx, nFees, GetTime(), dPriority, theApp.chainActive().Height(), 
+			pool.HasNoInputsOf(tx), inChainInputValue, fSpendsCoinbase, nSigOpsCost, lp);
         unsigned int nSize = entry.GetTxSize();
 
         // Check that the transaction doesn't have an excessive number of
@@ -1421,9 +1446,10 @@ bool AcceptToMemoryPoolWorker(
         // itself can contain sigops MAX_STANDARD_TX_SIGOPS is less than
         // EDC_MAX_BLOCK_SIGOPS; we still consider this an invalid rather than
         // merely non-standard transaction.
-        if ((nSigOps > MAX_STANDARD_TX_SIGOPS) || (params.bytespersigop && nSigOps > nSize / params.bytespersigop))
+		if ((nSigOpsCost > MAX_STANDARD_TX_SIGOPS_COST) || 
+		(params.bytespersigop && nSigOpsCost > nSize * WITNESS_SCALE_FACTOR / params.bytespersigop))
             return state.DoS(0, false, REJECT_NONSTANDARD, "bad-txns-too-many-sigops", false,
-                strprintf("%d", nSigOps));
+                strprintf("%d", nSigOpsCost));
 
         CAmount mempoolRejectFee = pool.GetMinFee( params.maxmempool * 1000000).GetFee(nSize);
         if (mempoolRejectFee > 0 && nModifiedFees < mempoolRejectFee) 
@@ -2737,7 +2763,7 @@ bool edcConnectBlock(
     std::vector<int> prevheights;
     CAmount nFees = 0;
     int nInputs = 0;
-    unsigned int nSigOps = 0;
+    unsigned int nSigOpsCost = 0;
     CDiskTxPos pos(pindex->GetBlockPos(), GetSizeOfCompactSize(block.vtx.size()));
     std::vector<std::pair<uint256, CDiskTxPos> > vPos;
     vPos.reserve(block.vtx.size());
@@ -2747,10 +2773,6 @@ bool edcConnectBlock(
         const CEDCTransaction &tx = block.vtx[i];
 
         nInputs += tx.vin.size();
-        nSigOps += GetLegacySigOpCount(tx);
-        if (nSigOps > EDC_MAX_BLOCK_SIGOPS)
-            return state.DoS(100, edcError("ConnectBlock(): too many sigops"),
-                             REJECT_INVALID, "bad-blk-sigops");
 
         if (!tx.IsCoinBase())
         {
@@ -2786,18 +2808,19 @@ bool edcConnectBlock(
                 return state.DoS(100, edcError("%s: contains a non-BIP68-final transaction", __func__),
                                  REJECT_INVALID, "bad-txns-nonfinal");
             }
+		}
 
-            if (fStrictPayToScriptHash)
-            {
-                // Add in sigops done by pay-to-script-hash inputs;
-                // this is to prevent a "rogue miner" from creating
-                // an incredibly-expensive-to-validate block.
-                nSigOps += GetP2SHSigOpCount(tx, view);
-                if (nSigOps > EDC_MAX_BLOCK_SIGOPS)
-                    return state.DoS(100, edcError("ConnectBlock(): too many sigops"),
-                                     REJECT_INVALID, "bad-blk-sigops");
-            }
-
+        // GetTransactionSigOpCost counts 3 types of sigops:
+        // * legacy (always)
+        // * p2sh (when P2SH enabled in flags and excludes coinbase)
+        // * witness (when witness enabled in flags and excludes coinbase)
+        nSigOpsCost += edcGetTransactionSigOpCost(tx, view, flags);
+        if (nSigOpsCost > EDC_MAX_BLOCK_SIGOPS_COST)
+            return state.DoS(100, error("ConnectBlock(): too many sigops"),
+                             REJECT_INVALID, "bad-blk-sigops");
+ 
+        if (!tx.IsCoinBase())
+        {
             nFees += view.GetValueIn(tx)-tx.GetValueOut();
 
             std::vector<CEDCScriptCheck> vChecks;
@@ -3865,9 +3888,11 @@ const Consensus::Params & consensusParams,
     // All potential-corruption validation must be done before we do any
     // transaction validation, as otherwise we may mark the header as invalid
     // because we receive the wrong transactions for it.
+    // Note that witness malleability is checked in ContextualCheckBlock, so no
+    // checks that use witness data may be performed here.
 
     // Size limits
-	if (block.vtx.empty() || block.vtx.size() > MAX_BLOCK_SIZE || ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) > MAX_BLOCK_SIZE)
+	if (block.vtx.empty() || block.vtx.size() > MAX_BLOCK_BASE_SIZE || ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) > MAX_BLOCK_BASE_SIZE)
         return state.DoS(100, false, REJECT_INVALID, "bad-blk-length", false, "size limits failed");
 
     // First transaction must be coinbase, the rest must not be
@@ -3886,9 +3911,9 @@ const Consensus::Params & consensusParams,
     unsigned int nSigOps = 0;
     BOOST_FOREACH(const CEDCTransaction& tx, block.vtx)
     {
-        nSigOps += GetLegacySigOpCount(tx);
+        nSigOps += edcGetLegacySigOpCount(tx);
     }
-    if (nSigOps > EDC_MAX_BLOCK_SIGOPS)
+	if (nSigOps * WITNESS_SCALE_FACTOR > EDC_MAX_BLOCK_SIGOPS_COST)
         return state.DoS(100, false, REJECT_INVALID, "bad-blk-sigops", false, "out-of-bounds SigOpCount");
 
     if (fCheckPOW && fCheckMerkleRoot)
@@ -4035,7 +4060,18 @@ bool edcContextualCheckBlock(
         }
     }
 
-     return true;
+    // After the coinbase witness nonce and commitment are verified,
+    // we can check if the block cost passes (before we've checked the
+    // coinbase witness, it would be possible for the cost to be too
+    // large by filling up the coinbase witness, which doesn't change
+    // the block hash, so we couldn't mark the block as permanently
+    // failed).
+    if (edcGetBlockCost(block) > MAX_BLOCK_COST) 
+	{
+        return state.DoS(100, error("ContextualCheckBlock(): cost limit failed"), REJECT_INVALID, "bad-blk-cost");
+    }
+
+    return true;
 }
 
 bool AcceptBlockHeader(
@@ -4888,7 +4924,7 @@ bool edcLoadExternalBlockFile(
     try 
 	{
         // This takes over fileIn and calls fclose() on it in the CBufferedFile destructor
-        CBufferedFile blkdat(fileIn, 2*EDC_MAX_BLOCK_SIZE, EDC_MAX_BLOCK_SIZE+8, SER_DISK, CLIENT_VERSION);
+		CBufferedFile blkdat(fileIn, 2*MAX_BLOCK_SERIALIZED_SIZE, MAX_BLOCK_SERIALIZED_SIZE+8, SER_DISK, CLIENT_VERSION);
         uint64_t nRewind = blkdat.GetPos();
         while (!blkdat.eof()) 
 		{
@@ -4909,7 +4945,7 @@ bool edcLoadExternalBlockFile(
                     continue;
                 // read size
                 blkdat >> nSize;
-                if (nSize < 80 || nSize > EDC_MAX_BLOCK_SIZE)
+                if (nSize < 80 || nSize > EDC_MAX_BLOCK_SERIALIZED_SIZE)
                     continue;
             } 
 			catch (const std::exception&) 

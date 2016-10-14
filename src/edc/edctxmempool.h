@@ -48,7 +48,7 @@ class CEDCTxMemPoolEntry
 private:
     std::shared_ptr<const CEDCTransaction> tx;
     CAmount nFee;              //!< Cached to avoid expensive parent-transaction lookups
-    size_t nTxSize;            //!< ... and avoid recomputing tx size
+	size_t nTxCost;            //!< ... and avoid recomputing tx cost (also used for GetTxSize())
     size_t nModSize;           //!< ... and modified size for priority
     size_t nUsageSize;         //!< ... and total memory usage
     int64_t nTime;             //!< Local time when entering the mempool
@@ -57,7 +57,7 @@ private:
     bool hadNoDependencies;    //!< Not dependent on any other txs when it entered the mempool
     CAmount inChainInputValue; //!< Sum of all txin values that are already in blockchain
     bool spendsCoinbase;       //!< keep track of transactions that spend a coinbase
-    unsigned int sigOpCount;   //!< Legacy sig ops plus P2SH sig op count
+	int64_t sigOpCost;         //!< Total sigop cost
     int64_t feeDelta;          //!< Used for determining the priority of the transaction for mining in a block
     LockPoints lockPoints;     //!< Track the height and time at which tx was final
 
@@ -74,13 +74,13 @@ private:
     uint64_t nCountWithAncestors;
     uint64_t nSizeWithAncestors;
     CAmount nModFeesWithAncestors;
-    unsigned int nSigOpCountWithAncestors;
+	int64_t nSigOpCostWithAncestors;
 
 public:
     CEDCTxMemPoolEntry(const CEDCTransaction& _tx, const CAmount& _nFee,
                     int64_t _nTime, double _entryPriority, unsigned int _entryHeight,
                     bool poolHasNoInputsOf, CAmount _inChainInputValue, bool spendsCoinbase,
-                    unsigned int nSigOps, LockPoints lp);
+                    int64_t nSigOpsCost, LockPoints lp);
     CEDCTxMemPoolEntry(const CEDCTxMemPoolEntry& other);
 
     const CEDCTransaction& GetTx() const { return *this->tx; }
@@ -92,11 +92,12 @@ public:
      */
     double GetPriority(unsigned int currentHeight) const;
     const CAmount& GetFee() const { return nFee; }
-    size_t GetTxSize() const { return nTxSize; }
+    size_t GetTxSize() const;
+    size_t GetTxCost() const { return nTxCost; }
     int64_t GetTime() const { return nTime; }
     unsigned int GetHeight() const { return entryHeight; }
     bool WasClearAtEntry() const { return hadNoDependencies; }
-    unsigned int GetSigOpCount() const { return sigOpCount; }
+	int64_t GetSigOpCost() const { return sigOpCost; }
     int64_t GetModifiedFee() const { return nFee + feeDelta; }
     size_t DynamicMemoryUsage() const { return nUsageSize; }
     const LockPoints& GetLockPoints() const { return lockPoints; }
@@ -120,7 +121,7 @@ public:
     uint64_t GetCountWithAncestors() const { return nCountWithAncestors; }
     uint64_t GetSizeWithAncestors() const { return nSizeWithAncestors; }
     CAmount GetModFeesWithAncestors() const { return nModFeesWithAncestors; }
-    unsigned int GetSigOpCountWithAncestors() const { return nSigOpCountWithAncestors; }
+	int64_t GetSigOpCostWithAncestors() const { return nSigOpCostWithAncestors; }
 
     mutable size_t vTxHashesIdx; //!< Index in mempool's vTxHashes
 };
@@ -163,18 +164,18 @@ struct EDC_update_descendant_state
 
 struct EDC_update_ancestor_state
 {
-    EDC_update_ancestor_state(int64_t _modifySize, CAmount _modifyFee, int64_t _modifyCount, int _modifySigOps) :
-        modifySize(_modifySize), modifyFee(_modifyFee), modifyCount(_modifyCount), modifySigOps(_modifySigOps)
+	EDC_update_ancestor_state(int64_t _modifySize, CAmount _modifyFee, int64_t _modifyCount, int64_t _modifySigOpsCost) :
+        modifySize(_modifySize), modifyFee(_modifyFee), modifyCount(_modifyCount), modifySigOpsCost(_modifySigOpsCost)
     {}
 
     void operator() (CEDCTxMemPoolEntry &e)
-        { e.UpdateAncestorState(modifySize, modifyFee, modifyCount, modifySigOps); }
+        { e.UpdateAncestorState(modifySize, modifyFee, modifyCount, modifySigOpsCost); }
 
     private:
         int64_t modifySize;
         CAmount modifyFee;
         int64_t modifyCount;
-        int modifySigOps;
+        int64_t modifySigOpsCost;
 };
 
 struct EDC_update_fee_delta

@@ -11,6 +11,7 @@
 #include "consensus/validation.h"
 #include "edcmain.h"
 #include "edc/policy/edcfees.h"
+#include "edc/policy/edcpolicy.h"
 #include "streams.h"
 #include "timedata.h"
 #include "edcutil.h"
@@ -30,19 +31,19 @@ CEDCTxMemPoolEntry::CEDCTxMemPoolEntry(
                			bool poolHasNoInputsOf, 
 					 CAmount _inChainInputValue,
                         bool _spendsCoinbase, 
-				unsigned int _sigOps, 
+					 int64_t _sigOpsCost, 
 				  LockPoints lp):
 	tx(std::make_shared<CEDCTransaction>(_tx)), nFee(_nFee), nTime(_nTime), 
 	entryPriority(_entryPriority), entryHeight(_entryHeight),
     hadNoDependencies(poolHasNoInputsOf), inChainInputValue(_inChainInputValue),
-    spendsCoinbase(_spendsCoinbase), sigOpCount(_sigOps), lockPoints(lp)
+    spendsCoinbase(_spendsCoinbase), sigOpCost(_sigOpsCost), lockPoints(lp)
 {
-    nTxSize = ::GetSerializeSize(_tx, SER_NETWORK, PROTOCOL_VERSION);
-    nModSize = _tx.CalculateModifiedSize(nTxSize);
+    nTxCost = edcGetTransactionCost(_tx);
+    nModSize = _tx.CalculateModifiedSize(GetTxSize());
     nUsageSize = RecursiveDynamicUsage(*tx) + memusage::DynamicUsage(tx);
 
     nCountWithDescendants = 1;
-    nSizeWithDescendants = nTxSize;
+	nSizeWithDescendants = GetTxSize();
     nModFeesWithDescendants = nFee;
 	CAmount nValueIn = _tx.GetValueOut()+nFee;
     assert(inChainInputValue <= nValueIn);
@@ -50,9 +51,14 @@ CEDCTxMemPoolEntry::CEDCTxMemPoolEntry(
     feeDelta = 0;
 
     nCountWithAncestors = 1;
-    nSizeWithAncestors = nTxSize;
+	nSizeWithAncestors = GetTxSize();
     nModFeesWithAncestors = nFee;
-    nSigOpCountWithAncestors = sigOpCount;
+	nSigOpCostWithAncestors = sigOpCost;
+}
+
+size_t CEDCTxMemPoolEntry::GetTxSize() const
+{
+    return edcGetVirtualTransactionSize(nTxCost);
 }
 
 CEDCTxMemPoolEntry::CEDCTxMemPoolEntry(const CEDCTxMemPoolEntry& other)
@@ -132,7 +138,7 @@ void CEDCTxMemPool::UpdateForDescendants(
             modifyCount++;
             cachedDescendants[updateIt].insert(cit);
             // Update ancestor state for each descendant
-            mapTx.modify(cit, EDC_update_ancestor_state(updateIt->GetTxSize(), updateIt->GetModifiedFee(), 1, updateIt->GetSigOpCount()));
+			mapTx.modify(cit, EDC_update_ancestor_state(updateIt->GetTxSize(), updateIt->GetModifiedFee(), 1, updateIt->GetSigOpCost()));
         }
     }
     mapTx.modify(updateIt, EDC_update_descendant_state(modifySize, modifyFee, modifyCount));
@@ -302,14 +308,14 @@ void CEDCTxMemPool::UpdateEntryForAncestors(txiter it, const setEntries &setAnce
     int64_t updateCount = setAncestors.size();
     int64_t updateSize = 0;
     CAmount updateFee = 0;
-    int updateSigOps = 0;
+	int64_t updateSigOpsCost = 0;
     BOOST_FOREACH(txiter ancestorIt, setAncestors) 
 	{
         updateSize += ancestorIt->GetTxSize();
         updateFee += ancestorIt->GetModifiedFee();
-        updateSigOps += ancestorIt->GetSigOpCount();
+		updateSigOpsCost += ancestorIt->GetSigOpCost();
     }
-    mapTx.modify(it, EDC_update_ancestor_state(updateSize, updateFee, updateCount, updateSigOps));
+	mapTx.modify(it, EDC_update_ancestor_state(updateSize, updateFee, updateCount, updateSigOpsCost));
 }
 
 void CEDCTxMemPool::UpdateChildrenForRemoval(txiter it)
@@ -341,7 +347,7 @@ void CEDCTxMemPool::UpdateForRemoveFromMempool(const setEntries &entriesToRemove
             setDescendants.erase(removeIt); // don't update state for self
             int64_t modifySize = -((int64_t)removeIt->GetTxSize());
             CAmount modifyFee = -removeIt->GetModifiedFee();
-            int modifySigOps = -removeIt->GetSigOpCount();
+			int modifySigOps = -removeIt->GetSigOpCost();
             BOOST_FOREACH(txiter dit, setDescendants) 
 			{
                 mapTx.modify(dit, EDC_update_ancestor_state(modifySize, modifyFee, -1, modifySigOps));
@@ -407,8 +413,8 @@ void CEDCTxMemPoolEntry::UpdateAncestorState(
     nModFeesWithAncestors += modifyFee;
     nCountWithAncestors += modifyCount;
     assert(int64_t(nCountWithAncestors) > 0);
-    nSigOpCountWithAncestors += modifySigOps;
-    assert(int(nSigOpCountWithAncestors) >= 0);
+    nSigOpCostWithAncestors += modifySigOps;
+    assert(int(nSigOpCostWithAncestors) >= 0);
 }
 
 CEDCTxMemPool::CEDCTxMemPool(const CFeeRate& _minReasonableRelayFee) :
@@ -776,7 +782,7 @@ void CEDCTxMemPool::check(const CEDCCoinsViewCache *pcoins) const
         bool fDependsWait = false;
         setEntries setParentCheck;
         int64_t parentSizes = 0;
-        unsigned int parentSigOpCount = 0;
+		int64_t parentSigOpCost = 0;
         BOOST_FOREACH(const CEDCTxIn &txin, tx.vin) 
 		{
             // Check that every mempool transaction's inputs refer to available coins, or other mempool tx's.
@@ -789,7 +795,7 @@ void CEDCTxMemPool::check(const CEDCCoinsViewCache *pcoins) const
                 if (setParentCheck.insert(it2).second) 
 				{
                     parentSizes += it2->GetTxSize();
-                    parentSigOpCount += it2->GetSigOpCount();
+					parentSigOpCost += it2->GetSigOpCost();
                 }
             } 
 			else 	
@@ -813,18 +819,18 @@ void CEDCTxMemPool::check(const CEDCCoinsViewCache *pcoins) const
         uint64_t nCountCheck = setAncestors.size() + 1;
         uint64_t nSizeCheck = it->GetTxSize();
         CAmount nFeesCheck = it->GetModifiedFee();
-        unsigned int nSigOpCheck = it->GetSigOpCount();
+		int64_t nSigOpCheck = it->GetSigOpCost();
 
         BOOST_FOREACH(txiter ancestorIt, setAncestors) 
 		{
             nSizeCheck += ancestorIt->GetTxSize();
             nFeesCheck += ancestorIt->GetModifiedFee();
-            nSigOpCheck += ancestorIt->GetSigOpCount();
+			nSigOpCheck += ancestorIt->GetSigOpCost();
         }
 
         assert(it->GetCountWithAncestors() == nCountCheck);
         assert(it->GetSizeWithAncestors() == nSizeCheck);
-        assert(it->GetSigOpCountWithAncestors() == nSigOpCheck);
+		assert(it->GetSigOpCostWithAncestors() == nSigOpCheck);
         assert(it->GetModFeesWithAncestors() == nFeesCheck);
 
         // Check children against mapNextTx

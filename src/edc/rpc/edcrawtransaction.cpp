@@ -77,6 +77,7 @@ void TxToJSON(
     entry.push_back(Pair("txid", tx.GetHash().GetHex()));
 	entry.push_back(Pair("hash", tx.GetWitnessHash().GetHex()));
     entry.push_back(Pair("size", (int)::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION)));
+	entry.push_back(Pair("vsize", (int)::edcGetVirtualTransactionSize(tx)));
     entry.push_back(Pair("version", tx.nVersion));
     entry.push_back(Pair("locktime", (int64_t)tx.nLockTime));
     UniValue vin(UniValue::VARR);
@@ -177,7 +178,8 @@ UniValue edcgetrawtransaction(const UniValue& params, bool fHelp)
             "  \"hex\" : \"data\",       (string) The serialized, hex-encoded data for 'txid'\n"
             "  \"txid\" : \"id\",        (string) The transaction id (same as provided)\n"
 			"  \"hash\" : \"id\",        (string) The transaction hash (differs from txid for witness transactions)\n"
-            "  \"size\" : n,"
+			"  \"size\" : n,             (numeric) The serialized transaction size\n"
+			"  \"vsize\" : n,            (numeric) The virtual transaction size (differs from size for witness transactions)\n"
             "  \"version\" : n,          (numeric) The version\n"
             "  \"locktime\" : ttt,       (numeric) The lock time\n"
             "  \"vin\" : [               (array of json objects)\n"
@@ -504,7 +506,8 @@ UniValue edcdecoderawtransaction(const UniValue& params, bool fHelp)
             "{\n"
             "  \"txid\" : \"id\",        (string) The transaction id\n"
 			"  \"hash\" : \"id\",        (string) The transaction hash (differs from txid for witness transactions)\n"
-            "  \"size\" : n,             (numeric) The transaction size\n"
+			"  \"size\" : n,             (numeric) The transaction size\n"
+			"  \"vsize\" : n,            (numeric) The virtual transaction size (differs from size for witness transactions)\n"
             "  \"version\" : n,          (numeric) The version\n"
             "  \"locktime\" : ttt,       (numeric) The lock time\n"
             "  \"vin\" : [               (array of json objects)\n"

@@ -150,7 +150,7 @@ ThresholdState edcVersionBitsTipState(const Consensus::Params& params, Consensus
  * @return number of sigops this transaction's outputs will produce when spent
  * @see CEDCTransaction::FetchInputs
  */
-unsigned int GetLegacySigOpCount(const CEDCTransaction& tx);
+unsigned int edcGetLegacySigOpCount(const CEDCTransaction& tx);
 
 /**
  * Count ECDSA signature operations in pay-to-script-hash inputs.

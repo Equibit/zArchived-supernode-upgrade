@@ -84,6 +84,9 @@ public:
 	CEDCBlockTreeDB * blocktree() const		{ return blocktree_; }
 	void blocktree( CEDCBlockTreeDB * bt )	{ blocktree_ = bt; }
 
+	uint64_t lastBlockCost() const		{ return lastBlockCost_; }
+	void lastBlockCost( uint64_t l )	{ lastBlockCost_ = l; }
+
 	uint64_t lastBlockSize() const		{ return lastBlockSize_; }
 	void lastBlockSize( uint64_t l )	{ lastBlockSize_ = l; }
 
@@ -216,6 +219,7 @@ private:
 	uint64_t pruneTarget_;
 	uint64_t localHostNonce_;
 	uint64_t lastBlockSize_;
+	uint64_t lastBlockCost_;
 	uint64_t lastBlockTx_;
 
 	ServiceFlags localServices_;

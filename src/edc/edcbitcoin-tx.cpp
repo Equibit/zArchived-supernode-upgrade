@@ -203,7 +203,7 @@ static void MutateTxAddInput(CEDCMutableTransaction& tx, const string& strInput)
     uint256 txid(uint256S(strTxid));
 
     static const unsigned int minTxOutSz = 9;
-    static const unsigned int maxVout = EDC_MAX_BLOCK_SIZE / minTxOutSz;
+    static const unsigned int maxVout = EDC_MAX_BLOCK_BASE_SIZE / minTxOutSz;
 
     // extract and validate vout
 	string strVout = vStrInputParts[1];

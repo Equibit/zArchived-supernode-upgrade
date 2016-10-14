@@ -13,6 +13,8 @@
 
 #include <string>
 
+const unsigned int EDC_MAX_STANDARD_TX_COST = 400000;
+
 class CEDCCoinsViewCache;
 
     /**
@@ -26,4 +28,8 @@ bool IsStandardTx(const CEDCTransaction& tx, std::string& reason);
      * @return True if all inputs (scriptSigs) use only standard transaction forms
      */
 bool AreInputsStandard(const CEDCTransaction& tx, const CEDCCoinsViewCache& mapInputs);
+
+/** Compute the virtual transaction size (cost reinterpreted as bytes). */
+int64_t edcGetVirtualTransactionSize(int64_t nCost);
+int64_t edcGetVirtualTransactionSize(const CEDCTransaction & tx);
 

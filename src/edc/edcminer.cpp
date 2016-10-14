@@ -61,16 +61,42 @@ EDCBlockAssembler::EDCBlockAssembler(const CEDCChainParams& _chainparams)
 {
 	EDCparams & params = EDCparams::singleton();
 
-	// Largest block you're willing to create:
-    nBlockMaxSize = params.blockmaxsize;
+    // Block resource limits
+    // If neither -eb_blockmaxsize or -eb_blockmaxcost is given, limit to 
+	// EDC_DEFAULT_BLOCK_MAX_*
+    // If only one is given, only restrict the specified resource.
+    // If both are given, restrict both.
+    nBlockMaxCost = EDC_DEFAULT_BLOCK_MAX_COST;
+    nBlockMaxSize = DEFAULT_BLOCK_MAX_SIZE;
+	bool fCostSet = false;
+	if(mapArgs.count("-eb_blockmaxcost"))
+	{
+		nBlockMaxCost = params.blockmaxcost;
+		nBlockMaxSize = EDC_MAX_BLOCK_SERIALIZED_SIZE;
+		fCostSet = true;
+	}
+    if (mapArgs.count("-eb_blockmaxsize")) 
+	{
+        nBlockMaxSize = params.blockmaxsize;
+        if (!fCostSet) 
+		{
+            nBlockMaxCost = nBlockMaxSize * WITNESS_SCALE_FACTOR;
+        }
+    }
+
+    // Limit cost to between 4K and MAX_BLOCK_COST-4K for sanity:
+    nBlockMaxCost = std::max((unsigned int)4000, std::min((unsigned int)(MAX_BLOCK_COST-4000), nBlockMaxCost));
 
     // Limit to between 1K and MAX_BLOCK_SIZE-1K for sanity:
-    nBlockMaxSize = std::max((unsigned int)1000, std::min((unsigned int)(EDC_MAX_BLOCK_SIZE-1000), nBlockMaxSize));
+    nBlockMaxSize = std::max((unsigned int)1000, std::min((unsigned int)(EDC_MAX_BLOCK_SERIALIZED_SIZE-1000), nBlockMaxSize));
 
     // Minimum block size you want to create; block will be filled with free transactions
     // until there are no more or the block reaches this size:
     nBlockMinSize = params.blockminsize;
     nBlockMinSize = std::min(nBlockMaxSize, nBlockMinSize);
+
+    // Whether we need to account for byte usage (in addition to cost usage)
+    fNeedSizeAccounting = (nBlockMaxSize < EDC_MAX_BLOCK_SERIALIZED_SIZE-1000) || (nBlockMinSize > 0);
 }
 
 void EDCBlockAssembler::resetBlock()
@@ -79,7 +105,8 @@ void EDCBlockAssembler::resetBlock()
 
     // Reserve space for coinbase tx
     nBlockSize = 1000;
-    nBlockSigOps = 100;
+    nBlockCost = 4000;
+    nBlockSigOpsCost = 400;
 	fIncludeWitness = false;
 
     // These counters do not include coinbase tx
@@ -132,7 +159,7 @@ CEDCBlockTemplate* EDCBlockAssembler::CreateNewBlock(const CScript& scriptPubKey
     // Add dummy coinbase tx as first transaction
     pblock->vtx.push_back(CEDCTransaction());
     pblocktemplate->vTxFees.push_back(-1); // updated at end
-    pblocktemplate->vTxSigOps.push_back(-1); // updated at end
+	pblocktemplate->vTxSigOpsCost.push_back(-1); // updated at end
 
     LOCK2(EDC_cs_main, theApp.mempool().cs);
     CBlockIndex* pindexPrev = theApp.chainActive().Tip();
@@ -160,13 +187,22 @@ CEDCBlockTemplate* EDCBlockAssembler::CreateNewBlock(const CScript& scriptPubKey
     fIncludeWitness = IsWitnessEnabled(pindexPrev, chainparams.GetConsensus());
 
     addPriorityTxs();
-	addPackageTxs();
+    if (fNeedSizeAccounting) 
+	{
+        // addPackageTxs (the CPFP-based algorithm) cannot deal with size based
+        // accounting, so fall back to the old algorithm.
+        addScoreTxs();
+    } 
+	else 
+	{
+        addPackageTxs();
+    }
 
 	theApp.lastBlockTx( nBlockTx );
 	theApp.lastBlockSize( nBlockSize );
+	theApp.lastBlockCost( nBlockCost );
 
-    edcLogPrintf("CreateNewBlock(): total size %u txs: %u fees: %ld sigops %d\n", 
-		nBlockSize, nBlockTx, nFees, nBlockSigOps);
+    edcLogPrintf("CreateNewBlock(): total size %u txs: %u fees: %ld sigops %d\n", nBlockSize, nBlockTx, nFees, nBlockSigOpsCost);
 
     // Create coinbase transaction.
     CEDCMutableTransaction coinbaseTx;
@@ -187,7 +223,7 @@ CEDCBlockTemplate* EDCBlockAssembler::CreateNewBlock(const CScript& scriptPubKey
     UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
     pblock->nBits          = GetNextWorkRequired(pindexPrev, pblock, chainparams.GetConsensus());
     pblock->nNonce         = 0;
-    pblocktemplate->vTxSigOps[0] = GetLegacySigOpCount(pblock->vtx[0]);
+	pblocktemplate->vTxSigOpsCost[0] = edcGetLegacySigOpCount(pblock->vtx[0]);
 
     CValidationState state;
     if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
@@ -226,11 +262,12 @@ void EDCBlockAssembler::onlyUnconfirmed(CEDCTxMemPool::setEntries& testSet)
     }
 }
 
-bool EDCBlockAssembler::TestPackage(uint64_t packageSize, unsigned int packageSigOps)
+bool EDCBlockAssembler::TestPackage(uint64_t packageSize, int64_t packageSigOpsCost)
 {
-    if (nBlockSize + packageSize >= nBlockMaxSize)
+    // TODO: switch to cost-based accounting for packages instead of vsize-based accounting.
+    if (nBlockCost + WITNESS_SCALE_FACTOR * packageSize >= nBlockMaxCost)
         return false;
-    if (nBlockSigOps + packageSigOps >= MAX_BLOCK_SIGOPS)
+	if (nBlockSigOpsCost + packageSigOpsCost >= MAX_BLOCK_SIGOPS_COST)
         return false;
     return true;
 }
@@ -249,31 +286,49 @@ bool EDCBlockAssembler::TestPackageFinality(const CEDCTxMemPool::setEntries& pac
 
 bool EDCBlockAssembler::TestForBlock(CEDCTxMemPool::txiter iter)
 {
-    if (nBlockSize + iter->GetTxSize() >= nBlockMaxSize) 
+	if (nBlockCost + iter->GetTxCost() >= nBlockMaxCost)
 	{
         // If the block is so close to full that no more txs will fit
         // or if we've tried more than 50 times to fill remaining space
         // then flag that the block is finished
-        if (nBlockSize >  nBlockMaxSize - 100 || lastFewTxs > 50) 
+		if (nBlockCost >  nBlockMaxCost - 400 || lastFewTxs > 50)
 		{
              blockFinished = true;
              return false;
         }
 
-        // Once we're within 1000 bytes of a full block, only look at 50 more txs
+		// Once we're within 4000 cost of a full block, only look at 50 more txs
         // to try to fill the remaining space.
-        if (nBlockSize > nBlockMaxSize - 1000) 
+		if (nBlockCost > nBlockMaxCost - 4000)
 		{
             lastFewTxs++;
         }
         return false;
     }
 
-    if (nBlockSigOps + iter->GetSigOpCount() >= EDC_MAX_BLOCK_SIGOPS) 
+    if (fNeedSizeAccounting) 
+	{
+        if (nBlockSize + GetSerializeSize(iter->GetTx(), SER_NETWORK, PROTOCOL_VERSION) >= 
+		nBlockMaxSize) 
+		{
+            if (nBlockSize >  nBlockMaxSize - 100 || lastFewTxs > 50) 
+			{
+                 blockFinished = true;
+                 return false;
+            }
+            if (nBlockSize > nBlockMaxSize - 1000) 
+			{
+                lastFewTxs++;
+            }
+            return false;
+        }
+    }
+
+    if (nBlockSigOpsCost + iter->GetSigOpCost() >= EDC_MAX_BLOCK_SIGOPS_COST)
 	{
         // If the block has room for no more sig ops then
         // flag that the block is finished
-        if (nBlockSigOps > EDC_MAX_BLOCK_SIGOPS - 2) 
+		if (nBlockSigOpsCost > EDC_MAX_BLOCK_SIGOPS_COST - 8)
 		{
             blockFinished = true;
             return false;
@@ -316,7 +371,7 @@ void EDCBlockAssembler::UpdatePackagesForAdded(
                 CEDCTxMemPoolModifiedEntry modEntry(desc);
                 modEntry.nSizeWithAncestors -= it->GetTxSize();
                 modEntry.nModFeesWithAncestors -= it->GetModifiedFee();
-                modEntry.nSigOpCountWithAncestors -= it->GetSigOpCount();
+				modEntry.nSigOpCostWithAncestors -= it->GetSigOpCost();
                 mapModifiedTx.insert(modEntry);
             } 
 			else 
@@ -440,22 +495,22 @@ void EDCBlockAssembler::addPackageTxs()
 
         uint64_t packageSize = iter->GetSizeWithAncestors();
         CAmount packageFees = iter->GetModFeesWithAncestors();
-        unsigned int packageSigOps = iter->GetSigOpCountWithAncestors();
+		int64_t packageSigOpsCost = iter->GetSigOpCostWithAncestors();
 
         if (fUsingModified) 
 		{
             packageSize = modit->nSizeWithAncestors;
             packageFees = modit->nModFeesWithAncestors;
-            packageSigOps = modit->nSigOpCountWithAncestors;
+			packageSigOpsCost = modit->nSigOpCostWithAncestors;
         }
 
-        if (packageFees < theApp.minRelayTxFee().GetFee(packageSize) && nBlockSize >= nBlockMinSize) 
+		if (packageFees < ::minRelayTxFee.GetFee(packageSize))
 		{
             // Everything else we might consider has a lower fee rate
             return;
         }
 
-        if (!TestPackage(packageSize, packageSigOps)) 
+		if (!TestPackage(packageSize, packageSigOpsCost))
 		{
             if (fUsingModified) 
 			{
@@ -508,10 +563,16 @@ void EDCBlockAssembler::AddToBlock(CEDCTxMemPool::txiter iter)
 {
     pblock->vtx.push_back(iter->GetTx());
     pblocktemplate->vTxFees.push_back(iter->GetFee());
-    pblocktemplate->vTxSigOps.push_back(iter->GetSigOpCount());
-    nBlockSize += iter->GetTxSize();
+    pblocktemplate->vTxSigOpsCost.push_back(iter->GetSigOpCost());
+
+    if (fNeedSizeAccounting) 
+	{
+        nBlockSize += ::GetSerializeSize(iter->GetTx(), SER_NETWORK, PROTOCOL_VERSION);
+    }
+
+    nBlockCost += iter->GetTxCost();
     ++nBlockTx;
-    nBlockSigOps += iter->GetSigOpCount();
+	nBlockSigOpsCost += iter->GetSigOpCost();
     nFees += iter->GetFee();
     inBlock.insert(iter);
 
@@ -623,6 +684,8 @@ void EDCBlockAssembler::addPriorityTxs()
     }
 
 	EDCapp & theApp = EDCapp::singleton();
+
+    fNeedSizeAccounting = true;
 
     // This vector will be sorted into a priority queue:
     vector<EDCTxCoinAgePriority> vecPriority;

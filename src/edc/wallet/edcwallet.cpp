@@ -2670,7 +2670,7 @@ bool CEDCWallet::CreateTransaction(
                     nIn++;
                 }
 
-                unsigned int nBytes = ::GetSerializeSize(txNew, SER_NETWORK, PROTOCOL_VERSION);
+                unsigned int nBytes = edcGetVirtualTransactionSize(txNew);
 
                 // Remove scriptSigs if we used dummy signatures for fee calculation
                 if (!sign) 
@@ -2683,7 +2683,7 @@ bool CEDCWallet::CreateTransaction(
                 *static_cast<CEDCTransaction*>(&wtxNew) = CEDCTransaction(txNew);
 
                 // Limit size
-                if (nBytes >= MAX_STANDARD_TX_SIZE)
+				if (edcGetTransactionCost(txNew) >= EDC_MAX_STANDARD_TX_COST)
                 {
                     strFailReason = _("Transaction too large");
                     return false;
