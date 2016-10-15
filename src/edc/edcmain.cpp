@@ -519,7 +519,15 @@ void UpdateBlockAvailability(NodeId nodeid, const uint256 &hash)
 
 void MaybeSetPeerAsAnnouncingHeaderAndIDs( const CNodeState * nodestate, CEDCNode * pfrom ) 
 {
-    if (nodestate->fProvidesHeaderAndIDs) 
+	EDCapp & theApp = EDCapp::singleton();
+
+    if (theApp.localServices() & NODE_WITNESS) 
+	{
+        // Don't ever request compact blocks when segwit is enabled.
+        return;
+    }
+
+	if (nodestate->fProvidesHeaderAndIDs && !(theApp.localServices() & NODE_WITNESS))
 	{
         BOOST_FOREACH(const NodeId nodeid, lNodesAnnouncingHeaderAndIDs)
             if (nodeid == pfrom->GetId())
@@ -6712,9 +6720,10 @@ bool ProcessMessage(
                 }
                 if (vGetData.size() > 0) 
 				{
-                    if (nodestate->fProvidesHeaderAndIDs && vGetData.size() == 1 && 
+					if (nodestate->fProvidesHeaderAndIDs && vGetData.size() == 1 && 
 						mapBlocksInFlight.size() == 1 && 
-						pindexLast->pprev->IsValid(BLOCK_VALID_CHAIN)) 
+						pindexLast->pprev->IsValid(BLOCK_VALID_CHAIN) && 
+						!(theApp.localServices() & NODE_WITNESS))
 					{
                         // We seem to be rather well-synced, so it appears pfrom was the first to provide us
                         // with this block! Let's get them to announce using compact blocks in the future.
