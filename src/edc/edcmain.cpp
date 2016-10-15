@@ -153,6 +153,7 @@ CBlockIndex *pindexBestInvalid;
  * missing the data for the block.
  */
 set<CBlockIndex*, CBlockIndexWorkComparator> setBlockIndexCandidates;
+
 /** Number of nodes with fSyncStarted. */
 int nSyncStarted = 0;
 /** All pairs A->B, where A (or one of its ancestors) misses transactions, but B has transactions.
@@ -744,6 +745,10 @@ CBlockIndex* edcFindForkInGlobalIndex(const CChain& chain, const CBlockLocator& 
             CBlockIndex* pindex = (*mi).second;
             if (chain.Contains(pindex))
                 return pindex;
+            if (pindex->GetAncestor(chain.Height()) == chain.Tip()) 
+			{
+                return chain.Tip();
+            }
         }
     }
     return chain.Genesis();
@@ -3140,7 +3145,8 @@ void UpdateTip(
 /** Disconnect chainActive's tip. You probably want to call mempool.removeForReorg and manually re-limit mempool size after this, with EDC_cs_main held. */
 bool DisconnectTip(
 	  	 CValidationState & state, 
-	const CEDCChainParams & chainparams)
+	const CEDCChainParams & chainparams,
+					   bool fBare = false )
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -3166,29 +3172,33 @@ bool DisconnectTip(
     if (!FlushStateToDisk(state, FLUSH_STATE_IF_NEEDED))
         return false;
 
-    // Resurrect mempool transactions from the disconnected block.
-    std::vector<uint256> vHashUpdate;
-    BOOST_FOREACH(const CEDCTransaction &tx, block.vtx) 
+	if (!fBare) 
 	{
-        // ignore validation errors in resurrected transactions
-        list<CEDCTransaction> removed;
-        CValidationState stateDummy;
-        if (tx.IsCoinBase() || !AcceptToMemoryPool(theApp.mempool(), stateDummy, tx, false, NULL, NULL, true)) 
+        // Resurrect mempool transactions from the disconnected block.
+        std::vector<uint256> vHashUpdate;
+        BOOST_FOREACH(const CEDCTransaction &tx, block.vtx) 
 		{
-            theApp.mempool().removeRecursive(tx, removed);
-        } 
-		else if (theApp.mempool().exists(tx.GetHash())) 
-		{
-            vHashUpdate.push_back(tx.GetHash());
+            // ignore validation errors in resurrected transactions
+            list<CEDCTransaction> removed;
+            CValidationState stateDummy;
+            if (tx.IsCoinBase() || !AcceptToMemoryPool(theApp.mempool(), stateDummy, tx, false, 
+			NULL, true)) 
+			{
+                theApp.mempool().removeRecursive(tx, removed);
+            } 
+			else if (theApp.mempool().exists(tx.GetHash())) 
+			{
+                vHashUpdate.push_back(tx.GetHash());
+            }
         }
-    }
 
-    // AcceptToMemoryPool/addUnchecked all assume that new mempool entries have
-    // no in-mempool children, which is generally not true when adding
-    // previously-confirmed transactions back to the mempool.
-    // UpdateTransactionsFromBlock finds descendants of any transactions in this
-    // block that were added back and cleans up the mempool state.
-    theApp.mempool().UpdateTransactionsFromBlock(vHashUpdate);
+        // AcceptToMemoryPool/addUnchecked all assume that new mempool entries have
+        // no in-mempool children, which is generally not true when adding
+        // previously-confirmed transactions back to the mempool.
+        // UpdateTransactionsFromBlock finds descendants of any transactions in this
+        // block that were added back and cleans up the mempool state.
+        theApp.mempool().UpdateTransactionsFromBlock(vHashUpdate);
+    }
 
     // Update theApp.chainActive() and related variables.
     UpdateTip(pindexDelete->pprev, chainparams);
@@ -3755,6 +3765,12 @@ bool ReceivedBlockTransactions(
     pindexNew->nDataPos = pos.nPos;
     pindexNew->nUndoPos = 0;
     pindexNew->nStatus |= BLOCK_HAVE_DATA;
+
+    if (IsWitnessEnabled(pindexNew->pprev, edcParams().GetConsensus())) 
+	{
+        pindexNew->nStatus |= BLOCK_OPT_WITNESS;
+    }
+
     pindexNew->RaiseValidity(BLOCK_VALID_TRANSACTIONS);
     setDirtyBlockIndex.insert(pindexNew);
 
@@ -4805,6 +4821,122 @@ bool CEDCVerifyDB::VerifyDB(
 	edcLogPrintf("[DONE].\n");
     edcLogPrintf("No coin database inconsistencies in last %i blocks (%i transactions)\n", 
 		theApp.chainActive().Height() - pindexState->nHeight, nGoodTransactions);
+
+    return true;
+}
+
+bool edcRewindBlockIndex(const CEDCChainParams& params)
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+    LOCK(EDC_cs_main);
+
+    int nHeight = 1;
+    while (nHeight <= theApp.chainActive().Height()) 
+	{
+        if (IsWitnessEnabled(theApp.chainActive()[nHeight - 1], params.GetConsensus()) && 
+		!(theApp.chainActive()[nHeight]->nStatus & BLOCK_OPT_WITNESS)) 
+		{
+            break;
+        }
+        nHeight++;
+    }
+
+    // nHeight is now the height of the first insufficiently-validated block, or tipheight + 1
+    CValidationState state;
+    CBlockIndex* pindex = chainActive.Tip();
+
+    while (theApp.chainActive().Height() >= nHeight) 
+	{
+        if (fPruneMode && !(theApp.chainActive().Tip()->nStatus & BLOCK_HAVE_DATA)) 
+		{
+            // If pruning, don't try rewinding past the HAVE_DATA point;
+            // since older blocks can't be served anyway, there's
+            // no need to walk further, and trying to DisconnectTip()
+            // will fail (and require a needless reindex/redownload
+            // of the blockchain).
+            break;
+        }
+        if (!DisconnectTip(state, params, true)) 
+		{
+            return error("RewindBlockIndex: unable to disconnect block at height %i", 
+				pindex->nHeight);
+        }
+        // Occasionally flush state to disk.
+        if (!FlushStateToDisk(state, FLUSH_STATE_PERIODIC))
+            return false;
+    }
+
+    // Reduce validity flag and have-data flags.
+    // We do this after actual disconnecting, otherwise we'll end up writing the lack of data
+    // to disk before writing the chainstate, resulting in a failure to continue if interrupted.
+    for (BlockMap::iterator it = theApp.mapBlockIndex().begin(); it != theApp.mapBlockIndex().end();
+	it++) 
+	{
+        CBlockIndex * pindexIter = it->second;
+
+        // Note: If we encounter an insufficiently validated block that
+        // is on chainActive, it must be because we are a pruning node, and
+        // this block or some successor doesn't HAVE_DATA, so we were unable to
+        // rewind all the way.  Blocks remaining on chainActive at this point
+        // must not have their validity reduced.
+        if (IsWitnessEnabled(pindexIter->pprev, params.GetConsensus()) && 
+		!(pindexIter->nStatus & BLOCK_OPT_WITNESS) && 
+		!theApp.chainActive().Contains(pindexIter)) 
+		{
+            // Reduce validity
+            pindexIter->nStatus = std::min<unsigned int>(pindexIter->nStatus & BLOCK_VALID_MASK, 
+				BLOCK_VALID_TREE) | (pindexIter->nStatus & ~BLOCK_VALID_MASK);
+
+            // Remove have-data flags.
+            pindexIter->nStatus &= ~(BLOCK_HAVE_DATA | BLOCK_HAVE_UNDO);
+
+            // Remove storage location.
+            pindexIter->nFile = 0;
+            pindexIter->nDataPos = 0;
+            pindexIter->nUndoPos = 0;
+
+            // Remove various other things
+            pindexIter->nTx = 0;
+            pindexIter->nChainTx = 0;
+            pindexIter->nSequenceId = 0;
+
+            // Make sure it gets written.
+            setDirtyBlockIndex.insert(pindexIter);
+
+            // Update indexes
+            setBlockIndexCandidates.erase(pindexIter);
+
+            std::pair<std::multimap<CBlockIndex*, CBlockIndex*>::iterator, 
+					  std::multimap<CBlockIndex*, CBlockIndex*>::iterator> ret = 
+				mapBlocksUnlinked.equal_range(pindexIter->pprev);
+
+            while (ret.first != ret.second) 
+			{
+                if (ret.first->second == pindexIter) 
+				{
+                    mapBlocksUnlinked.erase(ret.first++);
+                } 
+				else 
+				{
+                    ++ret.first;
+                }
+            }
+        } 
+		else if (pindexIter->IsValid(BLOCK_VALID_TRANSACTIONS) && pindexIter->nChainTx) 
+		{
+            setBlockIndexCandidates.insert(pindexIter);
+        }
+    }
+
+    PruneBlockIndexCandidates();
+
+    edcCheckBlockIndex(params.GetConsensus());
+
+    if (!FlushStateToDisk(state, FLUSH_STATE_ALWAYS)) 
+	{
+        return false;
+    }
 
     return true;
 }

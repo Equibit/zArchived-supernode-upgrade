@@ -852,6 +852,18 @@ bool EdcAppInit(
 	                    break;
 	                }
 	
+                	if (!fReindex) 
+					{
+                    	edcUiInterface.InitMessage(_("Rewinding blocks..."));
+
+                    	if (!edcRewindBlockIndex(chainparams)) 
+						{
+                        	strLoadError = _("Unable to rewind the database to a pre-fork state. "
+								"You will need to redownload the blockchain");
+                        	break;
+                    	}
+                	}
+
 	                edcUiInterface.InitMessage(_("Verifying blocks..."));
 	                if (theApp.havePruned() && params.checkblocks > MIN_BLOCKS_TO_KEEP) 
 					{
