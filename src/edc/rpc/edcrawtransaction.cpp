@@ -642,7 +642,7 @@ UniValue edcsignrawtransaction(const UniValue& params, bool fHelp)
             "         \"txid\":\"id\",             (string, required) The transaction id\n"
             "         \"vout\":n,                  (numeric, required) The output number\n"
             "         \"scriptPubKey\": \"hex\",   (string, required) script key\n"
-            "         \"redeemScript\": \"hex\",   (string, required for P2SH) redeem script\n"
+			"         \"redeemScript\": \"hex\",   (string, required for P2SH or P2WSH) redeem script\n"
             "         \"amount\": value            (numeric, required) The amount spent\n"
             "       }\n"
             "       ,...\n"
@@ -808,7 +808,8 @@ UniValue edcsignrawtransaction(const UniValue& params, bool fHelp)
 
             // if redeemScript given and not using the local wallet (private keys
             // given), add redeemScript to the tempKeystore so it can be signed:
-            if (fGivenKeys && scriptPubKey.IsPayToScriptHash()) 
+			if (fGivenKeys && (scriptPubKey.IsPayToScriptHash() || 
+				scriptPubKey.IsPayToWitnessScriptHash()))
 			{
                 RPCTypeCheckObj(prevOut,
                     {
