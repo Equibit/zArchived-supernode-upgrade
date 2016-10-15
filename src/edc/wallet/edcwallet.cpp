@@ -2656,16 +2656,21 @@ bool CEDCWallet::CreateTransaction(
                 {
                     bool signSuccess;
                     const CScript& scriptPubKey = coin.first->vout[coin.second].scriptPubKey;
-                    CScript& scriptSigRes = txNew.vin[nIn].scriptSig;
+					SignatureData sigdata;
+
                     if (sign)
-                        signSuccess = edcProduceSignature(EDCTransactionSignatureCreator(this, &txNewConst, nIn, SIGHASH_ALL), scriptPubKey, scriptSigRes);
+						signSuccess = edcProduceSignature(EDCTransactionSignatureCreator(this, &txNewConst, nIn, coin.first->vout[coin.second].nValue, SIGHASH_ALL), scriptPubKey, sigdata);
                     else
-                        signSuccess = edcProduceSignature(DummySignatureCreator(this), scriptPubKey, scriptSigRes);
+						signSuccess = edcProduceSignature(DummySignatureCreator(this), scriptPubKey, sigdata);
 
                     if (!signSuccess)
                     {
                         strFailReason = _("Signing transaction failed");
                         return false;
+                    } 
+					else 
+					{
+                        edcUpdateTransaction(txNew, nIn, sigdata);
                     }
                     nIn++;
                 }
@@ -2677,6 +2682,7 @@ bool CEDCWallet::CreateTransaction(
 				{
                     BOOST_FOREACH (CEDCTxIn& vin, txNew.vin)
                         vin.scriptSig = CScript();
+					txNew.wit.SetNull();
                 }
 
                 // Embed the constructed transaction data in wtxNew.
@@ -4399,20 +4405,24 @@ bool CEDCWallet::CreateAuthorizingTransaction(
 
             bool signSuccess;
             const CScript& scriptPubKey = wtx.vout[outId].scriptPubKey;
-            CScript& scriptSigRes = txNew.vin[0].scriptSig;
+			SignatureData sigdata;
 
 			bool sign = true;
 			if(sign)
-            	signSuccess = edcProduceSignature(EDCTransactionSignatureCreator(this, &txNewConst, 0, 
-					SIGHASH_ALL), scriptPubKey, scriptSigRes);
+            	signSuccess = edcProduceSignature(EDCTransactionSignatureCreator(this, 
+					&txNewConst, 0, 0, SIGHASH_ALL), scriptPubKey, sigdata );
             else
-                signSuccess = edcProduceSignature(DummySignatureCreator(this), scriptPubKey, scriptSigRes);
+                signSuccess = edcProduceSignature(DummySignatureCreator(this), scriptPubKey, sigdata);
 
             if (!signSuccess)
             {
                 strFailReason = _("Signing transaction failed");
                 return false;
             }
+			else
+			{
+				edcUpdateTransaction( txNew, 0, sigdata );
+			}
 
             if (!sign) 
 			{

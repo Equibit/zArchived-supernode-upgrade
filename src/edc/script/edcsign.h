@@ -34,16 +34,35 @@ public:
 
     const BaseSignatureChecker& Checker() const { return checker; }
 
-    bool CreateSig(std::vector<unsigned char>& vchSig, const CKeyID& keyid, const CScript& scriptCode) const;
+    bool CreateSig(std::vector<unsigned char>& vchSig, const CKeyID& keyid, const CScript& scriptCode, SigVersion sigversion) const;
+};
+
+class EDCMutableTransactionSignatureCreator : public EDCTransactionSignatureCreator 
+{
+    CEDCTransaction tx;
+
+public:
+    EDCMutableTransactionSignatureCreator(
+					 const CKeyStore * keystoreIn, 
+		const CEDCMutableTransaction * txToIn, 
+						  unsigned int nInIn, 
+					   const CAmount & amount, 
+								   int nHashTypeIn) : 
+			EDCTransactionSignatureCreator(
+				keystoreIn, &tx, nInIn, amount, nHashTypeIn), tx(*txToIn) {}
 };
 
 /** Produce a script signature using a generic signature creator. */
-bool edcProduceSignature(const BaseSignatureCreator& creator, const CScript& scriptPubKey, CScript& scriptSig);
+bool edcProduceSignature(const BaseSignatureCreator& creator, const CScript& scriptPubKey, SignatureData & sigdata);
 
 /** Produce a script signature for a transaction. */
-bool SignSignature(const CKeyStore& keystore, const CScript& fromPubKey, CEDCMutableTransaction& txTo, unsigned int nIn, int nHashType=SIGHASH_ALL);
-bool SignSignature(const CKeyStore& keystore, const CEDCTransaction& txFrom, CEDCMutableTransaction& txTo, unsigned int nIn, int nHashType=SIGHASH_ALL);
+bool SignSignature(const CKeyStore& keystore, const CScript& fromPubKey, CEDCMutableTransaction& txTo, unsigned int nIn, const CAmount& amount, int nHashType=SIGHASH_ALL);
+bool SignSignature(const CKeyStore& keystore, const CEDCTransaction& txFrom, CEDCMutableTransaction& txTo, unsigned int nIn, int nHashType);
 
-/** Combine two script signatures on transactions. */
-CScript edcCombineSignatures(const CScript& scriptPubKey, const CEDCTransaction& txTo, unsigned int nIn, const CAmount& amount, const CScript& scriptSig1, const CScript& scriptSig2);
+SignatureData edcCombineSignatures( const CScript & scriptPubKey, const BaseSignatureChecker & checker, const SignatureData & scriptSig1, const SignatureData & scriptSig2);
+
+/** Extract signature data from a transaction, and insert it. */
+SignatureData edcDataFromTransaction(const CEDCMutableTransaction& tx, unsigned int nIn);
+void edcUpdateTransaction(CEDCMutableTransaction& tx, unsigned int nIn, const SignatureData& data);
+
 

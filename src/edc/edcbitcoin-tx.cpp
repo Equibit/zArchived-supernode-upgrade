@@ -378,6 +378,18 @@ vector<unsigned char> ParseHexUO(map<string,UniValue>& o, string strKey)
     return ParseHexUV(o[strKey], strKey);
 }
 
+static CAmount AmountFromValue(const UniValue& value)
+{
+    if (!value.isNum() && !value.isStr())
+        throw runtime_error("Amount is not a number or string");
+    CAmount amount;
+    if (!ParseFixedPoint(value.getValStr(), 8, &amount))
+        throw runtime_error("Invalid amount");
+    if (!MoneyRange(amount))
+        throw runtime_error("Amount out of range");
+    return amount;
+}
+
 static void MutateTxSign(CEDCMutableTransaction& tx, const string& flagStr)
 {
     int nHashType = SIGHASH_ALL;
@@ -449,10 +461,17 @@ static void MutateTxSign(CEDCMutableTransaction& tx, const string& flagStr)
                         ScriptToAsmStr(scriptPubKey);
                     throw runtime_error(err);
                 }
+
                 if ((unsigned int)nOut >= coins->vout.size())
                     coins->vout.resize(nOut+1);
+
                 coins->vout[nOut].scriptPubKey = scriptPubKey;
-                coins->vout[nOut].nValue = 0; // we don't know the actual output value
+                coins->vout[nOut].nValue = 0;
+
+                if (prevOut.exists("amount")) 
+				{
+                    coins->vout[nOut].nValue = AmountFromValue(prevOut["amount"]);
+                }
             }
 
             // if redeemScript given and private keys given,
@@ -485,16 +504,16 @@ static void MutateTxSign(CEDCMutableTransaction& tx, const string& flagStr)
         const CScript& prevPubKey = coins->vout[txin.prevout.n].scriptPubKey;
 		const CAmount& amount = coins->vout[txin.prevout.n].nValue;
 
-        txin.scriptSig.clear();
+		SignatureData sigdata;
         // Only sign SIGHASH_SINGLE if there's a corresponding output:
         if (!fHashSingle || (i < mergedTx.vout.size()))
-            SignSignature(keystore, prevPubKey, mergedTx, i, nHashType);
+			ProduceSignature(EDCMutableTransactionSignatureCreator(&keystore, &mergedTx, i, amount, nHashType), prevPubKey, sigdata);
 
         // ... and merge in other signatures:
-        BOOST_FOREACH(const CEDCTransaction& txv, txVariants) 
-		{
-            txin.scriptSig = edcCombineSignatures(prevPubKey, mergedTx, i, amount, txin.scriptSig, txv.vin[i].scriptSig);
-        }
+        BOOST_FOREACH(const CEDCTransaction& txv, txVariants)
+            sigdata = edcCombineSignatures(prevPubKey, EDCMutableTransactionSignatureChecker(&mergedTx, i, amount), sigdata, edcDataFromTransaction(txv, i));
+        edcUpdateTransaction(mergedTx, i, sigdata);
+
 	if (!edcVerifyScript(
 		txin.scriptSig, 
 		prevPubKey, 

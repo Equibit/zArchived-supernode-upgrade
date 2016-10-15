@@ -83,6 +83,7 @@ isminetype edcIsMine(const CKeyStore &keystore, const CScript& scriptPubKey)
             return ISMINE_SPENDABLE;
         break;
     case TX_PUBKEYHASH:
+	case TX_WITNESS_V0_KEYHASH:
         keyID = CKeyID(uint160(vSolutions[0]));
         if (edcHaveKey( keystore, keyID))
             return ISMINE_SPENDABLE;
@@ -91,6 +92,21 @@ isminetype edcIsMine(const CKeyStore &keystore, const CScript& scriptPubKey)
     {
         CScriptID scriptID = CScriptID(uint160(vSolutions[0]));
         CScript subscript;
+        if (keystore.GetCScript(scriptID, subscript)) 
+		{
+            isminetype ret = edcIsMine(keystore, subscript);
+            if (ret == ISMINE_SPENDABLE)
+                return ret;
+        }
+        break;
+    }
+    case TX_WITNESS_V0_SCRIPTHASH:
+    {
+        uint160 hash;
+        CRIPEMD160().Write(&vSolutions[0][0], vSolutions[0].size()).Finalize(hash.begin());
+        CScriptID scriptID = CScriptID(hash);
+        CScript subscript;
+
         if (keystore.GetCScript(scriptID, subscript)) 
 		{
             isminetype ret = edcIsMine(keystore, subscript);
@@ -116,8 +132,8 @@ isminetype edcIsMine(const CKeyStore &keystore, const CScript& scriptPubKey)
     if (keystore.HaveWatchOnly(scriptPubKey)) 
 	{
         // TODO: This could be optimized some by doing some work after the above solver
-        CScript scriptSig;
-        return edcProduceSignature(DummySignatureCreator(&keystore), scriptPubKey, scriptSig) ? ISMINE_WATCH_SOLVABLE : ISMINE_WATCH_UNSOLVABLE;
+		SignatureData sigs;
+        return edcProduceSignature(DummySignatureCreator(&keystore), scriptPubKey, sigs) ? ISMINE_WATCH_SOLVABLE : ISMINE_WATCH_UNSOLVABLE;
     }
     return ISMINE_NO;
 }
