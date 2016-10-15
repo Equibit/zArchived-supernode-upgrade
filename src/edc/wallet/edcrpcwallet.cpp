@@ -1297,6 +1297,92 @@ UniValue edcaddmultisigaddress(const UniValue& params, bool fHelp)
     return CEDCBitcoinAddress(innerID).ToString();
 }
 
+class Witnessifier : public boost::static_visitor<bool>
+{
+public:
+    CScriptID result;
+
+    bool operator()(const CNoDestination &dest) const { return false; }
+
+    bool operator()(const CKeyID &keyID) 
+	{
+        CPubKey pubkey;
+        if (pwalletMain && pwalletMain->GetPubKey(keyID, pubkey)) 
+		{
+            CScript basescript;
+            basescript << ToByteVector(pubkey) << OP_CHECKSIG;
+            CScript witscript = GetScriptForWitness(basescript);
+            pwalletMain->AddCScript(witscript);
+            result = CScriptID(witscript);
+            return true;
+        }
+        return false;
+    }
+
+    bool operator()(const CScriptID &scriptID) 
+	{
+        CScript subscript;
+        if (pwalletMain && pwalletMain->GetCScript(scriptID, subscript)) 
+		{
+            int witnessversion;
+            std::vector<unsigned char> witprog;
+            if (subscript.IsWitnessProgram(witnessversion, witprog)) 
+			{
+                result = scriptID;
+                return true;
+            }
+            CScript witscript = GetScriptForWitness(subscript);
+            pwalletMain->AddCScript(witscript);
+            result = CScriptID(witscript);
+            return true;
+        }
+        return false;
+    }
+};
+
+UniValue edcaddwitnessaddress(const UniValue& params, bool fHelp)
+{
+    if (!edcEnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+    if (fHelp || params.size() < 1 || params.size() > 1)
+    {
+        string msg = "eb_addwitnessaddress \"address\"\n"
+            "\nAdd a witness address for a script (with pubkey or redeemscript known).\n"
+            "It returns the witness script.\n"
+
+            "\nArguments:\n"
+            "1. \"address\"       (string, required) An address known to the wallet\n"
+
+            "\nResult:\n"
+            "\"witnessaddress\",  (string) The value of the new address (P2SH of witness script).\n"
+            "}\n"
+        ;
+        throw runtime_error(msg);
+    }
+
+    {
+        LOCK(cs_main);
+        if (!IsWitnessEnabled(chainActive.Tip(), Params().GetConsensus())) 
+		{
+            throw JSONRPCError(RPC_WALLET_ERROR, "Segregated witness not enabled on network");
+        }
+    }
+
+    CBitcoinAddress address(params[0].get_str());
+    if (!address.IsValid())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address");
+
+    Witnessifier w;
+    CTxDestination dest = address.Get();
+    bool ret = boost::apply_visitor(w, dest);
+    if (!ret) 
+	{
+        throw JSONRPCError(RPC_WALLET_ERROR, "Public key or redeemscript not known to wallet");
+    }
+
+    return CBitcoinAddress(w.result).ToString();
+}
 
 struct tallyitem
 {
@@ -2912,6 +2998,7 @@ static const CRPCCommand edcCommands[] =
     { "hidden",             "eb_resendwallettransactions", &edcresendwallettransactions, true  },
     { "wallet",             "eb_abandontransaction",       &edcabandontransaction,       false },
     { "wallet",             "eb_addmultisigaddress",       &edcaddmultisigaddress,       true  },
+    { "wallet",             "eb_addwitnessaddress",        &edcaddwitnessaddress,        true  },
     { "wallet",             "eb_backupwallet",             &edcbackupwallet,             true  },
     { "wallet",             "eb_dumpprivkey",              &edcdumpprivkey,              true  },
     { "wallet",             "eb_dumpwallet",               &edcdumpwallet,               true  },
