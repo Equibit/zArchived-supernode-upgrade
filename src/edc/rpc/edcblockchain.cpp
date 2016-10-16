@@ -318,8 +318,6 @@ UniValue edcgetrawmempool(const UniValue& params, bool fHelp)
             + HelpExampleRpc("eb_getrawmempool", "true")
         );
 
-    LOCK(EDC_cs_main);
-
     bool fVerbose = false;
     if (params.size() > 0)
         fVerbose = params[0].get_bool();
