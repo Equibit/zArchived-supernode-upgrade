@@ -4735,7 +4735,7 @@ bool CEDCVerifyDB::VerifyDB(
     CValidationState state;
     int reportDone = 0;
 
-    edcLogPrintf("[0%]...");
+    edcLogPrintf("[0%%]...");
 
     for (CBlockIndex* pindex = theApp.chainActive().Tip(); pindex && pindex->pprev; pindex = pindex->pprev)
     {

@@ -24,37 +24,20 @@ int edcLogPrintStr(const std::string &str);
 bool edcLogAcceptCategory(const char* category);
 
 
-template<typename T1, typename... Args>
+template<typename... Args>
 static inline int edcLogPrint(
 	const char* category, 
 	const char* fmt, 
-	const T1& v1, 
 	const Args&... args)
 {
     if(!edcLogAcceptCategory(category)) return 0;                            \
-    return edcLogPrintStr(tfm::format(fmt, v1, args...));
+    return edcLogPrintStr(tfm::format(fmt, args...));
 }
 
-template<typename T1, typename... Args>
-bool edcError(const char* fmt, const T1& v1, const Args&... args)
+template<typename... Args>
+bool edcError(const char* fmt, const Args&... args)
 {
-    edcLogPrintStr("ERROR: " + tfm::format(fmt, v1, args...) + "\n");
-    return false;
-}
-
-/**
- * Zero-arg versions of logging and error, these are not covered by
- * the variadic templates above (and don't take format arguments but
- * bare strings).
- */
-static inline int edcLogPrint(const char* category, const char* s)
-{
-    if(!edcLogAcceptCategory(category)) return 0;
-    return edcLogPrintStr(s);
-}
-static inline bool edcError(const char* s)
-{
-    edcLogPrintStr(std::string("ERROR: ") + s + "\n");
+    edcLogPrintStr("ERROR: " + tfm::format(fmt, args...) + "\n");
     return false;
 }
 
