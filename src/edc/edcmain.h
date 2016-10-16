@@ -161,6 +161,14 @@ unsigned int edcGetLegacySigOpCount(const CEDCTransaction& tx);
  */
 unsigned int GetP2SHSigOpCount(const CEDCTransaction& tx, const CEDCCoinsViewCache& mapInputs);
 
+/**
+ * Compute total signature operation cost of a transaction.
+ * @param[in] tx     Transaction for which we are computing the cost
+ * @param[in] inputs Map of previous transactions that have outputs we're spending
+ * @param[out] flags Script verification flags
+ * @return Total signature operation cost of tx
+ */
+int64_t edcGetTransactionSigOpCost(const CEDCTransaction& tx, const CEDCCoinsViewCache& inputs, int flags);
 
 /**
  * Check whether all inputs of this transaction are valid (no double spends, scripts & sigs, amounts)
