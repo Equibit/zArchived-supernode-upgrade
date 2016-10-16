@@ -187,16 +187,7 @@ CEDCBlockTemplate* EDCBlockAssembler::CreateNewBlock(const CScript& scriptPubKey
     fIncludeWitness = IsWitnessEnabled(pindexPrev, chainparams.GetConsensus());
 
     addPriorityTxs();
-    if (fNeedSizeAccounting) 
-	{
-        // addPackageTxs (the CPFP-based algorithm) cannot deal with size based
-        // accounting, so fall back to the old algorithm.
-        addScoreTxs();
-    } 
-	else 
-	{
-        addPackageTxs();
-    }
+    addPackageTxs();
 
 	theApp.lastBlockTx( nBlockTx );
 	theApp.lastBlockSize( nBlockSize );
@@ -274,12 +265,23 @@ bool EDCBlockAssembler::TestPackage(uint64_t packageSize, int64_t packageSigOpsC
 
 // Block size and sigops have already been tested.  Check that all transactions
 // are final.
-bool EDCBlockAssembler::TestPackageFinality(const CEDCTxMemPool::setEntries& package)
+bool EDCBlockAssembler::TestPackageFinalityAndSerializedSize(
+	const CEDCTxMemPool::setEntries& package)
 {
+	uint64_t nPotentialBlockSize = nBlockSize; // only used with fNeedSizeAccounting
     BOOST_FOREACH (const CEDCTxMemPool::txiter it, package) 
 	{
         if (!IsFinalTx(it->GetTx(), nHeight, nLockTimeCutoff))
             return false;
+        if (fNeedSizeAccounting) 
+		{
+            uint64_t nTxSize = ::GetSerializeSize(it->GetTx(), SER_NETWORK, PROTOCOL_VERSION);
+            if (nPotentialBlockSize + nTxSize >= nBlockMaxSize) 
+			{
+                return false;
+            }
+            nPotentialBlockSize += nTxSize;
+        }
     }
     return true;
 }
@@ -533,7 +535,7 @@ void EDCBlockAssembler::addPackageTxs()
         ancestors.insert(iter);
 
         // Test if all tx's are Final
-        if (!TestPackageFinality(ancestors)) 
+		if (!TestPackageFinalityAndSerializedSize(ancestors))
 		{
             if (fUsingModified) 
 			{
@@ -685,6 +687,7 @@ void EDCBlockAssembler::addPriorityTxs()
 
 	EDCapp & theApp = EDCapp::singleton();
 
+	bool fSizeAccounting = fNeedSizeAccounting;
     fNeedSizeAccounting = true;
 
     // This vector will be sorted into a priority queue:
@@ -747,7 +750,7 @@ void EDCBlockAssembler::addPriorityTxs()
             // or have dropped below the AllowFreeThreshold, then we're done adding priority txs
 			if (nBlockSize >= nBlockPrioritySize || !AllowFree(actualPriority))
 			{
-                return;
+                break;
             }
 
             // This tx was successfully added, so
@@ -765,6 +768,7 @@ void EDCBlockAssembler::addPriorityTxs()
             }
         }
     }
+	fNeedSizeAccounting = fSizeAccounting;
 }
 
 void IncrementExtraNonce(

@@ -209,7 +209,7 @@ private:
     bool TestPackage(uint64_t packageSize, int64_t packageSigOpsCost);
 
     /** Test if a set of transactions are all final */
-    bool TestPackageFinality(const CEDCTxMemPool::setEntries& package);
+	bool TestPackageFinalityAndSerializedSize(const CEDCTxMemPool::setEntries& package);
 
     /** Return true if given transaction from mapTx has already been evaluated,
       * or if the transaction's cached data in mapTx is incorrect. */
