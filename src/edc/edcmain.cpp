@@ -7428,7 +7428,7 @@ bool edcSendMessages(CEDCNode* pto)
                     CEDCBlock block;
                     assert(ReadBlockFromDisk(block, pBestIndex, consensusParams));
                     CEDCBlockHeaderAndShortTxIDs cmpctblock(block);
-                    pto->PushMessage(NetMsgType::CMPCTBLOCK, cmpctblock);
+					pto->PushMessageWithFlag(SERIALIZE_TRANSACTION_NO_WITNESS, NetMsgType::CMPCTBLOCK, cmpctblock);
                     state.pindexBestHeaderSent = pBestIndex;
                 } 
 				else if (state.fPreferHeaders) 
