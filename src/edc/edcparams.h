@@ -62,6 +62,7 @@ public:
 	bool printpriority;
 	bool regtest;
 	bool testnet;
+	bool prematurewitness;
 	bool printtoconsole;
 	bool privdb;
 	bool proxyrandomize;
@@ -83,6 +84,7 @@ public:
 	bool usehd;
 	bool usehsm;
 	bool walletbroadcast;
+	bool walletprematurewitness;
 	bool whitelistforcerelay;
 	bool whitelistrelay;
 
@@ -126,6 +128,7 @@ public:
 	int64_t mempoolexpiry;
 	int64_t par;
 	int64_t port;
+	int64_t promiscuousmempoolflags;
 	int64_t prune;
 	int64_t rpcport;
 	int64_t rpcservertimeout;

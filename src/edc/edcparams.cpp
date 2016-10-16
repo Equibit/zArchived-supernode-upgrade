@@ -8,6 +8,7 @@
 #include "edc/wallet/edcwallet.h"
 #include "edcapp.h"
 #include "utilmoneystr.h"
+#include "policy/policy.h"
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/program_options/detail/config_file.hpp>
@@ -197,6 +198,8 @@ EDCparams::EDCparams()
 	acceptnonstdtxn     = GetBoolArg( "-eb_acceptnonstdtxn", 
 		!edcParams(network).RequireStandard() );
 	blocksonly          = GetBoolArg( "-eb_blocksonly", EDC_DEFAULT_BLOCKSONLY );
+	checkblockindex     = GetBoolArg( "-eb_checkblockindex", regtest );
+	checkmempool        = GetBoolArg( "-eb_checkmempool", regtest );
 	checkparams         = GetBoolArg( "-eb_checkparams", true );
 	checkpoints         = GetBoolArg( "-eb_checkpoints", EDC_DEFAULT_CHECKPOINTS_ENABLED );
 	datacarrier         = GetBoolArg( "-eb_datacarrier", EDC_DEFAULT_ACCEPT_DATACARRIER );
@@ -214,14 +217,13 @@ EDCparams::EDCparams()
 	logtimestamps       = GetBoolArg( "-eb_logtimestamps", EDC_DEFAULT_LOGTIMESTAMPS );
 	mempoolreplacement  = GetBoolArg( "-eb_mempoolreplacement", EDC_DEFAULT_ENABLE_REPLACEMENT );
 	nodebug             = GetBoolArg( "-eb_nodebug", false );
-	checkblockindex     = GetBoolArg( "-eb_checkblockindex", regtest );
-	checkmempool        = GetBoolArg( "-eb_checkmempool", regtest );
-	reindex             = GetBoolArg( "-eb_reindex", false );
-	reindex_chainstate  = GetBoolArg( "-eb_reindex-chainstate", false );
 	printpriority       = GetBoolArg( "-eb_printpriority", EDC_DEFAULT_PRINTPRIORITY );
 	printtoconsole      = GetBoolArg( "-eb_printtoconsole", false );
 	privdb              = GetBoolArg( "-eb_privdb", EDC_DEFAULT_WALLET_PRIVDB );
+	prematurewitness	= GetBoolArg( "-eb_prematurewitness", false );
 	proxyrandomize      = GetBoolArg( "-eb_proxyrandomize", EDC_DEFAULT_PROXYRANDOMIZE );
+	reindex             = GetBoolArg( "-eb_reindex", false );
+	reindex_chainstate  = GetBoolArg( "-eb_reindex-chainstate", false );
 	relaypriority       = GetBoolArg( "-eb_relaypriority", EDC_DEFAULT_RELAYPRIORITY );
 	rescan              = GetBoolArg( "-eb_rescan", false );
 	rest                = GetBoolArg( "-eb_rest", EDC_DEFAULT_REST_ENABLE );
@@ -238,6 +240,8 @@ EDCparams::EDCparams()
 	usehd               = GetBoolArg( "-eb_usehd", EDC_DEFAULT_USE_HD_WALLET );
 	usehsm              = GetBoolArg( "-eb_usehsm", true );
 	walletbroadcast     = GetBoolArg( "-eb_walletbroadcast", EDC_DEFAULT_WALLETBROADCAST );
+	walletprematurewitness
+						= GetBoolArg( "-eb_walletprematurewitness", false );
 	whitelistrelay      = GetBoolArg( "-eb_whitelistrelay", EDC_DEFAULT_WHITELISTRELAY );
 	whitelistforcerelay = GetBoolArg( "-eb_whitelistforcerelay", EDC_DEFAULT_WHITELISTFORCERELAY );
 	zapwallettxes       = GetBoolArg( "-eb_zapwallettxes", false );
@@ -281,6 +285,8 @@ EDCparams::EDCparams()
 	peerbloomfilters    = GetArg( "-eb_peerbloomfilters", EDC_DEFAULT_PEERBLOOMFILTERS );
 	permitbaremultisig  = GetArg( "-eb_permitbaremultisig", EDC_DEFAULT_PERMIT_BAREMULTISIG );
 	port                = GetArg( "-eb_port", edcParams(network).GetDefaultPort() );
+	promiscuousmempoolflags
+						= GetArg( "-eb_prematurewitness", STANDARD_SCRIPT_VERIFY_FLAGS );
 	prune               = GetArg( "-eb_prune", 0 );
 	rpcport             = GetArg( "-eb_rpcport", BaseParams(network).edcRPCPort() );
 	rpcservertimeout    = GetArg( "-eb_rpcservertimeout", EDC_DEFAULT_HTTP_SERVER_TIMEOUT );
@@ -387,6 +393,8 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-eb_pid=<file>", 
 		strprintf(_("Specify pid file (default: %s)"), EQUIBIT_PID_FILENAME));
 #endif
+	strUsage += HelpMessageOpt("-eb_promiscuousmempoolflags=<n>",
+		strprintf(_("Script verification options (default: %u)"), STANDARD_SCRIPT_VERIFY_FLAGS ));
     strUsage += HelpMessageOpt("-eb_prune=<n>", 
 		strprintf(_("Reduce storage requirements by pruning (deleting) old blocks. This mode is incompatible with -eb_txindex and -eb_rescan. "
             "Warning: Reverting this setting requires re-downloading the entire blockchain. "
@@ -883,153 +891,154 @@ void EDCparams::dumpToLog() const
 {
 	edcLogPrintf( ">>>>>>>>>>>>>>>>>> Equibit Options <<<<<<<<<<<<<<<<<<\n" );
 
-	edcLogPrintf( "eb_acceptnonstdtxn      %s\n", toString(acceptnonstdtxn) );
-	printStrVec( "eb_addnode             ", addnode );
-	edcLogPrintf( "eb_alertnotify          \"%s\"\n", alertnotify.c_str() );
+	edcLogPrintf( "eb_acceptnonstdtxn        %s\n", toString(acceptnonstdtxn) );
+	printStrVec( "eb_addnode               ", addnode );
+	edcLogPrintf( "eb_alertnotify            \"%s\"\n", alertnotify.c_str() );
 
-	edcLogPrintf( "eb_banscore             %lld\n", banscore );
-	edcLogPrintf( "eb_bantime              %lld\n", bantime );
-	printStrVec( "eb_bind                ", bind );
-	edcLogPrintf( "eb_blockmaxcost         %lld\n", blockmaxcost );
-	edcLogPrintf( "eb_blockmaxsize         %lld\n", blockmaxsize );
-	edcLogPrintf( "eb_blockminsize         %lld\n", blockminsize );
-	edcLogPrintf( "eb_blocknotify          \"%s\"\n", blocknotify.c_str() );
-	edcLogPrintf( "eb_blockprioritysize    %lld\n", blockprioritysize );
-	edcLogPrintf( "eb_blocksonly           %s\n", toString(blocksonly) );
-	edcLogPrintf( "eb_blockversion         %lld\n", blockversion );
-	edcLogPrintf( "eb_bytespersigop        %lld\n", bytespersigop );
+	edcLogPrintf( "eb_banscore               %lld\n", banscore );
+	edcLogPrintf( "eb_bantime                %lld\n", bantime );
+	printStrVec( "eb_bind                  ", bind );
+	edcLogPrintf( "eb_blockmaxcost           %lld\n", blockmaxcost );
+	edcLogPrintf( "eb_blockmaxsize           %lld\n", blockmaxsize );
+	edcLogPrintf( "eb_blockminsize           %lld\n", blockminsize );
+	edcLogPrintf( "eb_blocknotify            \"%s\"\n", blocknotify.c_str() );
+	edcLogPrintf( "eb_blockprioritysize      %lld\n", blockprioritysize );
+	edcLogPrintf( "eb_blocksonly             %s\n", toString(blocksonly) );
+	edcLogPrintf( "eb_blockversion           %lld\n", blockversion );
+	edcLogPrintf( "eb_bytespersigop          %lld\n", bytespersigop );
 
-	edcLogPrintf( "eb_cacert               %s\n", cacert.c_str() );
-	edcLogPrintf( "eb_cert                 %s\n", cert.c_str() );
-	edcLogPrintf( "eb_checkblockindex      %s\n", toString(checkblockindex) );
-	edcLogPrintf( "eb_checkblocks          %lld\n", checkblocks );
-	edcLogPrintf( "eb_checklevel           %lld\n", checklevel );
-	edcLogPrintf( "eb_checkmempool         %s\n", toString(checkmempool) );
-	edcLogPrintf( "eb_checkpoints          %s\n", toString(checkpoints) );
-	edcLogPrintf( "eb_conf                 \"%s\"\n", conf.c_str() );
-	printStrVec( "eb_connect             ", connect );
+	edcLogPrintf( "eb_cacert                 %s\n", cacert.c_str() );
+	edcLogPrintf( "eb_cert                   %s\n", cert.c_str() );
+	edcLogPrintf( "eb_checkblockindex        %s\n", toString(checkblockindex) );
+	edcLogPrintf( "eb_checkblocks            %lld\n", checkblocks );
+	edcLogPrintf( "eb_checklevel             %lld\n", checklevel );
+	edcLogPrintf( "eb_checkmempool           %s\n", toString(checkmempool) );
+	edcLogPrintf( "eb_checkpoints            %s\n", toString(checkpoints) );
+	edcLogPrintf( "eb_conf                   \"%s\"\n", conf.c_str() );
+	printStrVec( "eb_connect               ", connect );
 
-	edcLogPrintf( "eb_datacarrier          %s\n", toString(datacarrier) );
-	edcLogPrintf( "eb_datacarriersize      %lld\n", datacarriersize );
-	edcLogPrintf( "eb_datadir              \"%s\"\n", datadir.c_str() );
-	edcLogPrintf( "eb_dbcache              %lld\n", dbcache );
-	edcLogPrintf( "eb_dblogsize            %lld\n", dblogsize );
-	printStrVec( "eb_debug               ", debug );
-	edcLogPrintf( "eb_disablesafemode      %s\n", toString(disablesafemode) );
-	edcLogPrintf( "eb_disablewallet        %s\n", toString(disablewallet) );
-	edcLogPrintf( "eb_discover             %s\n", toString(discover) );
-	edcLogPrintf( "eb_dns                  %s\n", toString(dns) );
-	edcLogPrintf( "eb_dnsseed              %s\n", toString(dnsseed) );
-	edcLogPrintf( "eb_dropmessagestest     %lld\n", dropmessagestest );
+	edcLogPrintf( "eb_datacarrier            %s\n", toString(datacarrier) );
+	edcLogPrintf( "eb_datacarriersize        %lld\n", datacarriersize );
+	edcLogPrintf( "eb_datadir                \"%s\"\n", datadir.c_str() );
+	edcLogPrintf( "eb_dbcache                %lld\n", dbcache );
+	edcLogPrintf( "eb_dblogsize              %lld\n", dblogsize );
+	printStrVec( "eb_debug                 ", debug );
+	edcLogPrintf( "eb_disablesafemode        %s\n", toString(disablesafemode) );
+	edcLogPrintf( "eb_disablewallet          %s\n", toString(disablewallet) );
+	edcLogPrintf( "eb_discover               %s\n", toString(discover) );
+	edcLogPrintf( "eb_dns                    %s\n", toString(dns) );
+	edcLogPrintf( "eb_dnsseed                %s\n", toString(dnsseed) );
+	edcLogPrintf( "eb_dropmessagestest       %lld\n", dropmessagestest );
 
-	printStrVec( "eb_externalip          ", externalip );
+	printStrVec( "eb_externalip            ", externalip );
 
-	edcLogPrintf( "eb_fallbackfee          \"%s\"\n", fallbackfee.c_str() );
-	edcLogPrintf( "eb_feefilter            %s\n", toString(feefilter) );
-	edcLogPrintf( "eb_flushwallet          %s\n", toString(flushwallet) );
-	edcLogPrintf( "eb_forcednsseed         %s\n", toString(forcednsseed) );
-	edcLogPrintf( "eb_fuzzmessagestest     %lld\n", fuzzmessagestest );
+	edcLogPrintf( "eb_fallbackfee            \"%s\"\n", fallbackfee.c_str() );
+	edcLogPrintf( "eb_feefilter              %s\n", toString(feefilter) );
+	edcLogPrintf( "eb_flushwallet            %s\n", toString(flushwallet) );
+	edcLogPrintf( "eb_forcednsseed           %s\n", toString(forcednsseed) );
+	edcLogPrintf( "eb_fuzzmessagestest       %lld\n", fuzzmessagestest );
 
-	edcLogPrintf( "eb_hsmkeypool           %lld\n", hsmkeypool );
+	edcLogPrintf( "eb_hsmkeypool             %lld\n", hsmkeypool );
 
-	edcLogPrintf( "eb_keypool              %lld\n", keypool );
+	edcLogPrintf( "eb_keypool                %lld\n", keypool );
 
-	edcLogPrintf( "eb_limitancestorcount   %lld\n", limitancestorcount );
-	edcLogPrintf( "eb_limitancestorsize    %lld\n", limitancestorsize );
-	edcLogPrintf( "eb_limitdescendantcount %lld\n", limitdescendantcount );
-	edcLogPrintf( "eb_limitdescendantsize  %lld\n", limitdescendantsize );
-	edcLogPrintf( "eb_limitfreerelay       %lld\n", limitfreerelay );
-	edcLogPrintf( "eb_listen               %s\n", toString(listen) );
-	edcLogPrintf( "eb_listenonion          %s\n", toString(listenonion) );
-	printStrVec( "eb_loadblock           ", loadblock );
-	edcLogPrintf( "eb_logips               %s\n", toString(logips) );
-	edcLogPrintf( "eb_logtimemicros        %s\n", toString(logtimemicros) );
-	edcLogPrintf( "eb_logtimestamps        %s\n", toString(logtimestamps) );
+	edcLogPrintf( "eb_limitancestorcount     %lld\n", limitancestorcount );
+	edcLogPrintf( "eb_limitancestorsize      %lld\n", limitancestorsize );
+	edcLogPrintf( "eb_limitdescendantcount   %lld\n", limitdescendantcount );
+	edcLogPrintf( "eb_limitdescendantsize    %lld\n", limitdescendantsize );
+	edcLogPrintf( "eb_limitfreerelay         %lld\n", limitfreerelay );
+	edcLogPrintf( "eb_listen                 %s\n", toString(listen) );
+	edcLogPrintf( "eb_listenonion            %s\n", toString(listenonion) );
+	printStrVec( "eb_loadblock             ", loadblock );
+	edcLogPrintf( "eb_logips                 %s\n", toString(logips) );
+	edcLogPrintf( "eb_logtimemicros          %s\n", toString(logtimemicros) );
+	edcLogPrintf( "eb_logtimestamps          %s\n", toString(logtimestamps) );
 
-	edcLogPrintf( "eb_maxconnections       %lld\n", maxconnections );
-	edcLogPrintf( "eb_maxmempool           %lld\n", maxmempool );
-	edcLogPrintf( "eb_maxorphantx          %lld\n", maxorphantx );
-	edcLogPrintf( "eb_maxreceivebuffer     %lld\n", maxreceivebuffer );
-	edcLogPrintf( "eb_maxsendbuffer        %lld\n", maxsendbuffer );
-	edcLogPrintf( "eb_maxsigcachesize      %lld\n", maxsigcachesize );
-	edcLogPrintf( "eb_maxtimeadjustment    %lld\n", maxtimeadjustment );
-	edcLogPrintf( "eb_maxtipage            %lld\n", maxtipage );
-	edcLogPrintf( "eb_maxtxfee             %lld\n", maxtxfee );
-	edcLogPrintf( "eb_maxuploadtarget      %lld\n", maxuploadtarget );
-	edcLogPrintf( "eb_maxverdepth          %lld\n", maxverdepth );
-	edcLogPrintf( "eb_mempoolexpiry        %lld\n", mempoolexpiry );
-	edcLogPrintf( "eb_mempoolreplacement   %s\n", toString(mempoolreplacement) );
-	edcLogPrintf( "eb_minrelaytxfee        \"%s\"\n", minrelaytxfee.c_str() );
-	edcLogPrintf( "eb_mintxfee             \"%s\"\n", mintxfee.c_str() );
+	edcLogPrintf( "eb_maxconnections         %lld\n", maxconnections );
+	edcLogPrintf( "eb_maxmempool             %lld\n", maxmempool );
+	edcLogPrintf( "eb_maxorphantx            %lld\n", maxorphantx );
+	edcLogPrintf( "eb_maxreceivebuffer       %lld\n", maxreceivebuffer );
+	edcLogPrintf( "eb_maxsendbuffer          %lld\n", maxsendbuffer );
+	edcLogPrintf( "eb_maxsigcachesize        %lld\n", maxsigcachesize );
+	edcLogPrintf( "eb_maxtimeadjustment      %lld\n", maxtimeadjustment );
+	edcLogPrintf( "eb_maxtipage              %lld\n", maxtipage );
+	edcLogPrintf( "eb_maxtxfee               %lld\n", maxtxfee );
+	edcLogPrintf( "eb_maxuploadtarget        %lld\n", maxuploadtarget );
+	edcLogPrintf( "eb_maxverdepth            %lld\n", maxverdepth );
+	edcLogPrintf( "eb_mempoolexpiry          %lld\n", mempoolexpiry );
+	edcLogPrintf( "eb_mempoolreplacement     %s\n", toString(mempoolreplacement) );
+	edcLogPrintf( "eb_minrelaytxfee          \"%s\"\n", minrelaytxfee.c_str() );
+	edcLogPrintf( "eb_mintxfee               \"%s\"\n", mintxfee.c_str() );
 
-	edcLogPrintf( "eb_nodebug              %s\n", toString(nodebug) );
+	edcLogPrintf( "eb_nodebug                %s\n", toString(nodebug) );
 
-	edcLogPrintf( "eb_onion                \"%s\"\n", onion.c_str() );
-	printStrVec( "eb_onlynet             ", onlynet );
+	edcLogPrintf( "eb_onion                  \"%s\"\n", onion.c_str() );
+	printStrVec( "eb_onlynet               ", onlynet );
 
-	edcLogPrintf( "eb_par                  %lld\n", par );
-	edcLogPrintf( "eb_paytxfee             \"%s\"\n", paytxfee.c_str() );
-	edcLogPrintf( "eb_peerbloomfilters     %s\n", toString(peerbloomfilters) );
-	edcLogPrintf( "eb_permitbaremultisig   %s\n", toString(permitbaremultisig) );
-	edcLogPrintf( "eb_pid                  \"%s\"\n", pid.c_str() );
-	edcLogPrintf( "eb_port                 %lld\n", port );
-	edcLogPrintf( "eb_printpriority        %s\n", toString(printpriority) );
-	edcLogPrintf( "eb_printtoconsole       %s\n", toString(printtoconsole) );
-	edcLogPrintf( "eb_privdb               %s\n", toString(privdb) );
-	edcLogPrintf( "eb_privkey              %s\n", privkey.c_str() );
-	edcLogPrintf( "eb_proxy                \"%s\"\n", proxy.c_str() );
-	edcLogPrintf( "eb_proxyrandomize       %s\n", toString(proxyrandomize) );
-	edcLogPrintf( "eb_prune                %lld\n", prune );
+	edcLogPrintf( "eb_par                    %lld\n", par );
+	edcLogPrintf( "eb_paytxfee               \"%s\"\n", paytxfee.c_str() );
+	edcLogPrintf( "eb_peerbloomfilters       %s\n", toString(peerbloomfilters) );
+	edcLogPrintf( "eb_permitbaremultisig     %s\n", toString(permitbaremultisig) );
+	edcLogPrintf( "eb_pid                    \"%s\"\n", pid.c_str() );
+	edcLogPrintf( "eb_port                   %lld\n", port );
+	edcLogPrintf( "eb_printpriority          %s\n", toString(printpriority) );
+	edcLogPrintf( "eb_printtoconsole         %s\n", toString(printtoconsole) );
+	edcLogPrintf( "eb_privdb                 %s\n", toString(privdb) );
+	edcLogPrintf( "eb_privkey                %s\n", privkey.c_str() );
+	edcLogPrintf( "eb_proxy                  \"%s\"\n", proxy.c_str() );
+	edcLogPrintf( "eb_proxyrandomize         %s\n", toString(proxyrandomize) );
+	edcLogPrintf( "eb_prune                  %lld\n", prune );
 
-	edcLogPrintf( "eb_regtest              %s\n", toString(regtest) );
-	edcLogPrintf( "eb_reindex              %s\n", toString(reindex) );
-	edcLogPrintf( "eb_reindex-chainstate   %s\n", toString(reindex_chainstate) );
-	edcLogPrintf( "eb_relaypriority        %s\n", toString(relaypriority) );
-	edcLogPrintf( "eb_rescan               %s\n", toString(rescan) );
-	edcLogPrintf( "eb_rest                 %s\n", toString(rest) );
-	printStrVec( "eb_rpcallowip          ", rpcallowip );
-	printStrVec( "eb_rpcauth             ", rpcauth );
-	printStrVec( "eb_rpcbind             ", rpcbind );
-	edcLogPrintf( "eb_rpccookiefile        \"%s\"\n", rpccookiefile.c_str() );
-	edcLogPrintf( "eb_rpcpassword          \"%s\"\n", rpcpassword.c_str() );
-	edcLogPrintf( "eb_rpcport              %lld\n", rpcport );
-	edcLogPrintf( "eb_rpcservertimeout     %lld\n", rpcservertimeout );
-	edcLogPrintf( "eb_rpcthreads           %lld\n", rpcthreads );
-	edcLogPrintf( "eb_rpcuser              \"%s\"\n", rpcuser.c_str() );
-	edcLogPrintf( "eb_rpcworkqueue         %lld\n", rpcworkqueue );
+	edcLogPrintf( "eb_regtest                %s\n", toString(regtest) );
+	edcLogPrintf( "eb_reindex                %s\n", toString(reindex) );
+	edcLogPrintf( "eb_reindex-chainstate     %s\n", toString(reindex_chainstate) );
+	edcLogPrintf( "eb_relaypriority          %s\n", toString(relaypriority) );
+	edcLogPrintf( "eb_rescan                 %s\n", toString(rescan) );
+	edcLogPrintf( "eb_rest                   %s\n", toString(rest) );
+	printStrVec( "eb_rpcallowip            ", rpcallowip );
+	printStrVec( "eb_rpcauth               ", rpcauth );
+	printStrVec( "eb_rpcbind               ", rpcbind );
+	edcLogPrintf( "eb_rpccookiefile          \"%s\"\n", rpccookiefile.c_str() );
+	edcLogPrintf( "eb_rpcpassword            \"%s\"\n", rpcpassword.c_str() );
+	edcLogPrintf( "eb_rpcport                %lld\n", rpcport );
+	edcLogPrintf( "eb_rpcservertimeout       %lld\n", rpcservertimeout );
+	edcLogPrintf( "eb_rpcthreads             %lld\n", rpcthreads );
+	edcLogPrintf( "eb_rpcuser                \"%s\"\n", rpcuser.c_str() );
+	edcLogPrintf( "eb_rpcworkqueue           %lld\n", rpcworkqueue );
 
-	edcLogPrintf( "eb_salvagewallet        %s\n", toString( salvagewallet) );
-	printStrVec( "eb_seednode            ", seednode );
-	edcLogPrintf( "eb_sendfreetransactions %s\n", toString(sendfreetransactions) );
-	edcLogPrintf( "eb_server               %s\n", toString(server) );
-	edcLogPrintf( "eb_shrinkdebugfile      %s\n", toString( shrinkdebugfile) );
-	edcLogPrintf( "eb_spendzeroconfchange  %s\n", toString( spendzeroconfchange) );
-	edcLogPrintf( "eb_sport                %lld\n", sport );
-	edcLogPrintf( "eb_stopafterblockimport %s\n", toString( stopafterblockimport));
+	edcLogPrintf( "eb_salvagewallet          %s\n", toString( salvagewallet) );
+	printStrVec( "eb_seednode              ", seednode );
+	edcLogPrintf( "eb_sendfreetransactions   %s\n", toString(sendfreetransactions) );
+	edcLogPrintf( "eb_server                 %s\n", toString(server) );
+	edcLogPrintf( "eb_shrinkdebugfile        %s\n", toString( shrinkdebugfile) );
+	edcLogPrintf( "eb_spendzeroconfchange    %s\n", toString( spendzeroconfchange) );
+	edcLogPrintf( "eb_sport                  %lld\n", sport );
+	edcLogPrintf( "eb_stopafterblockimport   %s\n", toString( stopafterblockimport));
 
-	edcLogPrintf( "eb_testnet              %s\n", toString(testnet) );
-	edcLogPrintf( "eb_testsafemode         %s\n", toString( testsafemode) );
-	edcLogPrintf( "eb_timeout              %lld\n", timeout );
-	edcLogPrintf( "eb_torcontrol           \"%s\"\n", torcontrol.c_str() );
-	edcLogPrintf( "eb_torpassword          \"%s\"\n", torpassword.c_str() );
-	edcLogPrintf( "eb_txconfirmtarget      %lld\n", txconfirmtarget );
-	edcLogPrintf( "eb_txindex              %s\n", toString( txindex) );
+	edcLogPrintf( "eb_testnet                %s\n", toString(testnet) );
+	edcLogPrintf( "eb_testsafemode           %s\n", toString( testsafemode) );
+	edcLogPrintf( "eb_timeout                %lld\n", timeout );
+	edcLogPrintf( "eb_torcontrol             \"%s\"\n", torcontrol.c_str() );
+	edcLogPrintf( "eb_torpassword            \"%s\"\n", torpassword.c_str() );
+	edcLogPrintf( "eb_txconfirmtarget        %lld\n", txconfirmtarget );
+	edcLogPrintf( "eb_txindex                %s\n", toString( txindex) );
 
-	printStrVec( "eb_uacomment           ", uacomment );
-	edcLogPrintf( "eb_upgradewallet        %s\n", toString( upgradewallet) );
-	edcLogPrintf( "eb_upnp                 %s\n", toString( upnp) );
-	edcLogPrintf( "eb_usehd                %s\n", toString( usehd) );
-	edcLogPrintf( "eb_usehsm               %s\n", toString( usehsm) );
+	printStrVec( "eb_uacomment             ", uacomment );
+	edcLogPrintf( "eb_upgradewallet          %s\n", toString( upgradewallet) );
+	edcLogPrintf( "eb_upnp                   %s\n", toString( upnp) );
+	edcLogPrintf( "eb_usehd                  %s\n", toString( usehd) );
+	edcLogPrintf( "eb_usehsm                 %s\n", toString( usehsm) );
 
-	edcLogPrintf( "eb_wallet               \"%s\"\n", wallet.c_str() );
-	edcLogPrintf( "eb_walletbroadcast      %s\n", toString( walletbroadcast) );
-	edcLogPrintf( "eb_walletnotify         \"%s\"\n", walletnotify.c_str() );
-	printStrVec( "eb_whitebind           ", whitebind );
-	printStrVec( "eb_whitelist           ", whitelist );
-	edcLogPrintf( "eb_whitelistforcerelay  %s\n", toString( whitelistforcerelay) );
-	edcLogPrintf( "eb_whitelistrelay       %s\n", toString( whitelistrelay) );
+	edcLogPrintf( "eb_wallet                 \"%s\"\n", wallet.c_str() );
+	edcLogPrintf( "eb_walletbroadcast        %s\n", toString( walletbroadcast) );
+	edcLogPrintf( "eb_walletprematurewitness %s\n", toString( walletprematurewitness ) );
+	edcLogPrintf( "eb_walletnotify           \"%s\"\n", walletnotify.c_str() );
+	printStrVec( "eb_whitebind             ", whitebind );
+	printStrVec( "eb_whitelist             ", whitelist );
+	edcLogPrintf( "eb_whitelistforcerelay    %s\n", toString( whitelistforcerelay) );
+	edcLogPrintf( "eb_whitelistrelay         %s\n", toString( whitelistrelay) );
 
-	edcLogPrintf( "eb_zapwallettxes        %lld\n", zapwallettxes );
+	edcLogPrintf( "eb_zapwallettxes          %lld\n", zapwallettxes );
 
 	edcLogPrintf( ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n" );
 }
@@ -1116,6 +1125,8 @@ void EDCparams::checkParams() const
 	validparams.insert("-permitbaremultisig");
 	validparams.insert("-pid");
 	validparams.insert("-port");
+	validparams.insert("-prematurewitness");
+	validparams.insert("-promiscuousmempoolflags");
 	validparams.insert("-printpriority");
 	validparams.insert("-printtoconsole");
 	validparams.insert("-privdb");
@@ -1160,6 +1171,7 @@ void EDCparams::checkParams() const
 	validparams.insert("-wallet");
 	validparams.insert("-walletbroadcast");
 	validparams.insert("-walletnotify");
+	validparams.insert("-walletprematurewitness");
 	validparams.insert("-whitebind");
 	validparams.insert("-whitelist");
 	validparams.insert("-whitelistforcerelay");
@@ -1244,6 +1256,8 @@ void EDCparams::checkParams() const
 	validparams.insert("-eb_permitbaremultisig");
 	validparams.insert("-eb_pid");
 	validparams.insert("-eb_port");
+	validparams.insert("-eb_prematurewitness");
+	validparams.insert("-eb_promiscuousmempoolflags");
 	validparams.insert("-eb_printpriority");
 	validparams.insert("-eb_printtoconsole");
 	validparams.insert("-eb_privdb");
@@ -1290,6 +1304,7 @@ void EDCparams::checkParams() const
 	validparams.insert("-eb_wallet");
 	validparams.insert("-eb_walletbroadcast");
 	validparams.insert("-eb_walletnotify");
+	validparams.insert("-eb_walletprematurewitness");
 	validparams.insert("-eb_whitebind");
 	validparams.insert("-eb_whitelist");
 	validparams.insert("-eb_whitelistforcerelay");
