@@ -906,10 +906,10 @@ bool EdcAppInit(
 	            // first suggest a reindex
 	            if (!fReset) 
 				{
-	                bool fRet = edcUiInterface.ThreadSafeMessageBox(
+	                bool fRet = edcUiInterface.ThreadSafeQuestion(
+						strLoadError +".\n\n" + _("Do you want to rebuild the block database now?"),
 	                    strLoadError + 
-						".\n\n" + 
-						_("Do you want to rebuild the block database now?"),
+						".\nPlease restart with -reindex or -reindex-chainstate to recover.",
 	                    "", CEDCClientUIInterface::MSG_ERROR | CEDCClientUIInterface::BTN_ABORT);
 	                if (fRet) 
 					{

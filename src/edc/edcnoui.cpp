@@ -49,6 +49,11 @@ bool edcnoui_ThreadSafeMessageBox(
     return false;
 }
 
+bool noui_ThreadSafeQuestion(const std::string& /* ignored interactive message */, const std::string& message, const std::string& caption, unsigned int style)
+{
+    return edcnoui_ThreadSafeMessageBox(message, caption, style);
+}
+
 void edcnoui_InitMessage(const std::string& message)
 {
     edcLogPrintf("init message: %s\n", message);
@@ -59,5 +64,6 @@ void edcnoui_connect()
 {
     // Connect equibitd signal handlers
     edcUiInterface.ThreadSafeMessageBox.connect(edcnoui_ThreadSafeMessageBox);
+	edcUiInterface.ThreadSafeQuestion.connect(noui_ThreadSafeQuestion);
     edcUiInterface.InitMessage.connect(edcnoui_InitMessage);
 }
