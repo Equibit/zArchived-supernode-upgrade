@@ -799,9 +799,6 @@ bool AddOrphanTx(const CEDCTransaction& tx, NodeId peer) EXCLUSIVE_LOCKS_REQUIRE
     return true;
 }
 
-namespace
-{
-
 int64_t edcGetTransactionSigOpCost(
 	   const CEDCTransaction & tx, 
 	const CEDCCoinsViewCache & inputs, 
@@ -826,6 +823,8 @@ int64_t edcGetTransactionSigOpCost(
     return nSigOps;
 }
 
+namespace
+{
 
 int EraseOrphanTx(uint256 hash) EXCLUSIVE_LOCKS_REQUIRED(EDC_cs_main)
 {
