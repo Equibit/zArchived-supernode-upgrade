@@ -834,8 +834,8 @@ UniValue edcgetreceivedbyaddress(const UniValue& params, bool fHelp)
     if (!address.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Equibit address");
     CScript scriptPubKey = GetScriptForDestination(address.Get());
-    if (!edcIsMine(*theApp.walletMain(),scriptPubKey))
-        return (double)0.0;
+    if (!edcIsMine(*theApp.walletMain(), scriptPubKey))
+        return ValueFromAmount(0);
 
     // Minimum confirmations
     int nMinDepth = 1;
@@ -915,7 +915,7 @@ UniValue edcgetreceivedbyaccount(const UniValue& params, bool fHelp)
         }
     }
 
-    return (double)nAmount / (double)COIN;
+    return ValueFromAmount(nAmount);
 }
 
 UniValue edcgetbalance(const UniValue& params, bool fHelp)
