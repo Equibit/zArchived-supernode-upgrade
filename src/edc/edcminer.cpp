@@ -90,13 +90,8 @@ EDCBlockAssembler::EDCBlockAssembler(const CEDCChainParams& _chainparams)
     // Limit to between 1K and MAX_BLOCK_SIZE-1K for sanity:
     nBlockMaxSize = std::max((unsigned int)1000, std::min((unsigned int)(EDC_MAX_BLOCK_SERIALIZED_SIZE-1000), nBlockMaxSize));
 
-    // Minimum block size you want to create; block will be filled with free transactions
-    // until there are no more or the block reaches this size:
-    nBlockMinSize = params.blockminsize;
-    nBlockMinSize = std::min(nBlockMaxSize, nBlockMinSize);
-
     // Whether we need to account for byte usage (in addition to cost usage)
-    fNeedSizeAccounting = (nBlockMaxSize < EDC_MAX_BLOCK_SERIALIZED_SIZE-1000) || (nBlockMinSize > 0);
+    fNeedSizeAccounting = (nBlockMaxSize < EDC_MAX_BLOCK_SERIALIZED_SIZE-1000);
 }
 
 void EDCBlockAssembler::resetBlock()

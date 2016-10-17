@@ -93,7 +93,6 @@ public:
 	int64_t bantime;
 	int64_t	blockmaxsize;
 	int64_t blockmaxcost;
-	int64_t blockminsize;
 	int64_t blockprioritysize;
 	int64_t blockversion;
 	int64_t bytespersigop;

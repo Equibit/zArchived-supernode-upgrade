@@ -32,7 +32,6 @@ const unsigned int EDC_DEFAULT_ANCESTOR_SIZE_LIMIT     = 101;
 
 const unsigned int EDC_DEFAULT_BANSCORE_THRESHOLD      = 100;
 const unsigned int EDC_DEFAULT_BLOCK_MAX_SIZE          = 750000;
-const unsigned int EDC_DEFAULT_BLOCK_MIN_SIZE          = 0;
 const unsigned int EDC_DEFAULT_BLOCK_PRIORITY_SIZE     = 0;
 const bool         EDC_DEFAULT_BLOCKSONLY              = false;
 const unsigned int EDC_DEFAULT_BYTES_PER_SIGOP         = 20;
@@ -251,7 +250,6 @@ EDCparams::EDCparams()
 	bantime             = GetArg( "-eb_bantime", EDC_DEFAULT_MISBEHAVING_BANTIME );
 	blockmaxcost        = GetArg( "-eb_blockmaxcost", EDC_DEFAULT_BLOCK_MAX_COST );
 	blockmaxsize        = GetArg( "-eb_blockmaxsize", EDC_DEFAULT_BLOCK_MAX_SIZE );
-	blockminsize        = GetArg( "-eb_blockminsize", EDC_DEFAULT_BLOCK_MIN_SIZE );
 	blockprioritysize   = GetArg( "-eb_blockprioritysize", EDC_DEFAULT_BLOCK_PRIORITY_SIZE );
 	blockversion        = GetArg( "-eb_blockversion", 0 );
 	bytespersigop       = GetArg( "-eb_bytespersigop", EDC_DEFAULT_BYTES_PER_SIGOP );
@@ -588,8 +586,6 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
 
 	////////////////////////////////////////////////////////////////////////
     strUsage += HelpMessageGroup(_("Equibit Block creation options:"));
-    strUsage += HelpMessageOpt("-eb_blockminsize=<n>", 
-		strprintf(_("Set minimum block size in bytes (default: %u)"), EDC_DEFAULT_BLOCK_MIN_SIZE));
     strUsage += HelpMessageOpt("-eb_blockmaxcost=<n>", 
 		strprintf(_("Set maximum block cost in bytes (default: %d)"), EDC_DEFAULT_BLOCK_MAX_COST));
     strUsage += HelpMessageOpt("-eb_blockmaxsize=<n>", 
@@ -900,7 +896,6 @@ void EDCparams::dumpToLog() const
 	printStrVec( "eb_bind                  ", bind );
 	edcLogPrintf( "eb_blockmaxcost           %lld\n", blockmaxcost );
 	edcLogPrintf( "eb_blockmaxsize           %lld\n", blockmaxsize );
-	edcLogPrintf( "eb_blockminsize           %lld\n", blockminsize );
 	edcLogPrintf( "eb_blocknotify            \"%s\"\n", blocknotify.c_str() );
 	edcLogPrintf( "eb_blockprioritysize      %lld\n", blockprioritysize );
 	edcLogPrintf( "eb_blocksonly             %s\n", toString(blocksonly) );
@@ -1058,7 +1053,6 @@ void EDCparams::checkParams() const
 	validparams.insert("-bind");
 	validparams.insert("-blockmaxcost");
 	validparams.insert("-blockmaxsize");
-	validparams.insert("-blockminsize");
 	validparams.insert("-blocknotify");
 	validparams.insert("-blockprioritysize");
 	validparams.insert("-blocksonly");
@@ -1185,7 +1179,6 @@ void EDCparams::checkParams() const
 	validparams.insert("-eb_bind");
 	validparams.insert("-eb_blockmaxcost");
 	validparams.insert("-eb_blockmaxsize");
-	validparams.insert("-eb_blockminsize");
 	validparams.insert("-eb_blocknotify");
 	validparams.insert("-eb_blockprioritysize");
 	validparams.insert("-eb_blocksonly");
