@@ -769,10 +769,10 @@ bool EdcAppInit(
     	nTotalCache = std::min(nTotalCache, EDC_MAX_DB_CACHE << 20); 
 
 	    int64_t nBlockTreeDBCache = nTotalCache / 8;
-	    if (nBlockTreeDBCache > (1 << 21) && !params.txindex)
-	        nBlockTreeDBCache = (1 << 21); // block tree db cache shouldn't be larger than 2 MiB
+		nBlockTreeDBCache = std::min(nBlockTreeDBCache, (params.txindex ? nMaxBlockDBAndTxIndexCache : nMaxBlockDBCache) << 20);
 	    nTotalCache -= nBlockTreeDBCache;
 	    int64_t nCoinDBCache = std::min(nTotalCache / 2, (nTotalCache / 4) + (1 << 23)); // use 25%-50% of the remainder for disk cache
+		nCoinDBCache = std::min(nCoinDBCache, nMaxCoinsDBCache << 20); // cap total coins db cache
 	    nTotalCache -= nCoinDBCache;
 	    theApp.coinCacheUsage( nTotalCache ); // the rest goes to in-memory cache
 	    edcLogPrintf("Cache configuration:\n");
