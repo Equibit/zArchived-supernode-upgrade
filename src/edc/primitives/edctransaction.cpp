@@ -77,7 +77,7 @@ unsigned int CEDCTransaction::CalculateModifiedSize(unsigned int nTxSize) const
     // Providing any more cleanup incentive than making additional inputs free would
     // risk encouraging people to create junk outputs to redeem later.
     if (nTxSize == 0)
-		nTxSize = (edcGetTransactionCost(*this) + WITNESS_SCALE_FACTOR - 1) / WITNESS_SCALE_FACTOR;
+		nTxSize = (edcGetTransactionWeight(*this) + WITNESS_SCALE_FACTOR - 1) / WITNESS_SCALE_FACTOR;
 	for (std::vector<CEDCTxIn>::const_iterator it(vin.begin()); it != vin.end(); ++it)
     {
         unsigned int offset = 41U + std::min(110U, (unsigned int)it->scriptSig.size());
@@ -143,7 +143,7 @@ std::string CEDCTransaction::ToString() const
     return str;
 }
 
-int64_t edcGetTransactionCost(const CEDCTransaction& tx)
+int64_t edcGetTransactionWeight(const CEDCTransaction& tx)
 {
     return ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * (WITNESS_SCALE_FACTOR -1) + ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
 }

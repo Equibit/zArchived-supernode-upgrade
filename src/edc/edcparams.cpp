@@ -248,8 +248,8 @@ EDCparams::EDCparams()
 	// Int parameters
 	banscore            = GetArg( "-eb_banscore", EDC_DEFAULT_BANSCORE_THRESHOLD );
 	bantime             = GetArg( "-eb_bantime", EDC_DEFAULT_MISBEHAVING_BANTIME );
-	blockmaxcost        = GetArg( "-eb_blockmaxcost", EDC_DEFAULT_BLOCK_MAX_COST );
 	blockmaxsize        = GetArg( "-eb_blockmaxsize", EDC_DEFAULT_BLOCK_MAX_SIZE );
+	blockmaxweight      = GetArg( "-eb_blockmaxweight", EDC_DEFAULT_BLOCK_MAX_WEIGHT );
 	blockprioritysize   = GetArg( "-eb_blockprioritysize", EDC_DEFAULT_BLOCK_PRIORITY_SIZE );
 	blockversion        = GetArg( "-eb_blockversion", 0 );
 	bytespersigop       = GetArg( "-eb_bytespersigop", EDC_DEFAULT_BYTES_PER_SIGOP );
@@ -586,8 +586,8 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
 
 	////////////////////////////////////////////////////////////////////////
     strUsage += HelpMessageGroup(_("Equibit Block creation options:"));
-    strUsage += HelpMessageOpt("-eb_blockmaxcost=<n>", 
-		strprintf(_("Set maximum BIP141 block cost in bytes (default: %d)"), EDC_DEFAULT_BLOCK_MAX_COST));
+    strUsage += HelpMessageOpt("-eb_blockmaxweight=<n>", 
+		strprintf(_("Set maximum BIP141 block weight in bytes (default: %d)"), EDC_DEFAULT_BLOCK_MAX_WEIGHT));
     strUsage += HelpMessageOpt("-eb_blockmaxsize=<n>", 
 		strprintf(_("Set maximum block size in bytes (default: %d)"), EDC_DEFAULT_BLOCK_MAX_SIZE));
     strUsage += HelpMessageOpt("-eb_blockprioritysize=<n>", 
@@ -894,7 +894,7 @@ void EDCparams::dumpToLog() const
 	edcLogPrintf( "eb_banscore               %lld\n", banscore );
 	edcLogPrintf( "eb_bantime                %lld\n", bantime );
 	printStrVec( "eb_bind                  ", bind );
-	edcLogPrintf( "eb_blockmaxcost           %lld\n", blockmaxcost );
+	edcLogPrintf( "eb_blockmaxweight         %lld\n", blockmaxweight );
 	edcLogPrintf( "eb_blockmaxsize           %lld\n", blockmaxsize );
 	edcLogPrintf( "eb_blocknotify            \"%s\"\n", blocknotify.c_str() );
 	edcLogPrintf( "eb_blockprioritysize      %lld\n", blockprioritysize );
@@ -1051,7 +1051,7 @@ void EDCparams::checkParams() const
 	validparams.insert("-banscore");
 	validparams.insert("-bantime");
 	validparams.insert("-bind");
-	validparams.insert("-blockmaxcost");
+	validparams.insert("-blockmaxweight");
 	validparams.insert("-blockmaxsize");
 	validparams.insert("-blocknotify");
 	validparams.insert("-blockprioritysize");
@@ -1177,7 +1177,7 @@ void EDCparams::checkParams() const
 	validparams.insert("-eb_banscore");
 	validparams.insert("-eb_bantime");
 	validparams.insert("-eb_bind");
-	validparams.insert("-eb_blockmaxcost");
+	validparams.insert("-eb_blockmaxweight");
 	validparams.insert("-eb_blockmaxsize");
 	validparams.insert("-eb_blocknotify");
 	validparams.insert("-eb_blockprioritysize");

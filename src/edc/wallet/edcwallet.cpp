@@ -2681,7 +2681,7 @@ bool CEDCWallet::CreateTransaction(
                 *static_cast<CEDCTransaction*>(&wtxNew) = CEDCTransaction(txNew);
 
                 // Limit size
-				if (edcGetTransactionCost(txNew) >= EDC_MAX_STANDARD_TX_COST)
+				if (edcGetTransactionWeight(txNew) >= EDC_MAX_STANDARD_TX_WEIGHT)
                 {
                     strFailReason = _("Transaction too large");
                     return false;

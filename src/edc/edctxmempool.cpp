@@ -38,7 +38,7 @@ CEDCTxMemPoolEntry::CEDCTxMemPoolEntry(
     hadNoDependencies(poolHasNoInputsOf), inChainInputValue(_inChainInputValue),
     spendsCoinbase(_spendsCoinbase), sigOpCost(_sigOpsCost), lockPoints(lp)
 {
-    nTxCost = edcGetTransactionCost(_tx);
+    nTxWeight = edcGetTransactionWeight(_tx);
     nModSize = _tx.CalculateModifiedSize(GetTxSize());
     nUsageSize = RecursiveDynamicUsage(*tx) + memusage::DynamicUsage(tx);
 
@@ -58,7 +58,7 @@ CEDCTxMemPoolEntry::CEDCTxMemPoolEntry(
 
 size_t CEDCTxMemPoolEntry::GetTxSize() const
 {
-    return edcGetVirtualTransactionSize(nTxCost);
+    return edcGetVirtualTransactionSize(nTxWeight);
 }
 
 CEDCTxMemPoolEntry::CEDCTxMemPoolEntry(const CEDCTxMemPoolEntry& other)

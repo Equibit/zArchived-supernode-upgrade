@@ -11,7 +11,7 @@
 const int          EDC_DEFAULT_CONNECT_TIMEOUT		= 5000;
 const unsigned int EDC_DEFAULT_HSMKEYPOOL_SIZE		= 50;
 const unsigned int EDC_DEFAULT_KEYPOOL_SIZE			= 100;
-const unsigned int EDC_DEFAULT_BLOCK_MAX_COST       = 3000000;
+const unsigned int EDC_DEFAULT_BLOCK_MAX_WEIGHT     = 3000000;
 const unsigned int EDC_DEFAULT_MIN_RELAY_TX_FEE		= 1000;
 const CAmount      EDC_DEFAULT_TRANSACTION_MAXFEE	= 0.1 * COIN;
 const unsigned int EDC_DEFAULT_WALLET_DBLOGSIZE		= 100;
@@ -92,7 +92,7 @@ public:
 	int64_t banscore;
 	int64_t bantime;
 	int64_t	blockmaxsize;
-	int64_t blockmaxcost;
+	int64_t blockmaxweight;
 	int64_t blockprioritysize;
 	int64_t blockversion;
 	int64_t bytespersigop;

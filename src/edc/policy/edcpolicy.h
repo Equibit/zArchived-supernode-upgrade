@@ -13,7 +13,8 @@
 
 #include <string>
 
-const unsigned int EDC_MAX_STANDARD_TX_COST = 400000;
+/** The maximum weight for transactions we're willing to relay/mine */
+const unsigned int EDC_MAX_STANDARD_TX_WEIGHT = 400000;
 
 class CEDCCoinsViewCache;
 
@@ -29,7 +30,7 @@ bool IsStandardTx(const CEDCTransaction& tx, std::string& reason);
      */
 bool AreInputsStandard(const CEDCTransaction& tx, const CEDCCoinsViewCache& mapInputs);
 
-/** Compute the virtual transaction size (cost reinterpreted as bytes). */
-int64_t edcGetVirtualTransactionSize(int64_t nCost);
+/** Compute the virtual transaction size (weight reinterpreted as bytes). */
+int64_t edcGetVirtualTransactionSize(int64_t nWeight);
 int64_t edcGetVirtualTransactionSize(const CEDCTransaction & tx);
 

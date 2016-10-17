@@ -71,8 +71,8 @@ bool IsStandardTx(const CEDCTransaction& tx, std::string& reason)
     // almost as much to process as they cost the sender in fees, because
     // computing signature hashes is O(ninputs*txsize). Limiting transactions
     // to MAX_STANDARD_TX_SIZE mitigates CPU exhaustion attacks.
-    unsigned int sz = edcGetTransactionCost(tx);
-    if (sz >= MAX_STANDARD_TX_COST)
+    unsigned int sz = edcGetTransactionWeight(tx);
+    if (sz >= EDC_MAX_STANDARD_TX_WEIGHT)
 	{
         reason = "tx-size";
         return false;
@@ -170,12 +170,12 @@ bool AreInputsStandard(const CEDCTransaction& tx, const CEDCCoinsViewCache& mapI
     return true;
 }
 
-int64_t edcGetVirtualTransactionSize(int64_t nCost)
+int64_t edcGetVirtualTransactionSize(int64_t nWeight)
 {
-    return (nCost + WITNESS_SCALE_FACTOR - 1) / WITNESS_SCALE_FACTOR;
+    return (nWeight + WITNESS_SCALE_FACTOR - 1) / WITNESS_SCALE_FACTOR;
 }
 
 int64_t edcGetVirtualTransactionSize(const CEDCTransaction& tx)
 {
-    return edcGetVirtualTransactionSize(edcGetTransactionCost(tx));
+    return edcGetVirtualTransactionSize(edcGetTransactionWeight(tx));
 }

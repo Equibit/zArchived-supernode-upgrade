@@ -62,35 +62,35 @@ EDCBlockAssembler::EDCBlockAssembler(const CEDCChainParams& _chainparams)
 	EDCparams & params = EDCparams::singleton();
 
     // Block resource limits
-    // If neither -eb_blockmaxsize or -eb_blockmaxcost is given, limit to 
+    // If neither -eb_blockmaxsize or -eb_blockmaxweigt is given, limit to 
 	// EDC_DEFAULT_BLOCK_MAX_*
     // If only one is given, only restrict the specified resource.
     // If both are given, restrict both.
-    nBlockMaxCost = EDC_DEFAULT_BLOCK_MAX_COST;
+    nBlockMaxWeight = EDC_DEFAULT_BLOCK_MAX_WEIGHT;
     nBlockMaxSize = DEFAULT_BLOCK_MAX_SIZE;
-	bool fCostSet = false;
-	if(mapArgs.count("-eb_blockmaxcost"))
+	bool fWeightSet = false;
+	if(mapArgs.count("-eb_blockmaxweight"))
 	{
-		nBlockMaxCost = params.blockmaxcost;
+		nBlockMaxWeight = params.blockmaxweight;
 		nBlockMaxSize = EDC_MAX_BLOCK_SERIALIZED_SIZE;
-		fCostSet = true;
+		fWeightSet = true;
 	}
     if (mapArgs.count("-eb_blockmaxsize")) 
 	{
         nBlockMaxSize = params.blockmaxsize;
-        if (!fCostSet) 
+        if (!fWeightSet) 
 		{
-            nBlockMaxCost = nBlockMaxSize * WITNESS_SCALE_FACTOR;
+            nBlockMaxWeight = nBlockMaxSize * WITNESS_SCALE_FACTOR;
         }
     }
 
-    // Limit cost to between 4K and MAX_BLOCK_COST-4K for sanity:
-    nBlockMaxCost = std::max((unsigned int)4000, std::min((unsigned int)(MAX_BLOCK_COST-4000), nBlockMaxCost));
+    // Limit weight to between 4K and MAX_BLOCK_WEIGHT-4K for sanity:
+    nBlockMaxWeight = std::max((unsigned int)4000, std::min((unsigned int)(EDC_MAX_BLOCK_WEIGHT-4000), nBlockMaxWeight));
 
     // Limit to between 1K and MAX_BLOCK_SIZE-1K for sanity:
     nBlockMaxSize = std::max((unsigned int)1000, std::min((unsigned int)(EDC_MAX_BLOCK_SERIALIZED_SIZE-1000), nBlockMaxSize));
 
-    // Whether we need to account for byte usage (in addition to cost usage)
+    // Whether we need to account for byte usage (in addition to weight usage)
     fNeedSizeAccounting = (nBlockMaxSize < EDC_MAX_BLOCK_SERIALIZED_SIZE-1000);
 }
 
@@ -100,7 +100,7 @@ void EDCBlockAssembler::resetBlock()
 
     // Reserve space for coinbase tx
     nBlockSize = 1000;
-    nBlockCost = 4000;
+    nBlockWeight = 4000;
     nBlockSigOpsCost = 400;
 	fIncludeWitness = false;
 
@@ -186,7 +186,7 @@ CEDCBlockTemplate* EDCBlockAssembler::CreateNewBlock(const CScript& scriptPubKey
 
 	theApp.lastBlockTx( nBlockTx );
 	theApp.lastBlockSize( nBlockSize );
-	theApp.lastBlockCost( nBlockCost );
+	theApp.lastBlockWeight( nBlockWeight );
 
     edcLogPrintf("CreateNewBlock(): total size %u txs: %u fees: %ld sigops %d\n", nBlockSize, nBlockTx, nFees, nBlockSigOpsCost);
 
@@ -250,8 +250,8 @@ void EDCBlockAssembler::onlyUnconfirmed(CEDCTxMemPool::setEntries& testSet)
 
 bool EDCBlockAssembler::TestPackage(uint64_t packageSize, int64_t packageSigOpsCost)
 {
-    // TODO: switch to cost-based accounting for packages instead of vsize-based accounting.
-    if (nBlockCost + WITNESS_SCALE_FACTOR * packageSize >= nBlockMaxCost)
+    // TODO: switch to weight-based accounting for packages instead of vsize-based accounting.
+    if (nBlockWeight + WITNESS_SCALE_FACTOR * packageSize >= nBlockMaxWeight)
         return false;
 	if (nBlockSigOpsCost + packageSigOpsCost >= MAX_BLOCK_SIGOPS_COST)
         return false;
@@ -287,20 +287,20 @@ bool EDCBlockAssembler::TestPackageTransactions(const CEDCTxMemPool::setEntries&
 
 bool EDCBlockAssembler::TestForBlock(CEDCTxMemPool::txiter iter)
 {
-	if (nBlockCost + iter->GetTxCost() >= nBlockMaxCost)
+	if (nBlockWeight + iter->GetTxWeight() >= nBlockMaxWeight)
 	{
         // If the block is so close to full that no more txs will fit
         // or if we've tried more than 50 times to fill remaining space
         // then flag that the block is finished
-		if (nBlockCost >  nBlockMaxCost - 400 || lastFewTxs > 50)
+		if (nBlockWeight >  nBlockMaxWeight - 400 || lastFewTxs > 50)
 		{
              blockFinished = true;
              return false;
         }
 
-		// Once we're within 4000 cost of a full block, only look at 50 more txs
+		// Once we're within 4000 weight of a full block, only look at 50 more txs
         // to try to fill the remaining space.
-		if (nBlockCost > nBlockMaxCost - 4000)
+		if (nBlockWeight > nBlockMaxWeight - 4000)
 		{
             lastFewTxs++;
         }
@@ -571,7 +571,7 @@ void EDCBlockAssembler::AddToBlock(CEDCTxMemPool::txiter iter)
         nBlockSize += ::GetSerializeSize(iter->GetTx(), SER_NETWORK, PROTOCOL_VERSION);
     }
 
-    nBlockCost += iter->GetTxCost();
+    nBlockWeight += iter->GetTxWeight();
     ++nBlockTx;
 	nBlockSigOpsCost += iter->GetSigOpCost();
     nFees += iter->GetFee();
