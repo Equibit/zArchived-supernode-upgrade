@@ -795,7 +795,7 @@ bool AddOrphanTx(const CEDCTransaction& tx, NodeId peer) EXCLUSIVE_LOCKS_REQUIRE
 
 	auto ret = edcMapOrphanTransactions.emplace(hash, COrphanTx{tx, peer, GetTime() + EDC_ORPHAN_TX_EXPIRE_TIME});
     assert(ret.second);
-    BOOST_FOREACH(const CEDCTxIn & txin, tx.vin) 
+    for(const auto & txin : tx.vin) 
 	{
         edcMapOrphanTransactionsByPrev[txin.prevout].insert(ret.first);
     }
@@ -837,7 +837,7 @@ int EraseOrphanTx(uint256 hash) EXCLUSIVE_LOCKS_REQUIRED(EDC_cs_main)
     map<uint256, COrphanTx>::iterator it = edcMapOrphanTransactions.find(hash);
     if (it == edcMapOrphanTransactions.end())
         return 0;
-    BOOST_FOREACH(const CEDCTxIn& txin, it->second.tx.vin)
+    for( const auto & txin : it->second.tx.vin)
     {
 		auto itPrev = edcMapOrphanTransactionsByPrev.find(txin.prevout);
 
@@ -923,7 +923,7 @@ bool IsFinalTx(
         return true;
     if ((int64_t)tx.nLockTime < ((int64_t)tx.nLockTime < LOCKTIME_THRESHOLD ? (int64_t)nBlockHeight : nBlockTime))
         return true;
-    BOOST_FOREACH(const CEDCTxIn& txin, tx.vin) 
+    for( const auto & txin : tx.vin) 
 	{
         if (!(txin.nSequence == CEDCTxIn::SEQUENCE_FINAL))
             return false;
@@ -1178,11 +1178,11 @@ bool CheckSequenceLocks(
 unsigned int edcGetLegacySigOpCount(const CEDCTransaction & tx)
 {
     unsigned int nSigOps = 0;
-    BOOST_FOREACH(const CEDCTxIn& txin, tx.vin)
+    for( const auto & txin : tx.vin)
     {
         nSigOps += txin.scriptSig.GetSigOpCount(false);
     }
-    BOOST_FOREACH(const CEDCTxOut& txout, tx.vout)
+    for( const auto & txout : tx.vout)
     {
         nSigOps += txout.scriptPubKey.GetSigOpCount(false);
     }
@@ -1219,7 +1219,7 @@ bool CheckTransaction(const CEDCTransaction& tx, CValidationState &state)
 
     // Check for negative or overflow output values
     CAmount nValueOut = 0;
-    BOOST_FOREACH(const CEDCTxOut& txout, tx.vout)
+    for( const auto & txout : tx.vout)
     {
         if (txout.nValue < 0)
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-vout-negative");
@@ -1232,7 +1232,7 @@ bool CheckTransaction(const CEDCTransaction& tx, CValidationState &state)
 
     // Check for duplicate inputs
     set<COutPoint> vInOutPoints;
-    BOOST_FOREACH(const CEDCTxIn& txin, tx.vin)
+    for( const auto & txin : tx.vin)
     {
         if (vInOutPoints.count(txin.prevout))
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputs-duplicate");
@@ -1246,7 +1246,7 @@ bool CheckTransaction(const CEDCTransaction& tx, CValidationState &state)
     }
     else
     {
-        BOOST_FOREACH(const CEDCTxIn& txin, tx.vin)
+        for( const auto & txin : tx.vin)
             if (txin.prevout.IsNull())
                 return state.DoS(10, false, REJECT_INVALID, "bad-txns-prevout-null");
     }
@@ -1333,7 +1333,7 @@ bool AcceptToMemoryPoolWorker(
     set<uint256> setConflicts;
     {
     LOCK(pool.cs); // protect pool.mapNextTx
-    BOOST_FOREACH(const CEDCTxIn &txin, tx.vin)
+    for( const auto & txin : tx.vin)
     {
         auto itConflicting = pool.mapNextTx.find(txin.prevout);
         if (itConflicting != pool.mapNextTx.end())
@@ -1356,7 +1356,7 @@ bool AcceptToMemoryPoolWorker(
                 bool fReplacementOptOut = true;
                 if (params.mempoolreplacement)
                 {
-                    BOOST_FOREACH(const CEDCTxIn &txin, ptxConflicting->vin)
+                    for( const auto & txin : ptxConflicting->vin)
                     {
                         if (txin.nSequence < std::numeric_limits<unsigned int>::max()-1)
                         {
@@ -1398,7 +1398,7 @@ bool AcceptToMemoryPoolWorker(
         // do all inputs exist?
         // Note that this does not check for the presence of actual outputs (see the next check for that),
         // and only helps with filling in pfMissingInputs (to determine missing vs spent).
-        BOOST_FOREACH(const CEDCTxIn txin, tx.vin) 
+        for( const auto txin tx.vin) 
 		{
             if (!theApp.coinsTip()->HaveCoinsInCache(txin.prevout.hash))
                 vHashTxnToUncache.push_back(txin.prevout.hash);
@@ -1450,7 +1450,7 @@ bool AcceptToMemoryPoolWorker(
         // Keep track of transactions that spend a coinbase, which we re-scan
         // during reorgs to ensure EDC_COINBASE_MATURITY is still met.
         bool fSpendsCoinbase = false;
-        BOOST_FOREACH(const CEDCTxIn &txin, tx.vin) 
+        for( const auto & txin : tx.vin) 
 		{
             const CEDCCoins *coins = view.AccessCoins(txin.prevout.hash);
             if (coins->IsCoinBase()) 
@@ -1603,7 +1603,7 @@ bool AcceptToMemoryPoolWorker(
                                   oldFeeRate.ToString()));
                 }
 
-                BOOST_FOREACH(const CEDCTxIn &txin, mi->GetTx().vin)
+                for( const auto & txin : mi->GetTx().vin)
                 {
                     setConflictsParents.insert(txin.prevout.hash);
                 }
@@ -1881,7 +1881,7 @@ bool GetTransaction(
         CEDCBlock block;
         if (ReadBlockFromDisk(block, pindexSlow, consensusParams)) 
 		{
-            BOOST_FOREACH(const CEDCTransaction &tx, block.vtx) 
+            for( const auto & tx : block.vtx) 
 			{
                 if (tx.GetHash() == hash) 
 				{
@@ -2182,7 +2182,7 @@ void UpdateCoins(
     if (!tx.IsCoinBase()) 
 	{
         txundo.vprevout.reserve(tx.vin.size());
-        BOOST_FOREACH(const CEDCTxIn &txin, tx.vin) 
+        for( const auto & txin : tx.vin) 
 		{
             CEDCCoinsModifier coins = inputs.ModifyCoins(txin.prevout.hash);
             unsigned nPos = txin.prevout.n;
@@ -2735,7 +2735,7 @@ bool edcConnectBlock(
 
     if (fEnforceBIP30) 
 	{
-        BOOST_FOREACH(const CEDCTransaction& tx, block.vtx) 
+        for( const auto & tx : block.vtx) 
 		{
             const CEDCCoins* coins = view.AccessCoins(tx.GetHash());
             if (coins && !coins->IsPruned())
@@ -3200,7 +3200,7 @@ bool DisconnectTip(
 	{
         // Resurrect mempool transactions from the disconnected block.
         std::vector<uint256> vHashUpdate;
-        BOOST_FOREACH(const CEDCTransaction &tx, block.vtx) 
+        for( const auto & tx : block.vtx) 
 		{
             // ignore validation errors in resurrected transactions
             list<CEDCTransaction> removed;
@@ -3229,7 +3229,7 @@ bool DisconnectTip(
 
     // Let wallets know transactions went from 1-confirmed to
     // 0-confirmed or conflicted:
-    BOOST_FOREACH(const CEDCTransaction &tx, block.vtx) 
+    for( const auto & tx : block.vtx) 
 	{
         SyncWithWallets(tx, pindexDelete->pprev, NULL);
     }
@@ -3301,12 +3301,12 @@ bool ConnectTip(
     UpdateTip(pindexNew, chainparams);
     // Tell wallet about transactions that went from theApp.mempool()
     // to conflicted:
-    BOOST_FOREACH(const CEDCTransaction &tx, txConflicted) 
+    for( const auto & tx : txConflicted) 
 	{
         SyncWithWallets(tx, pindexNew, NULL);
     }
     // ... and about transactions that got confirmed:
-    BOOST_FOREACH(const CEDCTransaction &tx, pblock->vtx) 
+    for( const auto & tx : pblock->vtx) 
 	{
         SyncWithWallets(tx, pindexNew, pblock);
     }
@@ -3943,13 +3943,13 @@ const Consensus::Params & consensusParams,
             return state.DoS(100, false, REJECT_INVALID, "bad-cb-multiple", false, "more than one coinbase");
 
     // Check transactions
-    BOOST_FOREACH(const CEDCTransaction& tx, block.vtx)
+    for( const auto & tx : block.vtx)
         if (!CheckTransaction(tx, state))
             return state.Invalid(false, state.GetRejectCode(), state.GetRejectReason(),
                                  strprintf("Transaction check failed (tx hash %s) %s", tx.GetHash().ToString(), state.GetDebugMessage()));
 
     unsigned int nSigOps = 0;
-    BOOST_FOREACH(const CEDCTransaction& tx, block.vtx)
+    for( const auto & tx : block.vtx)
     {
         nSigOps += edcGetLegacySigOpCount(tx);
     }
@@ -4036,7 +4036,7 @@ bool edcContextualCheckBlock(
                               : block.GetBlockTime();
 
     // Check that all transactions are finalized
-    BOOST_FOREACH(const CEDCTransaction& tx, block.vtx) 
+    for( const auto & tx : block.vtx) 
 	{
         if (!IsFinalTx(tx, nHeight, nLockTimeCutoff)) 
 		{
@@ -6325,7 +6325,7 @@ bool ProcessMessage(
         else if (fMissingInputs)
         {
             bool fRejectedParents = false; // It may be the case that the orphans parents have all been rejected
-            BOOST_FOREACH(const CEDCTxIn & txin, tx.vin) 
+            for( const auto & txin : tx.vin) 
 			{
                 if (recentRejects->contains(txin.prevout.hash)) 
 				{
@@ -6336,7 +6336,7 @@ bool ProcessMessage(
 
             if (!fRejectedParents) 
 			{
-                BOOST_FOREACH(const CEDCTxIn & txin, tx.vin) 
+                for( const auto & txin : tx.vin) 
 				{
                     CInv inv(MSG_TX, txin.prevout.hash);
                     pfrom->AddInventoryKnown(inv);
