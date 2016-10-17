@@ -1223,7 +1223,7 @@ bool CEDCWalletDB::Recover(
                 fReadOK = ReadKeyValue(&dummyWallet, ssKey, ssValue,
                                         wss, strType, strErr);
             }
-            if (!IsKeyType(strType))
+            if (!IsKeyType(strType) && strType != "hdchain")
                 continue;
             if (!fReadOK)
             {

@@ -4050,7 +4050,7 @@ bool CEDCWallet::InitLoadWallet()
     if (fFirstRun)
     {
         // Create new keyUser and set as default key
-        if (params.usehd) 
+        if (params.usehd && walletInstance->hdChain.masterKeyID.IsNull()) 
 		{
             // generate a new master key
             CKey key;
