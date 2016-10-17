@@ -6642,7 +6642,7 @@ bool ProcessMessage(
         // - Once a headers message is received that is valid and does connect,
         //   nUnconnectingHeaders gets reset back to 0.
         if (theApp.mapBlockIndex().find(headers[0].hashPrevBlock) == theApp.mapBlockIndex().end() &&
-			nCount < EDC_MAX_BLOCKS_TO_ANNOUNCE) 
+			nCount < MAX_BLOCKS_TO_ANNOUNCE) 
 		{
             nodestate->nUnconnectingHeaders++;
             pfrom->PushMessage(NetMsgType::GETHEADERS, chainActive.GetLocator(pindexBestHeader), 

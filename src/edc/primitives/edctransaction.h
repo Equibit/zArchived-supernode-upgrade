@@ -255,6 +255,8 @@ inline void edcSerializeTransaction(
 	int nType, 
 	int nVersion) 
 {
+    const bool fAllowWitness = !(nVersion & SERIALIZE_TRANSACTION_NO_WITNESS);
+
     READWRITE(*const_cast<int32_t*>(&tx.nVersion));
     unsigned char flags = 0;
 
@@ -266,7 +268,7 @@ inline void edcSerializeTransaction(
         /* Try to read the vin. In case the dummy is there, this will be read as an empty vector. */
         READWRITE(*const_cast<std::vector<CEDCTxIn>*>(&tx.vin));
 
-        if (tx.vin.size() == 0 && !(nVersion & SERIALIZE_TRANSACTION_NO_WITNESS)) 
+        if (tx.vin.size() == 0 && fAllowWitness) 
 		{
             /* We read a dummy or an empty vin. */
             READWRITE(flags);
@@ -281,7 +283,7 @@ inline void edcSerializeTransaction(
             /* We read a non-empty vin. Assume a normal vout follows. */
             READWRITE(*const_cast<std::vector<CEDCTxOut>*>(&tx.vout));
         }
-        if ((flags & 1) && !(nVersion & SERIALIZE_TRANSACTION_NO_WITNESS)) 
+        if ((flags & 1) && fAllowWitness) 
 		{
             /* The witness flag is present, and we support witnesses. */
             flags ^= 1;
@@ -298,7 +300,7 @@ inline void edcSerializeTransaction(
 	{
         // Consistency check
         assert(tx.wit.vtxinwit.size() <= tx.vin.size());
-        if (!(nVersion & SERIALIZE_TRANSACTION_NO_WITNESS)) 
+        if (fAllowWitness) 
 		{
             /* Check whether witnesses need to be serialized. */
             if (!tx.wit.IsNull()) 
