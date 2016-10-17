@@ -209,7 +209,7 @@ CEDCBlockTemplate* EDCBlockAssembler::CreateNewBlock(const CScript& scriptPubKey
     UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
     pblock->nBits          = GetNextWorkRequired(pindexPrev, pblock, chainparams.GetConsensus());
     pblock->nNonce         = 0;
-	pblocktemplate->vTxSigOpsCost[0] = edcGetLegacySigOpCount(pblock->vtx[0]);
+	pblocktemplate->vTxSigOpsCost[0] = WITNESS_SCALE_FACTOR * edcGetLegacySigOpCount(pblock->vtx[0]);
 
     CValidationState state;
     if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
