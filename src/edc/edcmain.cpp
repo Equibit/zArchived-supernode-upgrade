@@ -6436,8 +6436,8 @@ bool ProcessMessage(
                 std::vector<CInv> vInv(1);
                 vInv[0] = CInv(MSG_BLOCK, cmpctblock.header.GetHash());
                 pfrom->PushMessage(NetMsgType::GETDATA, vInv);
-                return true;
             }
+            return true;
         }
 
         // If we're not close to tip yet, give up and let parallel block fetch work its magic
