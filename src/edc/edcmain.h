@@ -324,4 +324,3 @@ FILE* edcOpenBlockFile(const CDiskBlockPos &pos, bool fReadOnly = false );
 bool edcCheckDiskSpace(uint64_t nAdditionalBytes = 0);
 
 bool edcCheckBlock(const CEDCBlock& block, CValidationState& state, const Consensus::Params & consensusParams, bool fCheckPOW = true, bool fCheckMerkleRoot = true);
-

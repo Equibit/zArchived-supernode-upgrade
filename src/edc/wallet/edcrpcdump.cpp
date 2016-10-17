@@ -669,6 +669,23 @@ UniValue edcdumpwallet(const UniValue& params, bool fHelp)
     file << strprintf("#   mined on %s\n", EncodeDumpTime(theApp.chainActive().Tip()->GetBlockTime()));
     file << "\n";
 
+    // add the base58check encoded extended master if the wallet uses HD 
+    CKeyID masterKeyID = theApp.walletMain()->GetHDChain().masterKeyID;
+    if (!masterKeyID.IsNull())
+    {
+        CKey key;
+        if (theApp.walletMain()->GetKey(masterKeyID, key))
+        {
+            CExtKey masterKey;
+            masterKey.SetMaster(key.begin(), key.size());
+
+            CBitcoinExtKey b58extkey;
+            b58extkey.SetKey(masterKey);
+
+            file << "# extended private masterkey: " << b58extkey.ToString() << "\n\n";
+        }
+    }
+
     for (std::vector<std::pair<int64_t, CKeyID> >::const_iterator it = vKeyBirth.begin(); it != vKeyBirth.end(); it++)
 	{
         const CKeyID &keyid = it->second;
@@ -677,18 +694,29 @@ UniValue edcdumpwallet(const UniValue& params, bool fHelp)
         CKey key;
         if (theApp.walletMain()->GetKey(keyid, key)) 
 		{
+			file << strprintf("%s %s ", CBitcoinSecret(key).ToString(), strTime);
             if (theApp.walletMain()->mapAddressBook.count(keyid)) 
 			{
-                file << strprintf("%s %s label=%s # addr=%s\n", CEDCBitcoinSecret(key).ToString(), strTime, EncodeDumpString(theApp.walletMain()->mapAddressBook[keyid].name), strAddr);
+				file << strprintf("label=%s", 
+					EncodeDumpString(theApp.walletMain()->mapAddressBook[keyid].name));
+            } else if (keyid == masterKeyID) 
+			{
+                file << "hdmaster=1";
             } 
 			else if (setKeyPool.count(keyid)) 
 			{
-                file << strprintf("%s %s reserve=1 # addr=%s\n", CEDCBitcoinSecret(key).ToString(), strTime, strAddr);
+                file << "reserve=1";
+            } else if (theApp.walletMain()->mapKeyMetadata[keyid].hdKeypath == "m") 
+			{
+                file << "inactivehdmaster=1";
             } 
 			else 
 			{
-                file << strprintf("%s %s change=1 # addr=%s\n", CEDCBitcoinSecret(key).ToString(), strTime, strAddr);
-            }
+				file << "change=1";
+			}
+            file << strprintf(" # addr=%s%s\n", strAddr, 
+				(theApp.walletMain()->mapKeyMetadata[keyid].hdKeypath.size() > 0 ? 
+				" hdkeypath=" + theApp.walletMain()->mapKeyMetadata[keyid].hdKeypath : ""));
         }
     }
 

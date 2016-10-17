@@ -3977,11 +3977,11 @@ bool CheckIndexAgainstCheckpoint(
 }
 
 bool edcContextualCheckBlockHeader(
-	 const CBlockHeader & block, 
-	   CValidationState & state, 
+        const CBlockHeader & block, 
+          CValidationState & state, 
 const Consensus::Params & consensusParams,
-	  const CBlockIndex * pindexPrev,
-				  int64_t nAdjustedTime)
+         const CBlockIndex * pindexPrev,
+                                 int64_t nAdjustedTime)
 {
 	const int nHeight = pindexPrev == NULL ? 0 : pindexPrev->nHeight + 1;
 
@@ -4010,14 +4010,14 @@ const Consensus::Params & consensusParams,
 int GetWitnessCommitmentIndex(const CEDCBlock& block);
 
 bool edcContextualCheckBlock(
-	 const CEDCBlock & block, 
-	CValidationState & state, 
-   const CBlockIndex * pindexPrev)
+			const CEDCBlock & block, 
+		   CValidationState & state, 
+	const Consensus::Params & consensusParams, 
+		  const CBlockIndex * pindexPrev)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
     const int nHeight = pindexPrev == NULL ? 0 : pindexPrev->nHeight + 1;
-    const Consensus::Params& consensusParams = edcParams().GetConsensus();
 
     // Start enforcing BIP113 (Median Time Past) using versionbits logic.
     int nLockTimeFlags = 0;
@@ -4215,8 +4215,8 @@ bool AcceptBlock(
     }
 	if (fNewBlock) *fNewBlock = true;
 
-    if ((!edcCheckBlock(block, state, chainparams.GetConsensus(), edcGetAdjustedTime() )) || 
-	!edcContextualCheckBlock(block, state, pindex->pprev)) 
+    if (!edcCheckBlock(block, state, chainparams.GetConsensus(), edcGetAdjustedTime() ) || 
+		!edcContextualCheckBlock(block, state, chainparams.GetConsensus(), pindex->pprev)) 
 	{
         if (state.IsInvalid() && !state.CorruptionPossible()) 
 		{
@@ -4404,7 +4404,7 @@ bool TestBlockValidity(
         return edcError("%s: Consensus::ContextualCheckBlockHeader: %s", __func__, FormatStateMessage(state));
     if (!edcCheckBlock(block, state, chainparams.GetConsensus(), fCheckPOW, fCheckMerkleRoot))
         return edcError("%s: Consensus::CheckBlock: %s", __func__, FormatStateMessage(state));
-    if (!edcContextualCheckBlock(block, state, pindexPrev))
+	if (!edcContextualCheckBlock(block, state, chainparams.GetConsensus(), pindexPrev))
         return edcError("%s: Consensus::ContextualCheckBlock: %s", __func__, FormatStateMessage(state));
     if (!edcConnectBlock(block, state, &indexDummy, viewNew, chainparams, true))
         return false;
