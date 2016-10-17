@@ -132,6 +132,9 @@ CPubKey CEDCWallet::GenerateNewKey()
             // example: 1 | BIP32_HARDENED_KEY_LIMIT == 0x80000001 == 2147483649
             externalChainChildKey.Derive(childKey, hdChain.nExternalChainCounter | EDC_BIP32_HARDENED_KEY_LIMIT);
 
+            metadata.hdKeypath     = "m/0'/0'/"+std::to_string(hdChain.nExternalChainCounter)+"'";
+            metadata.hdMasterKeyID = hdChain.masterKeyID;
+
             // increment childkey index
             hdChain.nExternalChainCounter++;
         } while(HaveKey(childKey.key.GetPubKey().GetID()));
