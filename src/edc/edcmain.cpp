@@ -1398,7 +1398,7 @@ bool AcceptToMemoryPoolWorker(
         // do all inputs exist?
         // Note that this does not check for the presence of actual outputs (see the next check for that),
         // and only helps with filling in pfMissingInputs (to determine missing vs spent).
-        for( const auto txin tx.vin) 
+        for( const CEDCTxIn txin : tx.vin) 
 		{
             if (!theApp.coinsTip()->HaveCoinsInCache(txin.prevout.hash))
                 vHashTxnToUncache.push_back(txin.prevout.hash);
@@ -3987,7 +3987,7 @@ bool edcContextualCheckBlockHeader(
 	 const CBlockHeader & block, 
 	   CValidationState & state, 
 const Consensus::Params & consensusParams,
-		    CBlockIndex * const pindexPrev,
+	  const CBlockIndex * pindexPrev,
 				  int64_t nAdjustedTime)
 {
     // Check proof of work
@@ -4016,7 +4016,7 @@ int GetWitnessCommitmentIndex(const CEDCBlock& block);
 bool edcContextualCheckBlock(
 	 const CEDCBlock & block, 
 	CValidationState & state, 
-		 CBlockIndex * const pindexPrev)
+   const CBlockIndex * pindexPrev)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
