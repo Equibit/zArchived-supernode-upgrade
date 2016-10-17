@@ -6624,13 +6624,6 @@ bool ProcessMessage(
             return true;
         }
 
-        // If we already know the last header in the message, then it contains
-        // no new information for us.  In this case, we do not request
-        // more headers later.  This prevents multiple chains of redundant
-        // getheader requests from running in parallel if triggered by incoming
-        // blocks while the node is still in initial headers sync.
-        const bool hasNewHeaders = (theApp.mapBlockIndex().count(headers.back().GetHash()) == 0);
-
         CBlockIndex *pindexLast = NULL;
         BOOST_FOREACH(const CBlockHeader& header, headers) 
 		{
@@ -6656,7 +6649,7 @@ bool ProcessMessage(
         assert(pindexLast);
         UpdateBlockAvailability(pfrom->GetId(), pindexLast->GetBlockHash());
 
-		if (nCount == MAX_HEADERS_RESULTS && hasNewHeaders)
+		if (nCount == MAX_HEADERS_RESULTS)
 		{
             // Headers message had its maximum size; the peer may have more headers.
             // TODO: optimize: if pindexLast is an ancestor of theApp.chainActive(). Tip 
