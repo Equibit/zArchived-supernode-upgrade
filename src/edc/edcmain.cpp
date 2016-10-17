@@ -1469,8 +1469,7 @@ bool AcceptToMemoryPoolWorker(
         // itself can contain sigops MAX_STANDARD_TX_SIGOPS is less than
         // EDC_MAX_BLOCK_SIGOPS; we still consider this an invalid rather than
         // merely non-standard transaction.
-		if ((nSigOpsCost > MAX_STANDARD_TX_SIGOPS_COST) || 
-		(params.bytespersigop && nSigOpsCost > nSize * WITNESS_SCALE_FACTOR / params.bytespersigop))
+		if (nSigOpsCost > MAX_STANDARD_TX_SIGOPS_COST)
             return state.DoS(0, false, REJECT_NONSTANDARD, "bad-txns-too-many-sigops", false,
                 strprintf("%d", nSigOpsCost));
 

@@ -58,7 +58,7 @@ CEDCTxMemPoolEntry::CEDCTxMemPoolEntry(
 
 size_t CEDCTxMemPoolEntry::GetTxSize() const
 {
-    return edcGetVirtualTransactionSize(nTxWeight);
+    return edcGetVirtualTransactionSize(nTxWeight, sigOpCost);
 }
 
 CEDCTxMemPoolEntry::CEDCTxMemPoolEntry(const CEDCTxMemPoolEntry& other)

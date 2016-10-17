@@ -31,6 +31,6 @@ bool IsStandardTx(const CEDCTransaction& tx, std::string& reason);
 bool AreInputsStandard(const CEDCTransaction& tx, const CEDCCoinsViewCache& mapInputs);
 
 /** Compute the virtual transaction size (weight reinterpreted as bytes). */
-int64_t edcGetVirtualTransactionSize(int64_t nWeight);
-int64_t edcGetVirtualTransactionSize(const CEDCTransaction & tx);
+int64_t edcGetVirtualTransactionSize(int64_t nWeight, int64_t nSigOpCost);
+int64_t edcGetVirtualTransactionSize(const CEDCTransaction & tx, int64_t nSigOpCost = 0);
 

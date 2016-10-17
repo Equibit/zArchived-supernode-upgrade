@@ -571,7 +571,7 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
         strUsage += HelpMessageOpt("-eb_acceptnonstdtxn", 
 			strprintf("Relay and mine \"non-standard\" transactions (%sdefault: %u)", "testnet/regtest only; ", !edcParams(CBaseChainParams::TESTNET).RequireStandard()));
     strUsage += HelpMessageOpt("-eb_bytespersigop", 
-		strprintf(_("Minimum bytes per sigop in transactions we relay and mine (default: %u)"), EDC_DEFAULT_BYTES_PER_SIGOP));
+		strprintf(_("Equivalent bytes per sigop in transactions we relay and mining (default: %u)"), EDC_DEFAULT_BYTES_PER_SIGOP));
     strUsage += HelpMessageOpt("-eb_cacert=<CA certificate file>", _("Name of the CA certificate file"));
     strUsage += HelpMessageOpt("-eb_cert=<certificate file>", _("Name of the certificate file"));
     strUsage += HelpMessageOpt("-eb_datacarrier", 

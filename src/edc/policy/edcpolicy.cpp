@@ -170,12 +170,14 @@ bool AreInputsStandard(const CEDCTransaction& tx, const CEDCCoinsViewCache& mapI
     return true;
 }
 
-int64_t edcGetVirtualTransactionSize(int64_t nWeight)
+int64_t edcGetVirtualTransactionSize(int64_t nWeight, int64_t nSigOpCost)
 {
-    return (nWeight + WITNESS_SCALE_FACTOR - 1) / WITNESS_SCALE_FACTOR;
+	EDCparams & params = EDCparams::singleton();
+
+	return (std::max(nWeight, nSigOpCost * params.bytespersigop) + WITNESS_SCALE_FACTOR - 1) / WITNESS_SCALE_FACTOR;
 }
 
-int64_t edcGetVirtualTransactionSize(const CEDCTransaction& tx)
+int64_t edcGetVirtualTransactionSize(const CEDCTransaction& tx, int64_t nSigOpCost)
 {
-    return edcGetVirtualTransactionSize(edcGetTransactionWeight(tx));
+    return edcGetVirtualTransactionSize(edcGetTransactionWeight(tx), nSigOpCost);
 }
