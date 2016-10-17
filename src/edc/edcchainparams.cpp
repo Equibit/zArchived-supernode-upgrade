@@ -93,20 +93,6 @@ public:
         //
         consensus.nSubsidyHalvingInterval = 210000;
 
-        // This parameter controls script verification processing. See BIP65 and
-        // BIP66. 
-        // TODO: Not applicable to EDC?
-        consensus.nMajorityEnforceBlockUpgrade = 750;
-
-        // Controls rejection of out-of-date blocks
-        // TODO: Not applicable to EDC?
-        consensus.nMajorityRejectBlockOutdated = 950;
-
-        // This parameter is used in conjunction with 
-        // nMajorityEnforceBlockUpgrade. See IsSuperMajority.
-        // TODO: Not applicable to EDC?
-        consensus.nMajorityWindow = 1000;
-
         // The next two parameters support BIP34 processing. See BIP34 in 
         // ConnectBlock for further details. 
         // TODO: These parameters will likely need to be removed from the EDC 
@@ -114,6 +100,8 @@ public:
         //
         consensus.BIP34Height = 227931;
         consensus.BIP34Hash = uint256S("0x000000000000024b89b42a942fe0d9fea3bb44ab7bd1b19115dd6a759c0808b8");
+        consensus.BIP65Height = 388381; // 000000000000000004c2b624ed5d7756c508d90fd0da2c7c679febfa6c4735f0
+        consensus.BIP66Height = 363725; // 00000000000000000379eaa19dce8c9b722d46ae6a57c2f1a988119488b50931
 
         // Minimum proof-of-work value
         consensus.powLimit = uint256S("00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
@@ -241,20 +229,6 @@ public:
         //
         consensus.nSubsidyHalvingInterval = 210000;
 
-        // This parameter controls script verification processing. See BIP65 and
-        // BIP66. 
-        // TODO: Not applicable to EDC?
-        consensus.nMajorityEnforceBlockUpgrade = 51;
-
-        // Controls rejection of out-of-date blocks
-        // TODO: Not applicable to EDC?
-        consensus.nMajorityRejectBlockOutdated = 75;
-
-        // This parameter is used in conjunction with 
-        // nMajorityEnforceBlockUpgrade. See IsSuperMajority.
-        // TODO: Not applicable to EDC?
-        consensus.nMajorityWindow = 100;
-
         // The next two parameters support BIP34 processing. See BIP34 in 
         // ConnectBlock for further details. 
         // TODO: These parameters will likely need to be removed from the EDC 
@@ -262,6 +236,8 @@ public:
         //
         consensus.BIP34Height = 21111;
         consensus.BIP34Hash = uint256S("0x0000000023b3a96d3484e5abb3755c413e7d41500f8e2a5c3f0dd01299cd8ef8");
+        consensus.BIP65Height = 581885; // 00000000007f6655f22f98e72ed80d8b06dc761d5da09df0fa1dc4be4f861eb6
+        consensus.BIP66Height = 330776; // 000000002104c8c45e99a8853285a3b592602a3ccde2b832481da85e9e4ba182
 
         // Minimum proof-of-work value
         consensus.powLimit = uint256S("00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
@@ -406,27 +382,16 @@ public:
         //
         consensus.nSubsidyHalvingInterval = 150;
 
-        // This parameter controls script verification processing. See BIP65 and
-        // BIP66. 
-        // TODO: Not applicable to EDC?
-        consensus.nMajorityEnforceBlockUpgrade = 750;
-
-        // Controls rejection of out-of-date blocks
-        // TODO: Not applicable to EDC?
-        consensus.nMajorityRejectBlockOutdated = 950;
-
-        // This parameter is used in conjunction with 
-        // nMajorityEnforceBlockUpgrade. See IsSuperMajority.
-        // TODO: Not applicable to EDC?
-        consensus.nMajorityWindow = 1000;
-
         // The next two parameters support BIP34 processing. See BIP34 in 
         // ConnectBlock for further details. 
         // TODO: These parameters will likely need to be removed from the EDC 
         // implementation since the BIP34Hash will not match.
         //
         consensus.BIP34Height = -1; // BIP34 has not necessarily activated on regtest
+        consensus.BIP34Height = 100000000; // BIP34 has not activated on regtest (far in the future so block v1 are not rejected in tests)
         consensus.BIP34Hash = uint256();
+        consensus.BIP65Height = 1351; // BIP65 activated on regtest (Used in rpc activation tests)
+        consensus.BIP66Height = 1251; // BIP66 activated on regtest (Used in rpc activation tests)
 
         // Minimum proof-of-work value
         consensus.powLimit = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
