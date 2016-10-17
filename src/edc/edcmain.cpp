@@ -1284,12 +1284,6 @@ bool AcceptToMemoryPoolWorker(
     if (tx.IsCoinBase())
         return state.DoS(100, false, REJECT_INVALID, "coinbase");
 
-    // Rather not work on nonstandard transactions (unless -eb_testnet/-eb_regtest)
-    string reason;
-	EDCparams & params = EDCparams::singleton();
-    if (!params.acceptnonstdtxn && !IsStandardTx(tx, reason))
-        return state.DoS(0, false, REJECT_NONSTANDARD, reason);
-
     // Don't relay version 2 transactions until CSV is active, and we can be
     // sure that such transactions will be mined (unless we're on
     // -eb_testnet/-eb_regtest).
@@ -1311,6 +1305,11 @@ bool AcceptToMemoryPoolWorker(
 	{
         return state.DoS(0, false, REJECT_NONSTANDARD, "no-witness-yet", true);
     }
+
+    // Rather not work on nonstandard transactions (unless -testnet/-regtest)
+    string reason;
+    if (params.acceptnonstdtxn && !IsStandardTx(tx, reason))
+        return state.DoS(0, false, REJECT_NONSTANDARD, reason);
 
     // Only accept nLockTime-using transactions that can be mined in the next
     // block; we don't want our theApp.mempool() filled up with transactions that can't
