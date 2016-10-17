@@ -263,15 +263,19 @@ bool EDCBlockAssembler::TestPackage(uint64_t packageSize, int64_t packageSigOpsC
     return true;
 }
 
-// Block size and sigops have already been tested.  Check that all transactions
-// are final.
-bool EDCBlockAssembler::TestPackageFinalityAndSerializedSize(
-	const CEDCTxMemPool::setEntries& package)
+// Perform transaction-level checks before adding to block:
+// - transaction finality (locktime)
+// - premature witness (in case segwit transactions are added to mempool before
+//   segwit activation)
+// - serialized size (in case -blockmaxsize is in use)
+bool EDCBlockAssembler::TestPackageTransactions(const CEDCTxMemPool::setEntries& package)
 {
 	uint64_t nPotentialBlockSize = nBlockSize; // only used with fNeedSizeAccounting
     BOOST_FOREACH (const CEDCTxMemPool::txiter it, package) 
 	{
         if (!IsFinalTx(it->GetTx(), nHeight, nLockTimeCutoff))
+            return false;
+        if (!fIncludeWitness && !it->GetTx().wit.IsNull())
             return false;
         if (fNeedSizeAccounting) 
 		{
@@ -535,7 +539,7 @@ void EDCBlockAssembler::addPackageTxs()
         ancestors.insert(iter);
 
         // Test if all tx's are Final
-		if (!TestPackageFinalityAndSerializedSize(ancestors))
+		if (!TestPackageTransactions(ancestors))
 		{
             if (fUsingModified) 
 			{
