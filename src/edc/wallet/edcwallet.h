@@ -399,7 +399,7 @@ private:
 
     void SyncMetaData(std::pair<TxSpends::iterator, TxSpends::iterator>);
 
-    /* the hd chain data model (external chain counters) */
+    /* the HD chain data model (external chain counters) */
     CHDChain hdChain;
 
     std::map< std::pair<std::string, uint256 >, CUserMessage *> messageMap;
@@ -861,10 +861,10 @@ public:
 
 	bool BackupWallet(const std::string& strDest);
 
-    /* Set the hd chain model (chain child index counters) */
+    /* Set the HD chain model (chain child index counters) */
     bool SetHDChain(const CHDChain& chain, bool memonly);
 
-    /* Set the current hd master key (will reset the chain child index counters) */
+    /* Set the current HD master key (will reset the chain child index counters) */
     bool SetHDMasterKey(const CKey& key);
 	const CHDChain& GetHDChain() { return hdChain; }
 };
