@@ -587,7 +587,7 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
 	////////////////////////////////////////////////////////////////////////
     strUsage += HelpMessageGroup(_("Equibit Block creation options:"));
     strUsage += HelpMessageOpt("-eb_blockmaxcost=<n>", 
-		strprintf(_("Set maximum block cost in bytes (default: %d)"), EDC_DEFAULT_BLOCK_MAX_COST));
+		strprintf(_("Set maximum BIP141 block cost in bytes (default: %d)"), EDC_DEFAULT_BLOCK_MAX_COST));
     strUsage += HelpMessageOpt("-eb_blockmaxsize=<n>", 
 		strprintf(_("Set maximum block size in bytes (default: %d)"), EDC_DEFAULT_BLOCK_MAX_SIZE));
     strUsage += HelpMessageOpt("-eb_blockprioritysize=<n>", 
