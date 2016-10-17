@@ -34,7 +34,7 @@
      *   DUP CHECKSIG DROP ... repeated 100 times... OP_1
      */
 
-bool edcIsStandard(const CScript& scriptPubKey, txnouttype& whichType)
+bool edcIsStandard(const CScript& scriptPubKey, txnouttype& whichType, const bool witnessEnabled )
 {
     std::vector<std::vector<unsigned char> > vSolutions;
     if (!Solver(scriptPubKey, whichType, vSolutions))
@@ -55,11 +55,14 @@ bool edcIsStandard(const CScript& scriptPubKey, txnouttype& whichType)
 	else if (whichType == TX_NULL_DATA &&
     (!params.datacarrier || scriptPubKey.size() > params.datacarriersize ))
           return false;
+	else if (!witnessEnabled && 
+	(whichType == TX_WITNESS_V0_KEYHASH || whichType == TX_WITNESS_V0_SCRIPTHASH))
+		return false;
 
     return whichType != TX_NONSTANDARD;
 }
 
-bool IsStandardTx(const CEDCTransaction& tx, std::string& reason)
+bool IsStandardTx(const CEDCTransaction& tx, std::string& reason, const bool witnessEnabled)
 {
     if (tx.nVersion > CEDCTransaction::MAX_STANDARD_VERSION || tx.nVersion < 1) 
 	{
@@ -103,7 +106,7 @@ bool IsStandardTx(const CEDCTransaction& tx, std::string& reason)
     txnouttype whichType;
     BOOST_FOREACH(const CEDCTxOut& txout, tx.vout) 
 	{
-        if (!::edcIsStandard(txout.scriptPubKey, whichType)) 
+        if (!::edcIsStandard(txout.scriptPubKey, whichType, witnessEnabled )) 
 		{
             reason = "scriptpubkey";
             return false;

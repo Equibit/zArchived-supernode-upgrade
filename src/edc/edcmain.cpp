@@ -1308,15 +1308,16 @@ bool AcceptToMemoryPoolWorker(
 
     // Reject transactions with witness before segregated witness activates (override 
 	// with -eb_prematurewitness)
-    if (!params.prematurewitness && !tx.wit.IsNull() && 
-		!IsWitnessEnabled(theApp.chainActive().Tip(), edcParams().GetConsensus()))
+    bool witnessEnabled = IsWitnessEnabled(theApp.chainActive().Tip(), edcParams().GetConsensus());
+    if (!params.prematurewitness && !tx.wit.IsNull() && !witnessEnabled)
+
 	{
         return state.DoS(0, false, REJECT_NONSTANDARD, "no-witness-yet", true);
     }
 
     // Rather not work on nonstandard transactions (unless -testnet/-regtest)
     string reason;
-    if (params.acceptnonstdtxn && !IsStandardTx(tx, reason))
+    if (params.acceptnonstdtxn && !IsStandardTx(tx, reason, witnessEnabled))
         return state.DoS(0, false, REJECT_NONSTANDARD, reason);
 
     // Only accept nLockTime-using transactions that can be mined in the next

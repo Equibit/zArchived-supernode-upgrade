@@ -22,7 +22,7 @@ class CEDCCoinsViewCache;
      * Check for standard transaction types
      * @return True if all outputs (scriptPubKeys) use only standard transaction forms
      */
-bool IsStandardTx(const CEDCTransaction& tx, std::string& reason);
+bool IsStandardTx(const CEDCTransaction& tx, std::string& reason, const bool witnessEnabled =false);
     /**
      * Check for standard transaction types
      * @param[in] mapInputs    Map of previous transactions that have outputs we're spending
