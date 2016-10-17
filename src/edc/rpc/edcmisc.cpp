@@ -202,6 +202,8 @@ UniValue edcvalidateaddress(const UniValue& params, bool fHelp)
             "  \"pubkey\" : \"publickeyhex\",    (string) The hex value of the raw public key\n"
             "  \"iscompressed\" : true|false,  (boolean) If the address is compressed\n"
             "  \"account\" : \"account\"         (string) DEPRECATED. The account associated with the address, \"\" is the default account\n"
+            "  \"hdkeypath\" : \"keypath\"       (string, optional) The HD keypath if the key is HD and available\n"
+            "  \"hdmasterkeyid\" : \"<hash160>\" (string, optional) The Hash160 of the HD master pubkey\n"
             "}\n"
             "\nExamples:\n"
             + HelpExampleCli("eb_validateaddress", "\"1PSSGeFHDnKNxiEyFrD1wcEaHr9hrQDDWc\"")
@@ -233,9 +235,21 @@ UniValue edcvalidateaddress(const UniValue& params, bool fHelp)
         ret.push_back(Pair("ismine", (mine & ISMINE_SPENDABLE) ? true : false));
         ret.push_back(Pair("iswatchonly", (mine & ISMINE_WATCH_ONLY) ? true: false));
         UniValue detail = boost::apply_visitor(DescribeAddressVisitor(), dest);
+
         ret.pushKVs(detail);
         if (theApp.walletMain() && theApp.walletMain()->mapAddressBook.count(dest))
             ret.push_back(Pair("account", theApp.walletMain()->mapAddressBook[dest].name));
+
+        CKeyID keyID;
+        if (theApp.walletMain() && address.GetKeyID(keyID) && 
+			theApp.walletMain()->mapKeyMetadata.count(keyID) && 
+			!theApp.walletMain()->mapKeyMetadata[keyID].hdKeypath.empty())
+        {
+            ret.push_back(Pair("hdkeypath", 
+				theApp.walletMain()->mapKeyMetadata[keyID].hdKeypath));
+            ret.push_back(Pair("hdmasterkeyid", 
+				theApp.walletMain()->mapKeyMetadata[keyID].hdMasterKeyID.GetHex()));
+        }
 #endif
     }
     return ret;

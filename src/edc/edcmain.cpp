@@ -1272,6 +1272,8 @@ bool AcceptToMemoryPoolWorker(
 			const CAmount & nAbsurdFee,
      std::vector<uint256> & vHashTxnToUncache)
 {
+	EDCparams & params = EDCparams::singleton();
+
     const uint256 hash = tx.GetHash();
     AssertLockHeld(EDC_cs_main);
     if (pfMissingInputs)
