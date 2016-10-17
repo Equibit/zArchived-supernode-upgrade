@@ -6122,7 +6122,6 @@ bool ProcessMessage(
         BlockMap::iterator it = theApp.mapBlockIndex().find(req.blockhash);
         if (it == theApp.mapBlockIndex().end() || !(it->second->nStatus & BLOCK_HAVE_DATA)) 
 		{
-            edcMisbehaving(pfrom->GetId(), 100);
             edcLogPrintf("Peer %d sent us a getblocktxn for a block we don't have", pfrom->id);
             return true;
         }
