@@ -1328,6 +1328,9 @@ bool CEDCWallet::SetHDMasterKey(const CKey& key)
 {
     LOCK(cs_wallet);
 
+    // ensure this wallet.dat can only be opened by clients supporting HD
+    SetMinVersion(FEATURE_HD);
+
     // store the key as normal "key"/"ckey" object
     // in the database
     // key metadata is not required
@@ -4057,9 +4060,6 @@ bool CEDCWallet::InitLoadWallet()
             key.MakeNewKey(true);
             if (!walletInstance->SetHDMasterKey(key))
                 throw std::runtime_error("CWallet::GenerateNewKey(): Storing master key failed");
-
-            // ensure this wallet.dat can only be opened by clients supporting HD
-            walletInstance->SetMinVersion(FEATURE_HD);
         }
 
         CPubKey newDefaultKey;
