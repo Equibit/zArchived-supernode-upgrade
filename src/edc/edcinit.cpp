@@ -19,8 +19,10 @@
 #include "edchttprpc.h"
 #include "edctorcontrol.h"
 #include "consensus/validation.h"
+#include <boost/algorithm/string/classification.hpp>
 #include <boost/interprocess/sync/file_lock.hpp>
 #include <boost/algorithm/string/replace.hpp>
+#include <boost/algorithm/string/split.hpp>
 #ifdef USE_HSM
 #include "Thales/interface.h"
 #endif
@@ -479,7 +481,7 @@ bool EdcAppInit(
             	return edcInitError("BIP9 parameters may only be overridden on regtest.");
         	}
 
-	        const vector<string> & deployments = params.bip9params;
+	        const std::vector<std::string> & deployments = params.bip9params;
 
         	for (auto i : deployments) 
 			{
