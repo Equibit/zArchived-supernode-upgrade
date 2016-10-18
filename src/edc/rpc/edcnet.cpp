@@ -526,7 +526,7 @@ UniValue edcsetban(const UniValue& params, bool fHelp)
                             "\nExamples:\n"
                             + HelpExampleCli("eb_setban", "\"192.168.0.6\" \"add\" 86400")
                             + HelpExampleCli("eb_setban", "\"192.168.0.0/24\" \"add\"")
-                            + HelpExampleRpc("eb_setban", "\"192.168.0.6\", \"add\" 86400")
+                            + HelpExampleRpc("eb_setban", "\"192.168.0.6\", \"add\", 86400")
                             );
 
     CSubNet subNet;
