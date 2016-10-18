@@ -592,8 +592,6 @@ bool EdcAppInit(
     	edcLogPrintf("Using at most %i connections (%i file descriptors "
 			"available)\n", theApp.maxConnections(), nFD);
 
-    	std::ostringstream strErrors;
-
     	edcLogPrintf("Using %u threads for script verification\n", theApp.scriptCheckThreads() );
     	if ( theApp.scriptCheckThreads() ) 
 		{
@@ -1110,9 +1108,6 @@ bool EdcAppInit(
         }
 
     	// ************************************************* Step 11: start node
-
-    	if (!strErrors.str().empty())
-        	return edcInitError(strErrors.str());
 
     	//// debug print
     	edcLogPrintf("mapBlockIndex.size() = %u\n",
