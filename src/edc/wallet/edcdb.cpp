@@ -306,7 +306,7 @@ CEDCDB::CEDCDB(
                 pdb = NULL;
                 --theApp.bitdb().mapFileUseCount[strFile];
                 strFile = "";
-                throw runtime_error(strprintf("CEDCDB: Error %d, can't open database %s", ret, strFile));
+                throw runtime_error(strprintf("CEDCDB: Error %d, can't open database %s", ret, strFilename));
             }
 
             if (fCreate && !Exists(string("version"))) 
