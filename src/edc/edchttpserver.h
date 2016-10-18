@@ -39,7 +39,7 @@ void edcInterruptHTTPServer();
 void edcStopHTTPServer();
 
 /** Handler for requests to a certain HTTP path */
-typedef std::function<void(EDCHTTPRequest* req, const std::string &)> EDCHTTPRequestHandler;
+typedef std::function<bool(EDCHTTPRequest* req, const std::string &)> EDCHTTPRequestHandler;
 
 /** Register handler for prefix.
  * If multiple handlers match a prefix, the first-registered one will
