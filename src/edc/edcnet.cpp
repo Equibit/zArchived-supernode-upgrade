@@ -1454,8 +1454,12 @@ void ThreadMapPort()
             {
                 if(externalIPAddress[0])
                 {
-                    edcLogPrintf("UPnP: ExternalIPAddress = %s\n", externalIPAddress);
-                    edcAddLocal(CNetAddr(externalIPAddress), LOCAL_UPNP);
+                    CNetAddr resolved;
+                    if(LookupHost(externalIPAddress, resolved, false)) 
+					{
+                        edcLogPrintf("UPnP: ExternalIPAddress = %s\n", resolved.ToString().c_str());
+                        edcAddLocal(resolved, LOCAL_UPNP);
+                    }
                 }
                 else
                     edcLogPrintf("UPnP: GetExternalIPAddress failed.\n");
@@ -1944,7 +1948,9 @@ void edcThreadOpenConnections()
             if (!done) 
 			{
                 edcLogPrintf("Adding fixed seed nodes as DNS doesn't seem to be available.\n");
-                theApp.addrman().Add(convertSeed6(edcParams().FixedSeeds()), CNetAddr("127.0.0.1"));
+                CNetAddr local;
+                LookupHost("127.0.0.1", local, false);
+                theApp.addrman().Add(convertSeed6(edcParams().FixedSeeds()), local);
                 done = true;
             }
         }
