@@ -2412,6 +2412,8 @@ void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
         edcDumpBanlist();
     }
 
+	edcUiInterface.InitMessage(_("Starting network threads..."));
+
     edcfAddressesInitialized = true;
 
     if (semOutbound == NULL) 
