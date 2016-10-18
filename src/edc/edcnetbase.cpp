@@ -533,8 +533,8 @@ bool edcConnectSocketByName(
 
     SplitHostPort(std::string(pszDest), port, strDest);
 
-    proxyType nameProxy;
-    edcGetNameProxy(nameProxy);
+    proxyType proxy;
+    edcGetNameProxy(proxy);
 
     std::vector<CService> addrResolved;
     if (Lookup(strDest.c_str(), addrResolved, port, params.dns && 
@@ -553,5 +553,5 @@ bool edcConnectSocketByName(
 
     if (!edcHaveNameProxy())
         return false;
-    return ConnectThroughProxy(nameProxy, strDest, port, hSocketRet, nTimeout, outProxyConnectionFailed);
+    return ConnectThroughProxy(proxy, strDest, port, hSocketRet, nTimeout, outProxyConnectionFailed);
 }
