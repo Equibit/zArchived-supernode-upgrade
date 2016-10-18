@@ -106,6 +106,7 @@ BITCOIN_CORE_H = \
   miner.h \
   net.h \
   netbase.h \
+  netaddress.h \
   noui.h \
   policy/fees.h \
   policy/policy.h \
@@ -399,6 +400,7 @@ libbitcoin_common_a_SOURCES = \
   core_write.cpp \
   key.cpp \
   keystore.cpp \
+  netaddress.cpp \
   netbase.cpp \
   protocol.cpp \
   scheduler.cpp \

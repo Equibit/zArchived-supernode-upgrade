@@ -49,8 +49,6 @@ proxyType proxyInfo[NET_MAX];
 proxyType nameProxy;
 CCriticalSection cs_proxyInfos;
 
-const unsigned char pchIPv4[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff };
-
 // Need ample time for negotiation for very slow proxies such as Tor (milliseconds)
 const int SOCKS5_RECV_TIMEOUT = 20 * 1000;
 
