@@ -494,7 +494,7 @@ bool EdcAppInit(
 
     	if (!params.bip9params.empty()) 
 		{
-        	// Allow overriding bip9 parameters for testing
+        	// Allow overriding BIP9 parameters for testing
         	if (!edcParams().MineBlocksOnDemand()) 
 			{
             	return edcInitError("BIP9 parameters may only be overridden on regtest.");
