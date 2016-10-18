@@ -22,6 +22,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <signal.h>
+#include <future>
 
 #include <event2/event.h>
 #include <event2/http.h>
@@ -338,13 +339,14 @@ void http_reject_request_cb(struct evhttp_request * req, void*)
 }
 
 /** Event dispatcher thread */
-void ThreadHTTP(struct event_base* base, struct evhttp* http)
+bool ThreadHTTP(struct event_base* base, struct evhttp* http)
 {
     RenameThread("equibit-http");
     edcLogPrint("http", "Entering http event loop\n");
     event_base_dispatch(base);
     // Event loop will be interrupted by InterruptHTTPServer()
     edcLogPrint("http", "Exited http event loop\n");
+	return event_base_got_break(base) == 0;
 }
 
 /** Bind Equibit HTTP server to specified addresses */
@@ -498,6 +500,7 @@ bool edcInitHTTPServer()
 namespace
 {
 boost::thread threadHTTP;
+std::future<bool> threadResult;
 }
 
 bool edcStartHTTPServer()
@@ -510,7 +513,10 @@ bool edcStartHTTPServer()
     int rpcThreads = std::max((long)params.rpcthreads, 1L);
 
     edcLogPrintf("HTTP: starting %d worker threads\n", rpcThreads);
-    threadHTTP = boost::thread(boost::bind(&ThreadHTTP, theApp.eventBase(), eventHTTP));
+
+    std::packaged_task<bool(event_base*, evhttp*)> task(ThreadHTTP);
+    threadResult = task.get_future();
+    threadHTTP = boost::thread(std::bind(std::move(task), theApp.eventBase(), eventHTTP));
 
     for (int i = 0; i < rpcThreads; i++)
         boost::thread(boost::bind(&HTTPWorkQueueRun, workQueue));
@@ -557,17 +563,14 @@ void edcStopHTTPServer()
         // master that appears to be solved, so in the future that solution
         // could be used again (if desirable).
         // (see discussion in https://github.com/bitcoin/bitcoin/pull/6990)
-#if BOOST_VERSION >= 105000
-        if (!threadHTTP.try_join_for(boost::chrono::milliseconds(2000))) 
+
+		if (threadResult.valid() && 
+		threadResult.wait_for(std::chrono::milliseconds(2000)) == std::future_status::timeout)
 		{
-#else
-        if (!threadHTTP.timed_join(boost::posix_time::milliseconds(2000))) 
-		{
-#endif
             edcLogPrintf("HTTP event loop did not exit within allotted time, sending loopbreak\n");
             event_base_loopbreak(theApp.eventBase());
-            threadHTTP.join();
         }
+        threadHTTP.join();
     }
     if (eventHTTP) 
 	{
