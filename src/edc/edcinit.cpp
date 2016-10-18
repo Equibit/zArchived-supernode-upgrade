@@ -485,7 +485,7 @@ bool EdcAppInit(
             	return edcInitError(AmountErrMsg("eb_minrelaytxfee", params.minrelaytxfee));
     	}
 #ifdef ENABLE_WALLET
-	    if (!CEDCWallet::ParameterInteraction())
+		if (!fDisableWallet && !CEDCWallet::ParameterInteraction())
    			return false;
 #endif // ENABLE_WALLET
 
