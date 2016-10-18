@@ -518,8 +518,12 @@ bool edcStartHTTPServer()
     threadResult = task.get_future();
     threadHTTP = boost::thread(std::bind(std::move(task), theApp.eventBase(), eventHTTP));
 
-    for (int i = 0; i < rpcThreads; i++)
-        boost::thread(boost::bind(&HTTPWorkQueueRun, workQueue));
+    for (int i = 0; i < rpcThreads; i++) 
+	{
+        boost::thread rpc_worker(HTTPWorkQueueRun, workQueue);
+        rpc_worker.detach();
+    }
+
     return true;
 }
 
