@@ -1872,8 +1872,7 @@ std::vector<AddedNodeInfo> edcGetAddedNodeInfo()
 
     BOOST_FOREACH(const std::string& strAddNode, lAddresses) 
 	{
-        CService service;
-        LookupNumeric(strAddNode.c_str(), service, edcParams().GetDefaultPort());
+        CService service(LookupNumeric(strAddNode.c_str(), edcParams().GetDefaultPort()));
 
         if (service.IsValid()) 
 		{
@@ -2048,8 +2047,7 @@ void edcThreadOpenAddedConnections()
 
                 // If strAddedNode is an IP/port, decode it immediately, so
                 // OpenNetworkConnection can detect existing connections to that IP/port.
-                CService service;
-                LookupNumeric(info.strAddedNode.c_str(), service, edcParams().GetDefaultPort());
+                CService service(LookupNumeric(info.strAddedNode.c_str(), edcParams().GetDefaultPort()));
 
                 edcOpenNetworkConnection(CAddress(service, NODE_NONE), false, &grant, &sgrant,
 					info.strAddedNode.c_str(), false);

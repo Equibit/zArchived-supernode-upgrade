@@ -691,8 +691,7 @@ bool EdcAppInit(
 
     	if (proxyArg != "" && proxyArg != "0") 
 		{
-        	CService resolved;
-        	LookupNumeric(proxyArg.c_str(), resolved, 9050);
+        	CService resolved(LookupNumeric(proxyArg.c_str(), 9050));
         	proxyType addrProxy = proxyType(resolved, proxyRandomize);
 
         	if (!addrProxy.IsValid())
@@ -723,8 +722,7 @@ bool EdcAppInit(
 	        } 
 			else 
 			{
-            	CService resolved;
-            	LookupNumeric(onionArg.c_str(), resolved, 9050);
+            	CService resolved(LookupNumeric(onionArg.c_str(), 9050));
             	proxyType addrOnion = proxyType(resolved, proxyRandomize);
 
 	            if (!addrOnion.IsValid())
