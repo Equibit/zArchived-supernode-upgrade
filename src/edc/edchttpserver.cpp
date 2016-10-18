@@ -50,10 +50,10 @@ class HTTPWorkItem : public EDCHTTPClosure
 {
 public:
     HTTPWorkItem(
-		std::unique_ptr<EDCHTTPRequest> req, 
-		            const std::string & path, 
-		  const EDCHTTPRequestHandler & func):
-      req(std::move(req)), path(path), func(func)
+		std::unique_ptr<EDCHTTPRequest> _req, 
+		            const std::string & _path, 
+		  const EDCHTTPRequestHandler & _func):
+      req(std::move(_req)), path(_path), func(_func)
     {
     }
     void operator()()
@@ -102,8 +102,8 @@ private:
     };
 
 public:
-    WorkQueue(size_t maxDepth) : running(true),
-                                 maxDepth(maxDepth),
+    WorkQueue(size_t _maxDepth) :running(true),
+                                 maxDepth(_maxDepth),
                                  numThreads(0)
     {
     }
@@ -171,8 +171,8 @@ public:
 struct HTTPPathHandler
 {
     HTTPPathHandler() {}
-    HTTPPathHandler(std::string prefix, bool exactMatch, EDCHTTPRequestHandler handler):
-        prefix(prefix), exactMatch(exactMatch), handler(handler)
+    HTTPPathHandler(std::string _prefix, bool _exactMatch, EDCHTTPRequestHandler _handler):
+        prefix(_prefix), exactMatch(_exactMatch), handler(_handler)
     {
     }
     std::string prefix;
@@ -604,10 +604,10 @@ static void httpevent_callback_fn(evutil_socket_t, short, void* data)
 
 EDCHTTPEvent::EDCHTTPEvent(
 	                struct event_base * base, 
-	                               bool deleteWhenTriggered, 
-	  const std::function<void(void)> & handler):
-  deleteWhenTriggered(deleteWhenTriggered), 
-  handler(handler)
+	                               bool _deleteWhenTriggered, 
+	  const std::function<void(void)> & _handler):
+  deleteWhenTriggered(_deleteWhenTriggered), 
+  handler(_handler)
 {
     ev = event_new(base, -1, 0, httpevent_callback_fn, this);
     assert(ev);
