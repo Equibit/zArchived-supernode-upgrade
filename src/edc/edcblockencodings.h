@@ -61,12 +61,12 @@ public:
             }
 
             uint16_t offset = 0;
-            for (size_t i = 0; i < indexes.size(); i++) 
+            for (size_t j = 0; j < indexes.size(); j++) 
 			{
-                if (uint64_t(indexes[i]) + uint64_t(offset) > std::numeric_limits<uint16_t>::max())
+                if (uint64_t(indexes[j]) + uint64_t(offset) > std::numeric_limits<uint16_t>::max())
                     throw std::ios_base::failure("indexes overflowed 16 bits");
-                indexes[i] = indexes[i] + offset;
-                offset = indexes[i] + 1;
+                indexes[j] = indexes[j] + offset;
+                offset = indexes[j] + 1;
             }
         } 
 		else 
