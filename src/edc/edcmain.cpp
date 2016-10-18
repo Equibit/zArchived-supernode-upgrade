@@ -1341,7 +1341,7 @@ bool AcceptToMemoryPoolWorker(
                 // nSequence >= maxint-1 on all inputs.
                 //
                 // maxint-1 is picked to still allow use of nLockTime by
-                // non-replacable transactions. All inputs rather than just one
+                // non-replaceable transactions. All inputs rather than just one
                 // is for the sake of multi-party protocols, where we don't
                 // want a single party to be able to disable replacement.
                 //
@@ -2310,7 +2310,7 @@ std::vector<CEDCScriptCheck> * pvChecks)
         // is safe because block merkle hashes are still computed and checked,
         // and any change will be caught at the next checkpoint. Of course, if
         // the checkpoint is for a chain that's invalid due to false scriptSigs
-        // this optimisation would allow an invalid chain to be accepted.
+        // this optimization would allow an invalid chain to be accepted.
         if (fScriptChecks) 
 		{
             for (unsigned int i = 0; i < tx.vin.size(); i++) 
@@ -5558,7 +5558,7 @@ void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
                     {
                         // If a peer is asking for old blocks, we're almost guaranteed
                         // they wont have a useful mempool to match against a compact block,
-                        // and we dont feel like constructing the object for them, so
+                        // and we don't feel like constructing the object for them, so
                         // instead we respond with the full, non-compact block.
                         if (mi->second->nHeight >= theApp.chainActive().Height() - 10) 
 						{

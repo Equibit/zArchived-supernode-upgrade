@@ -839,7 +839,7 @@ bool EdcAppInit(
 		// total cache cannot be less than EDC_MIN_DB_CACHE
     	nTotalCache = std::max(nTotalCache, EDC_MIN_DB_CACHE << 20); 
 
-		// total cache cannot be greated than EDC_MAX_DB_CACHE
+		// total cache cannot be greater than EDC_MAX_DB_CACHE
     	nTotalCache = std::min(nTotalCache, EDC_MAX_DB_CACHE << 20); 
 
 	    int64_t nBlockTreeDBCache = nTotalCache / 8;
