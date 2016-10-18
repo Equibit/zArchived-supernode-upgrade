@@ -716,7 +716,7 @@ CService EDCHTTPRequest::GetPeer()
         const char* address = "";
         uint16_t port = 0;
         evhttp_connection_get_peer(con, (char**)&address, &port);
-        peer = CService(address, port);
+		LookupNumeric(address, peer, port);
     }
 
     return peer;

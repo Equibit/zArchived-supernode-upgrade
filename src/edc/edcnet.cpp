@@ -170,7 +170,7 @@ CAddress edcGetLocalAddress(const CNetAddr *paddrPeer)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
-    CAddress ret(CService("0.0.0.0", edcGetListenPort()), NODE_NONE);
+    CAddress ret(CService(CNetAddr(), edcGetListenPort()), NODE_NONE);
     CService addr;
     if (edcGetLocal(addr, paddrPeer))
     {
@@ -427,7 +427,7 @@ void CEDCNode::PushVersion()
     int64_t nTime = (fInbound ? edcGetAdjustedTime() : GetTime());
 
 	CAddress addrYou = (addr.IsRoutable() && !edcIsProxy(addr) ? addr : 
-		CAddress(CService("0.0.0.0", 0), addr.nServices));
+		CAddress(CService(), addr.nServices));
 
     CAddress addrMe = edcGetLocalAddress(&addr);
 	uint64_t localHostNonce;
@@ -1872,7 +1872,8 @@ std::vector<AddedNodeInfo> edcGetAddedNodeInfo()
 
     BOOST_FOREACH(const std::string& strAddNode, lAddresses) 
 	{
-        CService service(strAddNode, edcParams().GetDefaultPort());
+        CService service;
+        LookupNumeric(strAddNode.c_str(), service, edcParams().GetDefaultPort());
 
         if (service.IsValid()) 
 		{
@@ -2047,7 +2048,9 @@ void edcThreadOpenAddedConnections()
 
                 // If strAddedNode is an IP/port, decode it immediately, so
                 // OpenNetworkConnection can detect existing connections to that IP/port.
-                CService service(info.strAddedNode, edcParams().GetDefaultPort());
+                CService service;
+                LookupNumeric(info.strAddedNode.c_str(), service, edcParams().GetDefaultPort());
+
                 edcOpenNetworkConnection(CAddress(service, NODE_NONE), false, &grant, &sgrant,
 					info.strAddedNode.c_str(), false);
                 MilliSleep(500);
@@ -2429,11 +2432,12 @@ void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
         semOutbound = new CSemaphore(nMaxOutbound);
     }
 
-    if (pnodeLocalHost == NULL)
+    if (pnodeLocalHost == NULL) 
 	{
-        pnodeLocalHost = new CEDCNode(INVALID_SOCKET, CAddress(CService("127.0.0.1", 0), theApp.localServices() ));
-		pnodeLocalHost->init();
-	}
+        CNetAddr local;
+        LookupHost("127.0.0.1", local, false);
+        pnodeLocalHost = new CEDCNode(INVALID_SOCKET, CAddress(CService(local, 0), nLocalServices));
+    }
 
     Discover(threadGroup);
 

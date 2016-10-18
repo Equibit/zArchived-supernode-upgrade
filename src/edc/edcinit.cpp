@@ -690,8 +690,10 @@ bool EdcAppInit(
 
     	if (proxyArg != "" && proxyArg != "0") 
 		{
-        	proxyType addrProxy = proxyType(CService(proxyArg, 9050), 
-				proxyRandomize);
+        	CService resolved;
+        	LookupNumeric(proxyArg.c_str(), resolved, 9050);
+        	proxyType addrProxy = proxyType(resolved, proxyRandomize);
+
         	if (!addrProxy.IsValid())
             	return edcInitError(strprintf(_("Invalid -eb_proxy address: '%s'"),
 					proxyArg));
@@ -720,8 +722,9 @@ bool EdcAppInit(
 	        } 
 			else 
 			{
-	            proxyType addrOnion = proxyType(CService(onionArg, 9050), 
-					proxyRandomize);
+            	CService resolved;
+            	LookupNumeric(onionArg.c_str(), resolved, 9050);
+            	proxyType addrOnion = proxyType(resolved, proxyRandomize);
 
 	            if (!addrOnion.IsValid())
 	                return edcInitError(strprintf(_("Invalid -eb_onion address: "

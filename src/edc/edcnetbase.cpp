@@ -551,7 +551,7 @@ bool edcConnectSocketByName(
         }
     }
 
-    addr = CService("0.0.0.0:0");
+    addr = CService();
 
     if (!edcHaveNameProxy())
         return false;
