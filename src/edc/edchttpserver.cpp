@@ -216,15 +216,20 @@ bool InitHTTPAllowList()
 	EDCparams & params = EDCparams::singleton();
 
     rpc_allow_subnets.clear();
-    rpc_allow_subnets.push_back(CSubNet("127.0.0.0/8")); // always allow IPv4 local subnet
-    rpc_allow_subnets.push_back(CSubNet("::1"));         // always allow IPv6 localhost
+    CNetAddr localv4;
+    CNetAddr localv6;
+    LookupHost("127.0.0.1", localv4, false);
+    LookupHost("::1", localv6, false);
+    rpc_allow_subnets.push_back(CSubNet(localv4, 8)); // always allow IPv4 local subnet
+    rpc_allow_subnets.push_back(CSubNet(localv6));    // always allow IPv6 localhost
 
     if (params.rpcallowip.size() > 0) 
 	{
         const std::vector<std::string>& vAllow = params.rpcallowip;
         for( std::string strAllow : vAllow) 
 		{
-            CSubNet subnet(strAllow);
+            CSubNet subnet;
+            LookupSubNet(strAllow.c_str(), subnet);
             if (!subnet.IsValid()) 
 			{
                 edcUiInterface.ThreadSafeMessageBox(

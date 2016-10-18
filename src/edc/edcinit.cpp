@@ -672,7 +672,8 @@ bool EdcAppInit(
 		{
         	BOOST_FOREACH(const std::string& net, params.whitelist) 
 			{
-            	CSubNet subnet(net);
+            	CSubNet subnet;
+            	LookupSubNet(net.c_str(), subnet);
             	if (!subnet.IsValid())
                 	return edcInitError(strprintf(_("Invalid netmask specified "
 						"in -eb_whitelist: '%s'"), net));
