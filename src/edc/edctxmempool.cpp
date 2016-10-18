@@ -766,6 +766,7 @@ void CEDCTxMemPool::check(const CEDCCoinsViewCache *pcoins) const
     uint64_t innerUsage = 0;
 
     CEDCCoinsViewCache mempoolDuplicate(const_cast<CEDCCoinsViewCache*>(pcoins));
+	const int64_t nSpendHeight = GetSpendHeight(mempoolDuplicate);
 
     LOCK(cs);
     list<const CEDCTxMemPoolEntry*> waitingOnDependants;
@@ -857,7 +858,9 @@ void CEDCTxMemPool::check(const CEDCCoinsViewCache *pcoins) const
         else 
 		{
             CValidationState state;
-            assert(CheckInputs(tx, state, mempoolDuplicate, false, 0, false, NULL));
+            bool fCheckResult = tx.IsCoinBase() ||
+                Consensus::CheckTxInputs(tx, state, mempoolDuplicate, nSpendHeight);
+            assert(fCheckResult);
             UpdateCoins(tx, mempoolDuplicate, 1000000);
         }
     }
@@ -875,7 +878,9 @@ void CEDCTxMemPool::check(const CEDCCoinsViewCache *pcoins) const
         } 
 		else 
 		{
-            assert(CheckInputs(entry->GetTx(), state, mempoolDuplicate, false, 0, false, NULL));
+            bool fCheckResult = entry->GetTx().IsCoinBase() ||
+                Consensus::CheckTxInputs(entry->GetTx(), state, mempoolDuplicate, nSpendHeight);
+            assert(fCheckResult);
             UpdateCoins(entry->GetTx(), mempoolDuplicate, 1000000);
             stepsSinceLastRemove = 0;
         }

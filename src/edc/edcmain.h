@@ -181,8 +181,22 @@ bool CheckInputs(const CEDCTransaction& tx, CValidationState &state, const CEDCC
 /** Apply the effects of this transaction on the UTXO set represented by view */
 void UpdateCoins(const CEDCTransaction& tx, CEDCCoinsViewCache &inputs, int nHeight);
 
+/** Transaction validation functions */
+
 /** Context-independent validity checks */
 bool CheckTransaction(const CEDCTransaction& tx, CValidationState& state);
+
+namespace Consensus 
+{
+
+/**
+ * Check whether all inputs of this transaction are valid (no double spends and amounts)
+ * This does not modify the UTXO set. This does not check scripts and sigs.
+ * Preconditions: tx.IsCoinBase() is false.
+ */
+bool CheckTxInputs(const CEDCTransaction& tx, CValidationState& state, const CEDCCoinsViewCache& inputs, int nSpendHeight);
+
+} // namespace Consensus
 
 /** Register with a network node to receive its signals */
 void RegisterNodeSignals(CEDCNodeSignals& nodeSignals);
