@@ -7,9 +7,7 @@
 
 #include <string>
 #include <stdint.h>
-#include <boost/thread.hpp>
-#include <boost/scoped_ptr.hpp>
-#include <boost/function.hpp>
+#include <functional>
 
 namespace edc
 {
@@ -41,7 +39,7 @@ void edcInterruptHTTPServer();
 void edcStopHTTPServer();
 
 /** Handler for requests to a certain HTTP path */
-typedef boost::function<void(EDCHTTPRequest* req, const std::string &)> EDCHTTPRequestHandler;
+typedef std::function<void(EDCHTTPRequest* req, const std::string &)> EDCHTTPRequestHandler;
 
 /** Register handler for prefix.
  * If multiple handlers match a prefix, the first-registered one will
@@ -136,7 +134,7 @@ public:
      * deleteWhenTriggered deletes this event object after the event is triggered (and the handler called)
      * handler is the handler to call when the event is triggered.
      */
-    EDCHTTPEvent(struct event_base* base, bool deleteWhenTriggered, const boost::function<void(void)>& handler);
+    EDCHTTPEvent(struct event_base* base, bool deleteWhenTriggered, const std::function<void(void)>& handler);
     ~EDCHTTPEvent();
 
     /** Trigger the event. If tv is 0, trigger it immediately. Otherwise trigger it after
@@ -145,7 +143,7 @@ public:
     void trigger(struct timeval* tv);
 
     bool deleteWhenTriggered;
-    boost::function<void(void)> handler;
+    std::function<void(void)> handler;
 private:
     struct event* ev;
 };

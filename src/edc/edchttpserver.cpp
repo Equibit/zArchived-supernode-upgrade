@@ -38,9 +38,6 @@
 #endif
 #endif
 
-#include <boost/algorithm/string/case_conv.hpp> // for to_lower()
-#include <boost/foreach.hpp>
-
 
 namespace
 {
@@ -79,8 +76,8 @@ class WorkQueue
 {
 private:
     /** Mutex protects entire object */
-    CWaitableCriticalSection cs;
-    CConditionVariable cond;
+    std::mutex cs;
+    std::condition_variable cond;
     std::deque<std::unique_ptr<WorkItem>> queue;
     bool running;
     size_t maxDepth;
@@ -93,12 +90,12 @@ private:
         WorkQueue &wq;
         ThreadCounter(WorkQueue &w): wq(w)
         {
-            boost::lock_guard<boost::mutex> lock(wq.cs);
+            std::lock_guard<std::mutex> lock(wq.cs);
             wq.numThreads += 1;
         }
         ~ThreadCounter()
         {
-            boost::lock_guard<boost::mutex> lock(wq.cs);
+            std::lock_guard<std::mutex> lock(wq.cs);
             wq.numThreads -= 1;
             wq.cond.notify_all();
         }
@@ -119,7 +116,7 @@ public:
     /** Enqueue a work item */
     bool Enqueue(WorkItem* item)
     {
-        boost::unique_lock<boost::mutex> lock(cs);
+        std::unique_lock<std::mutex> lock(cs);
         if (queue.size() >= maxDepth) 
 		{
             return false;
@@ -136,7 +133,7 @@ public:
 		{
             std::unique_ptr<WorkItem> i;
             {
-                boost::unique_lock<boost::mutex> lock(cs);
+                std::unique_lock<std::mutex> lock(cs);
                 while (running && queue.empty())
                     cond.wait(lock);
                 if (!running)
@@ -150,14 +147,14 @@ public:
     /** Interrupt and exit loops */
     void Interrupt()
     {
-        boost::unique_lock<boost::mutex> lock(cs);
+        std::unique_lock<std::mutex> lock(cs);
         running = false;
         cond.notify_all();
     }
     /** Wait for worker threads to exit */
     void WaitExit()
     {
-        boost::unique_lock<boost::mutex> lock(cs);
+        std::unique_lock<std::mutex> lock(cs);
         while (numThreads > 0)
             cond.wait(lock);
     }
@@ -165,7 +162,7 @@ public:
     /** Return current depth of queue */
     size_t Depth()
     {
-        boost::unique_lock<boost::mutex> lock(cs);
+        std::unique_lock<std::mutex> lock(cs);
         return queue.size();
     }
 };
@@ -206,7 +203,7 @@ bool ClientAllowed(const CNetAddr& netaddr)
     if (!netaddr.IsValid())
         return false;
 
-    BOOST_FOREACH (const CSubNet& subnet, rpc_allow_subnets)
+    for( const CSubNet & subnet : rpc_allow_subnets)
         if (subnet.Match(netaddr))
             return true;
 
@@ -225,7 +222,7 @@ bool InitHTTPAllowList()
     if (params.rpcallowip.size() > 0) 
 	{
         const std::vector<std::string>& vAllow = params.rpcallowip;
-        BOOST_FOREACH (std::string strAllow, vAllow) 
+        for( std::string strAllow : vAllow) 
 		{
             CSubNet subnet(strAllow);
             if (!subnet.IsValid()) 
@@ -240,7 +237,7 @@ bool InitHTTPAllowList()
     }
 
     std::string strAllowed;
-    BOOST_FOREACH (const CSubNet& subnet, rpc_allow_subnets)
+    for (const CSubNet& subnet : rpc_allow_subnets)
         strAllowed += subnet.ToString() + " ";
     edcLogPrint("http", "Allowing HTTP connections from: %s\n", strAllowed);
 
@@ -499,7 +496,7 @@ bool edcInitHTTPServer()
 
 namespace
 {
-boost::thread threadHTTP;
+std::thread threadHTTP;
 std::future<bool> threadResult;
 }
 
@@ -516,11 +513,11 @@ bool edcStartHTTPServer()
 
     std::packaged_task<bool(event_base*, evhttp*)> task(ThreadHTTP);
     threadResult = task.get_future();
-    threadHTTP = boost::thread(std::bind(std::move(task), theApp.eventBase(), eventHTTP));
+    threadHTTP = std::thread(std::bind(std::move(task), theApp.eventBase(), eventHTTP));
 
     for (int i = 0; i < rpcThreads; i++) 
 	{
-        boost::thread rpc_worker(HTTPWorkQueueRun, workQueue);
+        std::thread rpc_worker(HTTPWorkQueueRun, workQueue);
         rpc_worker.detach();
     }
 
@@ -534,7 +531,7 @@ void edcInterruptHTTPServer()
     if (eventHTTP) 
 	{
         // Unlisten sockets
-        BOOST_FOREACH (evhttp_bound_socket *socket, boundSockets) 
+        for (evhttp_bound_socket *socket :  boundSockets) 
 		{
             evhttp_del_accept_socket(eventHTTP, socket);
         }
@@ -603,7 +600,7 @@ static void httpevent_callback_fn(evutil_socket_t, short, void* data)
 EDCHTTPEvent::EDCHTTPEvent(
 	                struct event_base * base, 
 	                               bool deleteWhenTriggered, 
-	const boost::function<void(void)> & handler):
+	  const std::function<void(void)> & handler):
   deleteWhenTriggered(deleteWhenTriggered), 
   handler(handler)
 {
@@ -701,7 +698,7 @@ void EDCHTTPRequest::WriteReply(int nStatus, const std::string& strReply)
     evbuffer_add(evb, strReply.data(), strReply.size());
 
     EDCHTTPEvent* ev = new EDCHTTPEvent(theApp.eventBase(), true,
-        boost::bind(evhttp_send_reply, req, nStatus, (const char*)NULL, (struct evbuffer *)NULL));
+        std::bind(evhttp_send_reply, req, nStatus, (const char*)NULL, (struct evbuffer *)NULL));
 
     ev->trigger(0);
     replySent = true;
