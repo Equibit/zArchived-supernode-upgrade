@@ -1115,16 +1115,17 @@ bool EdcAppInit(
     	edcLogPrintf("nBestHeight = %d\n",
 			theApp.chainActive().Height());
 #ifdef ENABLE_WALLET
-    	edcLogPrintf("setKeyPool.size() = %u\n",
-			theApp.walletMain() ? theApp.walletMain()->setKeyPool.size() : 0);
+		if( theApp.walletMain() )
+		{
+			LOCK(theApp.walletMain()->cs_wallet);
+
+    		edcLogPrintf("setKeyPool.size() = %u\n",    theApp.walletMain()->setKeyPool.size());
 #ifdef USE_HSM
-    	edcLogPrintf("setHSMKeyPool.size() = %u\n",
-			theApp.walletMain() ? theApp.walletMain()->setHSMKeyPool.size() : 0);
+	    	edcLogPrintf("setHSMKeyPool.size() = %u\n", theApp.walletMain()->setHSMKeyPool.size());
 #endif
-    	edcLogPrintf("mapWallet.size() = %u\n",
-			theApp.walletMain() ? theApp.walletMain()->mapWallet.size() : 0);
-    	edcLogPrintf("mapAddressBook.size() = %u\n", 
-			theApp.walletMain() ? theApp.walletMain()->mapAddressBook.size():0);
+	   	 	edcLogPrintf("mapWallet.size() = %u\n",     theApp.walletMain()->mapWallet.size());
+   	 		edcLogPrintf("mapAddressBook.size() = %u\n",theApp.walletMain()->mapAddressBook.size());
+		}
 #endif
 
 		if(params.listenonion )

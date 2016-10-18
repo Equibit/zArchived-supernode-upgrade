@@ -422,9 +422,22 @@ public:
      */
     mutable CCriticalSection cs_wallet;
 
+	std::set<int64_t>	setKeyPool;
+
     std::string strWalletFile;
 
-    std::set<int64_t> setKeyPool;
+    void LoadKeyPool(int nIndex, const CKeyPool &keypool)
+    {
+        setKeyPool.insert(nIndex);
+
+        // If no metadata exists yet, create a default with the pool key's
+        // creation time. Note that this may be overwritten by actually
+        // stored metadata for that key later, which is fine.
+        CKeyID keyid = keypool.vchPubKey.GetID();
+        if (mapKeyMetadata.count(keyid) == 0)
+            mapKeyMetadata[keyid] = CKeyMetadata(keypool.nTime);
+    }
+
 #ifdef USE_HSM
     std::set<int64_t> setHSMKeyPool;
 #endif
