@@ -21,7 +21,15 @@ class uint256;
 
 bool edcCheckSignatureEncoding(const std::vector<unsigned char> &vchSig, unsigned int flags, ScriptError* serror);
 
-uint256 SignatureHash(const CScript &scriptCode, const CEDCTransaction& txTo, unsigned int nIn, int nHashType, const CAmount& amount, SigVersion sigversion);
+struct EDCCachedHashes
+{
+    uint256 hashPrevouts, hashSequence, hashOutputs;
+
+    EDCCachedHashes(const CEDCTransaction& tx);
+};
+
+
+uint256 SignatureHash(const CScript &scriptCode, const CEDCTransaction& txTo, unsigned int nIn, int nHashType, const CAmount& amount, SigVersion sigversion, const EDCCachedHashes * cache = NULL);
 
 class EDCTransactionSignatureChecker : public BaseSignatureChecker
 {
@@ -29,12 +37,15 @@ private:
     const CEDCTransaction* txTo;
     unsigned int nIn;
 	const CAmount amount;
+	const EDCCachedHashes * cachedHashes;
 
 protected:
     virtual bool VerifySignature(const std::vector<unsigned char>& vchSig, const CPubKey& vchPubKey, const uint256& sighash) const;
 
 public:
-	EDCTransactionSignatureChecker(const CEDCTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn) : txTo(txToIn), nIn(nInIn), amount(amountIn) {}
+	EDCTransactionSignatureChecker(const CEDCTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn) : txTo(txToIn), nIn(nInIn), amount(amountIn), cachedHashes(NULL) {}
+
+	EDCTransactionSignatureChecker(const CEDCTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn, const EDCCachedHashes& cachedHashesIn) : txTo(txToIn), nIn(nInIn), amount(amountIn), cachedHashes(&cachedHashesIn) {}
 
     bool CheckSig(const std::vector<unsigned char>& scriptSig, const std::vector<unsigned char>& vchPubKey, const CScript& scriptCode, SigVersion sigversion) const;
 

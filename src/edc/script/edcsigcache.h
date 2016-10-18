@@ -20,10 +20,13 @@ private:
 
 public:
 	EDCCachingTransactionSignatureChecker(
-		const CEDCTransaction* txToIn, 
-		unsigned int nInIn, 
-		const CAmount& amount, 
-		bool storeIn) : EDCTransactionSignatureChecker(txToIn, nInIn, amount), store(storeIn) {}
+		const CEDCTransaction * txToIn, 
+				   unsigned int nInIn, 
+				const CAmount & amount, 
+						   bool storeIn, 
+			  EDCCachedHashes & cachedHashesIn) : 
+			EDCTransactionSignatureChecker(txToIn, nInIn, amount, cachedHashesIn), 
+			store(storeIn) {}
 
     bool VerifySignature(const std::vector<unsigned char>& vchSig, const CPubKey& vchPubKey, const uint256& sighash) const;
 };

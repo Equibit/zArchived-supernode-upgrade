@@ -100,10 +100,11 @@ int verify_script(
          // Regardless of the verification result, the tx did not error.
          set_error(err, bitcoinconsensus_ERR_OK);
 
+        EDCCachedHashes cachedHashes(tx);
         return edcVerifyScript(tx.vin[nIn].scriptSig, 
 			CScript(scriptPubKey, scriptPubKey + scriptPubKeyLen), 
 			nIn < tx.wit.vtxinwit.size() ? &tx.wit.vtxinwit[nIn].scriptWitness : NULL, 
-			flags, EDCTransactionSignatureChecker(&tx, nIn, amount), NULL);
+			flags, EDCTransactionSignatureChecker(&tx, nIn, amount, cachedHashes), NULL);
     } 
 	catch (const std::exception&) 
 	{
