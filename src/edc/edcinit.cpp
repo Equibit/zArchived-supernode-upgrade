@@ -1070,6 +1070,9 @@ bool EdcAppInit(
 
     	// ********************************************* Step 10: import blocks
 
+	    if (!edcCheckDiskSpace())
+        	return false;
+
     	// Either install a handler to notify us when genesis activates, or set 
 		// fHaveGenesis directly. No locking, as this happens before any background thread is 
 		// started.
@@ -1105,8 +1108,6 @@ bool EdcAppInit(
         }
 
     	// ************************************************* Step 11: start node
-    	if (!edcCheckDiskSpace())
-       		return false;
 
     	if (!strErrors.str().empty())
         	return edcInitError(strErrors.str());
