@@ -351,7 +351,7 @@ UniValue edcimportprunedfunds(const UniValue& params, bool fHelp)
     if (theApp.walletMain()->IsMine(tx)) 
 	{
         CEDCWalletDB walletdb(theApp.walletMain()->strWalletFile, "r+", false);
-        theApp.walletMain()->AddToWallet(wtx, false, &walletdb);
+        theApp.walletMain()->AddToWallet(wtx, &walletdb);
         return NullUniValue;
     }
 
