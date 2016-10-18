@@ -42,8 +42,8 @@ CCriticalSection cs_rpcWarmup;
 /* Timer-creating functions */
 RPCTimerInterface* timerInterface = NULL;
 
-+/* Map of name to timer. */
-+static std::map<std::string, std::unique_ptr<RPCTimerBase> > deadlineTimers;
+/* Map of name to timer. */
+static std::map<std::string, std::unique_ptr<RPCTimerBase> > deadlineTimers;
 
 struct CRPCSignals
 {
@@ -149,7 +149,7 @@ void edcRPCRunLater(const std::string& name, boost::function<void(void)> func, i
 
     edcLogPrint("rpc", "queue run of timer %s in %i seconds (using %s)\n", name, nSeconds, timerInterface->Name());
 
-	deadlineTimers.insert(std::make_pair(name, std::unique_ptr<RPCTimerBase>(timerInterface->NewTimer(func, nSeconds*1000))));
+	deadlineTimers.emplace(name, std::unique_ptr<RPCTimerBase>(timerInterface->NewTimer(func, nSeconds*1000)));
 }
 
 /**
