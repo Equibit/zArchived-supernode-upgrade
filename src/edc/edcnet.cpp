@@ -215,7 +215,7 @@ void AdvertiseLocal(CEDCNode *pnode)
         }
         if (addrLocal.IsRoutable())
         {
-            edcLogPrintf("AdvertiseLocal: advertising address %s\n", addrLocal.ToString());
+            edcLogPrint("net", "AdvertiseLocal: advertising address %s\n", addrLocal.ToString());
             pnode->PushAddress(addrLocal);
         }
     }

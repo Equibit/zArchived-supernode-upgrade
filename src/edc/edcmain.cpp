@@ -5790,13 +5790,13 @@ bool ProcessMessage(
                 CAddress addr = edcGetLocalAddress(&pfrom->addr);
                 if (addr.IsRoutable())
                 {
-                    edcLogPrintf("edcProcessMessages: advertising address %s\n", addr.ToString());
+                    edcLogPrint( "net", "edcProcessMessages: advertising address %s\n", addr.ToString());
                     pfrom->PushAddress(addr);
                 } 
 				else if (IsPeerAddrLocalGood(pfrom)) 
 				{
                     addr.SetIP(pfrom->addrLocal);
-                    edcLogPrintf("edcProcessMessages: advertising address %s\n", addr.ToString());
+                    edcLogPrint( "net", "edcProcessMessages: advertising address %s\n", addr.ToString());
                     pfrom->PushAddress(addr);
                 }
             }
