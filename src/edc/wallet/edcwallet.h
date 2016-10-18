@@ -402,6 +402,8 @@ private:
     /* the HD chain data model (external chain counters) */
     CHDChain hdChain;
 
+	bool fFileBacked;
+
     std::map< std::pair<std::string, uint256 >, CUserMessage *> messageMap;
 
 #ifdef USE_HSM
@@ -420,7 +422,6 @@ public:
      */
     mutable CCriticalSection cs_wallet;
 
-    bool fFileBacked;
     std::string strWalletFile;
 
     std::set<int64_t> setKeyPool;
