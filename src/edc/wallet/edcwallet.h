@@ -611,7 +611,7 @@ public:
     bool AccountMove(std::string strFrom, std::string strTo, CAmount nAmount, std::string strComment = "");
 	bool GetAccountPubkey(CPubKey &pubKey, std::string strAccount, bool bForceNew = false);
     void MarkDirty();
-    bool AddToWallet(const CEDCWalletTx& wtxIn, CEDCWalletDB* pwalletdb);
+    bool AddToWallet(const CEDCWalletTx& wtxIn, bool fFlushOnClose=true);
 	bool LoadToWallet(const CEDCWalletTx& wtxIn);
     void SyncTransaction(const CEDCTransaction& tx, const CBlockIndex *pindex, const CEDCBlock* pblock);
     bool AddToWalletIfInvolvingMe(const CEDCTransaction& tx, const CEDCBlock* pblock, bool fUpdate);

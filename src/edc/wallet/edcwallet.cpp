@@ -859,11 +859,13 @@ int64_t edcGetAdjustedTime();
 
 bool CEDCWallet::AddToWallet(
 	const CEDCWalletTx & wtxIn, 
-		  CEDCWalletDB * pwalletdb)
+		  			bool fFlushOnClose)
 {
-    uint256 hash = wtxIn.GetHash();
-
     LOCK(cs_wallet);
+
+    CEDCWalletDB walletdb(strWalletFile, "r+", fFlushOnClose);
+
+    uint256 hash = wtxIn.GetHash();
 
     // Inserts only if not already there, returns tx inserted or tx found
     pair<map<uint256, CEDCWalletTx>::iterator, bool> ret = mapWallet.insert(make_pair(hash, wtxIn));
@@ -875,7 +877,7 @@ bool CEDCWallet::AddToWallet(
     if (fInsertedNew)
     {
         wtx.nTimeReceived = GetAdjustedTime();
-        wtx.nOrderPos = IncOrderPosNext(pwalletdb);
+        wtx.nOrderPos = IncOrderPosNext(&walletdb);
 
         wtxOrdered.insert(make_pair(wtx.nOrderPos, TxPair(&wtx, (CAccountingEntry*)0)));
 
@@ -960,7 +962,7 @@ bool CEDCWallet::AddToWallet(
 
     // Write to disk
     if (fInsertedNew || fUpdated)
-        if (!pwalletdb->WriteTx(wtx))
+        if (!walletdb.WriteTx(wtx))
             return false;
 
     // Break debit/credit balance caches:
@@ -1047,11 +1049,7 @@ bool CEDCWallet::AddToWalletIfInvolvingMe(
             if (pblock)
                 wtx.SetMerkleBranch(*pblock);
 
-            // Do not flush the wallet here for performance reasons
-            // this is safe, as in case of a crash, we rescan the necessary blocks on startup through our SetBestChain-mechanism
-            CEDCWalletDB walletdb(strWalletFile, "r+", false);
-
-            return AddToWallet(wtx, &walletdb);
+            return AddToWallet(wtx, false);
         }
     }
     return false;
@@ -2792,7 +2790,7 @@ bool CEDCWallet::CommitTransaction(CEDCWalletTx& wtxNew, CEDCReserveKey& reserve
 
             // Add tx to wallet, because if it has change it's also ours,
             // otherwise just for transaction history.
-            AddToWallet(wtxNew, pwalletdb);
+            AddToWallet(wtxNew);
 
             // Notify that old coins are spent
             set<CEDCWalletTx*> setCoins;
