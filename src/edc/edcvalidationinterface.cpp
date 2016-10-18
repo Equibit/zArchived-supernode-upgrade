@@ -55,7 +55,7 @@ void edcUnregisterAllValidationInterfaces()
 void SyncWithWallets(
 	const CEDCTransaction & tx, 
 		const CBlockIndex * pindex, 
-		  const CEDCBlock * pblock) 
+		  				int posInBlock) 
 {
-    g_signals.SyncTransaction(tx, pindex, pblock);
+    g_signals.SyncTransaction(tx, pindex, posInBlock );
 }

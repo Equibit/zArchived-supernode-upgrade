@@ -29,13 +29,13 @@ void UnregisterValidationInterface(CEDCValidationInterface* pwalletIn);
 /** Unregister all wallets from core */
 void edcUnregisterAllValidationInterfaces();
 /** Push an updated transaction to all registered wallets */
-void SyncWithWallets(const CEDCTransaction& tx, const CBlockIndex *pindex, const CEDCBlock* pblock = NULL);
+void SyncWithWallets(const CEDCTransaction& tx, const CBlockIndex *pindex, int posInBlock = -1);
 
 class CEDCValidationInterface 
 {
 protected:
     virtual void UpdatedBlockTip(const CBlockIndex *pindex) {}
-    virtual void SyncTransaction(const CEDCTransaction &tx, const CBlockIndex *pindex, const CEDCBlock *pblock) {}
+    virtual void SyncTransaction(const CEDCTransaction &tx, const CBlockIndex *pindex, int posInBlock) {}
     virtual void SetBestChain(const CBlockLocator &locator) {}
     virtual void UpdatedTransaction(const uint256 &hash) {}
     virtual void Inventory(const uint256 &hash) {}
@@ -53,7 +53,7 @@ struct CEDCMainSignals
     /** Notifies listeners of updated block chain tip */
     boost::signals2::signal<void (const CBlockIndex *)> UpdatedBlockTip;
     /** Notifies listeners of updated transaction data (transaction, and optionally the block it is found in. */
-    boost::signals2::signal<void (const CEDCTransaction &, const CBlockIndex *pindex, const CEDCBlock *)> SyncTransaction;
+    boost::signals2::signal<void (const CEDCTransaction &, const CBlockIndex *pindex, int posInBlock)> SyncTransaction;
     /** Notifies listeners of an updated transaction without new data (for now: a coinbase potentially becoming visible). */
     boost::signals2::signal<void (const uint256 &)> UpdatedTransaction;
     /** Notifies listeners of a new active block chain. */

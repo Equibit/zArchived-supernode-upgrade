@@ -1740,7 +1740,7 @@ bool AcceptToMemoryPoolWorker(
         }
     }
 
-    SyncWithWallets(tx, NULL, NULL);
+    SyncWithWallets(tx, NULL);
 
     return true;
 }
@@ -3224,7 +3224,7 @@ bool DisconnectTip(
     // 0-confirmed or conflicted:
     for( const auto & tx : block.vtx) 
 	{
-        SyncWithWallets(tx, pindexDelete->pprev, NULL);
+        SyncWithWallets(tx, pindexDelete->pprev);
     }
     return true;
 }
@@ -3240,10 +3240,12 @@ int64_t nTimePostConnect = 0;
  * corresponding to pindexNew, to bypass loading it again from disk.
  */
 bool ConnectTip(
-	     CValidationState & state, 
-	const CEDCChainParams & chainparams, 
-		      CBlockIndex * pindexNew, 
-	      const CEDCBlock * pblock)
+			  CValidationState & state, 
+		 const CEDCChainParams & chainparams, 
+				   CBlockIndex * pindexNew, 
+			   const CEDCBlock * pblock,
+	std::list<CEDCTransaction> & txConflicted, 
+std::vector<std::tuple<CEDCTransaction,CBlockIndex*,int> > & txChanged)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -3286,23 +3288,15 @@ bool ConnectTip(
         return false;
     int64_t nTime5 = GetTimeMicros(); nTimeChainState += nTime5 - nTime4;
     edcLogPrint("bench", "  - Writing chainstate: %.2fms [%.2fs]\n", (nTime5 - nTime4) * 0.001, nTimeChainState * 0.000001);
-    // Remove conflicting transactions from the mempool.
-    list<CEDCTransaction> txConflicted;
 
+    // Remove conflicting transactions from the mempool.;
     theApp.mempool().removeForBlock(pblock->vtx, pindexNew->nHeight, txConflicted, !edcIsInitialBlockDownload());
+
     // Update theApp.chainActive() & related variables.
     UpdateTip(pindexNew, chainparams);
-    // Tell wallet about transactions that went from theApp.mempool()
-    // to conflicted:
-    for( const auto & tx : txConflicted) 
-	{
-        SyncWithWallets(tx, pindexNew, NULL);
-    }
-    // ... and about transactions that got confirmed:
-    for( const auto & tx : pblock->vtx) 
-	{
-        SyncWithWallets(tx, pindexNew, pblock);
-    }
+
+    for(unsigned int i=0; i < pblock->vtx.size(); i++)
+        txChanged.push_back(std::make_tuple(pblock->vtx[i], pindexNew, i));
 
     int64_t nTime6 = GetTimeMicros(); nTimePostConnect += nTime6 - nTime5; nTimeTotal += nTime6 - nTime1;
     edcLogPrint("bench", "  - Connect postprocess: %.2fms [%.2fs]\n", (nTime6 - nTime5) * 0.001, nTimePostConnect * 0.000001);
@@ -3403,7 +3397,9 @@ bool ActivateBestChainStep(
 	const CEDCChainParams & chainparams, 
 	          CBlockIndex * pindexMostWork, 
           const CEDCBlock * pblock,
-					 bool & fInvalidFound )
+					 bool & fInvalidFound,
+  std::list<CEDCTransaction> & txConflicted, 
+std::vector<std::tuple<CEDCTransaction,CBlockIndex*,int> > & txChanged)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -3442,7 +3438,7 @@ bool ActivateBestChainStep(
         // Connect new blocks.
         BOOST_REVERSE_FOREACH(CBlockIndex *pindexConnect, vpindexToConnect) 
 		{
-            if (!ConnectTip(state, chainparams, pindexConnect, pindexConnect == pindexMostWork ? pblock : NULL)) 
+			if (!ConnectTip(state, chainparams, pindexConnect, pindexConnect == pindexMostWork ? pblock : NULL, txConflicted, txChanged))
 			{
                 if (state.IsInvalid()) 
 				{
@@ -3543,6 +3539,8 @@ bool ActivateBestChain(
             break;
 
         const CBlockIndex *pindexFork;
+        std::list<CEDCTransaction> txConflicted;
+        std::vector<std::tuple<CEDCTransaction,CBlockIndex*,int> > txChanged;
         bool fInitialDownload;
 		int nNewHeight;
         {
@@ -3558,7 +3556,9 @@ bool ActivateBestChain(
                 return true;
 
 			bool fInvalidFound = false;
-			if (!ActivateBestChainStep(state, chainparams, pindexMostWork, pblock && pblock->GetHash() == pindexMostWork->GetBlockHash() ? pblock : NULL, fInvalidFound))
+			if (!ActivateBestChainStep(state, chainparams, pindexMostWork, 
+			pblock && pblock->GetHash() == pindexMostWork->GetBlockHash() ? pblock : NULL, 
+			fInvalidFound, txConflicted, txChanged))
                 return false;
 
 			if (fInvalidFound) 
@@ -3575,6 +3575,19 @@ bool ActivateBestChain(
         // When we reach this point, we switched to a new tip (stored in pindexNewTip).
 
         // Notifications/callbacks that can run without EDC_cs_main
+
+        // throw all transactions though the signal-interface
+        // while _not_ holding the cs_main lock
+        BOOST_FOREACH(const CEDCTransaction &tx, txConflicted)
+        {
+            SyncWithWallets(tx, pindexNewTip);
+        }
+
+        // ... and about transactions that got confirmed:
+        for(unsigned int i = 0; i < txChanged.size(); i++)
+            SyncWithWallets(std::get<0>(txChanged[i]), std::get<1>(txChanged[i]), 
+				std::get<2>(txChanged[i]));
+
         // Always notify the UI if a new block tip was connected
         if (pindexFork != pindexNewTip) 
 		{

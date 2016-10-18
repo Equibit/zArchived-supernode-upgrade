@@ -96,7 +96,7 @@ public:
         READWRITE(nIndex);
     }
 
-    int SetMerkleBranch(const CEDCBlock& block);
+    int SetMerkleBranch(const CBlockIndex * pindex, int posInBlock );
 
     /**
      * Return depth of transaction in blockchain:
@@ -614,8 +614,8 @@ public:
     void MarkDirty();
     bool AddToWallet(const CEDCWalletTx& wtxIn, bool fFlushOnClose=true);
 	bool LoadToWallet(const CEDCWalletTx& wtxIn);
-    void SyncTransaction(const CEDCTransaction& tx, const CBlockIndex *pindex, const CEDCBlock* pblock);
-    bool AddToWalletIfInvolvingMe(const CEDCTransaction& tx, const CEDCBlock* pblock, bool fUpdate);
+    void SyncTransaction(const CEDCTransaction& tx, const CBlockIndex *pindex, int posInBlock);
+    bool AddToWalletIfInvolvingMe(const CEDCTransaction& tx, const CBlockIndex* pIndex, int posInBlock, bool fUpdate);
     int ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate = false);
     void ReacceptWalletTransactions();
     void ResendWalletTransactions(int64_t nBestBlockTime);

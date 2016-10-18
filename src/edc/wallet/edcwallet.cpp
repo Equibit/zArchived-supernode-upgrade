@@ -1016,13 +1016,14 @@ bool CEDCWallet::LoadToWallet(const CEDCWalletTx & wtxIn)
  */
 bool CEDCWallet::AddToWalletIfInvolvingMe(
 	const CEDCTransaction & tx, 
-		  const CEDCBlock * pblock, 
+		const CBlockIndex * pIndex, 
+						int posInBlock,
 					   bool fUpdate)
 {
     {
         AssertLockHeld(cs_wallet);
 
-        if (pblock) 
+        if (posInBlock != -1) 
 		{
             BOOST_FOREACH(const CEDCTxIn& txin, tx.vin) 
 			{
@@ -1031,8 +1032,11 @@ bool CEDCWallet::AddToWalletIfInvolvingMe(
 				{
                     if (range.first->second != tx.GetHash()) 
 					{
-                        edcLogPrintf("Transaction %s (in block %s) conflicts with wallet transaction %s (both spend %s:%i)\n", tx.GetHash().ToString(), pblock->GetHash().ToString(), range.first->second.ToString(), range.first->first.hash.ToString(), range.first->first.n);
-                        MarkConflicted(pblock->GetHash(), range.first->second);
+						edcLogPrintf("Transaction %s (in block %s) conflicts with wallet transaction %s (both spend %s:%i)\n", 
+							tx.GetHash().ToString(), pIndex->GetBlockHash().ToString(), 
+							range.first->second.ToString(), range.first->first.hash.ToString(), 
+							range.first->first.n);
+						MarkConflicted(pIndex->GetBlockHash(), range.first->second);
                     }
                     range.first++;
                 }
@@ -1046,8 +1050,8 @@ bool CEDCWallet::AddToWalletIfInvolvingMe(
             CEDCWalletTx wtx(this,tx);
 
             // Get merkle branch if transaction was found in a block
-            if (pblock)
-                wtx.SetMerkleBranch(*pblock);
+            if (posInBlock != -1)
+				wtx.SetMerkleBranch(pIndex, posInBlock);
 
             return AddToWallet(wtx, false);
         }
@@ -1197,11 +1201,11 @@ void CEDCWallet::MarkConflicted(const uint256& hashBlock, const uint256& hashTx)
 void CEDCWallet::SyncTransaction(
 	const CEDCTransaction & tx, 
 	    const CBlockIndex * pindex, 
-		  const CEDCBlock * pblock)
+						int posInBlock)
 {
     LOCK2(EDC_cs_main, cs_wallet);
 
-    if (!AddToWalletIfInvolvingMe(tx, pblock, true))
+    if (!AddToWalletIfInvolvingMe(tx, pindex, posInBlock, true))
         return; // Not one of ours
 
     // If a transaction changes 'conflicted' state, that changes the balance
@@ -1581,9 +1585,10 @@ int CEDCWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate
 
             CEDCBlock block;
             ReadBlockFromDisk(block, pindex, edcParams().GetConsensus());
-            BOOST_FOREACH(CEDCTransaction& tx, block.vtx)
+            int posInBlock;
+            for (posInBlock = 0; posInBlock < (int)block.vtx.size(); posInBlock++)
             {
-                if (AddToWalletIfInvolvingMe(tx, &block, fUpdate))
+				if (AddToWalletIfInvolvingMe(block.vtx[posInBlock], pindex, posInBlock, fUpdate))
                     ret++;
             }
 
@@ -4295,7 +4300,7 @@ bool CEDCWallet::BackupWallet(const std::string& strDest)
     return false;
 }
 
-int CEDCMerkleTx::SetMerkleBranch(const CEDCBlock& block)
+int CEDCMerkleTx::SetMerkleBranch(const CBlockIndex * pindex, int posInBlock)
 {
     AssertLockHeld(EDC_cs_main);
 
@@ -4304,25 +4309,13 @@ int CEDCMerkleTx::SetMerkleBranch(const CEDCBlock& block)
     CEDCBlock blockTmp;
 
     // Update the tx's hashBlock
-    hashBlock = block.GetHash();
+	hashBlock = pindex->GetBlockHash();
 
-    // Locate the transaction
-    for (nIndex = 0; nIndex < (int)block.vtx.size(); nIndex++)
-        if (block.vtx[nIndex] == *(CEDCTransaction*)this)
-            break;
-    if (nIndex == (int)block.vtx.size())
-    {
-        nIndex = -1;
-        edcLogPrintf("ERROR: SetMerkleBranch(): couldn't find tx in block\n");
-        return 0;
-    }
+    // set the position of the transaction in the block
+    nIndex = posInBlock;
 
     // Is the tx in a block that's in the main chain
-    BlockMap::iterator mi = theApp.mapBlockIndex().find(hashBlock);
-    if (mi == theApp.mapBlockIndex().end())
-        return 0;
-    const CBlockIndex* pindex = (*mi).second;
-    if (!pindex || !theApp.chainActive().Contains(pindex))
+	if (!theApp.chainActive().Contains(pindex))
         return 0;
 
     return theApp.chainActive().Height() - pindex->nHeight + 1;
