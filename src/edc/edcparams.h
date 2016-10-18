@@ -164,6 +164,7 @@ public:
 	// Vector of strings
 	std::vector<std::string> addnode;
 	std::vector<std::string> bind;
+	std::vector<std::string> bip9params;
 	std::vector<std::string> connect;
 	std::vector<std::string> debug;
 	std::vector<std::string> externalip;

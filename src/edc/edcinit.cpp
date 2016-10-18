@@ -471,6 +471,57 @@ bool EdcAppInit(
 	    if ( params.peerbloomfilters )
    	    	theApp.localServices( ServiceFlags( theApp.localServices() | NODE_BLOOM ) );
 
+    	if (!params.bip9params.empty()) 
+		{
+        	// Allow overriding bip9 parameters for testing
+        	if (!edcParams().MineBlocksOnDemand()) 
+			{
+            	return edcInitError("BIP9 parameters may only be overridden on regtest.");
+        	}
+
+	        const vector<string> & deployments = params.bip9params;
+
+        	for (auto i : deployments) 
+			{
+            	std::vector<std::string> vDeploymentParams;
+            	boost::split(vDeploymentParams, i, boost::is_any_of(":"));
+
+            	if (vDeploymentParams.size() != 3) 
+				{
+                	return edcInitError("BIP9 parameters malformed, expecting deployment:start:end");
+            	}
+
+	            int64_t nStartTime, nTimeout;
+   	         	if (!ParseInt64(vDeploymentParams[1], &nStartTime)) 
+				{
+                	return edcInitError(strprintf("Invalid nStartTime (%s)", vDeploymentParams[1]));
+            	}
+
+            	if (!ParseInt64(vDeploymentParams[2], &nTimeout)) 
+				{
+                	return edcInitError(strprintf("Invalid nTimeout (%s)", vDeploymentParams[2]));
+            	}
+
+            	bool found = false;
+            	for (int i=0; i<(int)Consensus::MAX_VERSION_BITS_DEPLOYMENTS; ++i)
+            	{
+                	if (vDeploymentParams[0].compare(VersionBitsDeploymentInfo[i].name) == 0) 
+					{
+                    	edcUpdateRegtestBIP9Parameters(Consensus::DeploymentPos(i), nStartTime, 
+							nTimeout);
+                    	found = true;
+                    	edcLogPrintf("Setting BIP9 activation parameters for %s to start=%ld, "
+							"timeout=%ld\n", vDeploymentParams[0], nStartTime, nTimeout);
+                    	break;
+                	}
+            	}
+            	if (!found) 
+				{
+                	return edcInitError(strprintf("Invalid deployment (%s)", vDeploymentParams[0]));
+            	}
+        	}
+    	}
+
     	// ** Step 4:app initialization: dir lock, daemonize, pidfile, debug log
 
     	std::string strDataDir = edcGetDataDir().string();

@@ -467,6 +467,12 @@ public:
         base58Prefixes[EXT_PUBLIC_KEY] = boost::assign::list_of(0x04)(0x35)(0x87)(0xCF).convert_to_container<std::vector<unsigned char> >();
         base58Prefixes[EXT_SECRET_KEY] = boost::assign::list_of(0x04)(0x35)(0x83)(0x94).convert_to_container<std::vector<unsigned char> >();
     }
+
+    void UpdateBIP9Parameters(Consensus::DeploymentPos d, int64_t nStartTime, int64_t nTimeout)
+    {
+        consensus.vDeployments[d].nStartTime = nStartTime;
+        consensus.vDeployments[d].nTimeout = nTimeout;
+    }
 };
 static CEDCRegTestParams edcRegTestParams;
 
@@ -495,3 +501,12 @@ void edcSelectParams(const std::string& network)
     SelectBaseParams(network);
     edcpCurrentParams = & edcParams(network);
 }
+
+void edcUpdateRegtestBIP9Parameters(
+	Consensus::DeploymentPos d, 
+					 int64_t nStartTime, 
+					 int64_t nTimeout)
+{
+    edcRegTestParams.UpdateBIP9Parameters(d, nStartTime, nTimeout);
+}
+

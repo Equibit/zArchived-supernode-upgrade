@@ -320,6 +320,8 @@ EDCparams::EDCparams()
 		addnode.push_back(e);
     BOOST_FOREACH(const std::string& e, mapMultiArgs["-eb_bind"])
 		bind.push_back(e);
+    BOOST_FOREACH(const std::string& e, mapMultiArgs["-eb_bip9params"])
+		bip9params.push_back(e);
     BOOST_FOREACH(const std::string& e, mapMultiArgs["-eb_connect"])
 		connect.push_back(e);
     BOOST_FOREACH(const std::string& e, mapMultiArgs["-eb_debug"])
@@ -518,6 +520,7 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
 			strprintf("Do not accept transactions if any ancestor would have <n> or more in-mempool descendants (default: %u)", EDC_DEFAULT_DESCENDANT_LIMIT));
         strUsage += HelpMessageOpt("-eb_limitdescendantsize=<n>", 
 			strprintf("Do not accept transactions if any ancestor would have more than <n> kilobytes of in-mempool descendants (default: %u).", EDC_DEFAULT_DESCENDANT_SIZE_LIMIT));
+        strUsage += HelpMessageOpt("-eb_bip9params=deployment:start:end", "Use given start/end times for specified bip9 deployment (regtest-only)");
     }
 	std::string debugCategories = "addrman, alert, bench, coindb, db, http, libevent, lock, mempool, mempoolrej, net, proxy, prune, rand, reindex, rpc, selectcoins, tor, zmq"; // Don't translate these and qt below
     if (mode == HMM_BITCOIN_QT)
@@ -894,6 +897,7 @@ void EDCparams::dumpToLog() const
 	edcLogPrintf( "eb_banscore               %lld\n", banscore );
 	edcLogPrintf( "eb_bantime                %lld\n", bantime );
 	printStrVec( "eb_bind                  ", bind );
+	printStrVec( "eb_bip9params            ", bip9params );
 	edcLogPrintf( "eb_blockmaxweight         %lld\n", blockmaxweight );
 	edcLogPrintf( "eb_blockmaxsize           %lld\n", blockmaxsize );
 	edcLogPrintf( "eb_blocknotify            \"%s\"\n", blocknotify.c_str() );
@@ -1051,6 +1055,7 @@ void EDCparams::checkParams() const
 	validparams.insert("-banscore");
 	validparams.insert("-bantime");
 	validparams.insert("-bind");
+	validparams.insert("-bip9params");
 	validparams.insert("-blockmaxweight");
 	validparams.insert("-blockmaxsize");
 	validparams.insert("-blocknotify");
@@ -1177,6 +1182,7 @@ void EDCparams::checkParams() const
 	validparams.insert("-eb_banscore");
 	validparams.insert("-eb_bantime");
 	validparams.insert("-eb_bind");
+	validparams.insert("-eb_bip9params");
 	validparams.insert("-eb_blockmaxweight");
 	validparams.insert("-eb_blockmaxsize");
 	validparams.insert("-eb_blocknotify");

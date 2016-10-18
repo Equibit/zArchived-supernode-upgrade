@@ -139,3 +139,8 @@ CEDCChainParams & edcParams(const std::string& chain);
  * @throws std::runtime_error when the chain is not supported.
  */
 void edcSelectParams(const std::string& chain);
+
+/**
+ * Allows modifying the BIP9 regtest parameters.
+ */
+void edcUpdateRegtestBIP9Parameters(Consensus::DeploymentPos d, int64_t nStartTime, int64_t nTimeout);
