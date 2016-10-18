@@ -524,11 +524,11 @@ bool EdcAppInit(
             	}
 
             	bool found = false;
-            	for (int i=0; i<(int)Consensus::MAX_VERSION_BITS_DEPLOYMENTS; ++i)
+            	for (int j=0; j<(int)Consensus::MAX_VERSION_BITS_DEPLOYMENTS; ++j)
             	{
-                	if (vDeploymentParams[0].compare(VersionBitsDeploymentInfo[i].name) == 0) 
+                	if (vDeploymentParams[0].compare(VersionBitsDeploymentInfo[j].name) == 0) 
 					{
-                    	edcUpdateRegtestBIP9Parameters(Consensus::DeploymentPos(i), nStartTime, 
+                    	edcUpdateRegtestBIP9Parameters(Consensus::DeploymentPos(j), nStartTime, 
 							nTimeout);
                     	found = true;
                     	edcLogPrintf("Setting BIP9 activation parameters for %s to start=%ld, "
