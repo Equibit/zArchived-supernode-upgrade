@@ -128,6 +128,25 @@ bool Bind(const CService &addr, unsigned int flags)
     return true;
 }
 
+namespace
+{
+bool fHaveGenesis = false;
+boost::mutex cs_GenesisWait;
+CConditionVariable condvar_GenesisWait;
+
+void BlockNotifyGenesisWait(bool, const CBlockIndex *pBlockIndex)
+{
+    if (pBlockIndex != NULL) {
+        {
+            boost::unique_lock<boost::mutex> lock_GenesisWait(cs_GenesisWait);
+            fHaveGenesis = true;
+        }
+        condvar_GenesisWait.notify_all();
+    }
+}
+
+}
+
 struct CImportingNow
 {
     CImportingNow() 
@@ -905,7 +924,7 @@ bool EdcAppInit(
 	                    break;
 	                }
 	
-                	if (!fReindex) 
+					if (!fReindex && theApp.chainActive().Tip() != NULL)
 					{
                     	edcUiInterface.InitMessage(_("Rewinding blocks..."));
 
@@ -1050,6 +1069,19 @@ bool EdcAppInit(
     	}
 
     	// ********************************************* Step 10: import blocks
+
+    	// Either install a handler to notify us when genesis activates, or set 
+		// fHaveGenesis directly. No locking, as this happens before any background thread is 
+		// started.
+    	if (theApp.chainActive().Tip() == NULL) 
+		{
+        	edcUiInterface.NotifyBlockTip.connect(BlockNotifyGenesisWait);
+    	} 
+		else 
+		{
+        	fHaveGenesis = true;
+    	}
+
     	if (params.blocknotify.size() > 0 )
         	edcUiInterface.NotifyBlockTip.connect(BlockNotifyCallback);
 
@@ -1063,18 +1095,13 @@ bool EdcAppInit(
     	threadGroup.create_thread(boost::bind(&edcThreadImport, vImportFiles));
 
 		// Wait for genesis block to be processed
-		bool fHaveGenesis = false;
-		while (!fHaveGenesis && !fRequestShutdown) 
 		{
-	   		{
-	        	LOCK(EDC_cs_main);
-	        	fHaveGenesis = (theApp.chainActive().Tip() != NULL);
-	    	}
-
-        	if (!fHaveGenesis) 
+        	boost::unique_lock<boost::mutex> lock(cs_GenesisWait);
+        	while (!fHaveGenesis) 
 			{
-            	MilliSleep(10);
-			}
+            	condvar_GenesisWait.wait(lock);
+         	}
+        	edcUiInterface.NotifyBlockTip.disconnect(BlockNotifyGenesisWait);
         }
 
     	// ************************************************* Step 11: start node

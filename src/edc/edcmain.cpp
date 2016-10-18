@@ -5032,8 +5032,6 @@ bool edcInitBlockIndex( const CEDCChainParams & chainparams )
             CBlockIndex *pindex = edcAddToBlockIndex(block);
             if (!ReceivedBlockTransactions(block, state, pindex, blockPos))
                 return edcError("edcLoadBlockIndex(): genesis block not accepted");
-            if (!ActivateBestChain(state, chainparams, &block))
-                return edcError("edcLoadBlockIndex(): genesis block cannot be activated");
             // Force a chainstate write so that when we VerifyDB in a moment, it doesn't check stale data
             return FlushStateToDisk(state, FLUSH_STATE_ALWAYS);
         } 
