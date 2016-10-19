@@ -48,6 +48,9 @@
 // Dump addresses to peers.dat and banlist.dat every 15 minutes (900s)
 #define DUMP_ADDRESSES_INTERVAL 900
 
+// We add a random period time (0 to 1 seconds) to feeler connections to prevent synchronization.
+#define FEELER_SLEEP_WINDOW 1
+
 #if !defined(HAVE_MSG_NOSIGNAL) && !defined(MSG_NOSIGNAL)
 #define MSG_NOSIGNAL 0
 #endif
@@ -67,6 +70,7 @@
 namespace 
 {
     const int MAX_OUTBOUND_CONNECTIONS = 8;
+	const int MAX_FEELER_CONNECTIONS = 1;
 
     struct ListenSocket 
 	{
@@ -981,7 +985,8 @@ static void AcceptConnection(const ListenSocket& hListenSocket)
     CAddress addr;
     int nInbound = 0;
 	EDCapp & theApp = EDCapp::singleton();
-    int nMaxInbound = theApp.maxConnections() - MAX_OUTBOUND_CONNECTIONS;
+    int nMaxInbound = nMaxConnections - (MAX_OUTBOUND_CONNECTIONS + MAX_FEELER_CONNECTIONS);
+    assert(nMaxInbound > 0);
 
     if (hSocket != INVALID_SOCKET)
         if (!addr.SetSockAddr((const struct sockaddr*)&sockaddr))
@@ -1768,7 +1773,8 @@ bool edcOpenNetworkConnection(
 	CSemaphoreGrant * grantOutbound, 
 	CSemaphoreGrant * sgrantOutbound, 
 	     const char * pszDest, 
-	             bool fOneShot )
+	             bool fOneShot,
+				 bool fFeeler )
 {
     //
     // Initiate outbound network connection
@@ -1795,6 +1801,8 @@ bool edcOpenNetworkConnection(
     pnode->fNetworkNode = true;
     if (fOneShot)
         pnode->fOneShot = true;
+    if (fFeeler)
+        pnode->fFeeler = true;
 
     CEDCSSLNode* pSSLnode = static_cast<CEDCSSLNode *>(edcConnectNode(addrConnect, pszDest, true ));
     boost::this_thread::interruption_point();
@@ -1806,6 +1814,8 @@ bool edcOpenNetworkConnection(
     	pSSLnode->fNetworkNode = true;
     	if (fOneShot)
         	pSSLnode->fOneShot = true;
+    	if (fFeeler)
+        	pSSLnode->fFeeler = true;
 	}
 
     return true;
@@ -1933,6 +1943,9 @@ void edcThreadOpenConnections()
 
     // Initiate network connections
     int64_t nStart = GetTime();
+
+    // Minimum time before next feeler connection (in microseconds).
+    int64_t nNextFeeler = PoissonNextSend(nStart*1000*1000, FEELER_INTERVAL);
     while (true)
     {
         ProcessOneShot();
@@ -1975,13 +1988,40 @@ void edcThreadOpenConnections()
                 }
             }
         }
+        assert(nOutbound <= (MAX_OUTBOUND_CONNECTIONS + MAX_FEELER_CONNECTIONS));
+ 
+        // Feeler Connections
+        //
+        // Design goals:
+        //  * Increase the number of connectable addresses in the tried table.
+        //
+        // Method:
+        //  * Choose a random address from new and attempt to connect to it if we can connect 
+        //    successfully it is added to tried.
+        //  * Start attempting feeler connections only after node finishes making outbound 
+        //    connections.
+        //  * Only make a feeler connection once every few minutes.
+        //
+        bool fFeeler = false;
+        if (nOutbound >= MAX_OUTBOUND_CONNECTIONS) 
+		{
+            int64_t nTime = GetTimeMicros(); // The current time right now (in microseconds).
+            if (nTime > nNextFeeler) 
+			{
+                nNextFeeler = PoissonNextSend(nTime, FEELER_INTERVAL);
+                fFeeler = true;
+            } 
+			else 
+			{
+                continue;
+            }
+        }
 
-        int64_t nANow = edcGetAdjustedTime();
-
+        int64_t nANow = GetAdjustedTime();
         int nTries = 0;
         while (true)
         {
-            CAddrInfo addr = theApp.addrman().Select();
+            CAddrInfo addr = theApp.addrman().Select(fFeeler);
 
             // if we selected an invalid address, restart
             if (!addr.IsValid() || setConnected.count(addr.GetGroup()) || edcIsLocal(addr))
@@ -2018,10 +2058,19 @@ void edcThreadOpenConnections()
             break;
         }
 
-        CSemaphoreGrant grant(*semOutbound);
-        CSemaphoreGrant sgrant(*semOutbound);
-        if (addrConnect.IsValid())
-            edcOpenNetworkConnection(addrConnect, (int)setConnected.size() >= std::min(theApp.maxConnections() - 1, 2), &grant, &sgrant );
+        if (addrConnect.IsValid()) 
+		{
+            if (fFeeler) {
+                // Add small amount of random noise before connection to avoid synchronization.
+                int randsleep = GetRandInt(FEELER_SLEEP_WINDOW * 1000);
+                MilliSleep(randsleep);
+                LogPrint("net", "Making feeler connection to %s\n", addrConnect.ToString());
+            }
+
+        	CSemaphoreGrant grant(*semOutbound);
+	        CSemaphoreGrant sgrant(*semOutbound);
+            edcOpenNetworkConnection(addrConnect, (int)setConnected.size() >= std::min(theApp.maxConnections() - 1, 2), &grant, &sgrant, NULL, false, fFeeler);
+        }
     }
 }
 
@@ -2426,7 +2475,7 @@ void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
     if (semOutbound == NULL) 
 	{
         // initialize semaphore
-        int nMaxOutbound = std::min(MAX_OUTBOUND_CONNECTIONS, theApp.maxConnections() );
+		int nMaxOutbound = std::min((MAX_OUTBOUND_CONNECTIONS + MAX_FEELER_CONNECTIONS), theApp.maxConnections() );
         semOutbound = new CSemaphore(nMaxOutbound);
     }
 
@@ -2474,7 +2523,7 @@ bool edcStopNode()
     edcLogPrintf("edcStopNode()\n");
     edcMapPort(false);
     if (semOutbound)
-        for (int i=0; i<MAX_OUTBOUND_CONNECTIONS; i++)
+		for (int i=0; i<(MAX_OUTBOUND_CONNECTIONS + MAX_FEELER_CONNECTIONS); i++)
             semOutbound->post();
 
     if (edcfAddressesInitialized)
@@ -2864,6 +2913,7 @@ CEDCNode::CEDCNode(
     fWhitelisted = false;
     fOneShot = false;
     fClient = false; // set by version message
+	fFeeler = false;
     fInbound = fInboundIn;
     fNetworkNode = false;
     fSuccessfullyConnected = false;

@@ -119,6 +119,7 @@ public:
     // the network or wire types and the cleaned string used when displayed or logged.
     std::string strSubVer, cleanSubVer;
     bool fWhitelisted; // This peer can bypass DoS banning.
+	bool fFeeler; // If true this node is being used as a short lived feeler.
     bool fOneShot;
     bool fClient;
     bool fInbound;
@@ -683,6 +684,6 @@ CEDCNode * edcFindNode(const CSubNet& subNet, bool );
 CEDCNode * edcFindNode(const std::string& addrName, bool );
 CEDCNode * edcFindNode(const CService& ip, bool );
 CEDCNode * edcFindNode( const NodeId id, bool ); //TODO: Remove this
-bool edcOpenNetworkConnection( const CAddress & addrConnect, bool fCountFailure, CSemaphoreGrant * grantOutbound  = NULL, CSemaphoreGrant * sgrantOutbound  = NULL, const char * pszDest = NULL, bool fOneShot = false ); 
+bool edcOpenNetworkConnection( const CAddress & addrConnect, bool fCountFailure, CSemaphoreGrant * grantOutbound  = NULL, CSemaphoreGrant * sgrantOutbound  = NULL, const char * pszDest = NULL, bool fOneShot = false, bool fFeeler = false ); 
 void edcSetLimited(enum Network net, bool fLimited);
 std::vector<AddedNodeInfo> edcGetAddedNodeInfo();
