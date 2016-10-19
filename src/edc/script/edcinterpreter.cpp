@@ -1200,7 +1200,7 @@ public:
 
 } // anon namespace
 
-EDCCachedHashes::EDCCachedHashes(const CEDCTransaction & txTo)
+EDCPrecomputedTransactionData::PrecomputedTransactionData(const CEDCTransaction& txTo)
 {
     hashPrevouts = GetPrevoutHash(txTo);
     hashSequence = GetSequenceHash(txTo);
@@ -1208,14 +1208,16 @@ EDCCachedHashes::EDCCachedHashes(const CEDCTransaction & txTo)
 }
 
 
+
+
 uint256 SignatureHash(
-		 const CScript & scriptCode, 
- const CEDCTransaction & txTo, 
-			unsigned int nIn, 
-					 int nHashType, 
-		 const CAmount & amount, 
-			  SigVersion sigversion,
- const EDCCachedHashes * cache)
+				   const CScript & scriptCode, 
+ 		   const CEDCTransaction & txTo, 
+					  unsigned int nIn, 
+					 		   int nHashType, 
+		 		   const CAmount & amount, 
+			  			SigVersion sigversion,
+const PrecomputedTransactionData * cache)
 {
     if (sigversion == SIGVERSION_WITNESS_V0) 
 	{
@@ -1319,7 +1321,7 @@ bool EDCTransactionSignatureChecker::CheckSig(
     vchSig.pop_back();
 
     uint256 sighash = SignatureHash(scriptCode, *txTo, nIn, nHashType, 
-									amount, sigversion, this->cachedHashes);
+									amount, sigversion, this->txdata);
 
     if (!VerifySignature(vchSig, pubkey, sighash))
         return false;

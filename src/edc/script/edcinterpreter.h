@@ -22,14 +22,16 @@ class uint256;
 bool edcCheckSignatureEncoding(const std::vector<unsigned char> &vchSig, unsigned int flags, ScriptError* serror);
 
 struct EDCCachedHashes
+struct PrecomputedTransactionData
 {
-    uint256 hashPrevouts, hashSequence, hashOutputs;
-
-    EDCCachedHashes(const CEDCTransaction& tx);
+	uint256 hashPrevouts, hashSequence, hashOutputs;
+ 
+	EDCPrecomputedTransactionData(const CEDCTransaction & tx);
 };
 
 
-uint256 SignatureHash(const CScript &scriptCode, const CEDCTransaction& txTo, unsigned int nIn, int nHashType, const CAmount& amount, SigVersion sigversion, const EDCCachedHashes * cache = NULL);
+uint256 SignatureHash(const CScript &scriptCode, const CEDCTransaction& txTo, unsigned int nIn, int nHashType, const CAmount& amount, SigVersion sigversion, const EDCPrecomputedTransactionData* cache = NULL);
+
 
 class EDCTransactionSignatureChecker : public BaseSignatureChecker
 {
@@ -37,15 +39,15 @@ private:
     const CEDCTransaction* txTo;
     unsigned int nIn;
 	const CAmount amount;
-	const EDCCachedHashes * cachedHashes;
+	const PrecomputedTransactionData * txdata;
 
 protected:
     virtual bool VerifySignature(const std::vector<unsigned char>& vchSig, const CPubKey& vchPubKey, const uint256& sighash) const;
 
 public:
-	EDCTransactionSignatureChecker(const CEDCTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn) : txTo(txToIn), nIn(nInIn), amount(amountIn), cachedHashes(NULL) {}
+	EDCTransactionSignatureChecker(const CEDCTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn) : txTo(txToIn), nIn(nInIn), amount(amountIn), txdata(NULL) {}
 
-	EDCTransactionSignatureChecker(const CEDCTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn, const EDCCachedHashes& cachedHashesIn) : txTo(txToIn), nIn(nInIn), amount(amountIn), cachedHashes(&cachedHashesIn) {}
+	EDCTransactionSignatureChecker(const CEDCTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn, const EDCPrecomputedTransactionData& txdataIn) : txTo(txToIn), nIn(nInIn), amount(amountIn), txdata(&txdataIn) {}
 
     bool CheckSig(const std::vector<unsigned char>& scriptSig, const std::vector<unsigned char>& vchPubKey, const CScript& scriptCode, SigVersion sigversion) const;
 

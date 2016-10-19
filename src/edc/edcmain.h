@@ -39,7 +39,7 @@ class CEDCScriptCheck;
 class CEDCTxMemPool;
 class CEDCValidationInterface;
 class CValidationState;
-class EDCCachedHashes;
+class EDCPrecomputedTransactionData;
 
 struct CNodeStateStats;
 struct LockPoints;
@@ -182,8 +182,8 @@ bool CheckInputs(	const CEDCTransaction & tx,
 					bool fScriptChecks,
 					unsigned int flags, 
 					bool cacheStore, 
-					EDCCachedHashes & cachedHashes,
-					std::vector<CEDCScriptCheck> * pvChecks = NULL);
+					EDCPrecomputedTransactionData & txdata, 
+					std::vector<CScriptCheck> * pvChecks = NULL);
 
 /** Apply the effects of this transaction on the UTXO set represented by view */
 void UpdateCoins(const CEDCTransaction& tx, CEDCCoinsViewCache &inputs, int nHeight);
@@ -258,14 +258,14 @@ private:
     unsigned int nFlags;
     bool cacheStore;
     ScriptError error;
-	EDCCachedHashes * cachedHashes;
+	EDCPrecomputedTransactionData * txdata;
 
 public:
 	CEDCScriptCheck(): amount(0), ptxTo(0), nIn(0), nFlags(0), cacheStore(false), error(SCRIPT_ERR_UNKNOWN_ERROR) {}
 
-    CEDCScriptCheck(const CEDCCoins& txFromIn, const CEDCTransaction& txToIn, unsigned int nInIn, unsigned int nFlagsIn, bool cacheIn, EDCCachedHashes* cachedHashesIn) :
+    CEDCScriptCheck(const CEDCCoins& txFromIn, const CEDCTransaction& txToIn, unsigned int nInIn, unsigned int nFlagsIn, bool cacheIn, EDCPrecomputedTransactionData* txdataIn) :
 		scriptPubKey(txFromIn.vout[txToIn.vin[nInIn].prevout.n].scriptPubKey), amount(txFromIn.vout[txToIn.vin[nInIn].prevout.n].nValue),
-        ptxTo(&txToIn), nIn(nInIn), nFlags(nFlagsIn), cacheStore(cacheIn), error(SCRIPT_ERR_UNKNOWN_ERROR), cachedHashes(cachedHashesIn) { }
+		ptxTo(&txToIn), nIn(nInIn), nFlags(nFlagsIn), cacheStore(cacheIn), error(SCRIPT_ERR_UNKNOWN_ERROR), txdata(txdataIn) { }
 
     bool operator()();
 
@@ -278,7 +278,7 @@ public:
         std::swap(nFlags, check.nFlags);
         std::swap(cacheStore, check.cacheStore);
         std::swap(error, check.error);
-		std::swap(cachedHashes, check.cachedHashes);
+		std::swap(txdata, check.txdata);
     }
 
     ScriptError GetScriptError() const 

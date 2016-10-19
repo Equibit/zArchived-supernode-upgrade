@@ -97,14 +97,14 @@ int verify_script(
         if (tx.GetSerializeSize(SER_NETWORK, PROTOCOL_VERSION) != txToLen)
             return set_error(err, bitcoinconsensus_ERR_TX_SIZE_MISMATCH);
 
-         // Regardless of the verification result, the tx did not error.
-         set_error(err, bitcoinconsensus_ERR_OK);
+        // Regardless of the verification result, the tx did not error.
+        set_error(err, bitcoinconsensus_ERR_OK);
 
-        EDCCachedHashes cachedHashes(tx);
+		EDCPrecomputedTransactionData txdata(tx);
         return edcVerifyScript(tx.vin[nIn].scriptSig, 
 			CScript(scriptPubKey, scriptPubKey + scriptPubKeyLen), 
 			nIn < tx.wit.vtxinwit.size() ? &tx.wit.vtxinwit[nIn].scriptWitness : NULL, 
-			flags, EDCTransactionSignatureChecker(&tx, nIn, amount, cachedHashes), NULL);
+			flags, EDCTransactionSignatureChecker(&tx, nIn, amount, txdata), NULL);
     } 
 	catch (const std::exception&) 
 	{

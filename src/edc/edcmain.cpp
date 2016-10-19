@@ -1685,8 +1685,8 @@ bool AcceptToMemoryPoolWorker(
 
         // Check against previous transactions
         // This is done last to help prevent CPU exhaustion denial-of-service attacks.
-        EDCCachedHashes cachedHashes(tx);
-        if (!CheckInputs(tx, state, view, true, scriptVerifyFlags, true, cachedHashes))
+        EDCPrecomputedTransactionData txdata(tx);
+        if (!CheckInputs(tx, state, view, true, scriptVerifyFlags, true, txdata))
 		{
             // SCRIPT_VERIFY_CLEANSTACK requires SCRIPT_VERIFY_WITNESS, so we
             // need to turn both off, and compare against just turning off CLEANSTACK
@@ -1694,9 +1694,9 @@ bool AcceptToMemoryPoolWorker(
 
 			if (CheckInputs(tx, state, view, true, 
 				scriptVerifyFlags & ~(SCRIPT_VERIFY_WITNESS | SCRIPT_VERIFY_CLEANSTACK), true, 
-				cachedHashes) &&
+				txdata) &&
                !CheckInputs(tx, state, view, true, scriptVerifyFlags & ~SCRIPT_VERIFY_CLEANSTACK, 
-				true, cachedHashes))
+				true, txdata))
 			{
                 // Only the witness is wrong, so the transaction itself may be fine.
                 state.SetCorruptionPossible();
@@ -1713,7 +1713,7 @@ bool AcceptToMemoryPoolWorker(
         // There is a similar check in CreateNewBlock() to prevent creating
         // invalid blocks, however allowing such transactions into the mempool
         // can be exploited as a DoS attack.
-        if (!CheckInputs(tx, state, view, true, MANDATORY_SCRIPT_VERIFY_FLAGS, true, cachedHashes))
+        if (!CheckInputs(tx, state, view, true, MANDATORY_SCRIPT_VERIFY_FLAGS, true, txdata))
         {
             return edcError("%s: BUG! PLEASE REPORT THIS! ConnectInputs failed against MANDATORY but not STANDARD flags %s, %s",
                 __func__, hash.ToString(), FormatStateMessage(state));
@@ -2219,7 +2219,7 @@ bool CEDCScriptCheck::operator()()
 		&ptxTo->wit.vtxinwit[nIn].scriptWitness : NULL;
 
 	if (!edcVerifyScript(scriptSig, scriptPubKey, witness, nFlags, 
-	EDCCachingTransactionSignatureChecker(ptxTo, nIn, amount, cacheStore, *cachedHashes), 
+	EDCCachingTransactionSignatureChecker(ptxTo, nIn, amount, cacheStore, *txdata), 
 	&error))
 	{
         return false;
@@ -2289,14 +2289,14 @@ bool CheckTxInputs(
 }
 
 bool CheckInputs(
-	   const CEDCTransaction & tx, 
-		 	CValidationState & state, 
-	const CEDCCoinsViewCache & inputs, 
-						  bool fScriptChecks, 
-				  unsigned int flags, 
-						  bool cacheStore, 
-			 EDCCachedHashes & cachedHashes, 
-std::vector<CEDCScriptCheck> * pvChecks)
+	  	const CEDCTransaction & tx, 
+			 CValidationState & state, 
+	 const CEDCCoinsViewCache & inputs, 
+						   bool fScriptChecks, 
+				   unsigned int flags, 
+						   bool cacheStore, 
+EDCPrecomputedTransactionData & txdata
+ std::vector<CEDCScriptCheck> * pvChecks)
 {
     if (!tx.IsCoinBase())
     {
@@ -2325,7 +2325,7 @@ std::vector<CEDCScriptCheck> * pvChecks)
                 assert(coins);
 
                 // Verify signature
-                CEDCScriptCheck check(*coins, tx, i, flags, cacheStore, &cachedHashes);
+                CEDCScriptCheck check(*coins, tx, i, flags, cacheStore, &txdata);
                 if (pvChecks) 
 				{
                     pvChecks->push_back(CEDCScriptCheck());
@@ -2342,7 +2342,7 @@ std::vector<CEDCScriptCheck> * pvChecks)
                         // avoid splitting the network between upgraded and
                         // non-upgraded nodes.
                         CEDCScriptCheck check2(*coins, tx, i,
-                            flags & ~STANDARD_NOT_MANDATORY_VERIFY_FLAGS, cacheStore,&cachedHashes);
+                            flags & ~STANDARD_NOT_MANDATORY_VERIFY_FLAGS, cacheStore,&txdata);
                         if (check2())
                             return state.Invalid(false, REJECT_NONSTANDARD, strprintf("non-mandatory-script-verify-flag (%s)", ScriptErrorString(check.GetScriptError())));
                     }
@@ -2795,9 +2795,10 @@ bool edcConnectBlock(
     std::vector<std::pair<uint256, CDiskTxPos> > vPos;
     vPos.reserve(block.vtx.size());
     blockundo.vtxundo.reserve(block.vtx.size() - 1);
-    std::vector<EDCCachedHashes> cachedHashes;
-    cachedHashes.reserve(block.vtx.size());	// Required so that pointers to individual 
-											// EDCCachedHashes don't get invalidated
+
+    std::vector<EDCPrecomputedTransactionData> txdata;
+    txdata.reserve(block.vtx.size());	// Required so that pointers to individual 
+										// EDCPrecomputedTransactionData don't get invalidated
 
     for (unsigned int i = 0; i < block.vtx.size(); i++)
     {
@@ -2850,7 +2851,7 @@ bool edcConnectBlock(
             return state.DoS(100, error("ConnectBlock(): too many sigops"),
                              REJECT_INVALID, "bad-blk-sigops");
  
-		cachedHashes.emplace_back(tx);
+		txdata.emplace_back(tx);
         if (!tx.IsCoinBase())
         {
             nFees += view.GetValueIn(tx)-tx.GetValueOut();
@@ -2858,7 +2859,7 @@ bool edcConnectBlock(
             std::vector<CEDCScriptCheck> vChecks;
             bool fCacheResults = fJustCheck; /* Don't cache results if we're actually connecting blocks (still consult the cache, though) */
 
-			if (!CheckInputs(tx, state, view, fScriptChecks, flags, fCacheResults, cachedHashes[i], nScriptCheckThreads ? &vChecks : NULL))
+			if (!CheckInputs(tx, state, view, fScriptChecks, flags, fCacheResults, txdata[i], nScriptCheckThreads ? &vChecks : NULL))
                 return edcError("ConnectBlock(): CheckInputs on %s failed with %s",
                     tx.GetHash().ToString(), FormatStateMessage(state));
             control.Add(vChecks);
