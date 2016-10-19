@@ -55,7 +55,7 @@ CAmount CEDCTransaction::GetValueOut() const
 	{
 		nValueOut += it->nValue;
 		if (!MoneyRange(it->nValue) || !MoneyRange(nValueOut))
-			throw std::runtime_error("CEDCTransaction::GetValueOut(): value out of range");
+			throw std::runtime_error(std::string(__func__) + ": value out of range");
 	}
 	return nValueOut;
 }

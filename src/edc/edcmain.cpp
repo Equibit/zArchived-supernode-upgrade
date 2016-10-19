@@ -4567,7 +4567,7 @@ CBlockIndex * edcInsertBlockIndex(uint256 hash)
     // Create new
     CBlockIndex* pindexNew = new CBlockIndex();
     if (!pindexNew)
-        throw runtime_error("edcLoadBlockIndex(): new CBlockIndex failed");
+		throw runtime_error(std::string(__func__) + ": new CBlockIndex failed");
     mi = theApp.mapBlockIndex().insert(make_pair(hash, pindexNew)).first;
     pindexNew->phashBlock = &((*mi).first);
 

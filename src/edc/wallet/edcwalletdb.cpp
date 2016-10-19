@@ -345,7 +345,7 @@ void CEDCWalletDB::ListAccountCreditDebit(const string& strAccount, list<CAccoun
 
     Dbc* pcursor = GetCursor();
     if (!pcursor)
-        throw runtime_error("CEDCWalletDB::ListAccountCreditDebit(): cannot create DB cursor");
+        throw runtime_error(std::string(__func__) + ": cannot create DB cursor");
 
     unsigned int fFlags = DB_SET_RANGE;
     while (true)
@@ -365,7 +365,7 @@ void CEDCWalletDB::ListAccountCreditDebit(const string& strAccount, list<CAccoun
         else if (ret != 0)
         {
             pcursor->close();
-            throw runtime_error("CEDCWalletDB::ListAccountCreditDebit(): error scanning DB");
+            throw runtime_error(std::string(__func__) + ": error scanning DB");
         }
 
         // Unserialize
@@ -1732,7 +1732,7 @@ void CEDCWalletDB::ListIssuers( vector<pair<string,CIssuer>> & issuers )
 {
     Dbc* pcursor = GetCursor();
     if (!pcursor)
-        throw runtime_error("CEDCWalletDB::ListIssuer(): cannot create DB cursor");
+        throw runtime_error(std::string(__func__) + ": cannot create DB cursor");
 
     while (true)
     {
@@ -1746,7 +1746,7 @@ void CEDCWalletDB::ListIssuers( vector<pair<string,CIssuer>> & issuers )
         else if (ret != 0)
         {
             pcursor->close();
-            throw runtime_error("CEDCWalletDB::ListIssuers(): error scanning DB");
+            throw runtime_error(std::string(__func__) + ": error scanning DB");
         }
 
         // Unserialize
@@ -1857,7 +1857,7 @@ void CEDCWalletDB::GetMessage( const uint256 & hash, CUserMessage * & msg )
 {
     Dbc* pcursor = GetCursor();
     if (!pcursor)
-        throw runtime_error("CEDCWalletDB::GetMessage(): cannot create DB cursor");
+        throw runtime_error(std::string(__func__) + ": cannot create DB cursor");
 
 	uint256 readHash = hash;
 
@@ -1877,7 +1877,7 @@ void CEDCWalletDB::GetMessage( const uint256 & hash, CUserMessage * & msg )
         if (ret != 0)
         {
             pcursor->close();
-            throw runtime_error("CEDCWalletDB::GetMessage(): error scanning DB");
+            throw runtime_error(std::string(__func__) + ": error scanning DB");
         }
 
 		std::string readType;
@@ -1905,7 +1905,7 @@ void CEDCWalletDB::DeleteMessage( const uint256 & hash )
 {
     Dbc* pcursor = GetCursor();
     if (!pcursor)
-        throw runtime_error("CEDCWalletDB::DeleteMessage(): cannot create DB cursor");
+        throw runtime_error(std::string(__func__) + ": cannot create DB cursor");
 
 	uint256 readHash = hash;
 
@@ -1925,7 +1925,7 @@ void CEDCWalletDB::DeleteMessage( const uint256 & hash )
         if (ret != 0)
         {
             pcursor->close();
-            throw runtime_error("CEDCWalletDB::GetMessage(): error scanning DB");
+            throw runtime_error(std::string(__func__) + ": error scanning DB");
         }
 
 		std::string readType;
@@ -2032,7 +2032,7 @@ std::vector<CUserMessage *> & out
    		else if (ret != 0)
    		{
        		pcursor->close();
-       		throw runtime_error("CEDCWalletDB::GetMessages(): error scanning DB");
+       		throw runtime_error(std::string(__func__) + ": error scanning DB");
    		}
 
 		std::string readType;
@@ -2093,7 +2093,7 @@ void CEDCWalletDB::GetMessages(
 {
     Dbc* pcursor = GetCursor();
     if (!pcursor)
-        throw runtime_error("CEDCWalletDB::GetMessages(): cannot create DB cursor");
+        throw runtime_error(std::string(__func__) + ": cannot create DB cursor");
 
 	if( types.size() )
 	{
@@ -2136,7 +2136,7 @@ const std::set<std::string> & receivers
 		{
     		pcursor = GetCursor();
 		    if (!pcursor)
-       			throw runtime_error("CEDCWalletDB::DeleteMessages(): cannot create DB cursor");
+       			throw runtime_error(std::string(__func__) + ": cannot create DB cursor");
 			fFlags = DB_SET_RANGE;
 			hash.SetNull();
 		}
@@ -2153,7 +2153,7 @@ const std::set<std::string> & receivers
    		else if (ret != 0)
    		{
        		pcursor->close();
-       		throw runtime_error("CEDCWalletDB::GetMessages(): error scanning DB");
+       		throw runtime_error(std::string(__func__) + ": error scanning DB");
    		}
 
         std::string readType;

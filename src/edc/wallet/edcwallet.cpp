@@ -112,7 +112,7 @@ CPubKey CEDCWallet::GenerateNewKey()
 
         // try to get the master key
         if (!GetKey(hdChain.masterKeyID, key))
-            throw std::runtime_error("CEDCWallet::GenerateNewKey(): Master key not found");
+			throw std::runtime_error(std::string(__func__) + ": Master key not found");
 
         masterKey.SetMaster(key.begin(), key.size());
 
@@ -143,7 +143,7 @@ CPubKey CEDCWallet::GenerateNewKey()
 
         // update the chain model in the database
         if (!CWalletDB(strWalletFile).WriteHDChain(hdChain))
-            throw std::runtime_error("CWallet::GenerateNewKey(): Writing HD chain model failed");
+			throw std::runtime_error(std::string(__func__) + ": Writing HD chain model failed");
     } 
 	else 
 	{
@@ -163,7 +163,7 @@ CPubKey CEDCWallet::GenerateNewKey()
         nTimeFirstKey = nCreationTime;
 
     if (!AddKeyPubKey(secret, pubkey))
-        throw std::runtime_error("CEDCWallet::GenerateNewKey(): AddKey failed");
+		throw std::runtime_error(std::string(__func__) + ": AddKey failed");
     return pubkey;
 }
 
@@ -1258,7 +1258,7 @@ isminetype CEDCWallet::IsMine(const CEDCTxOut& txout) const
 CAmount CEDCWallet::GetCredit(const CEDCTxOut& txout, const isminefilter& filter) const
 {
     if (!MoneyRange(txout.nValue))
-        throw std::runtime_error("CEDCWallet::GetCredit(): value out of range");
+		throw std::runtime_error(std::string(__func__) + ": value out of range");
     return ((IsMine(txout) & filter) ? txout.nValue : 0);
 }
 
@@ -1288,7 +1288,7 @@ bool CEDCWallet::IsChange(const CEDCTxOut& txout) const
 CAmount CEDCWallet::GetChange(const CEDCTxOut& txout) const
 {
     if (!MoneyRange(txout.nValue))
-        throw std::runtime_error("CEDCWallet::GetChange(): value out of range");
+		throw std::runtime_error(std::string(__func__) + ": value out of range");
     return (IsChange(txout) ? txout.nValue : 0);
 }
 
@@ -1312,7 +1312,7 @@ CAmount CEDCWallet::GetDebit(const CEDCTransaction& tx, const isminefilter& filt
     {
         nDebit += GetDebit(txin, filter);
         if (!MoneyRange(nDebit))
-            throw std::runtime_error("CEDCWallet::GetDebit(): value out of range");
+			throw std::runtime_error(std::string(__func__) + ": value out of range");
     }
     return nDebit;
 }
@@ -1324,7 +1324,7 @@ CAmount CEDCWallet::GetCredit(const CEDCTransaction& tx, const isminefilter& fil
     {
         nCredit += GetCredit(txout, filter);
         if (!MoneyRange(nCredit))
-            throw std::runtime_error("CEDCWallet::GetCredit(): value out of range");
+			throw std::runtime_error(std::string(__func__) + ": value out of range");
     }
     return nCredit;
 }
@@ -1336,7 +1336,7 @@ CAmount CEDCWallet::GetChange(const CEDCTransaction& tx) const
     {
         nChange += GetChange(txout);
         if (!MoneyRange(nChange))
-            throw std::runtime_error("CEDCWallet::GetChange(): value out of range");
+			throw std::runtime_error(std::string(__func__) + ": value out of range");
     }
     return nChange;
 }
@@ -1392,7 +1392,7 @@ bool CEDCWallet::SetHDChain(const CHDChain& chain, bool memonly)
 {
     LOCK(cs_wallet);
     if (!memonly && !CEDCWalletDB(strWalletFile).WriteHDChain(chain))
-        throw runtime_error("AddHDChain(): writing chain failed");
+        throw runtime_error(std::string(__func__) + ": writing chain failed");
 
     hdChain = chain;
     return true;
@@ -1769,7 +1769,7 @@ CAmount CEDCWalletTx::GetAvailableCredit(bool fUseCache) const
             const CEDCTxOut &txout = vout[i];
             nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE);
             if (!MoneyRange(nCredit))
-                throw std::runtime_error("CEDCWalletTx::GetAvailableCredit() : value out of range");
+				throw std::runtime_error(std::string(__func__) + ": value out of range");
         }
     }
 
@@ -1812,7 +1812,7 @@ CAmount CEDCWalletTx::GetAvailableWatchOnlyCredit(const bool& fUseCache) const
             const CEDCTxOut &txout = vout[i];
             nCredit += pwallet->GetCredit(txout, ISMINE_WATCH_ONLY);
             if (!MoneyRange(nCredit))
-                throw std::runtime_error("CEDCWalletTx::GetAvailableCredit() : value out of range");
+				throw std::runtime_error(std::string(__func__) + ": value out of range");
         }
     }
 
@@ -3073,7 +3073,7 @@ bool CEDCWallet::TopUpKeyPool(unsigned int kpSize)
             if (!setKeyPool.empty())
                 nEnd = *(--setKeyPool.end()) + 1;
             if (!walletdb.WritePool(nEnd, CKeyPool(GenerateNewKey())))
-                throw runtime_error("TopUpKeyPool(): writing generated key failed");
+                throw runtime_error(std::string(__func__) + ": writing generated key failed");
             setKeyPool.insert(nEnd);
             edcLogPrintf("keypool added key %d, size=%u\n", nEnd, setKeyPool.size());
         }
@@ -3100,9 +3100,9 @@ void CEDCWallet::ReserveKeyFromKeyPool(int64_t& nIndex, CKeyPool& keypool)
         nIndex = *(setKeyPool.begin());
         setKeyPool.erase(setKeyPool.begin());
         if (!walletdb.ReadPool(nIndex, keypool))
-            throw runtime_error("ReserveKeyFromKeyPool(): read failed");
+            throw runtime_error(std::string(__func__) + ": read failed");
         if (!HaveKey(keypool.vchPubKey.GetID()))
-            throw runtime_error("ReserveKeyFromKeyPool(): unknown key in key pool");
+            throw runtime_error(std::string(__func__) + ": unknown key in key pool");
         assert(keypool.vchPubKey.IsValid());
         edcLogPrintf("keypool reserve %d\n", nIndex);
     }
@@ -3231,9 +3231,9 @@ void CEDCWallet::ReserveKeyFromHSMKeyPool( long & nIndex , CKeyPool& keypool )
         nIndex = *(setHSMKeyPool.begin());
         setHSMKeyPool.erase(setHSMKeyPool.begin());
         if (!walletdb.ReadHSMPool(nIndex, keypool))
-            throw runtime_error("ReserveKeyFromHSMKeyPool(): read failed");
+            throw runtime_error(std::string(__func__) + ": read failed");
 		if (!HaveHSMKey(keypool.vchPubKey.GetID()))
-			throw runtime_error("ReserveKeyFromHSMKeyPool(): unknown key in key pool");
+			throw runtime_error(std::string(__func__) + ": unknown key in key pool");
 
         assert(keypool.vchPubKey.IsValid());
         edcLogPrintf("HSM keypool reserve %d\n", nIndex);
@@ -3262,7 +3262,7 @@ CPubKey CEDCWallet::GenerateNewHSMKey()
 	char hsmID[NFast::IDENT_SIZE];
 
 	if(! NFast::generateKeyPair( *theApp.nfHardServer(), *theApp.nfModule(), pubkeyData, hsmID ) )
-        throw std::runtime_error("CEDCWallet::GenerateNewHSMKey(): Generate Key failed");
+        throw std::runtime_error(std::string(__func__) + ": Generate Key failed");
 
 	CPubKey	pubkey;
 	pubkey.Set( pubkeyData, pubkeyData + 65 );
@@ -3279,12 +3279,11 @@ CPubKey CEDCWallet::GenerateNewHSMKey()
 		nTimeFirstKey = nCreationTime;
 
 	if(!AddHSMKey( pubkey, hsmID ))
-        throw std::runtime_error("CEDCWallet::GenerateNewHSMKey(): AddKey failed");
+        throw std::runtime_error(std::string(__func__) + ": AddKey failed");
 
 	CEDCWalletDB walletdb(strWalletFile);
 	if(!walletdb.WriteHSMKey( pubkey, hsmID, mapKeyMetadata[pubkey.GetID()] ))
-        throw std::runtime_error(
-			"CEDCWallet::GenerateNewHSMKey(): Write failed" );
+        throw std::runtime_error( std::string(__func__) + ": Write failed" );
     return pubkey;
 }
 
@@ -3312,7 +3311,7 @@ bool CEDCWallet::TopUpHSMKeyPool(unsigned int kpSize)
             if (!setHSMKeyPool.empty())
                 nEnd = *(--setHSMKeyPool.end()) + 1;
             if (!walletdb.WriteHSMPool(nEnd, CKeyPool(GenerateNewHSMKey())))
-                throw runtime_error("TopUpHSMKeyPool(): writing generated key failed");
+                throw runtime_error(std::string(__func__) + ": writing generated key failed");
             setHSMKeyPool.insert(nEnd);
             edcLogPrintf("HSM keypool added key %d, size=%u\n", nEnd, setHSMKeyPool.size());
         }
@@ -3383,7 +3382,7 @@ int64_t CEDCWallet::GetOldestHSMKeyPoolTime()
     CEDCWalletDB walletdb(strWalletFile);
     int64_t nIndex = *(setHSMKeyPool.begin());
     if (!walletdb.ReadHSMPool(nIndex, keypool))
-        throw runtime_error("GetOldestHSMKeyPoolTime(): read oldest HSM key in keypool failed");
+        throw runtime_error(std::string(__func__) + ": read oldest HSM key in keypool failed");
     assert(keypool.vchPubKey.IsValid());
     return keypool.nTime;
 }
@@ -3403,7 +3402,7 @@ int64_t CEDCWallet::GetOldestKeyPoolTime()
     CEDCWalletDB walletdb(strWalletFile);
     int64_t nIndex = *(setKeyPool.begin());
     if (!walletdb.ReadPool(nIndex, keypool))
-        throw runtime_error("GetOldestKeyPoolTime(): read oldest key in keypool failed");
+        throw runtime_error(std::string(__func__) + ": read oldest key in keypool failed");
     assert(keypool.vchPubKey.IsValid());
     return keypool.nTime;
 }
@@ -3666,11 +3665,11 @@ void CEDCWallet::GetAllReserveKeys(set<CKeyID>& setAddress) const
     {
         CKeyPool keypool;
         if (!walletdb.ReadPool(id, keypool))
-            throw runtime_error("GetAllReserveKeyHashes(): read failed");
+            throw runtime_error(std::string(__func__) + ": read failed");
         assert(keypool.vchPubKey.IsValid());
         CKeyID keyID = keypool.vchPubKey.GetID();
         if (!HaveKey(keyID))
-            throw runtime_error("GetAllReserveKeyHashes(): unknown key in key pool");
+            throw runtime_error(std::string(__func__) + ": unknown key in key pool");
         setAddress.insert(keyID);
     }
 }
@@ -3687,11 +3686,11 @@ void CEDCWallet::GetAllReserveHSMKeys(set<CKeyID>& setAddress) const
     {
         CKeyPool keypool;
         if (!walletdb.ReadHSMPool(id, keypool))
-            throw runtime_error("GetAllReserveHSMKeyHashes(): read failed");
+            throw runtime_error(std::string(__func__) + ": read failed");
         assert(keypool.vchPubKey.IsValid());
         CKeyID keyID = keypool.vchPubKey.GetID();
         if (!HaveHSMKey(keyID))
-            throw runtime_error("GetAllReserveHSMKeyHashes(): unknown HSM key in HSM key pool");
+            throw runtime_error(std::string(__func__) + ": unknown HSM key in HSM key pool");
         setAddress.insert(keyID);
     }
 }
@@ -4096,7 +4095,7 @@ bool CEDCWallet::InitLoadWallet()
             // generate a new master key
             CPubKey masterPubKey = walletInstance->GenerateNewHDMasterKey();
             if (!walletInstance->SetHDMasterKey(masterPubKey))
-                throw std::runtime_error("CWallet::GenerateNewKey(): Storing master key failed");
+                throw std::runtime_error(std::string(__func__) + ": Storing master key failed");
         }
 
         CPubKey newDefaultKey;
