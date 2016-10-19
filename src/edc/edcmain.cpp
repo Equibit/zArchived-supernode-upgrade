@@ -6205,7 +6205,7 @@ bool ProcessMessage(
         // we must use CEDCBlocks, as CBlockHeaders won't include the 0x00 nTx count at the end
         vector<CEDCBlock> vHeaders;
         int nLimit = MAX_HEADERS_RESULTS;
-        edcLogPrint("net", "getheaders %d to %s from peer=%d\n", (pindex ? pindex->nHeight : -1), hashStop.ToString(), pfrom->id);
+		edcLogPrint("net", "getheaders %d to %s from peer=%d\n", (pindex ? pindex->nHeight : -1), hashStop.IsNull() ? "end" : hashStop.ToString(), pfrom->id);
         for (; pindex; pindex = theApp.chainActive().Next(pindex))
         {
             vHeaders.push_back(pindex->GetBlockHeader());
