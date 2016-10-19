@@ -39,7 +39,7 @@ void CEDCDBEnv::EnvShutdown()
         edcLogPrintf("CEDCDBEnv::EnvShutdown: Error %d shutting down database "
 			"environment: %s\n", ret, DbEnv::strerror(ret));
     if (!fMockDb)
-        DbEnv(0).remove(strPath.c_str(), 0);
+        DbEnv((u_int32_t)0).remove(strPath.c_str(), 0);
 }
 
 void CEDCDBEnv::Reset()
