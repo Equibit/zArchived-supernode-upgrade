@@ -1110,23 +1110,8 @@ bool EdcAppInit(
     	// ************************************************* Step 11: start node
 
     	//// debug print
-    	edcLogPrintf("mapBlockIndex.size() = %u\n",
-			theApp.mapBlockIndex().size());
-    	edcLogPrintf("nBestHeight = %d\n",
-			theApp.chainActive().Height());
-#ifdef ENABLE_WALLET
-		if( theApp.walletMain() )
-		{
-			LOCK(theApp.walletMain()->cs_wallet);
-
-    		edcLogPrintf("setKeyPool.size() = %u\n",    theApp.walletMain()->setKeyPool.size());
-#ifdef USE_HSM
-	    	edcLogPrintf("setHSMKeyPool.size() = %u\n", theApp.walletMain()->setHSMKeyPool.size());
-#endif
-	   	 	edcLogPrintf("mapWallet.size() = %u\n",     theApp.walletMain()->mapWallet.size());
-   	 		edcLogPrintf("mapAddressBook.size() = %u\n",theApp.walletMain()->mapAddressBook.size());
-		}
-#endif
+    	edcLogPrintf("mapBlockIndex.size() = %u\n", theApp.mapBlockIndex().size());
+    	edcLogPrintf("nBestHeight = %d\n", theApp.chainActive().Height());
 
 		if(params.listenonion )
 			edcStartTorControl( threadGroup, scheduler );
@@ -1141,10 +1126,6 @@ bool EdcAppInit(
 #ifdef ENABLE_WALLET
     	if (theApp.walletMain()) 
 		{
-        	// Add wallet transactions that aren't already in a block to 
-			// mapTransactions
-        	theApp.walletMain()->ReacceptWalletTransactions();
-
         	// Run a thread to flush wallet periodically
         	threadGroup.create_thread(
 				boost::bind(&edcThreadFlushWalletDB, 

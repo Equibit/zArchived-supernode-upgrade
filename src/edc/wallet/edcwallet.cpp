@@ -4191,6 +4191,18 @@ bool CEDCWallet::InitLoadWallet()
     }
     walletInstance->SetBroadcastTransactions(params.walletbroadcast );
 
+    {
+        LOCK(walletInstance->cs_wallet);
+        edcLogPrintf("setKeyPool.size() = %u\n",      walletInstance->GetKeyPoolSize());
+#ifdef USE_HSM
+		edcLogPrintf("setHSMKeyPool.size() = %u\n",   walletInstance->setHSMKeyPool.size());
+#endif
+        edcLogPrintf("mapWallet.size() = %u\n",       walletInstance->mapWallet.size());
+        edcLogPrintf("mapAddressBook.size() = %u\n",  walletInstance->mapAddressBook.size());
+    }
+    // Add wallet transactions that aren't already in a block to mapTransactions
+    walletInstance->ReacceptWalletTransactions();
+
     theApp.walletMain( walletInstance );
     return true;
 }
