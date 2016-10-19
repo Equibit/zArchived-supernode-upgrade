@@ -483,7 +483,7 @@ std::string EDCparams::helpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-eb_whitelistrelay", 
 		strprintf(_("Accept relayed transactions received from whitelisted peers even when not relaying transactions (default: %d)"), EDC_DEFAULT_WHITELISTRELAY));
     strUsage += HelpMessageOpt("-eb_whitelistforcerelay", 
-		strprintf(_("Force relay of transactions from whitelisted peers even they violate local relay policy (default: %d)"), EDC_DEFAULT_WHITELISTFORCERELAY));
+		strprintf(_("Force relay of transactions from whitelisted peers even if they violate local relay policy (default: %d)"), EDC_DEFAULT_WHITELISTFORCERELAY));
     strUsage += HelpMessageOpt("-eb_maxuploadtarget=<n>", 
 		strprintf(_("Tries to keep outbound traffic under the given target (in MiB per 24h), 0 = no limit (default: %d)"), EDC_DEFAULT_MAX_UPLOAD_TARGET));
 
