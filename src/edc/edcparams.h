@@ -13,6 +13,7 @@ const unsigned int EDC_DEFAULT_HSMKEYPOOL_SIZE		= 50;
 const unsigned int EDC_DEFAULT_KEYPOOL_SIZE			= 100;
 const unsigned int EDC_DEFAULT_BLOCK_MAX_WEIGHT     = 3000000;
 const unsigned int EDC_DEFAULT_MIN_RELAY_TX_FEE		= 1000;
+const bool         EDC_DEFAULT_OPT_INTO_FULL_RBF    = false;
 const CAmount      EDC_DEFAULT_TRANSACTION_MAXFEE	= 0.1 * COIN;
 const unsigned int EDC_DEFAULT_WALLET_DBLOGSIZE		= 100;
 const bool         EDC_DEFAULT_WALLET_PRIVDB		= true;
@@ -57,6 +58,7 @@ public:
 	bool logtimestamps;
 	bool mempoolreplacement;
 	bool nodebug;
+	bool optintofullrbf;
 	bool peerbloomfilters;
 	bool permitbaremultisig;
 	bool printpriority;

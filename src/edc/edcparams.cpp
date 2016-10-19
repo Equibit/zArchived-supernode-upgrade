@@ -216,6 +216,7 @@ EDCparams::EDCparams()
 	logtimestamps       = GetBoolArg( "-eb_logtimestamps", EDC_DEFAULT_LOGTIMESTAMPS );
 	mempoolreplacement  = GetBoolArg( "-eb_mempoolreplacement", EDC_DEFAULT_ENABLE_REPLACEMENT );
 	nodebug             = GetBoolArg( "-eb_nodebug", false );
+	optintrofullrbf		= GetBoolArg( "-eb_optintofullrbf", EDC_DEFAULT_OPT_INTO_FULL_RBF);
 	printpriority       = GetBoolArg( "-eb_printpriority", EDC_DEFAULT_PRINTPRIORITY );
 	printtoconsole      = GetBoolArg( "-eb_printtoconsole", false );
 	privdb              = GetBoolArg( "-eb_privdb", EDC_DEFAULT_WALLET_PRIVDB );
@@ -974,6 +975,8 @@ void EDCparams::dumpToLog() const
 	edcLogPrintf( "eb_onion                  \"%s\"\n", onion.c_str() );
 	printStrVec( "eb_onlynet               ", onlynet );
 
+	edcLogPrintf( "eb_optintrofullrbf        %s\n", toString(optintrofullrbf) );
+
 	edcLogPrintf( "eb_par                    %lld\n", par );
 	edcLogPrintf( "eb_paytxfee               \"%s\"\n", paytxfee.c_str() );
 	edcLogPrintf( "eb_peerbloomfilters       %s\n", toString(peerbloomfilters) );
@@ -1118,6 +1121,7 @@ void EDCparams::checkParams() const
 	validparams.insert("-nodebug");
 	validparams.insert("-onion");
 	validparams.insert("-onlynet");
+	validparams.insert("-optintrofullrbf");
 	validparams.insert("-par");
 	validparams.insert("-paytxfee");
 	validparams.insert("-peerbloomfilters");
@@ -1249,6 +1253,7 @@ void EDCparams::checkParams() const
 	validparams.insert("-eb_nodebug");
 	validparams.insert("-eb_onion");
 	validparams.insert("-eb_onlynet");
+	validparams.insert("-eb_optintrofullrbf");
 	validparams.insert("-eb_par");
 	validparams.insert("-eb_paytxfee");
 	validparams.insert("-eb_peerbloomfilters");
