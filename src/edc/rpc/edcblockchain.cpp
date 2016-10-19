@@ -1328,8 +1328,8 @@ static const CRPCCommand edcCommands[] =
     { "hidden",             "eb_reconsiderblock",        &edcreconsiderblock,        true  },
 };
 
-void edcRegisterBlockchainRPCCommands(CEDCRPCTable & edcTableRPC)
+void edcRegisterBlockchainRPCCommands(CEDCRPCTable & t)
 {
     for (unsigned int vcidx = 0; vcidx < ARRAYLEN(edcCommands); vcidx++)
-        edcTableRPC.appendCommand(edcCommands[vcidx].name, &edcCommands[vcidx]);
+        t.appendCommand(edcCommands[vcidx].name, &edcCommands[vcidx]);
 }

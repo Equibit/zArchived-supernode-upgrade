@@ -634,8 +634,8 @@ static const CRPCCommand edcCommands[] =
     { "network",            "eb_clearbanned",            &edcclearbanned,            true  },
 };
 
-void edcRegisterNetRPCCommands(CEDCRPCTable & edcTableRPC)
+void edcRegisterNetRPCCommands(CEDCRPCTable & t)
 {
     for (unsigned int vcidx = 0; vcidx < ARRAYLEN(edcCommands); vcidx++)
-        edcTableRPC.appendCommand(edcCommands[vcidx].name, &edcCommands[vcidx]);
+        t.appendCommand(edcCommands[vcidx].name, &edcCommands[vcidx]);
 }

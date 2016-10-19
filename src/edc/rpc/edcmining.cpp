@@ -986,8 +986,8 @@ static const CRPCCommand edcCommands[] =
     { "util",               "eb_estimatesmartpriority",  &edcestimatesmartpriority,  true  },
 };
 
-void edcRegisterMiningRPCCommands( CEDCRPCTable & edcTableRPC)
+void edcRegisterMiningRPCCommands( CEDCRPCTable & t)
 {
     for (unsigned int vcidx = 0; vcidx < ARRAYLEN(edcCommands); vcidx++)
-        edcTableRPC.appendCommand(edcCommands[vcidx].name, &edcCommands[vcidx]);
+        t.appendCommand(edcCommands[vcidx].name, &edcCommands[vcidx]);
 }

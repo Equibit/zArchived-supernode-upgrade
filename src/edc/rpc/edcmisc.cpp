@@ -551,8 +551,8 @@ static const CRPCCommand edcCommands[] =
     { "hidden",             "eb_setmocktime",            &edcsetmocktime,            true  },
 };
 
-void edcRegisterMiscRPCCommands( CEDCRPCTable & edcTableRPC)
+void edcRegisterMiscRPCCommands( CEDCRPCTable & t)
 {
     for (unsigned int vcidx = 0; vcidx < ARRAYLEN(edcCommands); vcidx++)
-        edcTableRPC.appendCommand(edcCommands[vcidx].name, &edcCommands[vcidx]);
+        t.appendCommand(edcCommands[vcidx].name, &edcCommands[vcidx]);
 }

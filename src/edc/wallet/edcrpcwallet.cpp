@@ -3052,8 +3052,8 @@ static const CRPCCommand edcCommands[] =
     { "wallet",             "eb_removeprunedfunds",        &edcremoveprunedfunds,        true  },
 };
 
-void edcRegisterWalletRPCCommands(CEDCRPCTable & edcTableRPC)
+void edcRegisterWalletRPCCommands(CEDCRPCTable & t)
 {
     for (unsigned int vcidx = 0; vcidx < ARRAYLEN(edcCommands); vcidx++)
-        edcTableRPC.appendCommand(edcCommands[vcidx].name, &edcCommands[vcidx]);
+        t.appendCommand(edcCommands[vcidx].name, &edcCommands[vcidx]);
 }
