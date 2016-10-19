@@ -605,7 +605,8 @@ void FindNextBlocksToDownload(
 						 NodeId nodeid, 
 				   unsigned int count, 
 	std::vector<CBlockIndex*> & vBlocks, 
-					   NodeId & nodeStaller) 
+					   NodeId & nodeStaller, 
+	  const Consensus::Params & consensusParams)
 {
 	EDCapp & theApp = EDCapp::singleton();
     if (count == 0)
@@ -669,6 +670,11 @@ void FindNextBlocksToDownload(
             if (!pindex->IsValid(BLOCK_VALID_TREE)) 
 			{
                 // We consider the chain that this peer is on invalid.
+                return;
+            }
+            if (!State(nodeid)->fHaveWitness && IsWitnessEnabled(pindex->pprev, consensusParams)) 
+			{
+                // We wouldn't download this block or its descendants from this peer.
                 return;
             }
             if (pindex->nStatus & BLOCK_HAVE_DATA || theApp.chainActive().Contains(pindex)) 
@@ -7751,19 +7757,14 @@ bool edcSendMessages(CEDCNode* pto)
 		{
             vector<CBlockIndex*> vToDownload;
             NodeId staller = -1;
-            FindNextBlocksToDownload(pto->GetId(), MAX_BLOCKS_IN_TRANSIT_PER_PEER - state.nBlocksInFlight, vToDownload, staller);
+            FindNextBlocksToDownload(pto->GetId(), MAX_BLOCKS_IN_TRANSIT_PER_PEER - state.nBlocksInFlight, vToDownload, staller, consensusParams );
             BOOST_FOREACH(CBlockIndex *pindex, vToDownload) 
 			{
-                if (State(pto->GetId())->fHaveWitness || 
-				!IsWitnessEnabled(pindex->pprev, consensusParams)) 
-				{
-                    uint32_t nFetchFlags = GetFetchFlags(pto, pindex->pprev, consensusParams);
-                    vGetData.push_back(CInv(MSG_BLOCK | nFetchFlags, pindex->GetBlockHash()));
-                    MarkBlockAsInFlight(pto->GetId(), pindex->GetBlockHash(), consensusParams, 
-						pindex);
-                    edcLogPrint("net", "Requesting block %s (%d) peer=%d\n", 
-						pindex->GetBlockHash().ToString(), pindex->nHeight, pto->id);
-                }
+                uint32_t nFetchFlags = GetFetchFlags(pto, pindex->pprev, consensusParams);
+                vGetData.push_back(CInv(MSG_BLOCK | nFetchFlags, pindex->GetBlockHash()));
+                MarkBlockAsInFlight(pto->GetId(), pindex->GetBlockHash(), consensusParams, pindex);
+                edcLogPrint("net", "Requesting block %s (%d) peer=%d\n", 
+					pindex->GetBlockHash().ToString(), pindex->nHeight, pto->id);
             }
             if (state.nBlocksInFlight == 0 && staller != -1) 
 			{
