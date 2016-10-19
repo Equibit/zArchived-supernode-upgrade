@@ -1129,8 +1129,9 @@ void edcThreadFlushWalletDB(const string& strFile)
                 if (nRefCount == 0)
                 {
                     boost::this_thread::interruption_point();
-                    map<string, int>::iterator mi = theApp.bitdb().mapFileUseCount.find(strFile);
-                    if (mi != theApp.bitdb().mapFileUseCount.end())
+
+                    map<string, int>::iterator _mi = theApp.bitdb().mapFileUseCount.find(strFile);
+                    if (_mi != theApp.bitdb().mapFileUseCount.end())
                     {
                         edcLogPrint("db", "Flushing %s\n", strFile);
                         nLastFlushed = theApp.walletDBUpdated();
@@ -1140,7 +1141,7 @@ void edcThreadFlushWalletDB(const string& strFile)
                         theApp.bitdb().CloseDb(strFile);
                         theApp.bitdb().CheckpointLSN(strFile);
 
-                        theApp.bitdb().mapFileUseCount.erase(mi++);
+                        theApp.bitdb().mapFileUseCount.erase(_mi++);
                         edcLogPrint("db", "Flushed %s %dms\n", strFile, GetTimeMillis() - nStart);
                     }
                 }
