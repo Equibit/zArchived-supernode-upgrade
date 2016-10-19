@@ -2538,6 +2538,7 @@ bool CEDCWallet::CreateTransaction(
                 nChangePosInOut = nChangePosRequest;
                 txNew.vin.clear();
                 txNew.vout.clear();
+				txNew.wit.SetNull();
                 wtxNew.fFromMe = true;
                 bool fFirst = true;
 
