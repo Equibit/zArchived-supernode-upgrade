@@ -347,18 +347,18 @@ void CEDCWalletDB::ListAccountCreditDebit(const string& strAccount, list<CAccoun
     if (!pcursor)
         throw runtime_error(std::string(__func__) + ": cannot create DB cursor");
 
-    unsigned int fFlags = DB_SET_RANGE;
+    bool setRange = true;
     while (true)
     {
         // Read next record
         CDataStream ssKey(SER_DISK, CLIENT_VERSION);
-        if (fFlags == DB_SET_RANGE)
+        if (setRange)
             ssKey << std::make_pair(ACENTRY, 
 				std::make_pair((fAllAccounts ? string("") : strAccount), uint64_t(0)));
 
         CDataStream ssValue(SER_DISK, CLIENT_VERSION);
-        int ret = ReadAtCursor(pcursor, ssKey, ssValue, fFlags);
-        fFlags = DB_NEXT;
+        int ret = ReadAtCursor(pcursor, ssKey, ssValue, setRange);
+        setRange = false;
 
         if (ret == DB_NOTFOUND)
             break;

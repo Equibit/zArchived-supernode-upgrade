@@ -428,7 +428,7 @@ bool CEDCDB::Rewrite(const string& strFile, const char* pszSkip)
 						{
                             CDataStream ssKey(SER_DISK, CLIENT_VERSION);
                             CDataStream ssValue(SER_DISK, CLIENT_VERSION);
-                            int ret = db.ReadAtCursor(pcursor, ssKey, ssValue, DB_NEXT);
+                            int ret = db.ReadAtCursor(pcursor, ssKey, ssValue);
                             if (ret == DB_NOTFOUND) 
 							{
                                 pcursor->close();
