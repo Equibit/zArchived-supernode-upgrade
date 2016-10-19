@@ -295,14 +295,13 @@ UniValue edcimportprunedfunds(const UniValue& params, bool fHelp)
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
-    if (fHelp || params.size() < 2 || params.size() > 3)
+    if (fHelp || params.size() != 2)
         throw runtime_error(
             "eb_importprunedfunds\n"
             "\nImports funds without rescan. Corresponding address or script must previously be included in wallet. Aimed towards pruned wallets. The end-user is responsible to import additional transactions that subsequently spend the imported outputs or rescan after the point in the blockchain the transaction is included.\n"
             "\nArguments:\n"
             "1. \"rawtransaction\" (string, required) A raw transaction in hex funding an already-existing address in wallet\n"
             "2. \"txoutproof\"     (string, required) The hex output from gettxoutproof that contains the transaction\n"
-            "3. \"label\"          (string, optional) An optional label\n"
         );
 
     CEDCTransaction tx;
@@ -314,10 +313,6 @@ UniValue edcimportprunedfunds(const UniValue& params, bool fHelp)
     CDataStream ssMB(ParseHexV(params[1], "proof"), SER_NETWORK, PROTOCOL_VERSION);
     CEDCMerkleBlock merkleBlock;
     ssMB >> merkleBlock;
-
-    string strLabel = "";
-    if (params.size() == 3)
-        strLabel = params[2].get_str();
 
     //Search partial merkle tree in proof for our transaction and index in valid block
     vector<uint256> vMatch;
