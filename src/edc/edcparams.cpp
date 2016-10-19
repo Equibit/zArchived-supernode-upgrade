@@ -36,7 +36,7 @@ const unsigned int EDC_DEFAULT_BLOCK_PRIORITY_SIZE     = 0;
 const bool         EDC_DEFAULT_BLOCKSONLY              = false;
 const unsigned int EDC_DEFAULT_BYTES_PER_SIGOP         = 20;
 
-const signed int   EDC_DEFAULT_CHECKBLOCKS             = EDC_MIN_BLOCKS_TO_KEEP;
+const signed int   EDC_DEFAULT_CHECKBLOCKS             = 6;
 const unsigned int EDC_DEFAULT_CHECKLEVEL              = 3;
 const bool         EDC_DEFAULT_CHECKPOINTS_ENABLED     = true;
 const char * const EDC_DEFAULT_CONF_FILENAME           = "equibit.conf";
