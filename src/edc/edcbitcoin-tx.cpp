@@ -410,10 +410,8 @@ static void MutateTxSign(CEDCMutableTransaction& tx, const string& flagStr)
 
     if (!registers.count("privatekeys"))
         throw runtime_error("privatekeys register variable must be set.");
-    bool fGivenKeys = false;
     CBasicKeyStore tempKeystore;
     UniValue keysObj = registers["privatekeys"];
-    fGivenKeys = true;
 
     for (unsigned int kidx = 0; kidx < keysObj.size(); kidx++) 
 	{
@@ -476,7 +474,7 @@ static void MutateTxSign(CEDCMutableTransaction& tx, const string& flagStr)
 
             // if redeemScript given and private keys given,
             // add redeemScript to the tempKeystore so it can be signed:
-			if (fGivenKeys && (scriptPubKey.IsPayToScriptHash() || 
+			if ((scriptPubKey.IsPayToScriptHash() || 
 				scriptPubKey.IsPayToWitnessScriptHash()) &&
                 prevOut.exists("redeemScript")) 
 			{

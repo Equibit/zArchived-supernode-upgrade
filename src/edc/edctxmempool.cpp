@@ -679,7 +679,6 @@ void CEDCTxMemPool::removeForReorg(
 void CEDCTxMemPool::removeConflicts(const CEDCTransaction &tx, std::list<CEDCTransaction>& removed)
 {
     // Remove transactions which depend on inputs of tx, recursively
-    list<CEDCTransaction> result;
     LOCK(cs);
     BOOST_FOREACH(const CEDCTxIn &txin, tx.vin) 
 	{

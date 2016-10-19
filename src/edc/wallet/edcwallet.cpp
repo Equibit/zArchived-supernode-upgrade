@@ -2798,7 +2798,6 @@ bool CEDCWallet::CommitTransaction(CEDCWalletTx& wtxNew, CEDCReserveKey& reserve
             AddToWallet(wtxNew);
 
             // Notify that old coins are spent
-            set<CEDCWalletTx*> setCoins;
             BOOST_FOREACH(const CEDCTxIn& txin, wtxNew.vin)
             {
                 CEDCWalletTx &coin = mapWallet[txin.prevout.hash];

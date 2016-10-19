@@ -732,9 +732,9 @@ bool EdcAppInit(
 	    }
 	
     	// see Step 2: parameter interactions for more information about these
-	    bool fBound = false;
 	    if (params.listen) 
 		{
+	    	bool fBound = false;
 	        if (params.bind.size() > 0 || params.whitebind.size() > 0 ) 
 			{
 	            BOOST_FOREACH(const std::string & strBind, params.bind) 
