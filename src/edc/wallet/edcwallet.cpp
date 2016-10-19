@@ -101,7 +101,7 @@ CPubKey CEDCWallet::GenerateNewKey()
     CKeyMetadata metadata(nCreationTime);
 
     // use HD key derivation if HD was enabled during wallet creation
-    if (!hdChain.masterKeyID.IsNull()) 
+	if (IsHDEnabled())
 	{
         // for now we use a fixed keypath scheme of m/0'/0'/k
         CKey key;                      //master key seed (256bit)
@@ -723,7 +723,7 @@ bool CEDCWallet::EncryptWallet(const SecureString& strWalletPassphrase)
         Unlock(strWalletPassphrase);
 
         // if we are using HD, replace the HD master key (seed) with a new one
-        if (!hdChain.masterKeyID.IsNull()) 
+		if (IsHDEnabled())
 		{
             CKey key;
             CPubKey masterPubKey = GenerateNewHDMasterKey();
@@ -1396,6 +1396,11 @@ bool CEDCWallet::SetHDChain(const CHDChain& chain, bool memonly)
 
     hdChain = chain;
     return true;
+}
+
+bool CEDCWallet::IsHDEnabled()
+{
+    return !hdChain.masterKeyID.IsNull();
 }
 
 int64_t CEDCWalletTx::GetTxTime() const
@@ -4086,7 +4091,7 @@ bool CEDCWallet::InitLoadWallet()
     if (fFirstRun)
     {
         // Create new keyUser and set as default key
-        if (params.usehd && walletInstance->hdChain.masterKeyID.IsNull()) 
+		if (params.usehd && !walletInstance->IsHDEnabled())
 		{
             // generate a new master key
             CKey key;
@@ -4109,9 +4114,9 @@ bool CEDCWallet::InitLoadWallet()
 	{
         bool useHD = params.usehd;
 
-        if (!walletInstance->hdChain.masterKeyID.IsNull() && !useHD)
+		if (walletInstance->IsHDEnabled() && !useHD)
             return InitError(strprintf(_("Error loading %s: You can't disable HD on a already existing HD wallet"), walletFile));
-        if (walletInstance->hdChain.masterKeyID.IsNull() && useHD)
+		if (!walletInstance->IsHDEnabled() && useHD)
             return edcInitError(strprintf(_("Error loading %s: You can't enable HD on a already existing non-HD wallet"), walletFile));
     }
 
