@@ -2687,9 +2687,15 @@ bool CEDCWallet::CreateTransaction(
                 //
                 // Note how the sequence number is set to non-maxint so that
                 // the nLockTime set above actually works.
+                //
+                // BIP125 defines opt-in RBF as any nSequence < maxint-1, so
+                // we use the highest possible value in that range (maxint-2)
+                // to avoid conflicting with other possible uses of nSequence,
+                // and in the spirit of "smallest posible change from prior
+                // behavior."
                 BOOST_FOREACH(const PAIRTYPE(const CEDCWalletTx*,unsigned int)& coin, setCoins)
                     txNew.vin.push_back(CEDCTxIn(coin.first->GetHash(),coin.second,CScript(),
-						std::numeric_limits<unsigned int>::max() - (params.optintofullrbf ? 2:1)));
+						std::numeric_limits<unsigned int>::max() - (params.optintrofullrbf ? 2:1)));
 
                 // Sign
                 int nIn = 0;

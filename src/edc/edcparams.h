@@ -58,7 +58,7 @@ public:
 	bool logtimestamps;
 	bool mempoolreplacement;
 	bool nodebug;
-	bool optintofullrbf;
+	bool optintrofullrbf;
 	bool peerbloomfilters;
 	bool permitbaremultisig;
 	bool printpriority;
