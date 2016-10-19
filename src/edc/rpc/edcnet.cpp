@@ -296,14 +296,13 @@ UniValue edcgetaddednodeinfo(const UniValue& params, bool fHelp)
 	EDCapp & theApp = EDCapp::singleton();
 	EDCparams & theParams = EDCparams::singleton();
 
-    if (fHelp || params.size() < 1 || params.size() > 2)
+    if (fHelp || params.size() > 1)
         throw runtime_error(
-            "eb_getaddednodeinfo dummy ( \"node\" )\n"
+            "eb_getaddednodeinfo ( \"node\" )\n"
             "\nReturns information about the given added node, or all added nodes\n"
             "(note that onetry addnodes are not listed here)\n"
             "\nArguments:\n"
-			"1. dummy      (boolean, required) Kept for historical purposes but ignored\n"
-            "2. \"node\"   (string, optional) If provided, return information about this specific node, otherwise all nodes are returned.\n"
+            "1. \"node\"   (string, optional) If provided, return information about this specific node, otherwise all nodes are returned.\n"
             "\nResult:\n"
             "[\n"
             "  {\n"
@@ -327,12 +326,12 @@ UniValue edcgetaddednodeinfo(const UniValue& params, bool fHelp)
 
 	std::vector<AddedNodeInfo> vInfo = edcGetAddedNodeInfo();
 
-    if (params.size() == 2) 
+    if (params.size() == 1) 
 	{
         bool found = false;
         for (const AddedNodeInfo& info : vInfo) 
 		{
-            if (info.strAddedNode == params[1].get_str()) 
+            if (info.strAddedNode == params[0].get_str()) 
 			{
                 vInfo.assign(1, info);
                 found = true;
