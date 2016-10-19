@@ -20,7 +20,7 @@ private:
 
 public:
 	EDCCachingTransactionSignatureChecker(
-			   const CTransaction * txToIn, 
+			const CEDCTransaction * txToIn, 
 					   unsigned int nInIn, 
 					const CAmount & amount, 
 							   bool storeIn, 

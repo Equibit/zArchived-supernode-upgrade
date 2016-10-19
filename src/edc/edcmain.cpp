@@ -2295,7 +2295,7 @@ bool CheckInputs(
 						   bool fScriptChecks, 
 				   unsigned int flags, 
 						   bool cacheStore, 
-EDCPrecomputedTransactionData & txdata
+EDCPrecomputedTransactionData & txdata,
  std::vector<CEDCScriptCheck> * pvChecks)
 {
     if (!tx.IsCoinBase())
@@ -5549,10 +5549,18 @@ void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
                         pfrom->PushMessage(NetMsgType::BLOCK, block);
 					else if (inv.type == MSG_FILTERED_BLOCK)
                     {
-                        LOCK(pfrom->cs_filter);
-                        if (pfrom->pfilter)
+                        bool send = false;
+                        CEDCMerkleBlock merkleBlock;
                         {
-                            CEDCMerkleBlock merkleBlock(block, *pfrom->pfilter);
+                            LOCK(pfrom->cs_filter);
+                            if (pfrom->pfilter) 	
+							{
+                                send = true;
+                                merkleBlock = CEDCMerkleBlock(block, *pfrom->pfilter);
+                            }
+                        }
+                        if (send) 
+						{
                             pfrom->PushMessage(NetMsgType::MERKLEBLOCK, merkleBlock);
                             // CEDCMerkleBlock just contains hashes, so also push any transactions in the block the client did not see
                             // This avoids hurting performance by pointlessly requiring a round-trip
@@ -6967,8 +6975,6 @@ bool ProcessMessage(
         CEDCBloomFilter filter;
         vRecv >> filter;
 
-        LOCK(pfrom->cs_filter);
-
         if (!filter.IsWithinSizeConstraints())
 		{
             // There is no excuse for sending a too-large filter
@@ -6977,11 +6983,12 @@ bool ProcessMessage(
 		}
         else
         {
+			LOCK(pfrom->cs_filter);
             delete pfrom->pfilter;
             pfrom->pfilter = new CEDCBloomFilter(filter);
             pfrom->pfilter->UpdateEmptyFull();
+        	pfrom->fRelayTxes = true;
         }
-        pfrom->fRelayTxes = true;
     }
     else if (strCommand == NetMsgType::FILTERADD)
     {
@@ -6990,20 +6997,25 @@ bool ProcessMessage(
 
         // Nodes must NEVER send a data item > 520 bytes (the max size for a script data object,
         // and thus, the maximum size any matched object can have) in a filteradd message
-        if (vData.size() > MAX_SCRIPT_ELEMENT_SIZE)
-        {
-            edcMisbehaving(pfrom->GetId(), 100);
+        bool bad = false;
+        if (vData.size() > MAX_SCRIPT_ELEMENT_SIZE) 
+		{
+            bad = true;
         } 
 		else 
 		{
             LOCK(pfrom->cs_filter);
             if (pfrom->pfilter)
-                pfrom->pfilter->insert(vData);
-            else
 			{
-				LOCK(EDC_cs_main);
-                edcMisbehaving(pfrom->GetId(), 100);
+                pfrom->pfilter->insert(vData);
 			}
+			else
+				bad = true;
+        }
+        if (bad) 
+		{
+            LOCK(EDC_cs_main);
+            edcMisbehaving(pfrom->GetId(), 100);
         }
     }
     else if (strCommand == NetMsgType::FILTERCLEAR)

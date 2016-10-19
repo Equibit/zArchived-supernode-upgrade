@@ -21,8 +21,7 @@ class uint256;
 
 bool edcCheckSignatureEncoding(const std::vector<unsigned char> &vchSig, unsigned int flags, ScriptError* serror);
 
-struct EDCCachedHashes
-struct PrecomputedTransactionData
+struct EDCPrecomputedTransactionData
 {
 	uint256 hashPrevouts, hashSequence, hashOutputs;
  
@@ -39,7 +38,7 @@ private:
     const CEDCTransaction* txTo;
     unsigned int nIn;
 	const CAmount amount;
-	const PrecomputedTransactionData * txdata;
+	const EDCPrecomputedTransactionData * txdata;
 
 protected:
     virtual bool VerifySignature(const std::vector<unsigned char>& vchSig, const CPubKey& vchPubKey, const uint256& sighash) const;

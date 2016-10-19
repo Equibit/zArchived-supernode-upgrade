@@ -1200,7 +1200,7 @@ public:
 
 } // anon namespace
 
-EDCPrecomputedTransactionData::PrecomputedTransactionData(const CEDCTransaction& txTo)
+EDCPrecomputedTransactionData::EDCPrecomputedTransactionData(const CEDCTransaction& txTo)
 {
     hashPrevouts = GetPrevoutHash(txTo);
     hashSequence = GetSequenceHash(txTo);
