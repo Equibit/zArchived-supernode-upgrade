@@ -4309,8 +4309,6 @@ int CEDCMerkleTx::SetMerkleBranch(const CBlockIndex * pindex, int posInBlock)
 
 	EDCapp & theApp = EDCapp::singleton();
 
-    CEDCBlock blockTmp;
-
     // Update the tx's hashBlock
 	hashBlock = pindex->GetBlockHash();
 
