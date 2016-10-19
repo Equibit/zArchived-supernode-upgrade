@@ -5841,14 +5841,6 @@ bool ProcessMessage(
             }
             theApp.addrman().Good(pfrom->addr);
         } 
-		else 
-		{
-            if (((CNetAddr)pfrom->addr) == (CNetAddr)addrFrom)
-            {
-                theApp.addrman().Add(addrFrom, addrFrom);
-                theApp.addrman().Good(addrFrom);
-            }
-        }
 
         pfrom->fSuccessfullyConnected = true;
 
