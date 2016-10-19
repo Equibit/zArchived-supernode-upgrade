@@ -549,7 +549,7 @@ public:
 static void MutateTx(CEDCMutableTransaction& tx, const string& command,
                      const string& commandVal)
 {
-    boost::scoped_ptr<Secp256k1Init> ecc;
+    std::unique_ptr<Secp256k1Init> ecc;
 
     if (command == "nversion")
         MutateTxVersion(tx, commandVal);

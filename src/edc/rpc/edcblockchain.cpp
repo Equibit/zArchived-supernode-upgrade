@@ -695,7 +695,7 @@ namespace
 bool GetUTXOStats(CEDCCoinsView *view, CCoinsStats &stats)
 {
 	EDCapp & theApp = EDCapp::singleton();
-    boost::scoped_ptr<CEDCCoinsViewCursor> pcursor(view->Cursor());
+    std::unique_ptr<CEDCCoinsViewCursor> pcursor(view->Cursor());
 
     CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
     stats.hashBlock = pcursor->GetBestBlock();

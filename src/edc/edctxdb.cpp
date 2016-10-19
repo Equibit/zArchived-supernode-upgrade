@@ -225,7 +225,7 @@ bool CEDCBlockTreeDB::ReadFlag(const std::string &name, bool &fValue)
 bool CEDCBlockTreeDB::LoadBlockIndexGuts(
 	boost::function<CBlockIndex*(const uint256&)> insertBlockIndex)
 {
-    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+    std::unique_ptr<CDBIterator> pcursor(NewIterator());
 
     pcursor->Seek(make_pair(DB_BLOCK_INDEX, uint256()));
 
