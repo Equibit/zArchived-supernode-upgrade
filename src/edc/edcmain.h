@@ -39,8 +39,8 @@ class CEDCScriptCheck;
 class CEDCTxMemPool;
 class CEDCValidationInterface;
 class CValidationState;
-class EDCPrecomputedTransactionData;
 
+struct EDCPrecomputedTransactionData;
 struct CNodeStateStats;
 struct LockPoints;
 
