@@ -123,6 +123,11 @@ CEDCTxIn::CEDCTxIn(uint256 hashPrevTx, uint32_t nOut, CScript scriptSigIn, uint3
     nSequence = nSequenceIn;
 }
 
+unsigned int CEDCTransaction::GetTotalSize() const
+{
+    return ::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION);
+}
+
 std::string CEDCTransaction::ToString() const
 {
     std::string str;
