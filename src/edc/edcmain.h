@@ -67,7 +67,7 @@ void UnregisterNodeSignals(CEDCNodeSignals& nodeSignals);
  * @param[out]  dbp     The already known disk position of pblock, or NULL if not yet stored.
  * @return True if state.IsValid()
  */
-bool ProcessNewBlock(CValidationState& state, const CEDCChainParams& chainparams, CEDCNode* pfrom, const CEDCBlock* pblock, bool fForceProcessing, const CDiskBlockPos* dbp);
+bool ProcessNewBlock(CValidationState& state, const CEDCChainParams& chainparams, CEDCNode* pfrom, const CEDCBlock* pblock, bool fForceProcessing, const CDiskBlockPos* dbp, CEDCConnman * connman);
 /** Initialize a new block tree database + block data on disk */
 bool edcInitBlockIndex(const CEDCChainParams& chainparams);
 /** Load the block tree and coins database from disk */
@@ -76,14 +76,15 @@ bool edcLoadBlockIndex();
 void edcUnloadBlockIndex();
 
 /** Process protocol messages received from a given node */
-bool edcProcessMessages(CEDCNode* pfrom);
+bool edcProcessMessages(CEDCNode* pfrom, CEDCConnman & connman);
 
 /**
  * Send queued protocol messages to be sent to a give node.
  *
  * @param[in]   pto             The node which we are sending messages to.
+ * @param[in]   connman         The connection manager for that node.
  */
-bool edcSendMessages(CEDCNode* pto);
+bool edcSendMessages(CEDCNode* pto, CEDCConnman & connman);
 
 /** Run an instance of the script checking thread */
 void edcThreadScriptCheck();
@@ -103,7 +104,7 @@ std::string edcGetWarnings(const std::string& strFor);
 /** Retrieve a transaction (from memory pool, or from disk, if possible) */
 bool GetTransaction(const uint256 &hash, CEDCTransaction &tx, const Consensus::Params& params, uint256 &hashBlock, bool fAllowSlow = false);
 /** Find the best known block, and make it the tip of the block chain */
-bool ActivateBestChain(CValidationState& state, const CEDCChainParams& chainparams, const CEDCBlock* pblock = NULL);
+bool ActivateBestChain(CValidationState& state, const CEDCChainParams& chainparams, const CEDCBlock* pblock = NULL, CEDCConnman * connman = NULL);
 CAmount edcGetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams);
 
 /**

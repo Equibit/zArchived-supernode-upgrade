@@ -150,7 +150,7 @@ UniValue edcgenerateBlocks(
             continue;
         }
         CValidationState state;
-        if (!ProcessNewBlock(state, edcParams(), NULL, pblock, true, NULL))
+        if (!ProcessNewBlock(state, edcParams(), NULL, pblock, true, NULL, theApp.connman().get()))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
         ++nHeight;
         blockHashes.push_back(pblock->GetHash().GetHex());
@@ -816,7 +816,7 @@ UniValue edcsubmitblock(const UniValue& params, bool fHelp)
     CValidationState state;
     submitblock_StateCatcher sc(block.GetHash());
     RegisterValidationInterface(&sc);
-    bool fAccepted = ProcessNewBlock(state, edcParams(), NULL, &block, true, NULL);
+    bool fAccepted = ProcessNewBlock(state, edcParams(), NULL, &block, true, NULL, theApp.connman().get());
     UnregisterValidationInterface(&sc);
 
     if (fBlockPresent)

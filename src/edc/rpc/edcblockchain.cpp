@@ -1415,7 +1415,7 @@ UniValue edcinvalidateblock(const UniValue& params, bool fHelp)
 
     if (state.IsValid()) 
 	{
-        ActivateBestChain(state, edcParams(), static_cast<CEDCBlock *>(NULL) );
+        ActivateBestChain(state, edcParams(), static_cast<CEDCBlock *>(NULL), theApp.connman().get() );
     }
 
     if (!state.IsValid()) 
@@ -1455,7 +1455,7 @@ UniValue edcreconsiderblock(const UniValue& params, bool fHelp)
     }
 
 	CValidationState state;
-    ActivateBestChain(state, edcParams(), static_cast<CEDCBlock *>(NULL) );
+    ActivateBestChain(state, edcParams(), static_cast<CEDCBlock *>(NULL), theApp.connman().get() );
 
     if (!state.IsValid()) 
 	{

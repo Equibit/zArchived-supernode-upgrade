@@ -39,6 +39,7 @@ class CAddrMan;
 class CScheduler;
 class CEDCNode;
 class CUserMessage;
+class CEDCConnman;
 
 namespace boost 
 {
@@ -61,9 +62,9 @@ void SocketSendData(CEDCNode *pnode);
 struct CEDCNodeSignals
 {
     boost::signals2::signal<int ()> GetHeight;
-    boost::signals2::signal<bool (CEDCNode*), CombinerAll> ProcessMessages;
-    boost::signals2::signal<bool (CEDCNode*), CombinerAll> SendMessages;
-    boost::signals2::signal<void (NodeId, const CEDCNode*)> InitializeNode;
+    boost::signals2::signal<bool (CEDCNode *, CEDCConnman &), CombinerAll> ProcessMessages;
+    boost::signals2::signal<bool (CEDCNode *, CEDCConnman &), CombinerAll> SendMessages;
+    boost::signals2::signal<void (NodeId, const CEDCNode *)> InitializeNode;
     boost::signals2::signal<void (NodeId)> FinalizeNode;
 };
 

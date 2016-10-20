@@ -3546,7 +3546,8 @@ void NotifyHeaderTip()
 bool ActivateBestChain(
 	     CValidationState & state, 
 	const CEDCChainParams & chainparams, 
-	      const CEDCBlock * pblock) 
+	      const CEDCBlock * pblock, 
+			  CEDCConnman * connman )
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -4385,7 +4386,8 @@ bool ProcessNewBlock(
 				 CEDCNode * pfrom, 
 	      const CEDCBlock * pblock, 
 	                   bool fForceProcessing, 
-	  const CDiskBlockPos * dbp)
+	  const CDiskBlockPos * dbp,
+			  CEDCConnman * connman)
 {
     {
         LOCK(EDC_cs_main);
@@ -4408,7 +4410,7 @@ bool ProcessNewBlock(
 
 	NotifyHeaderTip();
 
-    if (!ActivateBestChain(state, chainparams, pblock))
+    if (!ActivateBestChain(state, chainparams, pblock, connman))
         return edcError("%s: ActivateBestChain failed", __func__);
 
     return true;
@@ -5692,7 +5694,8 @@ bool ProcessMessage(
 					 string strCommand, 
 			  CDataStream & vRecv, 
 	                int64_t nTimeReceived, 
-	const CEDCChainParams & chainparams)
+	const CEDCChainParams & chainparams,
+			  CEDCConnman & connman)
 {
     edcLogPrint("net", "received: %s (%u bytes) peer=%d\n", SanitizeString(strCommand), vRecv.size(), pfrom->id);
 
@@ -6544,7 +6547,7 @@ bool ProcessMessage(
                     txn.blockhash = cmpctblock.header.GetHash();
                     CDataStream blockTxnMsg(SER_NETWORK, PROTOCOL_VERSION);
                     blockTxnMsg << txn;
-                    return ProcessMessage(pfrom, NetMsgType::BLOCKTXN, blockTxnMsg, nTimeReceived, chainparams);
+                    return ProcessMessage(pfrom, NetMsgType::BLOCKTXN, blockTxnMsg, nTimeReceived, chainparams, connman);
                 } 
 				else 
 				{
@@ -6572,7 +6575,7 @@ bool ProcessMessage(
                 headers.push_back(cmpctblock.header);
                 CDataStream vHeadersMsg(SER_NETWORK, PROTOCOL_VERSION);
                 vHeadersMsg << headers;
-                return ProcessMessage(pfrom, NetMsgType::HEADERS, vHeadersMsg, nTimeReceived, chainparams);
+                return ProcessMessage(pfrom, NetMsgType::HEADERS, vHeadersMsg, nTimeReceived, chainparams, connman);
             }
         }
 
@@ -6614,7 +6617,7 @@ bool ProcessMessage(
 		else 
 		{
             CValidationState state;
-            ProcessNewBlock(state, chainparams, pfrom, &block, false, NULL);
+            ProcessNewBlock(state, chainparams, pfrom, &block, false, NULL, &connman);
             int nDoS;
             if (state.IsInvalid(nDoS)) 
 			{
@@ -6834,7 +6837,7 @@ bool ProcessMessage(
         // Such an unrequested block may still be processed, subject to the
         // conditions in AcceptBlock().
         bool forceProcessing = pfrom->fWhitelisted && !edcIsInitialBlockDownload();
-        ProcessNewBlock(state, chainparams, pfrom, &block, forceProcessing, NULL);
+        ProcessNewBlock(state, chainparams, pfrom, &block, forceProcessing, NULL, &connman);
         int nDoS;
         if (state.IsInvalid(nDoS)) 
 		{
@@ -7116,7 +7119,7 @@ bool ProcessMessage(
 }
 
 // requires LOCK(cs_vRecvMsg)
-bool edcProcessMessages(CEDCNode* pfrom)
+bool edcProcessMessages(CEDCNode* pfrom, CEDCConnman & connman)
 {
     const CEDCChainParams& chainparams = edcParams();
     //if (params.debug.size() > 0 )
@@ -7196,7 +7199,7 @@ bool edcProcessMessages(CEDCNode* pfrom)
         bool fRet = false;
         try
         {
-            fRet = ProcessMessage(pfrom, strCommand, vRecv, msg.nTime, chainparams);
+            fRet = ProcessMessage(pfrom, strCommand, vRecv, msg.nTime, chainparams, connman);
             boost::this_thread::interruption_point();
         }
         catch (const std::ios_base::failure& e)
@@ -7266,7 +7269,7 @@ public:
     }
 };
 
-bool edcSendMessages(CEDCNode* pto)
+bool edcSendMessages(CEDCNode* pto, CEDCConnman & connman)
 {
 	EDCapp & theApp = EDCapp::singleton();
 	EDCparams & params = EDCparams::singleton();

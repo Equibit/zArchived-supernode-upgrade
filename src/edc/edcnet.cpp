@@ -2126,7 +2126,7 @@ void CEDCConnman::ThreadMessageHandler()
                 TRY_LOCK(pnode->cs_vRecvMsg, lockRecv);
                 if (lockRecv)
                 {
-                    if (!edcGetNodeSignals().ProcessMessages(pnode))
+                    if (!edcGetNodeSignals().ProcessMessages(pnode, *this))
                         pnode->CloseSocketDisconnect();
 
                     if (pnode->nSendSize < edcSendBufferSize())
@@ -2146,7 +2146,7 @@ void CEDCConnman::ThreadMessageHandler()
             {
                 TRY_LOCK(pnode->cs_vSend, lockSend);
                 if (lockSend)
-                    edcGetNodeSignals().SendMessages(pnode);
+                    edcGetNodeSignals().SendMessages(pnode, *this);
             }
             boost::this_thread::interruption_point();
         }
@@ -2181,7 +2181,7 @@ void CEDCConnman::ThreadMessageHandler()
                 TRY_LOCK(pnode->cs_vRecvMsg, lockRecv);
                 if (lockRecv)
                 {
-                    if (!edcGetNodeSignals().ProcessMessages(pnode))
+                    if (!edcGetNodeSignals().ProcessMessages(pnode, *this))
                         pnode->CloseSocketDisconnect();
 
                     if (pnode->nSendSize < edcSendBufferSize())
@@ -2201,7 +2201,7 @@ void CEDCConnman::ThreadMessageHandler()
             {
                 TRY_LOCK(pnode->cs_vSend, lockSend);
                 if (lockSend)
-                    edcGetNodeSignals().SendMessages(pnode);
+                    edcGetNodeSignals().SendMessages(pnode, *this);
             }
             boost::this_thread::interruption_point();
         }
