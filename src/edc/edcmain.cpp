@@ -5757,7 +5757,7 @@ bool ProcessMessage(
 
         if (!pfrom->fInbound)
         {
-            theApp.addrman().SetServices(pfrom->addr, pfrom->nServices);
+            theApp.connman()->SetServices(pfrom->addr, pfrom->nServices);
         }
 
         if (pfrom->nServicesExpected & ~pfrom->nServices)
@@ -5857,12 +5857,12 @@ bool ProcessMessage(
             }
 
             // Get recent addresses
-            if (pfrom->fOneShot || pfrom->nVersion >= CADDR_TIME_VERSION || theApp.addrman().size() < 1000)
+            if (pfrom->fOneShot || pfrom->nVersion >= CADDR_TIME_VERSION || theApp.connman()->GetAddressCount() < 1000)
             {
                 pfrom->PushMessage(NetMsgType::GETADDR);
                 pfrom->fGetAddr = true;
             }
-            theApp.addrman().Good(pfrom->addr);
+            theApp.connman()->MarkAddressGood(pfrom->addr);
         } 
 
         pfrom->fSuccessfullyConnected = true;
@@ -5925,7 +5925,7 @@ bool ProcessMessage(
         vRecv >> vAddr;
 
         // Don't want addr from older versions unless seeding
-        if (pfrom->nVersion < CADDR_TIME_VERSION && theApp.addrman().size() > 1000)
+        if (pfrom->nVersion < CADDR_TIME_VERSION && theApp.connman()->GetAddressCount() > 1000)
             return true;
         if (vAddr.size() > 1000)
         {
@@ -5977,7 +5977,7 @@ bool ProcessMessage(
             if (fReachable)
                 vAddrOk.push_back(addr);
         }
-        theApp.addrman().Add(vAddrOk, pfrom->addr, 2 * 60 * 60);
+        theApp.connman()->AddNewAddresses(vAddrOk, pfrom->addr, 2 * 60 * 60);
         if (vAddr.size() < 1000)
             pfrom->fGetAddr = false;
         if (pfrom->fOneShot)
@@ -6876,7 +6876,7 @@ bool ProcessMessage(
         pfrom->fSentAddr = true;
 
         pfrom->vAddrToSend.clear();
-        vector<CAddress> vAddr = theApp.addrman().GetAddr();
+        vector<CAddress> vAddr = theApp.connman()->GetAddresses();
         BOOST_FOREACH(const CAddress &addr, vAddr)
             pfrom->PushAddress(addr);
     }
@@ -7373,7 +7373,7 @@ bool edcSendMessages(CEDCNode* pto, CEDCConnman & connman)
                     edcLogPrintf("Warning: not banning local peer %s!\n", pto->addr.ToString());
                 else
                 {
-                    CEDCNode::Ban(pto->addr, BanReasonNodeMisbehaving);
+                    theApp.connman()->Ban(pto->addr, BanReasonNodeMisbehaving);
                 }
             }
             state.fShouldBan = false;

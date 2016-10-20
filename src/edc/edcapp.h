@@ -102,8 +102,6 @@ public:
 	uint64_t lastBlockTx() const		{ return lastBlockTx_; }
 	void lastBlockTx( uint64_t ui )		{ lastBlockTx_ = ui; }
 
-	CAddrMan & addrman()		{ return addrman_; }
-
 	const std::string	& strSubVersion() const		{ return strSubVersion_; }
 	void strSubVersion( const std::string & ssv )	{ strSubVersion_ = ssv; }
 
@@ -245,8 +243,6 @@ private:
 
 	/* Constant stuff for coinbase transactions we create: */
 	CScript COINBASE_FLAGS_;
-
-	CAddrMan addrman_;
 
 	/* Subversion as sent to the P2P network in `version` messages */
 	std::string	strSubVersion_;

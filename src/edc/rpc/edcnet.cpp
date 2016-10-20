@@ -296,9 +296,6 @@ UniValue edcdisconnectnode(const UniValue& params, bool fHelp)
 
 UniValue edcgetaddednodeinfo(const UniValue& params, bool fHelp)
 {
-	EDCapp & theApp = EDCapp::singleton();
-	EDCparams & theParams = EDCparams::singleton();
-
     if (fHelp || params.size() > 1)
         throw runtime_error(
             "eb_getaddednodeinfo ( \"node\" )\n"
@@ -531,6 +528,11 @@ UniValue edcsetban(const UniValue& params, bool fHelp)
                             + HelpExampleRpc("eb_setban", "\"192.168.0.6\", \"add\", 86400")
                             );
 
+	EDCapp & theApp = EDCapp::singleton();
+
+    if(!theApp.connman())
+        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
+
     CSubNet subNet;
     CNetAddr netAddr;
     bool isSubnet = false;
@@ -552,7 +554,7 @@ UniValue edcsetban(const UniValue& params, bool fHelp)
 
     if (strCommand == "add")
     {
-        if (isSubnet ? CEDCNode::IsBanned(subNet) : CEDCNode::IsBanned(netAddr))
+        if (isSubnet ? theApp.connman()->IsBanned(subNet) : theApp.connman()->IsBanned(netAddr))
             throw JSONRPCError(RPC_CLIENT_NODE_ALREADY_ADDED, "Error: IP/Subnet already banned");
 
         int64_t banTime = 0; //use standard bantime if not specified
@@ -563,11 +565,11 @@ UniValue edcsetban(const UniValue& params, bool fHelp)
         if (params.size() == 4 && params[3].isTrue())
             absolute = true;
 
-        isSubnet ? CEDCNode::Ban(subNet, BanReasonManuallyAdded, banTime, absolute) : CEDCNode::Ban(netAddr, BanReasonManuallyAdded, banTime, absolute);
+        isSubnet ? theApp.connman()->Ban(subNet, BanReasonManuallyAdded, banTime, absolute) : theApp.connman()->Ban(netAddr, BanReasonManuallyAdded, banTime, absolute);
     }
     else if(strCommand == "remove")
     {
-        if (!( isSubnet ? CEDCNode::Unban(subNet) : CEDCNode::Unban(netAddr) ))
+        if (!( isSubnet ? theApp.connman()->Unban(subNet) : theApp.connman()->Unban(netAddr) ))
             throw JSONRPCError(RPC_MISC_ERROR, "Error: Unban failed");
     }
 
@@ -585,8 +587,13 @@ UniValue edclistbanned(const UniValue& params, bool fHelp)
                             + HelpExampleRpc("eb_listbanned", "")
                             );
 
+	EDCapp & theApp = EDCapp::singleton();
+
+    if(!theApp.connman())
+        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
+
     banmap_t banMap;
-    CEDCNode::GetBanned(banMap);
+    theApp.connman()->GetBanned(banMap);
 
     UniValue bannedAddresses(UniValue::VARR);
     for (banmap_t::iterator it = banMap.begin(); it != banMap.end(); it++)
@@ -615,7 +622,12 @@ UniValue edcclearbanned(const UniValue& params, bool fHelp)
                             + HelpExampleRpc("eb_clearbanned", "")
                             );
 
-    CEDCNode::ClearBanned();
+	EDCapp & theApp = EDCapp::singleton();
+
+    if(!theApp.connman())
+        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
+
+    theApp.connman()->ClearBanned();
 
     return NullUniValue;
 }

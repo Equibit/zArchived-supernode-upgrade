@@ -82,8 +82,6 @@ bool vfLimited[NET_MAX] = {};
 CEDCNode* pnodeLocalHost = NULL;
 }
 
-bool edcfAddressesInitialized = false;
-
 static std::deque<std::string> vOneShots;
 CCriticalSection edccs_vOneShots;
 
@@ -444,47 +442,38 @@ void CEDCNode::PushVersion()
 		!params.blocksonly);
 }
 
-banmap_t CEDCNode::setBanned;
-CCriticalSection CEDCNode::cs_setBanned;
-bool CEDCNode::setBannedIsDirty;
-
-namespace
+void CEDCConnman::DumpBanlist()
 {
+    SweepBanned(); // clean unused entries (if bantime has expired)
 
-void edcDumpBanlist()
-{
-    CEDCNode::SweepBanned(); // clean unused entries (if bantime has expired)
-
-    if (!CEDCNode::BannedSetIsDirty())
+    if (!BannedSetIsDirty())
         return;
 
     int64_t nStart = GetTimeMillis();
 
     CEDCBanDB bandb;
     banmap_t banmap;
-    CEDCNode::SetBannedSetDirty(false);
-    CEDCNode::GetBanned(banmap);
+    SetBannedSetDirty(false);
+    GetBanned(banmap);
     if (!bandb.Write(banmap))
-        CEDCNode::SetBannedSetDirty(true);
+        SetBannedSetDirty(true);
 
     edcLogPrint("net", "Flushed %d banned node ips/subnets to banlist.dat  %dms\n",
         banmap.size(), GetTimeMillis() - nStart);
 }
 
-}
-
-void CEDCNode::ClearBanned()
+void CEDCConnman::ClearBanned()
 {
     {
         LOCK(cs_setBanned);
         setBanned.clear();
         setBannedIsDirty = true;
     }
-    edcDumpBanlist(); //store banlist to disk
+    DumpBanlist(); //store banlist to disk
 	edcUiInterface.BannedListChanged();
 }
 
-bool CEDCNode::IsBanned(CNetAddr ip)
+bool CEDCConnman::IsBanned(CNetAddr ip)
 {
     bool fResult = false;
     {
@@ -501,7 +490,7 @@ bool CEDCNode::IsBanned(CNetAddr ip)
     return fResult;
 }
 
-bool CEDCNode::IsBanned(CSubNet subnet)
+bool CEDCConnman::IsBanned(CSubNet subnet)
 {
     bool fResult = false;
     {
@@ -517,7 +506,7 @@ bool CEDCNode::IsBanned(CSubNet subnet)
     return fResult;
 }
 
-void CEDCNode::Ban(
+void CEDCConnman::Ban(
 	 const CNetAddr & addr, 
 	const BanReason & banReason, 
 			  int64_t bantimeoffset, 
@@ -527,7 +516,7 @@ void CEDCNode::Ban(
     Ban(subNet, banReason, bantimeoffset, sinceUnixEpoch);
 }
 
-void CEDCNode::Ban(
+void CEDCConnman::Ban(
 	  const CSubNet & subNet, 
 	const BanReason & banReason, 
 			  int64_t bantimeoffset, 
@@ -565,16 +554,16 @@ void CEDCNode::Ban(
         }
     }
     if(banReason == BanReasonManuallyAdded)
-        edcDumpBanlist(); //store banlist to disk immediately if user requested ban
+        DumpBanlist(); //store banlist to disk immediately if user requested ban
 }
 
-bool CEDCNode::Unban(const CNetAddr &addr) 
+bool CEDCConnman::Unban(const CNetAddr &addr) 
 {
     CSubNet subNet(addr);
     return Unban(subNet);
 }
 
-bool CEDCNode::Unban(const CSubNet &subNet) 
+bool CEDCConnman::Unban(const CSubNet &subNet) 
 {
     {
         LOCK(cs_setBanned);
@@ -583,24 +572,24 @@ bool CEDCNode::Unban(const CSubNet &subNet)
         setBannedIsDirty = true;
     }
     edcUiInterface.BannedListChanged();
-    edcDumpBanlist(); //store banlist to disk immediately
+    DumpBanlist(); //store banlist to disk immediately
     return true;
 }
 
-void CEDCNode::GetBanned(banmap_t &banMap)
+void CEDCConnman::GetBanned(banmap_t &banMap)
 {
     LOCK(cs_setBanned);
     banMap = setBanned; //create a thread safe copy
 }
 
-void CEDCNode::SetBanned(const banmap_t &banMap)
+void CEDCConnman::SetBanned(const banmap_t &banMap)
 {
     LOCK(cs_setBanned);
     setBanned = banMap;
     setBannedIsDirty = true;
 }
 
-void CEDCNode::SweepBanned()
+void CEDCConnman::SweepBanned()
 {
     int64_t now = GetTime();
 
@@ -621,13 +610,13 @@ void CEDCNode::SweepBanned()
     }
 }
 
-bool CEDCNode::BannedSetIsDirty()
+bool CEDCConnman::BannedSetIsDirty()
 {
     LOCK(cs_setBanned);
     return setBannedIsDirty;
 }
 
-void CEDCNode::SetBannedSetDirty(bool dirty)
+void CEDCConnman::SetBannedSetDirty(bool dirty)
 {
     LOCK(cs_setBanned); //reuse setBanned lock for the isDirty flag
     setBannedIsDirty = dirty;
@@ -1009,7 +998,7 @@ void CEDCConnman::AcceptConnection(const ListenSocket& hListenSocket)
     setsockopt(hSocket, IPPROTO_TCP, TCP_NODELAY, (void*)&set, sizeof(int));
 #endif
 
-    if (CEDCNode::IsBanned(addr) && !whitelisted)
+    if (IsBanned(addr) && !whitelisted)
     {
         edcLogPrintf("connection from %s dropped (banned)\n", addr.ToString());
         CloseSocket(hSocket);
@@ -1552,7 +1541,7 @@ void CEDCConnman::ThreadDNSAddressSeed()
 	EDCapp & theApp = EDCapp::singleton();
 
     // goal: only query DNS seeds if address need is acute
-    if ((theApp.addrman().size() > 0) && !params.forcednsseed ) 
+    if ((addrman.size() > 0) && !params.forcednsseed ) 
 	{
         MilliSleep(11 * 1000);
 
@@ -1601,7 +1590,7 @@ void CEDCConnman::ThreadDNSAddressSeed()
 			{
                 CService seedSource;
                 Lookup(seed.name.c_str(), seedSource, 0, true);
-                theApp.addrman().Add(vAdd, seedSource);
+                addrman.Add(vAdd, seedSource);
             }
         }
     }
@@ -1609,23 +1598,21 @@ void CEDCConnman::ThreadDNSAddressSeed()
     edcLogPrintf("%d addresses found from DNS seeds\n", found);
 }
 
-void edcDumpAddresses()
+void CEDCConnman::DumpAddresses()
 {
-	EDCapp & theApp = EDCapp::singleton();
-
     int64_t nStart = GetTimeMillis();
 
     CEDCAddrDB adb;
-    adb.Write(theApp.addrman());
+    adb.Write(addrman);
 
     edcLogPrint("net", "Flushed %d addresses to peers.dat  %dms\n",
-           theApp.addrman().size(), GetTimeMillis() - nStart);
+           addrman.size(), GetTimeMillis() - nStart);
 }
 
-void edcDumpData()
+void CEDCConnman::DumpData()
 {
-    edcDumpAddresses();
-    edcDumpBanlist();
+    DumpAddresses();
+    DumpBanlist();
 }
 
 CEDCNode * CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure )
@@ -1697,7 +1684,7 @@ CEDCNode * CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, b
             }
         }
 
-        theApp.addrman().Attempt(addrConnect, fCountFailure );
+        addrman.Attempt(addrConnect, fCountFailure );
 
 		// If this is a secure connection, then do the SSL handshake first
        	CEDCNode * pnode;
@@ -1738,7 +1725,7 @@ CEDCNode * CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, b
 	{
         // If connecting to the node failed, and failure is not caused by a problem connecting to
         // the proxy, mark this as an attempt.
-        theApp.addrman().Attempt(addrConnect, fCountFailure );
+        addrman.Attempt(addrConnect, fCountFailure );
     }
 
     edcLogPrint("net", "WARNING:FAILED to connect %s\n", pszDest ? pszDest : addrConnect.ToString());
@@ -1763,8 +1750,8 @@ bool CEDCConnman::OpenNetworkConnection(
     if (!pszDest) 
 	{
         if (edcIsLocal(addrConnect) ||
-            edcFindNode((CNetAddr)addrConnect, false ) || 
-			CEDCNode::IsBanned(addrConnect) ||
+            FindNode((CNetAddr)addrConnect ) || 
+			IsBanned(addrConnect) ||
             edcFindNode(addrConnect.ToStringIPPort(), false ))
             return false;
     } 
@@ -1930,7 +1917,7 @@ void CEDCConnman::ThreadOpenConnections()
         boost::this_thread::interruption_point();
 
         // Add seed nodes if DNS seeds are all down (an infrastructure attack?).
-        if (theApp.addrman().size() == 0 && (GetTime() - nStart > 60)) 
+        if (addrman.size() == 0 && (GetTime() - nStart > 60)) 
 		{
             static bool done = false;
             if (!done) 
@@ -1938,7 +1925,7 @@ void CEDCConnman::ThreadOpenConnections()
                 edcLogPrintf("Adding fixed seed nodes as DNS doesn't seem to be available.\n");
                 CNetAddr local;
                 LookupHost("127.0.0.1", local, false);
-                theApp.addrman().Add(convertSeed6(edcParams().FixedSeeds()), local);
+                addrman.Add(convertSeed6(edcParams().FixedSeeds()), local);
                 done = true;
             }
         }
@@ -1996,7 +1983,7 @@ void CEDCConnman::ThreadOpenConnections()
         int nTries = 0;
         while (true)
         {
-            CAddrInfo addr = theApp.addrman().Select(fFeeler);
+            CAddrInfo addr = addrman.Select(fFeeler);
 
             // if we selected an invalid address, restart
             if (!addr.IsValid() || setConnected.count(addr.GetGroup()) || edcIsLocal(addr))
@@ -2405,6 +2392,8 @@ bool edcAddLocal(const CNetAddr &addr, int nScore)
 
 CEDCConnman::CEDCConnman()
 {
+	setBannedIsDirty = false;
+	fAddressesInitialized = false;
 }
 
 bool edcStartNode(
@@ -2413,6 +2402,18 @@ boost::thread_group & threadGroup,
 		 CScheduler & scheduler, 
 		std::string & strNodeError)
 {
+    Discover(threadGroup);
+
+    bool ret = connman.Start(threadGroup, scheduler, strNodeError);
+
+    return ret;
+}
+
+bool CEDCConnman::Start(
+	boost::thread_group & threadGroup, 
+			 CScheduler & scheduler, 
+			std::string & strNodeError)
+{
 	EDCapp & theApp = EDCapp::singleton();
 
     edcUiInterface.InitMessage(_("Loading addresses..."));
@@ -2420,13 +2421,13 @@ boost::thread_group & threadGroup,
     int64_t nStart = GetTimeMillis();
     {
         CEDCAddrDB adb;
-        if (adb.Read(theApp.addrman()))
-            edcLogPrintf("Loaded %i addresses from peers.dat  %dms\n", theApp.addrman().size(), GetTimeMillis() - nStart);
+        if (adb.Read(addrman))
+            edcLogPrintf("Loaded %i addresses from peers.dat  %dms\n", addrman.size(), GetTimeMillis() - nStart);
         else 
 		{
-			theApp.addrman().Clear(); // Addrman can be in an inconsistent state after failure, reset it
+			addrman.Clear(); // Addrman can be in an inconsistent state after failure, reset it
             edcLogPrintf("Invalid or missing peers.dat; recreating\n");
-            edcDumpAddresses();
+            DumpAddresses();
         }
     }
 
@@ -2437,9 +2438,9 @@ boost::thread_group & threadGroup,
     banmap_t banmap;
     if (bandb.Read(banmap)) 
 	{
-        CEDCNode::SetBanned(banmap); // thread save setter
-        CEDCNode::SetBannedSetDirty(false); // no need to write down, just read data
-        CEDCNode::SweepBanned(); // sweep out unused entries
+        SetBanned(banmap); // thread save setter
+        SetBannedSetDirty(false); // no need to write down, just read data
+        SweepBanned(); // sweep out unused entries
 
         edcLogPrint("net", "Loaded %d banned node ips/subnets from banlist.dat  %dms\n",
             banmap.size(), GetTimeMillis() - nStart);
@@ -2447,26 +2448,13 @@ boost::thread_group & threadGroup,
 	else 
 	{
         edcLogPrintf("Invalid or missing banlist.dat; recreating\n");
-        CEDCNode::SetBannedSetDirty(true); // force write
-        edcDumpBanlist();
+        SetBannedSetDirty(true); // force write
+        DumpBanlist();
     }
 
 	edcUiInterface.InitMessage(_("Starting network threads..."));
 
-    edcfAddressesInitialized = true;
-
-    Discover(threadGroup);
-
-    bool ret = connman.Start(threadGroup, strNodeError);
-
-    // Dump network addresses
-    scheduler.scheduleEvery(edcDumpData, DUMP_ADDRESSES_INTERVAL);
-    return ret;
-}
-
-bool CEDCConnman::Start(boost::thread_group& threadGroup, std::string& strNodeError)
-{
-	EDCapp & theApp = EDCapp::singleton();
+    fAddressesInitialized = true;
 
     if (semOutbound == NULL) 
 	{
@@ -2515,6 +2503,9 @@ bool CEDCConnman::Start(boost::thread_group& threadGroup, std::string& strNodeEr
 	threadGroup.create_thread(boost::bind(&edcTraceThread<boost::function<void()> >, "msghand", 
 		boost::function<void()>(boost::bind(&CEDCConnman::ThreadMessageHandler, this))));
 
+    // Dump network addresses
+    scheduler.scheduleEvery(boost::bind(&CEDCConnman::DumpData, this), DUMP_ADDRESSES_INTERVAL);
+
 	return true;
 }
 
@@ -2522,12 +2513,6 @@ bool edcStopNode( CEDCConnman & connman )
 {
     edcLogPrintf("edcStopNode()\n");
     edcMapPort(false);
-
-    if (edcfAddressesInitialized)
-    {
-        edcDumpData();
-        edcfAddressesInitialized = false;
-    }
 
 	connman.Stop();
     return true;
@@ -2555,6 +2540,12 @@ void CEDCConnman::Stop()
     if (semOutbound)
         for (int i=0; i<(MAX_OUTBOUND_CONNECTIONS + MAX_FEELER_CONNECTIONS); i++)
             semOutbound->post();
+
+    if (fAddressesInitialized)
+    {
+        DumpData();
+        fAddressesInitialized = false;
+    }
 
 	// Close sockets
 	BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
@@ -2599,6 +2590,36 @@ void CEDCConnman::DeleteNode(CEDCNode* pnode)
 
 CEDCConnman::~CEDCConnman()
 {
+}
+
+size_t CEDCConnman::GetAddressCount() const
+{
+    return addrman.size();
+}
+
+void CEDCConnman::SetServices(const CService &addr, ServiceFlags nServices)
+{
+    addrman.SetServices(addr, nServices);
+}
+
+void CEDCConnman::MarkAddressGood(const CAddress& addr)
+{
+    addrman.Good(addr);
+}
+
+void CEDCConnman::AddNewAddress(const CAddress& addr, const CAddress& addrFrom, int64_t nTimePenalty)
+{
+    addrman.Add(addr, addrFrom, nTimePenalty);
+}
+
+void CEDCConnman::AddNewAddresses(const std::vector<CAddress>& vAddr, const CAddress& addrFrom, int64_t nTimePenalty)
+{
+    addrman.Add(vAddr, addrFrom, nTimePenalty);
+}
+
+std::vector<CAddress> CEDCConnman::GetAddresses()
+{
+    return addrman.GetAddr();
 }
 
 void RelayTransaction(const CEDCTransaction& tx)
