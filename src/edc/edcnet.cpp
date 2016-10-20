@@ -1794,7 +1794,7 @@ void CEDCConnman::ProcessOneShot()
 {
     std::string strDest;
     {
-        LOCK(edccs_vOneShots);
+        LOCK(cs_vOneShots);
         if (vOneShots.empty())
             return;
         strDest = vOneShots.front();
@@ -1810,7 +1810,7 @@ void CEDCConnman::ProcessOneShot()
     }
 }
 
-std::vector<AddedNodeInfo> edcGetAddedNodeInfo()
+std::vector<AddedNodeInfo> CEDCConnman::GetAddedNodeInfo()
 {
 	EDCapp & theApp = EDCapp::singleton();
     std::vector<AddedNodeInfo> ret;
@@ -2049,7 +2049,7 @@ void CEDCConnman::ThreadOpenAddedConnections()
 
     for (unsigned int i = 0; true; i++)
     {
-        std::vector<AddedNodeInfo> vInfo = edcGetAddedNodeInfo();
+        std::vector<AddedNodeInfo> vInfo = GetAddedNodeInfo();
 
         for (const AddedNodeInfo& info : vInfo) 
 		{
@@ -2622,6 +2622,41 @@ void CEDCConnman::AddNewAddresses(const std::vector<CAddress>& vAddr, const CAdd
 std::vector<CAddress> CEDCConnman::GetAddresses()
 {
     return addrman.GetAddr();
+}
+
+bool CEDCConnman::AddNode(const std::string& strNode)
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+    LOCK(theApp.addedNodesCS());
+
+    for(std::vector<std::string>::const_iterator it = theApp.addedNodes().begin(); 
+	it != theApp.addedNodes().end(); ++it) 
+	{
+        if (strNode == *it)
+            return false;
+    }
+
+    theApp.addedNodes().push_back(strNode);
+    return true;
+}
+
+bool CEDCConnman::RemoveAddedNode(const std::string& strNode)
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+    LOCK(theApp.addedNodesCS());
+
+    for(std::vector<std::string>::iterator it = theApp.addedNodes().begin(); 
+	it != theApp.addedNodes().end(); ++it)
+	{
+        if (strNode == *it) 
+		{
+            theApp.addedNodes().erase(it);
+            return true;
+        }
+    }
+    return false;
 }
 
 void RelayTransaction(const CEDCTransaction& tx)

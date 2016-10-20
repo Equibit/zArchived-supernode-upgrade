@@ -669,6 +669,11 @@ public:
     void SetBanned(const banmap_t &banmap);
 
 	void AddOneShot(const std::string & strDest);
+
+    bool AddNode(const std::string& node);
+    bool RemoveAddedNode(const std::string& node);
+    std::vector<AddedNodeInfo> GetAddedNodeInfo();
+
 private:
     struct ListenSocket 
 	{
@@ -709,7 +714,6 @@ private:
 };
 
 void edcSetLimited(enum Network net, bool fLimited);
-std::vector<AddedNodeInfo> edcGetAddedNodeInfo();
 
 bool edcStartNode(CEDCConnman & connman, boost::thread_group & threadGroup, CScheduler & scheduler, std::string & strNodeError);
 bool edcStopNode(CEDCConnman & connman);

@@ -245,23 +245,15 @@ UniValue edcaddnode(const UniValue& params, bool fHelp)
         return NullUniValue;
     }
 
-    LOCK(theApp.addedNodesCS());
-    vector<string>::iterator it = theApp.addedNodes().begin();
-    for(; it != theApp.addedNodes().end(); it++)
-        if (strNode == *it)
-            break;
-
     if (strCommand == "add")
     {
-        if (it != theApp.addedNodes().end())
+        if (theApp.connman()->AddNode(strNode))
             throw JSONRPCError(RPC_CLIENT_NODE_ALREADY_ADDED, "Error: Node already added");
-        theApp.addedNodes().push_back(strNode);
     }
     else if(strCommand == "remove")
     {
-        if (it == theApp.addedNodes().end())
+        if (theApp.connman()->RemoveAddedNode(strNode))
             throw JSONRPCError(RPC_CLIENT_NODE_NOT_ADDED, "Error: Node has not been added.");
-        theApp.addedNodes().erase(it);
     }
 
     return NullUniValue;
@@ -324,7 +316,12 @@ UniValue edcgetaddednodeinfo(const UniValue& params, bool fHelp)
             + HelpExampleRpc("eb_getaddednodeinfo", "true, \"192.168.0.201\"")
         );
 
-	std::vector<AddedNodeInfo> vInfo = edcGetAddedNodeInfo();
+	EDCapp & theApp = EDCapp::singleton();
+
+	if(theApp.connman())
+		throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
+
+    std::vector<AddedNodeInfo> vInfo = theApp.connman()->GetAddedNodeInfo();
 
     if (params.size() == 1) 
 	{
