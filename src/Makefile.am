@@ -71,6 +71,7 @@ endif
 .PHONY: FORCE check-symbols check-security
 # bitcoin core #
 BITCOIN_CORE_H = \
+  addrdb.h \
   addrman.h \
   base58.h \
   bloom.h \
@@ -118,6 +119,7 @@ BITCOIN_CORE_H = \
   rpc/client.h \
   rpc/protocol.h \
   rpc/server.h \
+  edc/edcaddrdb.h \
   edc/edcblockencodings.h \
   edc/edcprotocol.h \
   edc/message/edcmessage.h \
@@ -212,6 +214,7 @@ libbitcoin_server_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES) $(MINIUPNPC_CP
 libbitcoin_server_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_server_a_SOURCES = \
   addrman.cpp \
+  addrdb.cpp \
   bloom.cpp \
   blockencodings.cpp \
   chain.cpp \
@@ -235,6 +238,7 @@ libbitcoin_server_a_SOURCES = \
   rpc/net.cpp \
   rpc/rawtransaction.cpp \
   rpc/server.cpp \
+  edc/edcaddrdb.cpp \
   edc/edcblockencodings.cpp \
   edc/message/edcmessage.cpp \
   edc/edcprotocol.cpp \

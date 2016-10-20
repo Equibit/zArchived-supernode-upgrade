@@ -7,6 +7,7 @@
 #pragma once
 
 #include "net.h"
+#include "edcaddrdb.h"
 #include "amount.h"
 #include "edc/edcbloom.h"
 #include "compat.h"
@@ -651,30 +652,6 @@ void RelayTransaction(const CEDCTransaction& tx);
 
 class CUserMessage;
 void RelayUserMessage( CUserMessage *, bool );
-
-/** Access to the (IP) address database (peers.dat) */
-class CEDCAddrDB
-{
-private:
-    boost::filesystem::path pathAddr;
-
-public:
-    CEDCAddrDB();
-    bool Write(const CAddrMan& addr);
-    bool Read(CAddrMan& addr);
-	bool Read(CAddrMan& addr, CDataStream& ssPeers);
-};
-
-/** Access to the banlist database (banlist.dat) */
-class CEDCBanDB
-{
-private:
-    boost::filesystem::path pathBanlist;
-public:
-    CEDCBanDB();
-    bool Write(const banmap_t& banSet);
-    bool Read(banmap_t& banSet);
-};
 
 /** Return a timestamp in the future (in microseconds) for exponentially distributed events. */
 int64_t edcPoissonNextSend(int64_t nNow, int average_interval_seconds);
