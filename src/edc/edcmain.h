@@ -183,7 +183,7 @@ bool CheckInputs(	const CEDCTransaction & tx,
 					unsigned int flags, 
 					bool cacheStore, 
 					EDCPrecomputedTransactionData & txdata, 
-					std::vector<CScriptCheck> * pvChecks = NULL);
+					std::vector<CEDCScriptCheck> * pvChecks = NULL);
 
 /** Apply the effects of this transaction on the UTXO set represented by view */
 void UpdateCoins(const CEDCTransaction& tx, CEDCCoinsViewCache &inputs, int nHeight);

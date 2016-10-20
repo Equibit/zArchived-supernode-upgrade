@@ -3265,7 +3265,7 @@ bool ConnectTip(
 				   CBlockIndex * pindexNew, 
 			   const CEDCBlock * pblock,
 	std::list<CEDCTransaction> & txConflicted, 
-std::vector<std::tuple<CEDCTransaction,CBlockIndex*,int> > & txChanged)
+std::vector<std::tuple<CEDCTransaction,CBlockIndex*,int>> & txChanged)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -3316,7 +3316,7 @@ std::vector<std::tuple<CEDCTransaction,CBlockIndex*,int> > & txChanged)
     UpdateTip(pindexNew, chainparams);
 
     for(unsigned int i=0; i < pblock->vtx.size(); i++)
-        txChanged.push_back(std::make_tuple(pblock->vtx[i], pindexNew, i));
+        txChanged.emplace_back(pblock->vtx[i], pindexNew, i);
 
     int64_t nTime6 = GetTimeMicros(); nTimePostConnect += nTime6 - nTime5; nTimeTotal += nTime6 - nTime1;
     edcLogPrint("bench", "  - Connect postprocess: %.2fms [%.2fs]\n", (nTime6 - nTime5) * 0.001, nTimePostConnect * 0.000001);
@@ -3419,7 +3419,7 @@ bool ActivateBestChainStep(
           const CEDCBlock * pblock,
 					 bool & fInvalidFound,
   std::list<CEDCTransaction> & txConflicted, 
-std::vector<std::tuple<CEDCTransaction,CBlockIndex*,int> > & txChanged)
+std::vector<std::tuple<CEDCTransaction,CBlockIndex*,int>> & txChanged)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -3552,15 +3552,18 @@ bool ActivateBestChain(
 
     CBlockIndex * pindexMostWork = NULL;
 	CBlockIndex * pindexNewTip = NULL;
+    std::vector<std::tuple<CEDCTransaction,CBlockIndex*,int>> txChanged;
+    if (pblock)
+        txChanged.reserve(pblock->vtx.size());
     do 
 	{
+		txChanged.clear();
         boost::this_thread::interruption_point();
         if (ShutdownRequested())
             break;
 
         const CBlockIndex *pindexFork;
         std::list<CEDCTransaction> txConflicted;
-        std::vector<std::tuple<CEDCTransaction,CBlockIndex*,int> > txChanged;
         bool fInitialDownload;
 		int nNewHeight;
         {

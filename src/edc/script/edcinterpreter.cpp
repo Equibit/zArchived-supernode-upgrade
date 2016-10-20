@@ -1211,13 +1211,13 @@ EDCPrecomputedTransactionData::EDCPrecomputedTransactionData(const CEDCTransacti
 
 
 uint256 SignatureHash(
-				   const CScript & scriptCode, 
- 		   const CEDCTransaction & txTo, 
-					  unsigned int nIn, 
-					 		   int nHashType, 
-		 		   const CAmount & amount, 
-			  			SigVersion sigversion,
-const PrecomputedTransactionData * cache)
+					   const CScript & scriptCode, 
+ 			   const CEDCTransaction & txTo, 
+					  	  unsigned int nIn, 
+					 			   int nHashType, 
+					   const CAmount & amount, 
+			  				SigVersion sigversion,
+ const EDCPrecomputedTransactionData * cache)
 {
     if (sigversion == SIGVERSION_WITNESS_V0) 
 	{
