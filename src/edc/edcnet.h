@@ -660,7 +660,6 @@ CEDCNode * edcFindNode(const CSubNet& subNet, bool );
 CEDCNode * edcFindNode(const std::string& addrName, bool );
 CEDCNode * edcFindNode(const CService& ip, bool );
 CEDCNode * edcFindNode( const NodeId id, bool ); //TODO: Remove this
-bool edcOpenNetworkConnection( const CAddress & addrConnect, bool fCountFailure, CSemaphoreGrant * grantOutbound  = NULL, CSemaphoreGrant * sgrantOutbound  = NULL, const char * pszDest = NULL, bool fOneShot = false, bool fFeeler = false ); 
 
 
 class CEDCConnman
@@ -672,6 +671,8 @@ public:
     bool Start(boost::thread_group& threadGroup, std::string& strNodeError);
     void Stop();
 	bool BindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
+
+	bool OpenNetworkConnection( const CAddress & addrConnect, bool fCountFailure, CSemaphoreGrant * grantOutbound  = NULL, CSemaphoreGrant * sgrantOutbound  = NULL, const char * pszDest = NULL, bool fOneShot = false, bool fFeeler = false ); 
 
 private:
     struct ListenSocket 
@@ -689,6 +690,8 @@ private:
     void AcceptConnection(const ListenSocket& hListenSocket);
     void ThreadSocketHandler();
     void ThreadDNSAddressSeed();
+
+	CNode* ConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure);
 
 	std::vector<ListenSocket> vhListenSocket;
 };

@@ -233,12 +233,15 @@ UniValue edcaddnode(const UniValue& params, bool fHelp)
             + HelpExampleRpc("eb_addnode", "\"192.168.0.6:8333\", \"onetry\"")
         );
 
+    if(!theApp.connman())
+        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
+
     string strNode = params[0].get_str();
 
     if (strCommand == "onetry")
     {
         CAddress addr;
-        edcOpenNetworkConnection(addr, false, NULL, NULL, strNode.c_str());
+        theApp.connman()->OpenNetworkConnection(addr, false, NULL, NULL, strNode.c_str());
         return NullUniValue;
     }
 

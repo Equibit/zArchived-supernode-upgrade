@@ -1636,9 +1636,7 @@ void edcDumpData()
     edcDumpBanlist();
 }
 
-namespace
-{
-CEDCNode* edcConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure )
+CEDCNode* CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure )
 {
     if (pszDest == NULL) 
 	{
@@ -1756,10 +1754,8 @@ CEDCNode* edcConnectNode(CAddress addrConnect, const char *pszDest, bool fCountF
     return NULL;
 }
 
-}
-
 // if successful, this moves the passed grant to the constructed node
-bool edcOpenNetworkConnection(
+bool CEDCConnman::OpenNetworkConnection(
 	 const CAddress & addrConnect, 
                  bool fCountFailure,
 	CSemaphoreGrant * grantOutbound, 
