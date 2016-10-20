@@ -28,8 +28,22 @@
 #include <univalue.h>
 
 #include <boost/thread/thread.hpp> // boost::thread::interrupt
-
+#include <mutex>
+#include <condition_variable>
 using namespace std;
+
+struct CUpdatedBlock
+{
+    uint256 hash;
+    int height;
+};
+
+namespace
+{
+std::mutex cs_blockchange;
+std::condition_variable cond_blockchange;
+CUpdatedBlock latestblock;
+}
 
 void TxToJSON(const CEDCTransaction& tx, const uint256 hashBlock, UniValue& entry);
 void edcScriptPubKeyToJSON(const CScript& scriptPubKey, UniValue& out, bool fIncludeHex);
@@ -182,6 +196,154 @@ UniValue edcgetbestblockhash(const UniValue& params, bool fHelp)
 
     LOCK(EDC_cs_main);
     return theApp.chainActive().Tip()->GetBlockHash().GetHex();
+}
+
+void edcRPCNotifyBlockChange(bool ibd, const CBlockIndex * pindex)
+{
+    if(pindex) 
+	{
+        std::lock_guard<std::mutex> lock(cs_blockchange);
+        latestblock.hash = pindex->GetBlockHash();
+        latestblock.height = pindex->nHeight;
+    }
+    cond_blockchange.notify_all();
+}
+
+UniValue edcwaitfornewblock(const UniValue & params, bool fHelp)
+{
+    if (fHelp || params.size() > 1)
+        throw runtime_error(
+            "eb_waitfornewblock\n"
+            "\nWaits for a specific new block and returns useful info about it.\n"
+            "\nReturns the current block on timeout or exit.\n"
+            "\nArguments:\n"
+            "1. timeout (milliseconds) (int, optional, default=false)\n"
+            "\nResult::\n"
+            "{                           (json object)\n"
+            "  \"hash\" : {       (string) The blockhash\n"
+            "  \"height\" : {     (int) Block height\n"
+            "}\n"
+            "\nExamples\n"
+            + HelpExampleCli("eb_waitfornewblock", "1000")
+            + HelpExampleRpc("eb_waitfornewblock", "1000")
+        );
+    int timeout = 0;
+    if (params.size() > 0)
+        timeout = params[0].get_int();
+
+    CUpdatedBlock block;
+    {
+        std::unique_lock<std::mutex> lock(cs_blockchange);
+        block = latestblock;
+        if(timeout)
+            cond_blockchange.wait_for(lock, std::chrono::milliseconds(timeout), 
+				[&block]{return latestblock.height != block.height || 
+								latestblock.hash != block.hash || !edcIsRPCRunning(); });
+        else
+            cond_blockchange.wait(lock, [&block]{return latestblock.height != block.height || 
+				latestblock.hash != block.hash || !edcIsRPCRunning(); });
+        block = latestblock;
+    }
+
+    UniValue ret(UniValue::VOBJ);
+
+    ret.push_back(Pair("hash", block.hash.GetHex()));
+    ret.push_back(Pair("height", block.height));
+
+    return ret;
+}
+
+UniValue edcwaitforblock(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() < 1 || params.size() > 2)
+        throw runtime_error(
+            "eb_waitforblock\n"
+            "\nWaits for a specific new block and returns useful info about it.\n"
+            "\nReturns the current block on timeout or exit.\n"
+            "\nArguments:\n"
+            "1. blockhash to wait for (string)\n"
+            "2. timeout (milliseconds) (int, optional, default=false)\n"
+            "\nResult::\n"
+            "{                           (json object)\n"
+            "  \"hash\" : {       (string) The blockhash\n"
+            "  \"height\" : {     (int) Block height\n"
+            "}\n"
+            "\nExamples\n"
+            + HelpExampleCli("eb_waitforblock", "\"0000000000079f8ef3d2c688c244eb7a4570b24c9ed7b4a8c619eb02596f8862\", 1000")
+            + HelpExampleRpc("eb_waitforblock", "\"0000000000079f8ef3d2c688c244eb7a4570b24c9ed7b4a8c619eb02596f8862\", 1000")
+        );
+    int timeout = 0;
+
+    uint256 hash = uint256S(params[0].get_str());
+
+    if (params.size() > 1)
+        timeout = params[1].get_int();
+
+    CUpdatedBlock block;
+    {
+        std::unique_lock<std::mutex> lock(cs_blockchange);
+        if(timeout)
+            cond_blockchange.wait_for(lock, std::chrono::milliseconds(timeout), 
+				[&hash]{return latestblock.hash == hash || !edcIsRPCRunning();});
+        else
+            cond_blockchange.wait(lock, [&hash]{return latestblock.hash == hash || 
+				!edcIsRPCRunning(); });
+        block = latestblock;
+    }
+
+    UniValue ret(UniValue::VOBJ);
+
+    ret.push_back(Pair("hash", block.hash.GetHex()));
+    ret.push_back(Pair("height", block.height));
+
+    return ret;
+}
+
+UniValue edcwaitforblockheight(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() < 1 || params.size() > 2)
+        throw runtime_error(
+            "eb_waitforblock\n"
+            "\nWaits for (at least) block height and returns the height and hash\n"
+            "\nof the current tip.\n"
+            "\nReturns the current block on timeout or exit.\n"
+            "\nArguments:\n"
+            "1. block height to wait for (int)\n"
+            "2. timeout (milliseconds) (int, optional, default=false)\n"
+            "\nResult::\n"
+            "{                           (json object)\n"
+            "  \"hash\" : {       (string) The blockhash\n"
+            "  \"height\" : {     (int) Block height\n"
+            "}\n"
+            "\nExamples\n"
+            + HelpExampleCli("eb_waitforblockheight", "\"100\", 1000")
+            + HelpExampleRpc("eb_waitforblockheight", "\"100\", 1000")
+        );
+    int timeout = 0;
+
+    int height = params[0].get_int();
+
+    if (params.size() > 1)
+        timeout = params[1].get_int();
+
+    CUpdatedBlock block;
+    {
+        std::unique_lock<std::mutex> lock(cs_blockchange);
+        if(timeout)
+            cond_blockchange.wait_for(lock, std::chrono::milliseconds(timeout), 
+				[&height]{return latestblock.height >= height || !edcIsRPCRunning();});
+        else
+            cond_blockchange.wait(lock, 
+				[&height]{return latestblock.height >= height || !edcIsRPCRunning(); });
+        block = latestblock;
+    }
+
+    UniValue ret(UniValue::VOBJ);
+
+    ret.push_back(Pair("hash", block.hash.GetHex()));
+    ret.push_back(Pair("height", block.height));
+
+    return ret;
 }
 
 UniValue edcgetdifficulty(const UniValue& params, bool fHelp)
@@ -1326,6 +1488,9 @@ static const CRPCCommand edcCommands[] =
     /* Not shown in help */
     { "hidden",             "eb_invalidateblock",        &edcinvalidateblock,        true  },
     { "hidden",             "eb_reconsiderblock",        &edcreconsiderblock,        true  },
+    { "hidden",             "eb_waitfornewblock",        &edcwaitfornewblock,        true  },
+    { "hidden",             "eb_waitforblock",           &edcwaitforblock,           true  },
+    { "hidden",             "eb_waitforblockheight",     &edcwaitforblockheight,     true  },
 };
 
 void edcRegisterBlockchainRPCCommands(CEDCRPCTable & t)

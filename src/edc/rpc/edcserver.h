@@ -91,3 +91,4 @@ void edcEnsureWalletIsUnlocked();
 bool edcStartRPC();
 void edcInterruptRPC();
 void edcStopRPC();
+void edcRPCNotifyBlockChange(bool ibd, const CBlockIndex *);

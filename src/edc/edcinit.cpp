@@ -258,15 +258,22 @@ void edcThreadImport(std::vector<boost::filesystem::path> vImportFiles)
 }
 
 
-void OnEDCRPCStopped()
+void edcOnRPCStarted()
+{
+    edcUiInterface.NotifyBlockTip.connect(&edcRPCNotifyBlockChange);
+}
+
+void edcOnRPCStopped()
 {
 	EDCapp & theApp = EDCapp::singleton();
 
+    edcUiInterface.NotifyBlockTip.disconnect(&edcRPCNotifyBlockChange);
+    edcRPCNotifyBlockChange(false, nullptr);
     theApp.blockChange().notify_all();
     edcLogPrint("rpc", "EB RPC stopped.\n");
 }
 
-void OnEDCRPCPreCommand(const CRPCCommand& cmd)
+void edcOnRPCPreCommand(const CRPCCommand& cmd)
 {
 	EDCparams & params = EDCparams::singleton();
 
@@ -340,8 +347,9 @@ bool edcAppInitServers(boost::thread_group& threadGroup)
 {
 	EDCparams & params = EDCparams::singleton();
 
-    EDCRPCServer::OnStopped(&OnEDCRPCStopped);
-    EDCRPCServer::OnPreCommand(&OnEDCRPCPreCommand);
+	EDCRPCServer::OnStarted(&edcOnRPCStarted);
+    EDCRPCServer::OnStopped(&edcOnRPCStopped);
+    EDCRPCServer::OnPreCommand(&edcOnRPCPreCommand);
 
     if (!edcInitHTTPServer())
         return false;
@@ -946,6 +954,7 @@ bool EdcAppInit(
 	                {
 	                    LOCK(EDC_cs_main);
 	                    CBlockIndex* tip = theApp.chainActive().Tip();
+						edcRPCNotifyBlockChange(true, tip);
 	                    if (tip && tip->nTime > edcGetAdjustedTime() + 2 * 60 * 60) 
 						{
 	                        strLoadError = _("The block database contains a block which appears to be from the future. "
