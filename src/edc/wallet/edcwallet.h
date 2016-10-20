@@ -325,7 +325,7 @@ public:
     int64_t GetTxTime() const;
     int GetRequestCount() const;
 
-    bool RelayWalletTransaction();
+    bool RelayWalletTransaction(CEDCConnman * connman);
 
     std::set<uint256> GetConflicts() const;
 
@@ -631,8 +631,8 @@ public:
     bool AddToWalletIfInvolvingMe(const CEDCTransaction& tx, const CBlockIndex* pIndex, int posInBlock, bool fUpdate);
     int ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate = false);
     void ReacceptWalletTransactions();
-    void ResendWalletTransactions(int64_t nBestBlockTime);
-    std::vector<uint256> ResendWalletTransactionsBefore(int64_t nTime);
+    void ResendWalletTransactions(int64_t nBestBlockTime, CEDCConnman * connman);
+    std::vector<uint256> ResendWalletTransactionsBefore(int64_t nTime, CEDCConnman * connman);
     CAmount GetBalance() const;
     CAmount GetUnconfirmedBalance() const;
     CAmount GetImmatureBalance() const;
@@ -682,7 +682,7 @@ public:
 					   CEDCReserveKey & reservekey, 
         				  std::string & strFailReason );
 
-    bool CommitTransaction(CEDCWalletTx& wtxNew, CEDCReserveKey& reservekey);
+    bool CommitTransaction(CEDCWalletTx& wtxNew, CEDCReserveKey& reservekey, CEDCConnman * connman);
 
     bool AddAccountingEntry(const CAccountingEntry&, CEDCWalletDB & pwalletdb);
 

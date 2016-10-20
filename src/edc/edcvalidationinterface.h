@@ -17,6 +17,7 @@ class CBlockIndex;
 class CReserveScript;
 class CEDCTransaction;
 class CEDCValidationInterface;
+class CEDCConnman;
 class CValidationState;
 class uint256;
 
@@ -39,7 +40,7 @@ protected:
     virtual void SetBestChain(const CBlockLocator &locator) {}
     virtual void UpdatedTransaction(const uint256 &hash) {}
     virtual void Inventory(const uint256 &hash) {}
-    virtual void ResendWalletTransactions(int64_t nBestBlockTime) {}
+    virtual void ResendWalletTransactions(int64_t nBestBlockTime, CEDCConnman * connman ) {}
     virtual void BlockChecked(const CEDCBlock&, const CValidationState&) {}
     virtual void GetScriptForMining(boost::shared_ptr<CReserveScript>&) {};
     virtual void ResetRequestCount(const uint256 &hash) {};
@@ -61,7 +62,7 @@ struct CEDCMainSignals
     /** Notifies listeners about an inventory item being seen on the network. */
     boost::signals2::signal<void (const uint256 &)> Inventory;
     /** Tells listeners to broadcast their data. */
-    boost::signals2::signal<void (int64_t nBestBlockTime)> Broadcast;
+    boost::signals2::signal<void (int64_t nBestBlockTime, CEDCConnman * connman )> Broadcast;
     /** Notifies listeners of a block validation result */
     boost::signals2::signal<void (const CEDCBlock&, const CValidationState&)> BlockChecked;
     /** Notifies listeners that a key for mining is required (coinbase) */

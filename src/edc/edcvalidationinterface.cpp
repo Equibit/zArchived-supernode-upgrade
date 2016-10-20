@@ -20,7 +20,7 @@ void RegisterValidationInterface(CEDCValidationInterface* pwalletIn)
     g_signals.UpdatedTransaction.connect(boost::bind(&CEDCValidationInterface::UpdatedTransaction, pwalletIn, _1));
     g_signals.SetBestChain.connect(boost::bind(&CEDCValidationInterface::SetBestChain, pwalletIn, _1));
     g_signals.Inventory.connect(boost::bind(&CEDCValidationInterface::Inventory, pwalletIn, _1));
-    g_signals.Broadcast.connect(boost::bind(&CEDCValidationInterface::ResendWalletTransactions, pwalletIn, _1));
+    g_signals.Broadcast.connect(boost::bind(&CEDCValidationInterface::ResendWalletTransactions, pwalletIn, _1, _2));
     g_signals.BlockChecked.connect(boost::bind(&CEDCValidationInterface::BlockChecked, pwalletIn, _1, _2));
     g_signals.ScriptForMining.connect(boost::bind(&CEDCValidationInterface::GetScriptForMining, pwalletIn, _1));
     g_signals.BlockFound.connect(boost::bind(&CEDCValidationInterface::ResetRequestCount, pwalletIn, _1));
@@ -31,7 +31,7 @@ void UnregisterValidationInterface(CEDCValidationInterface* pwalletIn)
     g_signals.BlockFound.disconnect(boost::bind(&CEDCValidationInterface::ResetRequestCount, pwalletIn, _1));
     g_signals.ScriptForMining.disconnect(boost::bind(&CEDCValidationInterface::GetScriptForMining, pwalletIn, _1));
     g_signals.BlockChecked.disconnect(boost::bind(&CEDCValidationInterface::BlockChecked, pwalletIn, _1, _2));
-    g_signals.Broadcast.disconnect(boost::bind(&CEDCValidationInterface::ResendWalletTransactions, pwalletIn, _1));
+    g_signals.Broadcast.disconnect(boost::bind(&CEDCValidationInterface::ResendWalletTransactions, pwalletIn, _1, _2));
     g_signals.Inventory.disconnect(boost::bind(&CEDCValidationInterface::Inventory, pwalletIn, _1));
     g_signals.SetBestChain.disconnect(boost::bind(&CEDCValidationInterface::SetBestChain, pwalletIn, _1));
     g_signals.UpdatedTransaction.disconnect(boost::bind(&CEDCValidationInterface::UpdatedTransaction, pwalletIn, _1));

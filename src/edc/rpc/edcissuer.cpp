@@ -273,7 +273,7 @@ UniValue authorizeEquibit( const UniValue & params, bool fHelp )
 #endif
     }
 
-    if (!theApp.walletMain()->CommitTransaction(wtxNew, reservekey))
+    if (!theApp.walletMain()->CommitTransaction(wtxNew, reservekey, theApp.connman().get()))
         throw JSONRPCError(RPC_WALLET_ERROR,"Error: The transaction was rejected! This might happen if some of the "
 											"coins in your wallet were already spent, such as if you used a copy of "
 											"the wallet and coins were spent in the copy but not marked as spent here.");

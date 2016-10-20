@@ -566,6 +566,9 @@ void SendMoney(
     if (nValue > curBalance)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient funds");
 
+    if (theApp.walletMain()->GetBroadcastTransactions() && !theApp.connman())
+        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
+
     // Parse Equibit address
     CScript scriptPubKey = GetScriptForDestination(address);
 
@@ -585,7 +588,7 @@ void SendMoney(
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
-    if (!theApp.walletMain()->CommitTransaction(wtxNew, reservekey))
+    if (!theApp.walletMain()->CommitTransaction(wtxNew, reservekey, theApp.connman().get()))
         throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of the wallet and coins were spent in the copy but not marked as spent here.");
 }
 
@@ -1175,6 +1178,9 @@ UniValue edcsendmany(const UniValue& params, bool fHelp)
 
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
+    if (theApp.walletMain()->GetBroadcastTransactions() && !theApp.connman())
+        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
+
     string strAccount = edcAccountFromValue(params[0]);
     UniValue sendTo = params[1].get_obj();
     int nMinDepth = 1;
@@ -1238,7 +1244,7 @@ UniValue edcsendmany(const UniValue& params, bool fHelp)
     bool fCreated = theApp.walletMain()->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strFailReason);
     if (!fCreated)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, strFailReason);
-    if (!theApp.walletMain()->CommitTransaction(wtx, reservekey))
+    if (!theApp.walletMain()->CommitTransaction(wtx, reservekey, theApp.connman().get()))
         throw JSONRPCError(RPC_WALLET_ERROR, "Transaction commit failed");
 
     return wtx.GetHash().GetHex();
@@ -2721,9 +2727,13 @@ UniValue edcresendwallettransactions(const UniValue& params, bool fHelp)
             "Returns array of transaction ids that were re-broadcast.\n"
             );
 
+    if (!theApp.connman())
+        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
+
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-    std::vector<uint256> txids = theApp.walletMain()->ResendWalletTransactionsBefore(GetTime());
+    std::vector<uint256> txids = theApp.walletMain()->ResendWalletTransactionsBefore(GetTime(), 
+		theApp.connman().get());
     UniValue result(UniValue::VARR);
     BOOST_FOREACH(const uint256& txid, txids)
     {

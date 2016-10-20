@@ -7413,7 +7413,7 @@ bool edcSendMessages(CEDCNode* pto, CEDCConnman & connman)
         // transactions become unconfirmed and spams other nodes.
         if (!theApp.reindex() && !theApp.importing() && !edcIsInitialBlockDownload())
         {
-            edcGetMainSignals().Broadcast(edcnTimeBestReceived);
+            edcGetMainSignals().Broadcast(edcnTimeBestReceived, &connman);
         }
 
         //

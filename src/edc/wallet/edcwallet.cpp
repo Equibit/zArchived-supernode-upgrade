@@ -1643,7 +1643,7 @@ void CEDCWallet::ReacceptWalletTransactions()
     }
 }
 
-bool CEDCWalletTx::RelayWalletTransaction()
+bool CEDCWalletTx::RelayWalletTransaction(CEDCConnman * connman)
 {
     assert(pwallet->GetBroadcastTransactions());
     if (!IsCoinBase())
@@ -1977,7 +1977,7 @@ std::string CEDCWalletTx::toJSON( const char * margin ) const
 
 ////////////////////////////////////////////////////////////////////////
 
-std::vector<uint256> CEDCWallet::ResendWalletTransactionsBefore(int64_t nTime)
+std::vector<uint256> CEDCWallet::ResendWalletTransactionsBefore(int64_t nTime, CEDCConnman * connman)
 {
     std::vector<uint256> result;
 
@@ -1995,13 +1995,13 @@ std::vector<uint256> CEDCWallet::ResendWalletTransactionsBefore(int64_t nTime)
     BOOST_FOREACH(PAIRTYPE(const unsigned int, CEDCWalletTx*)& item, mapSorted)
     {
         CEDCWalletTx& wtx = *item.second;
-        if (wtx.RelayWalletTransaction())
+        if (wtx.RelayWalletTransaction(connman))
             result.push_back(wtx.GetHash());
     }
     return result;
 }
 
-void CEDCWallet::ResendWalletTransactions(int64_t nBestBlockTime)
+void CEDCWallet::ResendWalletTransactions(int64_t nBestBlockTime, CEDCConnman * connman )
 {
     // Do this infrequently and randomly to avoid giving away
     // that these are our transactions.
@@ -2019,7 +2019,7 @@ void CEDCWallet::ResendWalletTransactions(int64_t nBestBlockTime)
 
     // Rebroadcast unconfirmed txes older than 5 minutes before the last
     // block was found:
-    std::vector<uint256> relayed = ResendWalletTransactionsBefore(nBestBlockTime-5*60);
+    std::vector<uint256> relayed = ResendWalletTransactionsBefore(nBestBlockTime-5*60, connman);
     if (!relayed.empty())
         edcLogPrintf("%s: rebroadcast %u unconfirmed transactions\n", __func__, relayed.size());
 }
@@ -2792,7 +2792,10 @@ bool CEDCWallet::CreateTransaction(
 /**
  * Call after CreateTransaction unless you want to abort
  */
-bool CEDCWallet::CommitTransaction(CEDCWalletTx& wtxNew, CEDCReserveKey& reservekey)
+bool CEDCWallet::CommitTransaction(
+	  CEDCWalletTx & wtxNew, 
+	CEDCReserveKey & reservekey, 
+	   CEDCConnman * connman)
 {
     {
         LOCK2(EDC_cs_main, cs_wallet);
@@ -2827,7 +2830,7 @@ bool CEDCWallet::CommitTransaction(CEDCWalletTx& wtxNew, CEDCReserveKey& reserve
                 edcLogPrintf("CommitTransaction(): Error: Transaction not valid\n");
                 return false;
             }
-            wtxNew.RelayWalletTransaction();
+            wtxNew.RelayWalletTransaction(connman);
         }
     }
     return true;
