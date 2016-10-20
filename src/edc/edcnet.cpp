@@ -82,9 +82,6 @@ bool vfLimited[NET_MAX] = {};
 CEDCNode* pnodeLocalHost = NULL;
 }
 
-static std::deque<std::string> vOneShots;
-CCriticalSection edccs_vOneShots;
-
 static CSemaphore *semOutbound = NULL;
 boost::condition_variable edcmessageHandlerCondition;
 
@@ -92,6 +89,11 @@ boost::condition_variable edcmessageHandlerCondition;
 static CEDCNodeSignals g_edcsignals;
 CEDCNodeSignals & edcGetNodeSignals() { return g_edcsignals; }
 
+void CEDCConnman::AddOneShot(const std::string& strDest)
+{
+    LOCK(cs_vOneShots);
+    vOneShots.push_back(strDest);
+}
 
 unsigned short edcGetListenPort()
 {

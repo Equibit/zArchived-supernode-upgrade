@@ -801,7 +801,7 @@ bool EdcAppInit(
     	}
 
     	BOOST_FOREACH(const std::string& strDest, params.seednode)
-        	AddOneShot(strDest);
+        	theApp.connman()->AddOneShot(strDest);
 
     	if (params.maxuploadtarget > 0 ) 
 		{

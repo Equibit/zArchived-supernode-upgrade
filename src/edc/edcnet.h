@@ -668,6 +668,7 @@ public:
     void GetBanned(banmap_t &banmap);
     void SetBanned(const banmap_t &banmap);
 
+	void AddOneShot(const std::string & strDest);
 private:
     struct ListenSocket 
 	{
@@ -703,6 +704,8 @@ private:
     bool setBannedIsDirty;
     bool fAddressesInitialized;
     CAddrMan addrman;
+    std::deque<std::string> vOneShots;
+    CCriticalSection cs_vOneShots;
 };
 
 void edcSetLimited(enum Network net, bool fLimited);
