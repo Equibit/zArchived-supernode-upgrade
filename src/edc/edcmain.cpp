@@ -5556,17 +5556,17 @@ void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
                         pfrom->PushMessage(NetMsgType::BLOCK, block);
 					else if (inv.type == MSG_FILTERED_BLOCK)
                     {
-                        bool send = false;
+                        bool sendMerkleBlock = false;
                         CEDCMerkleBlock merkleBlock;
                         {
                             LOCK(pfrom->cs_filter);
                             if (pfrom->pfilter) 	
 							{
-                                send = true;
+                                sendMerkleBlock = true;
                                 merkleBlock = CEDCMerkleBlock(block, *pfrom->pfilter);
                             }
                         }
-                        if (send) 
+                        if (sendMerkleBlock) 
 						{
                             pfrom->PushMessage(NetMsgType::MERKLEBLOCK, merkleBlock);
                             // CEDCMerkleBlock just contains hashes, so also push any transactions in the block the client did not see
