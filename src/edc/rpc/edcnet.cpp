@@ -41,9 +41,10 @@ UniValue edcgetconnectioncount(const UniValue& params, bool fHelp)
             + HelpExampleRpc("eb_getconnectioncount", "")
         );
 
-    LOCK2(EDC_cs_main, theApp.vNodesCS());
-
-    return (int)theApp.vNodes().size();
+    if(!theApp.connman())
+        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
+ 
+    return (int)theApp.connman()->GetNodeCount(CEDCConnman::CONNECTIONS_ALL);
 }
 
 UniValue edcping(const UniValue& params, bool fHelp)
@@ -69,21 +70,6 @@ UniValue edcping(const UniValue& params, bool fHelp)
     }
 
     return NullUniValue;
-}
-
-static void CopyNodeStats(std::vector<CNodeStats>& vstats)
-{
-	EDCapp & theApp = EDCapp::singleton();
-    vstats.clear();
-
-    LOCK(theApp.vNodesCS());
-    vstats.reserve(theApp.vNodes().size());
-    BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes()) 
-	{
-        CNodeStats stats;
-        pnode->copyStats(stats);
-        vstats.push_back(stats);
-    }
 }
 
 UniValue edcgetpeerinfo(const UniValue& params, bool fHelp)
@@ -136,10 +122,13 @@ UniValue edcgetpeerinfo(const UniValue& params, bool fHelp)
             + HelpExampleRpc("eb_getpeerinfo", "")
         );
 
-    LOCK(EDC_cs_main);
+	EDCapp & theApp = EDCapp::singleton();
+
+    if(!theApp.connman())
+        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
 
     vector<CNodeStats> vstats;
-    CopyNodeStats(vstats);
+    theApp.connman()->GetNodeStats(vstats);
 
     UniValue ret(UniValue::VARR);
 
@@ -272,16 +261,15 @@ UniValue edcdisconnectnode(const UniValue& params, bool fHelp)
             + HelpExampleRpc("eb_disconnectnode", "\"192.168.0.6:8333\"")
         );
 
-    CEDCNode* pNode = edcFindNode(params[0].get_str(), false );
-    if (pNode == NULL)
-        throw JSONRPCError(RPC_CLIENT_NODE_NOT_CONNECTED, "Node not found in connected nodes");
+	EDCapp & theApp = EDCapp::singleton();
 
-    pNode->fDisconnect = true;
+    if(!theApp.connman())
+        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
 
 	// Disconnect secure node as well
-    pNode = edcFindNode(params[0].get_str(), true );
-    if ( pNode )
-    	pNode->fDisconnect = true;
+    bool ret = theApp.connman()->DisconnectNode(params[0].get_str());
+    if (!ret)
+        throw JSONRPCError(RPC_CLIENT_NODE_NOT_CONNECTED, "Node not found in connected nodes");
 
     return NullUniValue;
 }
@@ -484,7 +472,8 @@ UniValue edcgetnetworkinfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("localservices",       strprintf("%016x", theApp.localServices())));
 	obj.push_back(Pair("localreply",    theParams.blocksonly));
     obj.push_back(Pair("timeoffset",    edcGetTimeOffset()));
-    obj.push_back(Pair("connections",   (int)theApp.vNodes().size()));
+    if(theApp.connman())
+        obj.push_back(Pair("connections",   (int)theApp.connman()->GetNodeCount(CEDCConnman::CONNECTIONS_ALL)));
     obj.push_back(Pair("networks",      GetNetworksInfo()));
     obj.push_back(Pair("relayfee",      ValueFromAmount(theApp.minRelayTxFee().GetFeePerK())));
     UniValue localAddresses(UniValue::VARR);

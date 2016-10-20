@@ -2659,6 +2659,90 @@ bool CEDCConnman::RemoveAddedNode(const std::string& strNode)
     return false;
 }
 
+size_t CEDCConnman::GetNodeCount(NumConnections flags)
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+    LOCK(theApp.vNodesCS());
+
+    if (flags == CEDCConnman::CONNECTIONS_ALL) // Shortcut if we want total
+        return vNodes.size();
+
+    int nNum = 0;
+    for(std::vector<CEDCNode*>::const_iterator it = theApp.vNodes().begin(); 
+	it != theApp.vNodes().end(); ++it)
+        if (flags & ((*it)->fInbound ? CONNECTIONS_IN : CONNECTIONS_OUT))
+            nNum++;
+
+    return nNum;
+}
+
+void CEDCConnman::GetNodeStats(std::vector<CNodeStats>& vstats)
+{
+    vstats.clear();
+
+	EDCapp & theApp = EDCapp::singleton();
+
+    LOCK(theApp.vNodesCS());
+    vstats.reserve(vNodes.size());
+
+    for(std::vector<CEDCNode*>::iterator it = theApp.vNodes().begin(); 
+	it != theApp.vNodes().end(); ++it) 
+	{
+        CEDCNode* pnode = *it;
+        CNodeStats stats;
+        pnode->copyStats(stats);
+        vstats.push_back(stats);
+    }
+}
+
+bool CEDCConnman::DisconnectAddress(const CNetAddr& netAddr)
+{
+    if (CEDCNode* pnode = edcFindNode(netAddr, false )) 
+	{
+        pnode->fDisconnect = true;
+        return true;
+    }
+    return false;
+}
+
+bool CEDCConnman::DisconnectSubnet(const CSubNet& subNet)
+{
+    if (CEDCNode* pnode = edcFindNode(subNet, false )) 
+	{
+        pnode->fDisconnect = true;
+        return true;
+    }
+    return false;
+}
+
+bool CEDCConnman::DisconnectNode(const std::string& strNode)
+{
+    if (CEDCNode* pnode = edcFindNode(strNode, false )) 
+	{
+        pnode->fDisconnect = true;
+        return true;
+    }
+    return false;
+}
+
+bool CEDCConnman::DisconnectNode(NodeId id)
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+    LOCK(theApp.vNodesCS());
+
+    for(CEDCNode* pnode : theApp.vNodes()) 
+	{
+        if (id == pnode->id) 
+		{
+            pnode->fDisconnect = true;
+            return true;
+        }
+    }
+    return false;
+}
+
 void RelayTransaction(const CEDCTransaction& tx)
 {
 	EDCapp & theApp = EDCapp::singleton();

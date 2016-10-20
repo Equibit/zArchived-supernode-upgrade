@@ -626,6 +626,15 @@ CEDCNode * edcFindNode( const NodeId id, bool ); //TODO: Remove this
 class CEDCConnman
 {
 public:
+
+    enum NumConnections 
+	{
+        CONNECTIONS_NONE = 0,
+        CONNECTIONS_IN = (1U << 0),
+        CONNECTIONS_OUT = (1U << 1),
+        CONNECTIONS_ALL = (CONNECTIONS_IN | CONNECTIONS_OUT),
+    };
+
     CEDCConnman();
     ~CEDCConnman();
 
@@ -673,6 +682,13 @@ public:
     bool AddNode(const std::string& node);
     bool RemoveAddedNode(const std::string& node);
     std::vector<AddedNodeInfo> GetAddedNodeInfo();
+
+    size_t GetNodeCount(NumConnections num);
+    void GetNodeStats(std::vector<CNodeStats>& vstats);
+    bool DisconnectAddress(const CNetAddr& addr);
+    bool DisconnectNode(const std::string& node);
+    bool DisconnectNode(NodeId id);
+    bool DisconnectSubnet(const CSubNet& subnet);
 
 private:
     struct ListenSocket 

@@ -486,7 +486,10 @@ UniValue edcgetblocktemplate(const UniValue& params, bool fHelp)
     if (strMode != "template")
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid mode");
 
-    if (theApp.vNodes().empty())
+    if(!theApp.connman())
+        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
+
+    if (theApp.connman()->GetNodeCount(CEDCConnman::CONNECTIONS_ALL) == 0)
         throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, "Equibit is not connected!");
 
     if (edcIsInitialBlockDownload())

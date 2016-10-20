@@ -103,7 +103,8 @@ UniValue edcgetinfo(const UniValue& params, bool fHelp)
 #endif
     obj.push_back(Pair("blocks",        (int)theApp.chainActive().Height()));
     obj.push_back(Pair("timeoffset",    edcGetTimeOffset()));
-    obj.push_back(Pair("connections",   (int)theApp.vNodes().size()));
+    if(theApp.connman())
+        obj.push_back(Pair("connections",   (int)theApp.connman()->GetNodeCount(CEDCConnman::CONNECTIONS_ALL)));
     obj.push_back(Pair("proxy",         (proxy.IsValid() ? proxy.proxy.ToStringIPPort() : string())));
     obj.push_back(Pair("difficulty",    (double)GetDifficulty()));
     obj.push_back(Pair("testnet",       edcParams().TestnetToBeDeprecatedFieldRPC()));
