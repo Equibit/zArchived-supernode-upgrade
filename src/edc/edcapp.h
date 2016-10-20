@@ -8,7 +8,7 @@
 #include "limitedmap.h"
 #include "addrman.h"
 #include "main.h"
-#include "net.h"
+#include "edcnet.h"
 #include "edc/wallet/edcdb.h"
 #include "versionbits.h"
 #include <openssl/ssl.h>
@@ -170,6 +170,9 @@ public:
 					const std::string & privKey, const char * passPhrase,
 					int verDepth );
 
+	std::unique_ptr<CEDCConnman> & connman()	{ return connman_; }
+	void connman( CEDCConnman * connman)		{ connman_.reset(connman); }
+
 #ifdef USE_HSM
 	NFast::App              * & nfApp() 			{ return nfApp_; }
 	NFast::SecurityWorld    * & nfSecWorld()		{ return nfSecWorld_; }
@@ -289,6 +292,8 @@ private:
 	SSL_CTX	* sslCtx_;
 
 	VersionBitsCache versionbitscache_;
+
+	std::unique_ptr<CEDCConnman> connman_;
 
 #ifdef USE_HSM
 	NFast::App              * nfApp_;

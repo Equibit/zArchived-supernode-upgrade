@@ -69,16 +69,9 @@
 
 namespace 
 {
-    const int MAX_OUTBOUND_CONNECTIONS = 8;
-	const int MAX_FEELER_CONNECTIONS = 1;
 
-    struct ListenSocket 
-	{
-        SOCKET socket;
-        bool whitelisted;
-
-        ListenSocket(SOCKET _socket, bool _whitelisted) : socket(_socket), whitelisted(_whitelisted) {}
-    };
+const int MAX_OUTBOUND_CONNECTIONS = 8;
+const int MAX_FEELER_CONNECTIONS = 1;
 
 const std::string NET_MESSAGE_COMMAND_OTHER = "*other*";
 
@@ -977,7 +970,7 @@ static bool AttemptToEvictConnection()
     return false;
 }
 
-static void AcceptConnection(const ListenSocket& hListenSocket) 
+void CEDCConnman::AcceptConnection(const ListenSocket& hListenSocket) 
 {
     struct sockaddr_storage sockaddr;
     socklen_t len = sizeof(sockaddr);
@@ -1102,7 +1095,7 @@ static void AcceptConnection(const ListenSocket& hListenSocket)
     }
 }
 
-void edcThreadSocketHandler()
+void CEDCConnman::ThreadSocketHandler()
 {
 	EDCapp & theApp = EDCapp::singleton();
     unsigned int nPrevNodeCount = 0;
@@ -1562,7 +1555,7 @@ std::string edcGetDNSHost(const CDNSSeedData& data, ServiceFlags * requiredServi
 
 }
 
-void edcThreadDNSAddressSeed()
+void CEDCConnman::ThreadDNSAddressSeed()
 {
 	EDCparams & params = EDCparams::singleton();
 	EDCapp & theApp = EDCapp::singleton();
@@ -1821,10 +1814,7 @@ bool edcOpenNetworkConnection(
     return true;
 }
 
-namespace
-{
-
-void ProcessOneShot()
+void CEDCConnman::ProcessOneShot()
 {
     std::string strDest;
     {
@@ -1842,8 +1832,6 @@ void ProcessOneShot()
         if (!edcOpenNetworkConnection(addr, false, &grant, &sgrant, strDest.c_str(), true))
             AddOneShot(strDest);
     }
-}
-
 }
 
 std::vector<AddedNodeInfo> edcGetAddedNodeInfo()
@@ -1917,7 +1905,7 @@ std::vector<AddedNodeInfo> edcGetAddedNodeInfo()
     return ret;
 }
 
-void edcThreadOpenConnections()
+void CEDCConnman::ThreadOpenConnections()
 {
 	EDCparams & params = EDCparams::singleton();
     // Connect to specific addresses
@@ -2074,7 +2062,7 @@ void edcThreadOpenConnections()
     }
 }
 
-void edcThreadOpenAddedConnections()
+void CEDCConnman::ThreadOpenAddedConnections()
 {
 	EDCapp & theApp = EDCapp::singleton();
 	EDCparams & params = EDCparams::singleton();
@@ -2108,7 +2096,7 @@ void edcThreadOpenAddedConnections()
     }
 }
 
-void edcThreadMessageHandler()
+void CEDCConnman::ThreadMessageHandler()
 {
 	EDCapp & theApp = EDCapp::singleton();
     boost::mutex condition_mutex;
@@ -2428,7 +2416,15 @@ bool edcAddLocal(const CNetAddr &addr, int nScore)
     		edcAddLocal(CService(addr, edcGetListenSecurePort()), nScore);
 }
 
-void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
+CEDCConnman::CEDCConnman()
+{
+}
+
+bool edcStartNode(
+		CEDCConnman & connman, 
+boost::thread_group & threadGroup, 
+		 CScheduler & scheduler, 
+		std::string & strNodeError)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -2472,6 +2468,19 @@ void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
 
     edcfAddressesInitialized = true;
 
+    Discover(threadGroup);
+
+    bool ret = connman.Start(threadGroup, strNodeError);
+
+    // Dump network addresses
+    scheduler.scheduleEvery(edcDumpData, DUMP_ADDRESSES_INTERVAL);
+    return ret;
+}
+
+bool CEDCConnman::Start(boost::thread_group& threadGroup, std::string& strNodeError)
+{
+	EDCapp & theApp = EDCapp::singleton();
+
     if (semOutbound == NULL) 
 	{
         // initialize semaphore
@@ -2486,8 +2495,6 @@ void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
         pnodeLocalHost = new CEDCNode(INVALID_SOCKET, CAddress(CService(local, 0), nLocalServices));
     }
 
-    Discover(threadGroup);
-
     //
     // Start threads
     //
@@ -2496,35 +2503,37 @@ void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
     if (!params.dnsseed)
         edcLogPrintf("DNS seeding disabled\n");
     else
-        threadGroup.create_thread(boost::bind(&edcTraceThread<void (*)()>, "dnsseed", &edcThreadDNSAddressSeed));
+		threadGroup.create_thread(boost::bind(&edcTraceThread<boost::function<void()> >, 
+			"dnsseed", boost::function<void()>(boost::bind(&CEDCConnman::ThreadDNSAddressSeed, 
+			this))));
 
     // Map ports with UPnP
     edcMapPort(params.upnp);
 
     // Send and receive from sockets, accept connections
-    threadGroup.create_thread(boost::bind(&edcTraceThread<void (*)()>, "net", &edcThreadSocketHandler));
+	threadGroup.create_thread(boost::bind(&edcTraceThread<boost::function<void()> >, 
+		"net", boost::function<void()>(boost::bind(&CEDCConnman::ThreadSocketHandler, this))));
 
     // Initiate outbound connections from -eb_addnode
-    threadGroup.create_thread(boost::bind(&edcTraceThread<void (*)()>, 
-		"addcon", &edcThreadOpenAddedConnections));
+	threadGroup.create_thread(boost::bind(&edcTraceThread<boost::function<void()> >, 
+		"addcon", boost::function<void()>(boost::bind(&CEDCConnman::ThreadOpenAddedConnections, 
+		this))));
 
     // Initiate outbound connections
-    threadGroup.create_thread(boost::bind(&edcTraceThread<void (*)()>, "opencon", &edcThreadOpenConnections));
+	threadGroup.create_thread(boost::bind(&edcTraceThread<boost::function<void()> >, 
+		"opencon", boost::function<void()>(boost::bind(&CEDCConnman::ThreadOpenConnections,this))));
 
     // Process messages
-    threadGroup.create_thread(boost::bind(&edcTraceThread<void (*)()>, "msghand", &edcThreadMessageHandler));
+	threadGroup.create_thread(boost::bind(&edcTraceThread<boost::function<void()> >, "msghand", 
+		boost::function<void()>(boost::bind(&CEDCConnman::ThreadMessageHandler, this))));
 
-    // Dump network addresses
-    scheduler.scheduleEvery(&edcDumpData, DUMP_ADDRESSES_INTERVAL);
+	return true;
 }
 
-bool edcStopNode()
+bool edcStopNode( CEDCConnman & connman )
 {
     edcLogPrintf("edcStopNode()\n");
     edcMapPort(false);
-    if (semOutbound)
-		for (int i=0; i<(MAX_OUTBOUND_CONNECTIONS + MAX_FEELER_CONNECTIONS); i++)
-            semOutbound->post();
 
     if (edcfAddressesInitialized)
     {
@@ -2532,6 +2541,7 @@ bool edcStopNode()
         edcfAddressesInitialized = false;
     }
 
+	connman.Stop();
     return true;
 }
 
@@ -2542,36 +2552,6 @@ public:
 
     ~CNetCleanup()
     {
-		EDCapp & theApp = EDCapp::singleton();
-        // Close sockets
-        BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
-            if (!pnode->invalidSocket())
-                pnode->closeSocket();
-        BOOST_FOREACH(CEDCSSLNode* pnode, theApp.vSSLNodes())
-            if (!pnode->invalidSocket())
-                pnode->closeSocket();
-        BOOST_FOREACH(ListenSocket& hListenSocket, vhListenSocket)
-            if (hListenSocket.socket != INVALID_SOCKET)
-                if (!CloseSocket(hListenSocket.socket))
-                    edcLogPrintf("CloseSocket(hListenSocket) failed with error %s\n", NetworkErrorString(WSAGetLastError()));
-
-        // clean up some globals (to help leak detection)
-        BOOST_FOREACH(CEDCNode *pnode, theApp.vNodes())
-            delete pnode;
-        BOOST_FOREACH(CEDCSSLNode *pnode, theApp.vSSLNodes())
-            delete pnode;
-        BOOST_FOREACH(CEDCNode *pnode, vNodesDisconnected)
-            delete pnode;
-
-        theApp.vNodes().clear();
-        theApp.vSSLNodes().clear();
-        vNodesDisconnected.clear();
-        vhListenSocket.clear();
-        delete semOutbound;
-        semOutbound = NULL;
-        delete pnodeLocalHost;
-        pnodeLocalHost = NULL;
-
 #ifdef WIN32
         // Shutdown Windows Sockets
         WSACleanup();
@@ -2580,6 +2560,47 @@ public:
 }
 edcinstance_of_cnetcleanup;
 
+void CEDCConnman::Stop()
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+    if (semOutbound)
+        for (int i=0; i<(MAX_OUTBOUND_CONNECTIONS + MAX_FEELER_CONNECTIONS); i++)
+            semOutbound->post();
+
+	// Close sockets
+	BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
+		if (!pnode->invalidSocket())
+			pnode->closeSocket();
+	BOOST_FOREACH(CEDCSSLNode* pnode, theApp.vSSLNodes())
+		if (!pnode->invalidSocket())
+			pnode->closeSocket();
+	BOOST_FOREACH(ListenSocket& hListenSocket, vhListenSocket)
+		if (hListenSocket.socket != INVALID_SOCKET)
+			if (!CloseSocket(hListenSocket.socket))
+				edcLogPrintf("CloseSocket(hListenSocket) failed with error %s\n", NetworkErrorString(WSAGetLastError()));
+
+	// clean up some globals (to help leak detection)
+	BOOST_FOREACH(CEDCNode *pnode, theApp.vNodes())
+		delete pnode;
+	BOOST_FOREACH(CEDCSSLNode *pnode, theApp.vSSLNodes())
+		delete pnode;
+	BOOST_FOREACH(CEDCNode *pnode, vNodesDisconnected)
+		delete pnode;
+
+	theApp.vNodes().clear();
+	theApp.vSSLNodes().clear();
+	vNodesDisconnected.clear();
+	vhListenSocket.clear();
+	delete semOutbound;
+	semOutbound = NULL;
+	delete pnodeLocalHost;
+    pnodeLocalHost = NULL;
+}
+
+CEDCConnman::~CEDCConnman()
+{
+}
 
 void RelayTransaction(const CEDCTransaction& tx)
 {

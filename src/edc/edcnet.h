@@ -55,8 +55,6 @@ void edcMapPort(bool fUseUPnP);
 unsigned short edcGetListenPort();
 unsigned short edcGetListenSecurePort();
 bool edcBindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
-void edcStartNode(boost::thread_group& threadGroup, CScheduler& scheduler);
-bool edcStopNode();
 void SocketSendData(CEDCNode *pnode);
 
 // Signals for message handling
@@ -662,5 +660,29 @@ CEDCNode * edcFindNode(const std::string& addrName, bool );
 CEDCNode * edcFindNode(const CService& ip, bool );
 CEDCNode * edcFindNode( const NodeId id, bool ); //TODO: Remove this
 bool edcOpenNetworkConnection( const CAddress & addrConnect, bool fCountFailure, CSemaphoreGrant * grantOutbound  = NULL, CSemaphoreGrant * sgrantOutbound  = NULL, const char * pszDest = NULL, bool fOneShot = false, bool fFeeler = false ); 
+
+
+class CEDCConnman
+{
+public:
+    CEDCConnman();
+    ~CEDCConnman();
+
+    bool Start(boost::thread_group& threadGroup, std::string& strNodeError);
+    void Stop();
+
+private:
+    void ThreadOpenAddedConnections();
+    void ProcessOneShot();
+    void ThreadOpenConnections();
+    void ThreadMessageHandler();
+    void AcceptConnection(const ListenSocket& hListenSocket);
+    void ThreadSocketHandler();
+    void ThreadDNSAddressSeed();
+};
+
 void edcSetLimited(enum Network net, bool fLimited);
 std::vector<AddedNodeInfo> edcGetAddedNodeInfo();
+
+bool edcStartNode(CEDCConnman & connman, boost::thread_group & threadGroup, CScheduler & scheduler, std::string & strNodeError);
+bool edcStopNode(CEDCConnman & connman);

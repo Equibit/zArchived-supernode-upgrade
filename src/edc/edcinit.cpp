@@ -636,6 +636,10 @@ bool EdcAppInit(
 
     	// ************************************* Step 6: network initialization
 
+		assert(!theApp.connman());
+		theApp.connman(new CEDCConnman());
+		CEDCConnman & connman = *theApp.connman();
+
 	    RegisterNodeSignals(edcGetNodeSignals());
 
     	// sanitize comments per BIP-0014, format user agent and check total siz
@@ -1125,7 +1129,9 @@ bool EdcAppInit(
 		if(params.listenonion )
 			edcStartTorControl( threadGroup, scheduler );
 
-    	edcStartNode(threadGroup, scheduler);
+		std::string strNodeError;
+		if(!edcStartNode(connman, threadGroup, scheduler, strNodeError))
+        	return InitError(strNodeError);
 
 		// *************************************************** Step 12: finished
 		edcSetRPCWarmupFinished();
@@ -1214,7 +1220,9 @@ void edcShutdown()
     if (theApp.walletMain())
         theApp.walletMain()->Flush(false);
 #endif
-    edcStopNode();
+    edcStopNode(*theApp.connman());
+	theApp.connman().reset();
+
     edcStopTorControl();
 	UnregisterNodeSignals(edcGetNodeSignals());
 
