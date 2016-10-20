@@ -113,13 +113,13 @@ std::string ResolveErrMsg(const char * const optname, const std::string& strBind
     return strprintf(_("Cannot resolve -%s address: '%s'"), optname, strBind);
 }
 
-bool Bind(const CService &addr, unsigned int flags) 
+bool Bind(CEDCConnman & connman, const CService &addr, unsigned int flags) 
 {
     if (!(flags & BF_EXPLICIT) && IsLimited(addr))
         return false;
 
     std::string strError;
-    if (!edcBindListenPort(addr, strError, (flags & BF_WHITELIST) != 0)) 
+    if (!connman.BindListenPort(addr, strError, (flags & BF_WHITELIST) != 0)) 
 	{
         if (flags & BF_REPORT_ERROR)
             return edcInitError(strError);
@@ -755,11 +755,11 @@ bool EdcAppInit(
 
 	                if (!Lookup(strBind.c_str(), addrBind, edcGetListenPort(), false))
 	                    return edcInitError(ResolveErrMsg("bind", strBind));
-	                fBound |= Bind(addrBind, (BF_EXPLICIT | BF_REPORT_ERROR));
+	                fBound |= Bind(connman, addrBind, (BF_EXPLICIT | BF_REPORT_ERROR));
 
 	                if (!Lookup(strBind.c_str(), addrBind, edcGetListenSecurePort(), false))
 	                    return edcInitError(ResolveErrMsg("bind", strBind));
-	                fBound |= Bind(addrBind, (BF_EXPLICIT | BF_REPORT_ERROR));
+	                fBound |= Bind(connman, addrBind, (BF_EXPLICIT | BF_REPORT_ERROR));
 	            }
 	            BOOST_FOREACH(const std::string& strBind, params.whitebind) 
 				{
@@ -769,7 +769,7 @@ bool EdcAppInit(
 	                if (addrBind.GetPort() == 0)
 	                    return edcInitError(strprintf(_("Need to specify a port with -eb_whitebind: '%s'"), strBind));
 
-	                fBound |= Bind(addrBind, (BF_EXPLICIT | BF_REPORT_ERROR | BF_WHITELIST));
+	                fBound |= Bind(connman, addrBind, (BF_EXPLICIT | BF_REPORT_ERROR | BF_WHITELIST));
 	            }
 	        }
 	        else 
@@ -777,11 +777,11 @@ bool EdcAppInit(
 	            struct in_addr inaddr_any;
 	            inaddr_any.s_addr = INADDR_ANY;
 
-	            fBound |= Bind(CService(in6addr_any, edcGetListenPort()), BF_NONE);
-	            fBound |= Bind(CService(inaddr_any, edcGetListenPort()), !fBound ? BF_REPORT_ERROR : BF_NONE);
+	            fBound |= Bind(connman, CService(in6addr_any, edcGetListenPort()), BF_NONE);
+	            fBound |= Bind(connman, CService(inaddr_any, edcGetListenPort()), !fBound ? BF_REPORT_ERROR : BF_NONE);
 
-	            fBound |= Bind(CService(in6addr_any, edcGetListenSecurePort()), BF_NONE);
-	            fBound |= Bind(CService(inaddr_any, edcGetListenSecurePort()), !fBound ? BF_REPORT_ERROR : BF_NONE);
+	            fBound |= Bind(connman, CService(in6addr_any, edcGetListenSecurePort()), BF_NONE);
+	            fBound |= Bind(connman, CService(inaddr_any, edcGetListenSecurePort()), !fBound ? BF_REPORT_ERROR : BF_NONE);
 	        }
 	        if (!fBound)
 	            return edcInitError(_("Failed to listen on any port. Use -eb_listen=0 if you want this."));

@@ -80,7 +80,6 @@ static const ServiceFlags nRelevantServices = NODE_NETWORK;
 
 bool vfLimited[NET_MAX] = {};
 CEDCNode* pnodeLocalHost = NULL;
-std::vector<ListenSocket> vhListenSocket;
 }
 
 bool edcfAddressesInitialized = false;
@@ -2219,7 +2218,7 @@ void CEDCConnman::ThreadMessageHandler()
     }
 }
 
-bool edcBindListenPort(
+bool CEDCConnman::BindListenPort(
 	const CService & addrBind, 
        std::string & strError, 
 				bool fWhitelisted)

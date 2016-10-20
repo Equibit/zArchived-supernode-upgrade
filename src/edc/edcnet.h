@@ -671,8 +671,17 @@ public:
 
     bool Start(boost::thread_group& threadGroup, std::string& strNodeError);
     void Stop();
+	bool BindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
 
 private:
+    struct ListenSocket 
+	{
+        SOCKET socket;
+        bool whitelisted;
+
+        ListenSocket(SOCKET socket_, bool whitelisted_) : socket(socket_), whitelisted(whitelisted_) {}
+    };
+
     void ThreadOpenAddedConnections();
     void ProcessOneShot();
     void ThreadOpenConnections();
@@ -680,6 +689,8 @@ private:
     void AcceptConnection(const ListenSocket& hListenSocket);
     void ThreadSocketHandler();
     void ThreadDNSAddressSeed();
+
+	std::vector<ListenSocket> vhListenSocket;
 };
 
 void edcSetLimited(enum Network net, bool fLimited);
