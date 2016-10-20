@@ -361,8 +361,9 @@ void InitializeNode(NodeId nodeid, const CEDCNode *pnode)
     state.address = pnode->addr;
 }
 
-void FinalizeNode(NodeId nodeid) 
+void FinalizeNode(NodeId nodeid, bool & fUpdateConnectionTime ) 
 {
+	fUpdateConnectionTime = false;
     LOCK(EDC_cs_main);
     CNodeState *state = State(nodeid);
 
@@ -371,7 +372,7 @@ void FinalizeNode(NodeId nodeid)
 
     if (state->nMisbehavior == 0 && state->fCurrentlyConnected) 
 	{
-        edcAddressCurrentlyConnected(state->address);
+		fUpdateConnectionTime = true;
     }
 
     BOOST_FOREACH(const QueuedBlock& entry, state->vBlocksInFlight) 

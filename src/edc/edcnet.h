@@ -65,7 +65,7 @@ struct CEDCNodeSignals
     boost::signals2::signal<bool (CEDCNode *, CEDCConnman &), CombinerAll> ProcessMessages;
     boost::signals2::signal<bool (CEDCNode *, CEDCConnman &), CombinerAll> SendMessages;
     boost::signals2::signal<void (NodeId, const CEDCNode *)> InitializeNode;
-    boost::signals2::signal<void (NodeId)> FinalizeNode;
+    boost::signals2::signal<void (NodeId, bool&)> FinalizeNode;
 };
 
 CEDCNodeSignals& edcGetNodeSignals();
@@ -236,8 +236,6 @@ public:
 	virtual void	closeSocket();
 	virtual ssize_t send(const void *buf, size_t len, int flags);
 	virtual ssize_t recv(void *buf, size_t len, int flags);
-
-	void init();
 
 protected:
 
@@ -691,7 +689,8 @@ private:
     void ThreadSocketHandler();
     void ThreadDNSAddressSeed();
 
-	CNode* ConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure);
+	CEDCNode* ConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure);
+	void DeleteNode( CEDCNode * pnode );
 
 	std::vector<ListenSocket> vhListenSocket;
 };

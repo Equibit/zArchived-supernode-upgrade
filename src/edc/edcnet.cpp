@@ -76,7 +76,7 @@ const int MAX_FEELER_CONNECTIONS = 1;
 const std::string NET_MESSAGE_COMMAND_OTHER = "*other*";
 
 /** Services this node implementation cares about */
-static const ServiceFlags nRelevantServices = NODE_NETWORK;
+const ServiceFlags RelevantServices = NODE_NETWORK;
 
 bool vfLimited[NET_MAX] = {};
 CEDCNode* pnodeLocalHost = NULL;
@@ -284,13 +284,6 @@ bool edcIsReachable(const CNetAddr& addr)
     enum Network net = addr.GetNetwork();
     return edcIsReachable(net);
 }
-
-void edcAddressCurrentlyConnected(const CService& addr)
-{
-	EDCapp & theApp = EDCapp::singleton();
-    theApp.addrman().Connected(addr);
-}
-
 
 uint64_t CEDCNode::nTotalBytesRecv = 0;
 uint64_t CEDCNode::nTotalBytesSent = 0;
@@ -1069,7 +1062,6 @@ void CEDCConnman::AcceptConnection(const ListenSocket& hListenSocket)
 		if( SSL * ssl = CEDCSSLNode::sslAccept(hSocket) )
 		{
 			pnode = new CEDCSSLNode( hSocket, addr, "", true, ssl );
-			pnode->init();
 		}
 		else
 		{
@@ -1080,9 +1072,9 @@ void CEDCConnman::AcceptConnection(const ListenSocket& hListenSocket)
 	else
 	{
 		pnode = new CEDCNode(hSocket, addr, "", true );
-		pnode->init();
 	}
 
+	edcGetNodeSignals().InitializeNode(pnode->GetId(), pnode);
     pnode->AddRef();
     pnode->fWhitelisted = whitelisted;
 
@@ -1158,7 +1150,7 @@ void CEDCConnman::ThreadSocketHandler()
                     if (fDelete)
                     {
                         vNodesDisconnected.remove(pnode);
-                        delete pnode;
+                        DeleteNode(pnode);
                     }
                 }
             }
@@ -1636,7 +1628,7 @@ void edcDumpData()
     edcDumpBanlist();
 }
 
-CEDCNode* CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure )
+CEDCNode * CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure )
 {
     if (pszDest == NULL) 
 	{
@@ -1714,7 +1706,7 @@ CEDCNode* CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, bo
 			if( SSL * ssl = CEDCSSLNode::sslConnect(hSocket))
 			{
        			pnode = new CEDCSSLNode( hSocket, addrConnect, pszDest ? pszDest : "", false, ssl );
-				pnode->init();
+				edcGetNodeSignals().InitializeNode(pnode->GetId(), pnode);
 			}
 			else
 			{
@@ -1725,7 +1717,7 @@ CEDCNode* CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, bo
 		else
 		{
 			pnode = new CEDCNode( hSocket, addrConnect, pszDest ? pszDest : "", false);
-			pnode->init();
+			edcGetNodeSignals().InitializeNode(pnode->GetId(), pnode);
 		}
         pnode->AddRef();
 
@@ -1737,7 +1729,7 @@ CEDCNode* CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, bo
 	            theApp.vNodes().push_back(pnode);
         }
 
-		pnode->nServicesExpected = ServiceFlags(addrConnect.nServices & nRelevantServices);
+		pnode->nServicesExpected = ServiceFlags( addrConnect.nServices & RelevantServices);
         pnode->nTimeConnected = GetTime();
 
         return pnode;
@@ -1779,7 +1771,7 @@ bool CEDCConnman::OpenNetworkConnection(
 	else if (edcFindNode(std::string(pszDest), false ))
         return false;
 
-    CEDCNode* pnode = edcConnectNode(addrConnect, pszDest, fCountFailure );
+    CEDCNode* pnode = ConnectNode(addrConnect, pszDest, fCountFailure );
     boost::this_thread::interruption_point();
 
     if (!pnode)
@@ -1792,7 +1784,7 @@ bool CEDCConnman::OpenNetworkConnection(
     if (fFeeler)
         pnode->fFeeler = true;
 
-    CEDCSSLNode* pSSLnode = static_cast<CEDCSSLNode *>(edcConnectNode(addrConnect, pszDest, true ));
+    CEDCSSLNode* pSSLnode = static_cast<CEDCSSLNode *>(ConnectNode(addrConnect, pszDest, true ));
     boost::this_thread::interruption_point();
 
     if (pSSLnode)
@@ -1824,7 +1816,7 @@ void CEDCConnman::ProcessOneShot()
     CSemaphoreGrant sgrant(*semOutbound, true);
     if (grant) 
 	{
-        if (!edcOpenNetworkConnection(addr, false, &grant, &sgrant, strDest.c_str(), true))
+        if (!OpenNetworkConnection(addr, false, &grant, &sgrant, strDest.c_str(), true))
             AddOneShot(strDest);
     }
 }
@@ -1912,7 +1904,7 @@ void CEDCConnman::ThreadOpenConnections()
             BOOST_FOREACH(const std::string& strAddr, params.connect)
             {
                 CAddress addr(CService(), NODE_NONE);
-                edcOpenNetworkConnection(addr, false, NULL, NULL, strAddr.c_str());
+                OpenNetworkConnection(addr, false, NULL, NULL, strAddr.c_str());
                 for (int i = 0; i < 10 && i < nLoop; i++)
                 {
                     MilliSleep(500);
@@ -2052,7 +2044,7 @@ void CEDCConnman::ThreadOpenConnections()
 
         	CSemaphoreGrant grant(*semOutbound);
 	        CSemaphoreGrant sgrant(*semOutbound);
-            edcOpenNetworkConnection(addrConnect, (int)setConnected.size() >= std::min(theApp.maxConnections() - 1, 2), &grant, &sgrant, NULL, false, fFeeler);
+            OpenNetworkConnection(addrConnect, (int)setConnected.size() >= std::min(theApp.maxConnections() - 1, 2), &grant, &sgrant, NULL, false, fFeeler);
         }
     }
 }
@@ -2081,7 +2073,7 @@ void CEDCConnman::ThreadOpenAddedConnections()
                 // OpenNetworkConnection can detect existing connections to that IP/port.
                 CService service(LookupNumeric(info.strAddedNode.c_str(), edcParams().GetDefaultPort()));
 
-                edcOpenNetworkConnection(CAddress(service, NODE_NONE), false, &grant, &sgrant,
+                OpenNetworkConnection(CAddress(service, NODE_NONE), false, &grant, &sgrant,
 					info.strAddedNode.c_str(), false);
                 MilliSleep(500);
             }
@@ -2488,6 +2480,7 @@ bool CEDCConnman::Start(boost::thread_group& threadGroup, std::string& strNodeEr
         CNetAddr local;
         LookupHost("127.0.0.1", local, false);
         pnodeLocalHost = new CEDCNode(INVALID_SOCKET, CAddress(CService(local, 0), nLocalServices));
+		edcGetNodeSignals().InitializeNode(pnodeLocalHost->GetId(), pnodeLocalHost);
     }
 
     //
@@ -2577,11 +2570,11 @@ void CEDCConnman::Stop()
 
 	// clean up some globals (to help leak detection)
 	BOOST_FOREACH(CEDCNode *pnode, theApp.vNodes())
-		delete pnode;
+		DeleteNode( pnode );
 	BOOST_FOREACH(CEDCSSLNode *pnode, theApp.vSSLNodes())
-		delete pnode;
+		DeleteNode( pnode );
 	BOOST_FOREACH(CEDCNode *pnode, vNodesDisconnected)
-		delete pnode;
+		DeleteNode( pnode );
 
 	theApp.vNodes().clear();
 	theApp.vSSLNodes().clear();
@@ -2589,8 +2582,19 @@ void CEDCConnman::Stop()
 	vhListenSocket.clear();
 	delete semOutbound;
 	semOutbound = NULL;
-	delete pnodeLocalHost;
+	if( pnodeLocalHost )
+		DeleteNode( pnodeLocalHost );
     pnodeLocalHost = NULL;
+}
+
+void CEDCConnman::DeleteNode(CEDCNode* pnode)
+{
+    assert(pnode);
+    bool fUpdateConnectionTime = false;
+    edcGetNodeSignals().FinalizeNode(pnode->GetId(), fUpdateConnectionTime);
+    if(fUpdateConnectionTime)
+        addrman.Connected(pnode->addr);
+    delete pnode;
 }
 
 CEDCConnman::~CEDCConnman()
@@ -2866,15 +2870,10 @@ CEDCNode::CEDCNode(
         edcLogPrint("net", "Added connection to %s peer=%d\n", addrName, id);
     else
         edcLogPrint("net", "Added connection peer=%d\n", id);
-}
 
-void CEDCNode::init()
-{
     // Be shy and don't send version until we hear
     if (!invalidSocket() && !fInbound)
         PushVersion();
-
-    edcGetNodeSignals().InitializeNode(GetId(), this);
 }
 
 CEDCNode::~CEDCNode()
@@ -2883,8 +2882,6 @@ CEDCNode::~CEDCNode()
 
     if (pfilter)
         delete pfilter;
-
-    edcGetNodeSignals().FinalizeNode(GetId());
 }
 
 void CEDCNode::AskFor(const CInv& inv)
