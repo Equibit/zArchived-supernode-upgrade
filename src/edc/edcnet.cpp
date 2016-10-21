@@ -2273,7 +2273,7 @@ bool CEDCConnman::BindListenPort(
     return true;
 }
 
-void static Discover(boost::thread_group& threadGroup)
+void edcDiscover(boost::thread_group& threadGroup)
 {
 	EDCparams & params = EDCparams::singleton();
     if (!params.discover)
@@ -2378,34 +2378,6 @@ CEDCConnman::CEDCConnman()
     nMaxOutbound = 0;
 	nBestHeight = 0;
 	clientInterface = NULL;
-}
-
-bool edcStartNode(
-		  CEDCConnman & connman, 
-  boost::thread_group & threadGroup, 
-		   CScheduler & scheduler, 
-		   ServiceFlags nLocalServices, 
-		   ServiceFlags nRelevantServices, 
-					int nMaxConnectionsIn, 
-					int nMaxOutboundIn, 
-					int nBestHeightIn,
-CEDCClientUIInterface * interfaceIn,
-		  std::string & strNodeError)
-{
-    Discover(threadGroup);
-
-    bool ret = connman.Start(
-		threadGroup, 
-		scheduler, 
-		nLocalServices, 
-		nRelevantServices, 
-		nMaxConnectionsIn, 
-		nMaxOutboundIn, 
-		nBestHeightIn, 
-		interfaceIn,
-		strNodeError);
-
-    return ret;
 }
 
 NodeId CEDCConnman::GetNewNodeId()
@@ -2514,9 +2486,6 @@ bool CEDCConnman::Start(
 			"dnsseed", boost::function<void()>(boost::bind(&CEDCConnman::ThreadDNSAddressSeed, 
 			this))));
 
-    // Map ports with UPnP
-    edcMapPort(params.upnp);
-
     // Send and receive from sockets, accept connections
 	threadGroup.create_thread(boost::bind(&edcTraceThread<boost::function<void()> >, 
 		"net", boost::function<void()>(boost::bind(&CEDCConnman::ThreadSocketHandler, this))));
@@ -2540,15 +2509,6 @@ bool CEDCConnman::Start(
 	return true;
 }
 
-bool edcStopNode( CEDCConnman & connman )
-{
-    edcLogPrintf("edcStopNode()\n");
-    edcMapPort(false);
-
-	connman.Stop();
-    return true;
-}
-
 class CNetCleanup
 {
 public:
@@ -2566,6 +2526,7 @@ edcinstance_of_cnetcleanup;
 
 void CEDCConnman::Stop()
 {
+	edcLogPrintf( "%s\n",__func__);
     if (semOutbound)
 		for (int i=0; i<(nMaxOutbound + MAX_FEELER_CONNECTIONS); i++)
             semOutbound->post();

@@ -1131,9 +1131,14 @@ bool EdcAppInit(
 		if(params.listenonion )
 			edcStartTorControl( threadGroup, scheduler );
 
+	    edcDiscover(threadGroup);
+
+ 		// Map ports with UPnP
+		MapPort(params.upnp);
+
 		std::string strNodeError;
 		int nMaxOutbound = std::min(MAX_OUTBOUND_CONNECTIONS, nMaxConnections);
-		if(!edcStartNode(connman, threadGroup, scheduler, nLocalServices, nRelevantServices, nMaxConnections, nMaxOutbound, chainActive.Height(), &edcUiInterface, strNodeError))
+		if(!connman.Start( threadGroup, scheduler, nLocalServices, nRelevantServices, nMaxConnections, nMaxOutbound, chainActive.Height(), &edcUiInterface, strNodeError))
         	return InitError(strNodeError);
 
 		// *************************************************** Step 12: finished
@@ -1223,7 +1228,8 @@ void edcShutdown()
     if (theApp.walletMain())
         theApp.walletMain()->Flush(false);
 #endif
-    edcStopNode(*theApp.connman());
+	MapPort(false);
+	theApp.connman().Stop();
 	theApp.connman().reset();
 
     edcStopTorControl();

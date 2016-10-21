@@ -49,6 +49,7 @@ namespace boost
 
 typedef int NodeId;
 
+void edcDiscover(boost::thread_group& threadGroup);
 void edcMapPort(bool fUseUPnP);
 unsigned short edcGetListenPort();
 unsigned short edcGetListenSecurePort();
@@ -808,6 +809,4 @@ private:
 
 void edcSetLimited(enum Network net, bool fLimited);
 
-bool edcStartNode(CEDCConnman & connman, boost::thread_group & threadGroup, CScheduler & scheduler, ServiceFlags nLocalServices, ServiceFlags nRelevantServices, int nMaxConnections, int nMaxOutbound,int nBestHeightIn, CEDCClientUIInterface * interfaceIn, std::string & strNodeError);
-bool edcStopNode(CEDCConnman & connman);
 CAddress edcGetLocalAddress(const CNetAddr *paddrPeer, ServiceFlags nLocalServices);
