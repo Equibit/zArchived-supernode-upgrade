@@ -5535,7 +5535,10 @@ void RelayAddress(const CAddress& addr, bool fReachable, CEDCConnman& connman)
     connman.ForEachNodeThen(std::move(sortfunc), std::move(pushfunc));
 }
 
-void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
+void ProcessGetData(
+				   CEDCNode * pfrom, 
+	const Consensus::Params & consensusParams,
+				CEDCConnman & connman )
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -5587,7 +5590,7 @@ void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
                 // disconnect node in case we have reached the outbound limit for serving historical blocks
                 // never disconnect whitelisted nodes
                 static const int nOneWeek = 7 * 24 * 60 * 60; // assume > 1 week = historical
-                if (send && CEDCNode::OutboundTargetReached(true) && ( ((theApp.indexBestHeader() != NULL) && (theApp.indexBestHeader()->GetBlockTime() - mi->second->GetBlockTime() > nOneWeek)) || inv.type == MSG_FILTERED_BLOCK) && !pfrom->fWhitelisted)
+                if (send && connman.OutboundTargetReached(true) && ( ((theApp.indexBestHeader() != NULL) && (theApp.indexBestHeader()->GetBlockTime() - mi->second->GetBlockTime() > nOneWeek)) || inv.type == MSG_FILTERED_BLOCK) && !pfrom->fWhitelisted)
                 {
                     edcLogPrint("net", "historical block serving limit reached, disconnect peer=%d\n", pfrom->GetId());
 
@@ -6143,7 +6146,7 @@ bool ProcessMessage(
             edcLogPrint("net", "received getdata for: %s peer=%d\n", vInv[0].ToString(), pfrom->id);
 
         pfrom->vRecvGetData.insert(pfrom->vRecvGetData.end(), vInv.begin(), vInv.end());
-        ProcessGetData(pfrom, chainparams.GetConsensus());
+        ProcessGetData(pfrom, chainparams.GetConsensus(), connman);
     }
     else if (strCommand == NetMsgType::GETBLOCKS)
     {
@@ -6917,7 +6920,7 @@ bool ProcessMessage(
             return true;
         }
 
-        if (CEDCNode::OutboundTargetReached(false) && !pfrom->fWhitelisted)
+        if (connman.OutboundTargetReached(false) && !pfrom->fWhitelisted)
         {
             edcLogPrint("net", "mempool request with bandwidth limit reached, disconnect peer=%d\n", pfrom->GetId());
             pfrom->fDisconnect = true;
@@ -7165,7 +7168,7 @@ bool edcProcessMessages(CEDCNode* pfrom, CEDCConnman & connman)
     bool fOk = true;
 
     if (!pfrom->vRecvGetData.empty())
-        ProcessGetData(pfrom, chainparams.GetConsensus());
+        ProcessGetData(pfrom, chainparams.GetConsensus(), connman);
 
     // this maintains the order of responses
     if (!pfrom->vRecvGetData.empty()) return fOk;

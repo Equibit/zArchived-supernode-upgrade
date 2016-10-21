@@ -284,16 +284,6 @@ bool edcIsReachable(const CNetAddr& addr)
     return edcIsReachable(net);
 }
 
-uint64_t CEDCNode::nTotalBytesRecv = 0;
-uint64_t CEDCNode::nTotalBytesSent = 0;
-CCriticalSection CEDCNode::cs_totalBytesRecv;
-CCriticalSection CEDCNode::cs_totalBytesSent;
-
-uint64_t CEDCNode::nMaxOutboundLimit = 0;
-uint64_t CEDCNode::nMaxOutboundTotalBytesSentInCycle = 0;
-uint64_t CEDCNode::nMaxOutboundTimeframe = 60*60*24; //1 day
-uint64_t CEDCNode::nMaxOutboundCycleStartTime = 0;
-
 CEDCNode* CEDCConnman::FindNode(const CNetAddr& ip, bool secure )
 {
     LOCK(cs_vNodes);
@@ -720,7 +710,6 @@ size_t SocketSendData(CEDCNode *pnode)
             pnode->nLastSend = GetTime();
             pnode->nSendBytes += nBytes;
             pnode->nSendOffset += nBytes;
-            pnode->RecordBytesSent(nBytes);
 			nSendSize += nBytes;
 
             if (pnode->nSendOffset == data.size()) 
@@ -1167,10 +1156,18 @@ void CEDCConnman::ThreadSocketHandler()
                 // * We process a message in the buffer (message handler thread).
                 {
                     TRY_LOCK(pnode->cs_vSend, lockSend);
-                    if (lockSend && !pnode->vSendMsg.empty()) 
+                    if (lockSend) 
 					{
-                        FD_SET(pnode->socket(), &fdsetSend);
-                        continue;
+                        if (pnode->nOptimisticBytesWritten) 
+						{
+                            RecordBytesSent(pnode->nOptimisticBytesWritten);
+                            pnode->nOptimisticBytesWritten = 0;
+                        }
+                        if (!pnode->vSendMsg.empty()) 
+						{
+                            FD_SET(pnode->hSocket, &fdsetSend);
+                            continue;
+                        }
                     }
                 }
                 {
@@ -1291,7 +1288,7 @@ void CEDCConnman::ThreadSocketHandler()
 
                             pnode->nLastRecv = GetTime();
                             pnode->nRecvBytes += nBytes;
-                            pnode->RecordBytesRecv(nBytes);
+                            RecordBytesRecv(nBytes);
                         }
                         else if (nBytes == 0)
                         {
@@ -1323,8 +1320,12 @@ void CEDCConnman::ThreadSocketHandler()
             if (FD_ISSET(pnode->socket(), &fdsetSend))
             {
                 TRY_LOCK(pnode->cs_vSend, lockSend);
-                if (lockSend)
-                    SocketSendData(pnode);
+                if (lockSend) 
+				{
+                    size_t nBytes = SocketSendData(pnode);
+                    if (nBytes)
+                        RecordBytesSent(nBytes);
+                }
             }
 
             //
@@ -2403,6 +2404,13 @@ bool CEDCConnman::Start(
 {
 	EDCapp & theApp = EDCapp::singleton();
 
+    nTotalBytesRecv = 0;
+    nTotalBytesSent = 0;
+    nMaxOutboundLimit = 0;
+    nMaxOutboundTotalBytesSentInCycle = 0;
+    nMaxOutboundTimeframe = 60*60*24; //1 day
+    nMaxOutboundCycleStartTime = 0;
+
     edcUiInterface.InitMessage(_("Loading addresses..."));
     // Load addresses from peers.dat
     int64_t nStart = GetTimeMillis();
@@ -2753,13 +2761,13 @@ void CEDCConnman::RelayUserMessage( CUserMessage * um, bool secure )
 	}
 }
 
-void CEDCNode::RecordBytesRecv(uint64_t bytes)
+void CEDCConnman::RecordBytesRecv(uint64_t bytes)
 {
     LOCK(cs_totalBytesRecv);
     nTotalBytesRecv += bytes;
 }
 
-void CEDCNode::RecordBytesSent(uint64_t bytes)
+void CEDCConnman::RecordBytesSent(uint64_t bytes)
 {
     LOCK(cs_totalBytesSent);
     nTotalBytesSent += bytes;
@@ -2776,7 +2784,7 @@ void CEDCNode::RecordBytesSent(uint64_t bytes)
     nMaxOutboundTotalBytesSentInCycle += bytes;
 }
 
-void CEDCNode::SetMaxOutboundTarget(uint64_t limit)
+void CEDCConnman::SetMaxOutboundTarget(uint64_t limit)
 {
     LOCK(cs_totalBytesSent);
     uint64_t recommendedMinimum = (nMaxOutboundTimeframe / 600) * EDC_MAX_BLOCK_SERIALIZED_SIZE;
@@ -2786,19 +2794,19 @@ void CEDCNode::SetMaxOutboundTarget(uint64_t limit)
         edcLogPrintf("Max outbound target is very small (%s bytes) and will be overshot. Recommended minimum is %s bytes.\n", nMaxOutboundLimit, recommendedMinimum);
 }
 
-uint64_t CEDCNode::GetMaxOutboundTarget()
+uint64_t CEDCConnman::GetMaxOutboundTarget()
 {
     LOCK(cs_totalBytesSent);
     return nMaxOutboundLimit;
 }
 
-uint64_t CEDCNode::GetMaxOutboundTimeframe()
+uint64_t CEDCConnman::GetMaxOutboundTimeframe()
 {
     LOCK(cs_totalBytesSent);
     return nMaxOutboundTimeframe;
 }
 
-uint64_t CEDCNode::GetMaxOutboundTimeLeftInCycle()
+uint64_t CEDCConnman::GetMaxOutboundTimeLeftInCycle()
 {
     LOCK(cs_totalBytesSent);
     if (nMaxOutboundLimit == 0)
@@ -2812,7 +2820,7 @@ uint64_t CEDCNode::GetMaxOutboundTimeLeftInCycle()
     return (cycleEndTime < now) ? 0 : cycleEndTime - GetTime();
 }
 
-void CEDCNode::SetMaxOutboundTimeframe(uint64_t timeframe)
+void CEDCConnman::SetMaxOutboundTimeframe(uint64_t timeframe)
 {
     LOCK(cs_totalBytesSent);
     if (nMaxOutboundTimeframe != timeframe)
@@ -2824,7 +2832,7 @@ void CEDCNode::SetMaxOutboundTimeframe(uint64_t timeframe)
     nMaxOutboundTimeframe = timeframe;
 }
 
-bool CEDCNode::OutboundTargetReached(bool historicalBlockServingLimit)
+bool CEDCConnman::OutboundTargetReached(bool historicalBlockServingLimit)
 {
     LOCK(cs_totalBytesSent);
     if (nMaxOutboundLimit == 0)
@@ -2844,7 +2852,7 @@ bool CEDCNode::OutboundTargetReached(bool historicalBlockServingLimit)
     return false;
 }
 
-uint64_t CEDCNode::GetOutboundTargetBytesLeft()
+uint64_t CEDCConnman::GetOutboundTargetBytesLeft()
 {
     LOCK(cs_totalBytesSent);
     if (nMaxOutboundLimit == 0)
@@ -2853,13 +2861,13 @@ uint64_t CEDCNode::GetOutboundTargetBytesLeft()
     return (nMaxOutboundTotalBytesSentInCycle >= nMaxOutboundLimit) ? 0 : nMaxOutboundLimit - nMaxOutboundTotalBytesSentInCycle;
 }
 
-uint64_t CEDCNode::GetTotalBytesRecv()
+uint64_t CEDCConnman::GetTotalBytesRecv()
 {
     LOCK(cs_totalBytesRecv);
     return nTotalBytesRecv;
 }
 
-uint64_t CEDCNode::GetTotalBytesSent()
+uint64_t CEDCConnman::GetTotalBytesSent()
 {
     LOCK(cs_totalBytesSent);
     return nTotalBytesSent;
@@ -2972,6 +2980,7 @@ CEDCNode::CEDCNode(
     lastSentFeeFilter = 0;
     nextSendTimeFeeFilter = 0;
 	id = idIn;
+	nOptimisticBytesWritten = 0;
 
 	GetRandBytes((unsigned char*)&nLocalHostNonce, sizeof(nLocalHostNonce));
 
@@ -3095,7 +3104,7 @@ void CEDCNode::EndMessage(const char* pszCommand) UNLOCK_FUNCTION(cs_vSend)
 
     // If write queue empty, attempt "optimistic write"
     if (it == vSendMsg.begin())
-        SocketSendData(this);
+        nOptimisticBytesWritten += SocketSendData(this);
 
     LEAVE_CRITICAL_SECTION(cs_vSend);
 }

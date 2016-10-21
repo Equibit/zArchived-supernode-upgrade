@@ -805,7 +805,7 @@ bool EdcAppInit(
 
     	if (params.maxuploadtarget > 0 ) 
 		{
-        	CEDCNode::SetMaxOutboundTarget(params.maxuploadtarget *1024*1024);
+        	theApp.connman()->SetMaxOutboundTarget(params.maxuploadtarget *1024*1024);
     	}
 
     	// ******************************************** Step 7: load block chain

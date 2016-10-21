@@ -380,18 +380,24 @@ UniValue edcgetnettotals(const UniValue& params, bool fHelp)
             + HelpExampleRpc("eb_getnettotals", "")
        );
 
+	EDCapp & theApp = EDCapp::singleton();
+	CEDCConnman * connman = theApp.connman();
+
+    if(!connman)
+        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
+
     UniValue obj(UniValue::VOBJ);
-    obj.push_back(Pair("totalbytesrecv", CEDCNode::GetTotalBytesRecv()));
-    obj.push_back(Pair("totalbytessent", CEDCNode::GetTotalBytesSent()));
+    obj.push_back(Pair("totalbytesrecv", connman->GetTotalBytesRecv()));
+    obj.push_back(Pair("totalbytessent", connman->GetTotalBytesSent()));
     obj.push_back(Pair("timemillis", GetTimeMillis()));
 
     UniValue outboundLimit(UniValue::VOBJ);
-    outboundLimit.push_back(Pair("timeframe", CEDCNode::GetMaxOutboundTimeframe()));
-    outboundLimit.push_back(Pair("target", CEDCNode::GetMaxOutboundTarget()));
-    outboundLimit.push_back(Pair("target_reached", CEDCNode::OutboundTargetReached(false)));
-    outboundLimit.push_back(Pair("serve_historical_blocks", !CEDCNode::OutboundTargetReached(true)));
-    outboundLimit.push_back(Pair("bytes_left_in_cycle", CEDCNode::GetOutboundTargetBytesLeft()));
-    outboundLimit.push_back(Pair("time_left_in_cycle", CEDCNode::GetMaxOutboundTimeLeftInCycle()));
+    outboundLimit.push_back(Pair("timeframe", connman->GetMaxOutboundTimeframe()));
+    outboundLimit.push_back(Pair("target", connman->GetMaxOutboundTarget()));
+    outboundLimit.push_back(Pair("target_reached", connman->OutboundTargetReached(false)));
+    outboundLimit.push_back(Pair("serve_historical_blocks", !connman->OutboundTargetReached(true)));
+    outboundLimit.push_back(Pair("bytes_left_in_cycle", connman->GetOutboundTargetBytesLeft()));
+    outboundLimit.push_back(Pair("time_left_in_cycle", connman->GetMaxOutboundTimeLeftInCycle()));
     obj.push_back(Pair("uploadtarget", outboundLimit));
     return obj;
 }
