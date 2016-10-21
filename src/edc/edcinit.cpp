@@ -1137,13 +1137,13 @@ bool EdcAppInit(
 		MapPort(params.upnp);
 
 		std::string strNodeError;
-		CConnman::Options connOptions;
+		CEDCConnman::Options connOptions;
 		connOptions.nLocalServices = nLocalServices;
 		connOptions.nRelevantServices = nRelevantServices;
 		connOptions.nMaxConnections = nMaxConnections;
 		connOptions.nMaxOutbound = std::min(MAX_OUTBOUND_CONNECTIONS, connOptions.nMaxConnections);
 		connOptions.nBestHeight = chainActive.Height();
-		connOptions.uiInterface = &uiInterface;
+		connOptions.uiInterface = &edcUiInterface;
 		connOptions.nSendBufferMaxSize = 1000*params.maxsendbuffer;
 		connOptions.nReceiveFloodSize = 1000*params.maxreceivebuffer;
 

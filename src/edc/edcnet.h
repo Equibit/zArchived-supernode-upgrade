@@ -798,6 +798,7 @@ private:
     std::vector<CEDCNode*>    vNodes;
     std::vector<CEDCSSLNode*> vSSLNodes;
     mutable CCriticalSection  cs_vNodes;
+	std::list<CEDCNode*>      vNodesDisconnected;
 	std::atomic<NodeId>       nLastNodeId;
 	boost::condition_variable messageHandlerCondition;
 

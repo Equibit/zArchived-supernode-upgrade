@@ -744,8 +744,6 @@ size_t SocketSendData(CEDCNode *pnode)
 	return nSendSize;
 }
 
-static std::list<CEDCNode*> vNodesDisconnected;
-
 struct NodeEvictionCandidate
 {
     NodeId id;
