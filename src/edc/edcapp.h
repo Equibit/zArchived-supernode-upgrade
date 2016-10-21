@@ -46,9 +46,6 @@ public:
 
 	~EDCapp();
 
-	int maxConnections() const		{ return maxConnections_; }
-	void maxConnections( int mc )	{ maxConnections_ = mc; }
-
 	int debug() const				{ return debug_; }
 	void debug( int b )				{ debug_ = b; }
 
@@ -197,7 +194,6 @@ private:
 	/** Maximum number of connections to simultaneously allow (aka connection 
 	 *  slots) 
 	 */
-	int maxConnections_;
 	int scriptCheckThreads_;
 
 	int64_t walletUnlockTime_;

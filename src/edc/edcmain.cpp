@@ -5762,7 +5762,7 @@ bool ProcessMessage(
 
 	EDCapp & theApp = EDCapp::singleton();
 
-    if (!(pfrom->GetlocalServices() & NODE_BLOOM) &&
+    if (!(pfrom->GetLocalServices() & NODE_BLOOM) &&
        (strCommand == NetMsgType::FILTERLOAD ||
         strCommand == NetMsgType::FILTERADD ||
         strCommand == NetMsgType::FILTERCLEAR))
@@ -6837,7 +6837,7 @@ bool ProcessMessage(
 					if (nodestate->fProvidesHeaderAndIDs && vGetData.size() == 1 && 
 						mapBlocksInFlight.size() == 1 && 
 						pindexLast->pprev->IsValid(BLOCK_VALID_CHAIN) && 
-						!(pfrom->GetlocalServices() & NODE_WITNESS))
+						!(pfrom->GetLocalServices() & NODE_WITNESS))
 					{
                         // We seem to be rather well-synced, so it appears pfrom was the first to provide us
                         // with this block! Let's get them to announce using compact blocks in the future.
@@ -6915,7 +6915,7 @@ bool ProcessMessage(
     }
     else if (strCommand == NetMsgType::MEMPOOL)
     {
-        if (!(pfrom->GetlocalServices() & NODE_BLOOM) && !pfrom->fWhitelisted)
+        if (!(pfrom->GetLocalServices() & NODE_BLOOM) && !pfrom->fWhitelisted)
         {
             edcLogPrint("net", "mempool request with bloom filters disabled, disconnect peer=%d\n", pfrom->GetId());
             pfrom->fDisconnect = true;

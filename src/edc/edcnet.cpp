@@ -71,7 +71,6 @@
 namespace 
 {
 
-const int MAX_OUTBOUND_CONNECTIONS = 8;
 const int MAX_FEELER_CONNECTIONS = 1;
 
 const std::string NET_MESSAGE_COMMAND_OTHER = "*other*";
@@ -910,7 +909,7 @@ void CEDCConnman::AcceptConnection(const ListenSocket& hListenSocket)
     SOCKET hSocket = accept(hListenSocket.socket, (struct sockaddr*)&sockaddr, &len);
     CAddress addr;
     int nInbound = 0;
-    int nMaxInbound = nMaxConnections - (MAX_OUTBOUND_CONNECTIONS + MAX_FEELER_CONNECTIONS);
+	int nMaxInbound = nMaxConnections - (nMaxOutbound + MAX_FEELER_CONNECTIONS);
     assert(nMaxInbound > 0);
 
     if (hSocket != INVALID_SOCKET)
@@ -1927,7 +1926,7 @@ void CEDCConnman::ThreadOpenConnections()
                 }
             }
         }
-        assert(nOutbound <= (MAX_OUTBOUND_CONNECTIONS + MAX_FEELER_CONNECTIONS));
+		assert(nOutbound <= (nMaxOutbound + MAX_FEELER_CONNECTIONS));
  
         // Feeler Connections
         //
@@ -1942,7 +1941,7 @@ void CEDCConnman::ThreadOpenConnections()
         //  * Only make a feeler connection once every few minutes.
         //
         bool fFeeler = false;
-        if (nOutbound >= MAX_OUTBOUND_CONNECTIONS) 
+		if (nOutbound >= nMaxOutbound)
 		{
             int64_t nTime = GetTimeMicros(); // The current time right now (in microseconds).
             if (nTime > nNextFeeler) 
@@ -2008,7 +2007,7 @@ void CEDCConnman::ThreadOpenConnections()
 
         	CSemaphoreGrant grant(*semOutbound);
 	        CSemaphoreGrant sgrant(*semOutbound);
-            OpenNetworkConnection(addrConnect, (int)setConnected.size() >= std::min(theApp.maxConnections() - 1, 2), &grant, &sgrant, NULL, false, fFeeler);
+            OpenNetworkConnection(addrConnect, (int)setConnected.size() >= std::min(nMaxConnections - 1, 2), &grant, &sgrant, NULL, false, fFeeler);
         }
     }
 }
@@ -2374,6 +2373,8 @@ CEDCConnman::CEDCConnman()
     nSendBufferMaxSize = 0;
     nReceiveFloodSize = 0;
 	semOutbound = NULL;
+    nMaxConnections = 0;
+    nMaxOutbound = 0;
 }
 
 bool edcStartNode(
@@ -2382,11 +2383,13 @@ boost::thread_group & threadGroup,
 		 CScheduler & scheduler, 
 		 ServiceFlags nLocalServices, 
 		 ServiceFlags nRelevantServices, 
+				  int nMaxConnectionsIn, 
+				  int nMaxOutboundIn, 
 		std::string & strNodeError)
 {
     Discover(threadGroup);
 
-    bool ret = connman.Start(threadGroup, scheduler, nLocalServices, nRelevantServices, strNodeError);
+    bool ret = connman.Start(threadGroup, scheduler, nLocalServices, nRelevantServices, nMaxConnectionsIn, nMaxOutboundIn, strNodeError);
 
     return ret;
 }
@@ -2401,6 +2404,8 @@ bool CEDCConnman::Start(
 			 CScheduler & scheduler, 
 			 ServiceFlags nLocalServicesIn, 
 			 ServiceFlags nRelevantServicesIn,
+					  int nMaxConnectionsIn, 
+					  int nMaxOutboundIn,
 			std::string & strNodeError)
 {
 	EDCapp & theApp = EDCapp::singleton();
@@ -2414,6 +2419,9 @@ bool CEDCConnman::Start(
     nLocalServices = nLocalServicesIn;
     nRelevantServices = nRelevantServicesIn;
     nMaxOutboundCycleStartTime = 0;
+
+    nMaxConnections = nMaxConnectionsIn;
+    nMaxOutbound = std::min((nMaxOutboundIn), nMaxConnections);
 
     nSendBufferMaxSize = 1000*params.maxsendbuffer;
     nReceiveFloodSize = 1000*params.maxreceivebuffer;
@@ -2461,8 +2469,7 @@ bool CEDCConnman::Start(
     if (semOutbound == NULL) 
 	{
         // initialize semaphore
-		int nMaxOutbound = std::min((MAX_OUTBOUND_CONNECTIONS + MAX_FEELER_CONNECTIONS), theApp.maxConnections() );
-        semOutbound = new CSemaphore(nMaxOutbound);
+		semOutbound = new CSemaphore(std::min((nMaxOutbound + MAX_FEELER_CONNECTIONS), nMaxConnections));
     }
 
     if (pnodeLocalHost == NULL) 
@@ -2537,7 +2544,7 @@ edcinstance_of_cnetcleanup;
 void CEDCConnman::Stop()
 {
     if (semOutbound)
-        for (int i=0; i<(MAX_OUTBOUND_CONNECTIONS + MAX_FEELER_CONNECTIONS); i++)
+		for (int i=0; i<(nMaxOutbound + MAX_FEELER_CONNECTIONS); i++)
             semOutbound->post();
 
     if (fAddressesInitialized)

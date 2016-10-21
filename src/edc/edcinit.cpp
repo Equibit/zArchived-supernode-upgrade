@@ -415,22 +415,21 @@ bool EdcAppInit(
     	int nBind = std::max((int)(params.bind.size() + params.whitebind.size()), 1);
 	    int nUserMaxConnections = params.maxconnections;
 
-    	theApp.maxConnections( std::max(nUserMaxConnections, 0) );
+    	int nMaxConnections = std::max(nUserMaxConnections, 0);
 
     	// Trim requested connection counts, to fit into system limitations
-    	theApp.maxConnections( std::max(std::min( theApp.maxConnections(), 
-			(int)(FD_SETSIZE - nBind - MIN_CORE_FILEDESCRIPTORS)), 0) );
+    	nMaxConnections =  std::max(std::min( nMaxConnections, 
+			(int)(FD_SETSIZE - nBind - MIN_CORE_FILEDESCRIPTORS)), 0);
     
-		int nFD = RaiseFileDescriptorLimit( theApp.maxConnections() + 
-			MIN_CORE_FILEDESCRIPTORS);
+		int nFD = RaiseFileDescriptorLimit( nMaxConnections + MIN_CORE_FILEDESCRIPTORS);
     	if (nFD < MIN_CORE_FILEDESCRIPTORS)
         	return edcInitError(_("Not enough file descriptors available."));
-	    theApp.maxConnections( std::min(nFD - MIN_CORE_FILEDESCRIPTORS, theApp.maxConnections() ) );
+	    nMaxConnections = std::min(nFD - MIN_CORE_FILEDESCRIPTORS, nMaxConnections );
 
-    	if ( theApp.maxConnections() < nUserMaxConnections)
+    	if ( nMaxConnections < nUserMaxConnections)
         	edcInitWarning(strprintf(_("Reducing -eb_maxconnections from %d to %d,"
 				" because of system limitations."), 
-				nUserMaxConnections, theApp.maxConnections() ));
+				nUserMaxConnections, nMaxConnections ));
 
     	// ******************************** Step 3: parameter-to-internal-flags
     	theApp.debug( !params.debug.empty() );
@@ -501,7 +500,7 @@ bool EdcAppInit(
     	ServiceFlags nRelevantServices = NODE_NETWORK;
 
 	    if ( params.peerbloomfilters )
-   	    	theApp.localServices( ServiceFlags( theApp.localServices() | NODE_BLOOM ) );
+   	    	nLocalServices = ServiceFlags( nLocalServices | NODE_BLOOM );
 
     	if (!params.bip9params.empty()) 
 		{
@@ -601,7 +600,7 @@ bool EdcAppInit(
     	edcLogPrintf("Using data directory %s\n", edcGetDataDir() );
     	edcLogPrintf("Using config file %s\n", edcGetConfigFile().string());
     	edcLogPrintf("Using at most %i connections (%i file descriptors "
-			"available)\n", theApp.maxConnections(), nFD);
+			"available)\n", nMaxConnections, nFD);
 
     	edcLogPrintf("Using %u threads for script verification\n", theApp.scriptCheckThreads() );
     	if ( theApp.scriptCheckThreads() ) 
@@ -1062,7 +1061,7 @@ bool EdcAppInit(
     	if (theApp.pruneMode()) 
 		{
         	edcLogPrintf("Unsetting NODE_NETWORK on prune mode\n");
-        	theApp.localServices( ServiceFlags( theApp.localServices()  & ~NODE_NETWORK ) );
+        	nLocalServices = ServiceFlags( nLocalServices  & ~NODE_NETWORK );
         	if (!theApp.reindex()) 
 			{
             	edcUiInterface.InitMessage(_("Pruning blockstore..."));
@@ -1077,7 +1076,7 @@ bool EdcAppInit(
         	// end time to 0.
         	// Note that setting NODE_WITNESS is never required: the only downside from not
         	// doing so is that after activation, no upgraded nodes will fetch from you.
-        	theApp.localServices( ServiceFlags( theApp.localServices() | NODE_WITNESS) );
+        	nLocalServices = ServiceFlags( nLocalServices | NODE_WITNESS);
 
         	// Only care about others providing witness capabilities if there is a softfork
         	// defined.
@@ -1133,7 +1132,8 @@ bool EdcAppInit(
 			edcStartTorControl( threadGroup, scheduler );
 
 		std::string strNodeError;
-		if(!edcStartNode(connman, threadGroup, scheduler, nLocalServices, nRelevantServices, strNodeError ))
+		int nMaxOutbound = std::min(MAX_OUTBOUND_CONNECTIONS, nMaxConnections);
+		if(!edcStartNode(connman, threadGroup, scheduler, nLocalServices, nRelevantServices, nMaxConnections, nMaxOutbound, strNodeError))
         	return InitError(strNodeError);
 
 		// *************************************************** Step 12: finished

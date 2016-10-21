@@ -594,7 +594,7 @@ public:
     CEDCConnman();
     ~CEDCConnman();
 
-    bool Start(boost::thread_group& threadGroup, CScheduler& scheduler, ServiceFlags nLocalServicesIn, ServiceFlags nRelevantServicesIn, std::string& strNodeError);
+    bool Start(boost::thread_group& threadGroup, CScheduler& scheduler, ServiceFlags nLocalServicesIn, ServiceFlags nRelevantServicesIn, int nMaxConnectionsIn, int nMaxOutboundIn, std::string& strNodeError);
     void Stop();
 	bool BindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
 
@@ -775,10 +775,12 @@ private:
     ServiceFlags nRelevantServices;
 
 	CSemaphore * semOutbound;
+    int nMaxConnections;
+    int nMaxOutbound;
 };
 
 void edcSetLimited(enum Network net, bool fLimited);
 
-bool edcStartNode(CEDCConnman & connman, boost::thread_group & threadGroup, CScheduler & scheduler, ServiceFlags nLocalServices, ServiceFlags nRelevantServices, std::string & strNodeError);
+bool edcStartNode(CEDCConnman & connman, boost::thread_group & threadGroup, CScheduler & scheduler, ServiceFlags nLocalServices, ServiceFlags nRelevantServices, int nMaxConnections, int nMaxOutbound, std::string & strNodeError);
 bool edcStopNode(CEDCConnman & connman);
 CAddress edcGetLocalAddress(const CNetAddr *paddrPeer, ServiceFlags nLocalServices);
