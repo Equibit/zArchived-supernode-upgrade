@@ -220,7 +220,13 @@ public:
     CCriticalSection cs_userMessage;
 	std::vector<CUserMessage *>	vUserMessages;
 
-    CEDCNode(NodeId id, ServiceFlags nLocalServicesIn, SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn = "", bool fInboundIn = false);
+    CEDCNode(NodeId id, 
+			   ServiceFlags nLocalServicesIn, 
+						int nMyStartingHeightIn,
+					 SOCKET hSocketIn, 
+		   const CAddress & addrIn, 
+		const std::string & addrNameIn = "", 
+					   bool fInboundIn = false);
     virtual ~CEDCNode();
 
 	SOCKET	socket() const 			{ return hSocket; }
@@ -238,6 +244,7 @@ private:
 
 	uint64_t nLocalHostNonce;
     ServiceFlags nLocalServices;
+	int nMyStartingHeight;
 public:
 
     NodeId GetId() const 
@@ -594,7 +601,14 @@ public:
     CEDCConnman();
     ~CEDCConnman();
 
-    bool Start(boost::thread_group& threadGroup, CScheduler& scheduler, ServiceFlags nLocalServicesIn, ServiceFlags nRelevantServicesIn, int nMaxConnectionsIn, int nMaxOutboundIn, std::string& strNodeError);
+    bool Start(	boost::thread_group& threadGroup, 
+				CScheduler& scheduler, 
+				ServiceFlags nLocalServicesIn, 
+				ServiceFlags nRelevantServicesIn, 
+				int nMaxConnectionsIn, 
+				int nMaxOutboundIn, 
+				int nBestHeightIn, 
+				std::string& strNodeError);
     void Stop();
 	bool BindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
 
@@ -685,6 +699,9 @@ public:
 
     uint64_t GetTotalBytesRecv();
     uint64_t GetTotalBytesSent();
+
+    void SetBestHeight(int height);
+    int GetBestHeight() const;
 
 private:
     struct ListenSocket 
@@ -777,10 +794,11 @@ private:
 	CSemaphore * semOutbound;
     int nMaxConnections;
     int nMaxOutbound;
+    std::atomic<int> nBestHeight;
 };
 
 void edcSetLimited(enum Network net, bool fLimited);
 
-bool edcStartNode(CEDCConnman & connman, boost::thread_group & threadGroup, CScheduler & scheduler, ServiceFlags nLocalServices, ServiceFlags nRelevantServices, int nMaxConnections, int nMaxOutbound, std::string & strNodeError);
+bool edcStartNode(CEDCConnman & connman, boost::thread_group & threadGroup, CScheduler & scheduler, ServiceFlags nLocalServices, ServiceFlags nRelevantServices, int nMaxConnections, int nMaxOutbound,int nBestHeightIn, std::string & strNodeError);
 bool edcStopNode(CEDCConnman & connman);
 CAddress edcGetLocalAddress(const CNetAddr *paddrPeer, ServiceFlags nLocalServices);

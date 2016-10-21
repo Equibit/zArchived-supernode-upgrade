@@ -336,13 +336,6 @@ CNodeState *State(NodeId pnode)
     return &it->second;
 }
 
-int GetHeight()
-{
-	EDCapp & theApp = EDCapp::singleton();
-    LOCK(EDC_cs_main);
-    return theApp.chainActive().Height();
-}
-
 void UpdatePreferredDownload(CEDCNode* node, CNodeState* state)
 {
     nPreferredDownload -= state->fPreferredDownload;
@@ -737,7 +730,6 @@ bool edcGetNodeStateStats(NodeId nodeid, CNodeStateStats &stats)
 
 void RegisterNodeSignals(CEDCNodeSignals& nodeSignals)
 {
-    nodeSignals.GetHeight.connect(&GetHeight);
     nodeSignals.ProcessMessages.connect(&edcProcessMessages);
     nodeSignals.SendMessages.connect(&edcSendMessages);
     nodeSignals.InitializeNode.connect(&InitializeNode);
@@ -746,7 +738,6 @@ void RegisterNodeSignals(CEDCNodeSignals& nodeSignals)
 
 void UnregisterNodeSignals(CEDCNodeSignals& nodeSignals)
 {
-    nodeSignals.GetHeight.disconnect(&GetHeight);
     nodeSignals.ProcessMessages.disconnect(&edcProcessMessages);
     nodeSignals.SendMessages.disconnect(&edcSendMessages);
     nodeSignals.InitializeNode.disconnect(&InitializeNode);
@@ -3604,6 +3595,8 @@ bool ActivateBestChain(
         // When we reach this point, we switched to a new tip (stored in pindexNewTip).
 
         // Notifications/callbacks that can run without EDC_cs_main
+		if(connman)
+			connman->SetBestHeight(nNewHeight);
 
         // throw all transactions though the signal-interface
         // while _not_ holding the cs_main lock

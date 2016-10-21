@@ -370,8 +370,6 @@ void CEDCNode::PushVersion()
 	EDCapp & theApp = EDCapp::singleton();
 	EDCparams & params = EDCparams::singleton();
 
-    int nBestHeight = edcGetNodeSignals().GetHeight().get_value_or(0);
-
     int64_t nTime = (fInbound ? edcGetAdjustedTime() : GetTime());
 
 	CAddress addrYou = (addr.IsRoutable() && !edcIsProxy(addr) ? addr : 
@@ -380,9 +378,9 @@ void CEDCNode::PushVersion()
     CAddress addrMe = edcGetLocalAddress(&addr, nLocalServices);
 
     if (params.logips)
-        edcLogPrint("net", "send version message: version %d, blocks=%d, us=%s, them=%s, peer=%d\n", PROTOCOL_VERSION, nBestHeight, addrMe.ToString(), addrYou.ToString(), id);
+        edcLogPrint("net", "send version message: version %d, blocks=%d, us=%s, them=%s, peer=%d\n", PROTOCOL_VERSION, nMyStartingHeight, addrMe.ToString(), addrYou.ToString(), id);
     else
-        edcLogPrint("net", "send version message: version %d, blocks=%d, us=%s, peer=%d\n", PROTOCOL_VERSION, nBestHeight, addrMe.ToString(), id);
+        edcLogPrint("net", "send version message: version %d, blocks=%d, us=%s, peer=%d\n", PROTOCOL_VERSION, nMyStartingHeight, addrMe.ToString(), id);
 
     PushMessage(
 		NetMsgType::VERSION, 
@@ -393,7 +391,7 @@ void CEDCNode::PushVersion()
 		addrMe,
         nLocalHostNonce, 
 		theApp.strSubVersion(), 
-		nBestHeight, 
+		nMyStartingHeight, 
 		!params.blocksonly);
 }
 
@@ -1000,7 +998,7 @@ void CEDCConnman::AcceptConnection(const ListenSocket& hListenSocket)
 	{
 		if( SSL * ssl = CEDCSSLNode::sslAccept(hSocket) )
 		{
-			pnode = new CEDCSSLNode( GetNewNodeId(), nLocalServices, hSocket, addr, "", true, ssl );
+			pnode = new CEDCSSLNode( GetNewNodeId(), nLocalServices, GetBestHeight(), hSocket, addr, "", true, ssl );
 		}
 		else
 		{
@@ -1010,7 +1008,7 @@ void CEDCConnman::AcceptConnection(const ListenSocket& hListenSocket)
 	}
 	else
 	{
-		pnode = new CEDCNode( GetNewNodeId(), nLocalServices, hSocket, addr, "", true );
+		pnode = new CEDCNode( GetNewNodeId(), nLocalServices, GetBestHeight(), hSocket, addr, "", true );
 	}
 
 	edcGetNodeSignals().InitializeNode(pnode->GetId(), pnode);
@@ -1668,7 +1666,7 @@ CEDCNode * CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, b
 		{
 			if( SSL * ssl = CEDCSSLNode::sslConnect(hSocket))
 			{
-       			pnode = new CEDCSSLNode( GetNewNodeId(), nLocalServices, hSocket, addrConnect, pszDest ? pszDest : "", false, ssl );
+       			pnode = new CEDCSSLNode( GetNewNodeId(), nLocalServices, GetBestHeight(), hSocket, addrConnect, pszDest ? pszDest : "", false, ssl );
 				edcGetNodeSignals().InitializeNode(pnode->GetId(), pnode);
 			}
 			else
@@ -2375,6 +2373,7 @@ CEDCConnman::CEDCConnman()
 	semOutbound = NULL;
     nMaxConnections = 0;
     nMaxOutbound = 0;
+	nBestHeight = 0;
 }
 
 bool edcStartNode(
@@ -2385,11 +2384,13 @@ boost::thread_group & threadGroup,
 		 ServiceFlags nRelevantServices, 
 				  int nMaxConnectionsIn, 
 				  int nMaxOutboundIn, 
+				  int nBestHeightIn,
 		std::string & strNodeError)
 {
     Discover(threadGroup);
 
-    bool ret = connman.Start(threadGroup, scheduler, nLocalServices, nRelevantServices, nMaxConnectionsIn, nMaxOutboundIn, strNodeError);
+    bool ret = connman.Start(threadGroup, scheduler, nLocalServices, nRelevantServices, 
+							 nMaxConnectionsIn, nMaxOutboundIn, nBestHeightIn, strNodeError);
 
     return ret;
 }
@@ -2406,6 +2407,7 @@ bool CEDCConnman::Start(
 			 ServiceFlags nRelevantServicesIn,
 					  int nMaxConnectionsIn, 
 					  int nMaxOutboundIn,
+					  int nBestHeightIn,
 			std::string & strNodeError)
 {
 	EDCapp & theApp = EDCapp::singleton();
@@ -2425,6 +2427,8 @@ bool CEDCConnman::Start(
 
     nSendBufferMaxSize = 1000*params.maxsendbuffer;
     nReceiveFloodSize = 1000*params.maxreceivebuffer;
+
+    SetBestHeight(nBestHeightIn);
 
     edcUiInterface.InitMessage(_("Loading addresses..."));
     // Load addresses from peers.dat
@@ -2476,7 +2480,7 @@ bool CEDCConnman::Start(
 	{
         CNetAddr local;
         LookupHost("127.0.0.1", local, false);
-        pnodeLocalHost = new CEDCNode( GetNewNodeId(), nLocalServices, INVALID_SOCKET, CAddress(CService(local, 0), nLocalServices));
+        pnodeLocalHost = new CEDCNode( GetNewNodeId(), nLocalServices, GetBestHeight(), INVALID_SOCKET, CAddress(CService(local, 0), nLocalServices));
 		edcGetNodeSignals().InitializeNode(pnodeLocalHost->GetId(), pnodeLocalHost);
     }
 
@@ -2891,6 +2895,16 @@ ServiceFlags CEDCConnman::GetLocalServices() const
     return nLocalServices;
 }
 
+void CEDCConnman::SetBestHeight(int height)
+{
+    nBestHeight.store(height, std::memory_order_release);
+}
+
+int CEDCConnman::GetBestHeight() const
+{
+    return nBestHeight.load(std::memory_order_acquire);
+}
+
 void CEDCNode::Fuzz(int nChance)
 {
     if (!fSuccessfullyConnected) return; // Don't fuzz initial handshake
@@ -2940,6 +2954,7 @@ unsigned int CEDCConnman::GetSendBufferSize() const
 CEDCNode::CEDCNode(
 				 NodeId idIn,
 		   ServiceFlags nLocalServicesIn,
+					int nMyStartingHeightIn, 
 			     SOCKET hSocketIn, 
 	   const CAddress & addrIn, 
 	const std::string & addrNameIn, 
@@ -3001,6 +3016,7 @@ CEDCNode::CEDCNode(
 	nLocalServices = nLocalServicesIn;
 
 	GetRandBytes((unsigned char*)&nLocalHostNonce, sizeof(nLocalHostNonce));
+	nMyStartingHeight = nMyStartingHeightIn;
 
     BOOST_FOREACH(const std::string &msg, edcgetAllNetMessageTypes())
         mapRecvBytesPerMsgCmd[msg] = 0;
