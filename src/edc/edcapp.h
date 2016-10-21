@@ -78,9 +78,6 @@ public:
 	ServiceFlags relevantServices() const	{ return relevantServices_; }
 	void relevantServices( ServiceFlags r )	{ relevantServices_ = r; }
 
-	uint64_t localHostNonce() const	{ return localHostNonce_; }
-	void localHostNonce( uint64_t l){ localHostNonce_ = l; }
-
 	CEDCBlockTreeDB * blocktree() const		{ return blocktree_; }
 	void blocktree( CEDCBlockTreeDB * bt )	{ blocktree_ = bt; }
 
@@ -214,7 +211,6 @@ private:
 
 	/** Number of MiB of block files that we're trying to stay below. */
 	uint64_t pruneTarget_;
-	uint64_t localHostNonce_;
 	uint64_t lastBlockSize_;
 	uint64_t lastBlockWeight_;
 	uint64_t lastBlockTx_;

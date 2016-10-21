@@ -254,12 +254,18 @@ private:
 
 	static uint64_t CalculateKeyedNetGroup(const CAddress& ad);
 
+	uint64_t nLocalHostNonce;
 public:
 
     NodeId GetId() const 
 	{
       return id;
     }
+
+	uint64_t GetLocalNonce() const
+	{
+		return nLocalHostNonce;
+	}
 
     int GetRefCount()
     {
@@ -633,6 +639,7 @@ public:
 	bool BindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
 
 	bool OpenNetworkConnection( const CAddress & addrConnect, bool fCountFailure, CSemaphoreGrant * grantOutbound  = NULL, CSemaphoreGrant * sgrantOutbound  = NULL, const char * pszDest = NULL, bool fOneShot = false, bool fFeeler = false ); 
+	bool CheckIncomingNonce(uint64_t nonce);
 
     bool ForNode(NodeId id, std::function<bool(CEDCNode* pnode)> func);
     bool ForEachNode(std::function<bool(CEDCNode* pnode)> func);

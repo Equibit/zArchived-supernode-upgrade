@@ -385,6 +385,9 @@ void CEDCNode::CloseSocketDisconnect()
 
 void CEDCNode::PushVersion()
 {
+	EDCapp & theApp = EDCapp::singleton();
+	EDCparams & params = EDCparams::singleton();
+
     int nBestHeight = edcGetNodeSignals().GetHeight().get_value_or(0);
 
     int64_t nTime = (fInbound ? edcGetAdjustedTime() : GetTime());
@@ -393,12 +396,6 @@ void CEDCNode::PushVersion()
 		CAddress(CService(), addr.nServices));
 
     CAddress addrMe = edcGetLocalAddress(&addr);
-	uint64_t localHostNonce;
-    GetRandBytes((unsigned char*)&localHostNonce, sizeof(localHostNonce));
-	EDCapp & theApp = EDCapp::singleton();
-	theApp.localHostNonce( localHostNonce);
-
-	EDCparams & params = EDCparams::singleton();
 
     if (params.logips)
         edcLogPrint("net", "send version message: version %d, blocks=%d, us=%s, them=%s, peer=%d\n", PROTOCOL_VERSION, nBestHeight, addrMe.ToString(), addrYou.ToString(), id);
@@ -412,7 +409,7 @@ void CEDCNode::PushVersion()
 		nTime, 
 		addrYou, 
 		addrMe,
-        localHostNonce, 
+        nLocalHostNonce, 
 		theApp.strSubVersion(), 
 		nBestHeight, 
 		!params.blocksonly);
@@ -1580,6 +1577,17 @@ void CEDCConnman::DumpData()
 {
     DumpAddresses();
     DumpBanlist();
+}
+
+bool CEDCConnman::CheckIncomingNonce(uint64_t nonce)
+{
+    LOCK(cs_vNodes);
+    BOOST_FOREACH(CEDCNode* pnode, vNodes) 
+	{
+        if (!pnode->fSuccessfullyConnected && !pnode->fInbound && pnode->GetLocalNonce() == nonce)
+            return false;
+    }
+    return true;
 }
 
 CEDCNode * CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure )
@@ -2957,6 +2965,8 @@ CEDCNode::CEDCNode(
     lastSentFeeFilter = 0;
     nextSendTimeFeeFilter = 0;
 	id = idIn;
+
+	GetRandBytes((unsigned char*)&nLocalHostNonce, sizeof(nLocalHostNonce));
 
     BOOST_FOREACH(const std::string &msg, edcgetAllNetMessageTypes())
         mapRecvBytesPerMsgCmd[msg] = 0;
