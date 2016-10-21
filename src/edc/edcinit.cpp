@@ -1144,6 +1144,8 @@ bool EdcAppInit(
 		connOptions.nMaxOutbound = std::min(MAX_OUTBOUND_CONNECTIONS, connOptions.nMaxConnections);
 		connOptions.nBestHeight = chainActive.Height();
 		connOptions.uiInterface = &uiInterface;
+		connOptions.nSendBufferMaxSize = 1000*params.maxsendbuffer;
+		connOptions.nReceiveFloodSize = 1000*params.maxreceivebuffer;
 
 		if(!connman.Start(threadGroup, scheduler, strNodeError, connOptions))
         	return InitError(strNodeError);

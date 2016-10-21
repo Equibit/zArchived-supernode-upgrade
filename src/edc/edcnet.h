@@ -614,6 +614,8 @@ public:
         int nMaxOutbound = 0;
         int nBestHeight = 0;
         CEDCClientUIInterface* uiInterface = nullptr;
+        unsigned int nSendBufferMaxSize = 0;
+        unsigned int nReceiveFloodSize = 0;
     };
 
     CEDCConnman();

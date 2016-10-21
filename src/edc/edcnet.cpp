@@ -2406,12 +2406,12 @@ bool CEDCConnman::Start(
     nMaxConnections = connOptions.nMaxConnections;
     nMaxOutbound = std::min((connOptions.nMaxOutbound), nMaxConnections);
 
-    nSendBufferMaxSize = 1000*params.maxsendbuffer;
-    nReceiveFloodSize = 1000*params.maxreceivebuffer;
+    nSendBufferMaxSize = connOptions.nSendBufferMaxSize;
+    nReceiveFloodSize = connOptions.nSendBufferMaxSize;
 
-    SetBestHeight(connOptions.nBestHeightIn);
+    SetBestHeight(connOptions.nBestHeight);
 
-    clientInterface = connOptions.interfaceIn;
+    clientInterface = connOptions.uiInterface;
     if (clientInterface)
         clientInterface->InitMessage(_("Loading addresses..."));
 
