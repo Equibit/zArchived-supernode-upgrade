@@ -1018,7 +1018,7 @@ void CEDCConnman::AcceptConnection(const ListenSocket& hListenSocket)
 	{
 		if( SSL * ssl = CEDCSSLNode::sslAccept(hSocket) )
 		{
-			pnode = new CEDCSSLNode( hSocket, addr, "", true, ssl );
+			pnode = new CEDCSSLNode( GetNewNodeId(), hSocket, addr, "", true, ssl );
 		}
 		else
 		{
@@ -1028,7 +1028,7 @@ void CEDCConnman::AcceptConnection(const ListenSocket& hListenSocket)
 	}
 	else
 	{
-		pnode = new CEDCNode(hSocket, addr, "", true );
+		pnode = new CEDCNode( GetNewNodeId(), hSocket, addr, "", true );
 	}
 
 	edcGetNodeSignals().InitializeNode(pnode->GetId(), pnode);
@@ -1659,7 +1659,7 @@ CEDCNode * CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, b
 		{
 			if( SSL * ssl = CEDCSSLNode::sslConnect(hSocket))
 			{
-       			pnode = new CEDCSSLNode( hSocket, addrConnect, pszDest ? pszDest : "", false, ssl );
+       			pnode = new CEDCSSLNode( GetNewNodeId(), hSocket, addrConnect, pszDest ? pszDest : "", false, ssl );
 				edcGetNodeSignals().InitializeNode(pnode->GetId(), pnode);
 			}
 			else
@@ -1670,7 +1670,7 @@ CEDCNode * CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, b
 		}
 		else
 		{
-			pnode = new CEDCNode( hSocket, addrConnect, pszDest ? pszDest : "", false);
+			pnode = new CEDCNode( GetNewNodeId(), hSocket, addrConnect, pszDest ? pszDest : "", false);
 			edcGetNodeSignals().InitializeNode(pnode->GetId(), pnode);
 		}
         pnode->AddRef();
@@ -2360,6 +2360,7 @@ CEDCConnman::CEDCConnman()
 {
 	setBannedIsDirty = false;
 	fAddressesInitialized = false;
+	nLastNodeId = 0;
 }
 
 bool edcStartNode(
@@ -2375,6 +2376,11 @@ boost::thread_group & threadGroup,
     return ret;
 }
 
+NodeId CEDCConnman::GetNewNodeId()
+ {
+    return nLastNodeId.fetch_add(1, std::memory_order_relaxed);
+}
+ 
 bool CEDCConnman::Start(
 	boost::thread_group & threadGroup, 
 			 CScheduler & scheduler, 
@@ -2433,7 +2439,7 @@ bool CEDCConnman::Start(
 	{
         CNetAddr local;
         LookupHost("127.0.0.1", local, false);
-        pnodeLocalHost = new CEDCNode(INVALID_SOCKET, CAddress(CService(local, 0), nLocalServices));
+        pnodeLocalHost = new CEDCNode( GetNewNodeId(), INVALID_SOCKET, CAddress(CService(local, 0), nLocalServices));
 		edcGetNodeSignals().InitializeNode(pnodeLocalHost->GetId(), pnodeLocalHost);
     }
 
@@ -2893,6 +2899,7 @@ unsigned int edcSendBufferSize()
 }
 
 CEDCNode::CEDCNode(
+				 NodeId idIn,
 			     SOCKET hSocketIn, 
 	   const CAddress & addrIn, 
 	const std::string & addrNameIn, 
@@ -2949,18 +2956,11 @@ CEDCNode::CEDCNode(
     minFeeFilter = 0;
     lastSentFeeFilter = 0;
     nextSendTimeFeeFilter = 0;
+	id = idIn;
 
     BOOST_FOREACH(const std::string &msg, edcgetAllNetMessageTypes())
         mapRecvBytesPerMsgCmd[msg] = 0;
     mapRecvBytesPerMsgCmd[NET_MESSAGE_COMMAND_OTHER] = 0;
-
-    {
-		static NodeId lastNodeId = 0;
-		static CCriticalSection lastNodeIdCS;
-
-        LOCK(lastNodeIdCS);
-        id = lastNodeId++;
-    }
 
 	EDCparams & params = EDCparams::singleton();
     if (params.logips)
@@ -3167,12 +3167,13 @@ ssize_t CEDCNode::recv( void *buf, size_t len, int flags )
 }
 
 CEDCSSLNode::CEDCSSLNode(
+	NodeId id,
 	SOCKET hSocketIn, 
 	const CAddress & addrIn, 
 	const std::string & addrNameIn, 
 	bool fInboundIn,
 	SSL * ssl ):
-		CEDCNode( hSocketIn, addrIn, addrNameIn, fInboundIn ),
+		CEDCNode( id, hSocketIn, addrIn, addrNameIn, fInboundIn ),
 		ssl_(ssl)
 {
 }

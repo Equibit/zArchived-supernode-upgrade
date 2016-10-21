@@ -221,7 +221,7 @@ public:
     CCriticalSection cs_userMessage;
 	std::vector<CUserMessage *>	vUserMessages;
 
-    CEDCNode(SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn = "", bool fInboundIn = false);
+    CEDCNode(NodeId id, SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn = "", bool fInboundIn = false);
     virtual ~CEDCNode();
 
 	SOCKET	socket() const 			{ return hSocket; }
@@ -583,7 +583,7 @@ public:
 class CEDCSSLNode : public CEDCNode
 {
 public:
-    CEDCSSLNode(SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn, bool fInboundIn, SSL * = NULL );
+    CEDCSSLNode( NodeId id, SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn, bool fInboundIn, SSL * = NULL );
 
 
 	virtual void	closeSocket();
@@ -718,6 +718,9 @@ private:
     bool IsWhitelistedRange(const CNetAddr &addr);
 
 	void DeleteNode( CEDCNode * pnode );
+
+    NodeId GetNewNodeId();
+
     //!check is the banlist has unwritten changes
     bool BannedSetIsDirty();
     //!set the "dirty" flag for the banlist
@@ -745,6 +748,7 @@ private:
     std::vector<CEDCNode*>    vNodes;
     std::vector<CEDCSSLNode*> vSSLNodes;
     mutable CCriticalSection  cs_vNodes;
+	std::atomic<NodeId>       nLastNodeId;
 };
 
 void edcSetLimited(enum Network net, bool fLimited);
