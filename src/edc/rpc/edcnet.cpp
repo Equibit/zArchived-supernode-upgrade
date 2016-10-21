@@ -381,7 +381,7 @@ UniValue edcgetnettotals(const UniValue& params, bool fHelp)
        );
 
 	EDCapp & theApp = EDCapp::singleton();
-	CEDCConnman * connman = theApp.connman();
+	CEDCConnman * connman = theApp.connman().get();
 
     if(!connman)
         throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");

@@ -12,6 +12,7 @@
 #include "edcparams.h"
 #include "edcutil.h"
 #include "edcapp.h"
+#include "edcparams.h"
 
 #include "addrman.h"
 #include "edcchainparams.h"
@@ -1174,7 +1175,7 @@ void CEDCConnman::ThreadSocketHandler()
                     TRY_LOCK(pnode->cs_vRecvMsg, lockRecv);
                     if (lockRecv && (
                         pnode->vRecvMsg.empty() || !pnode->vRecvMsg.front().complete() ||
-                        pnode->GetTotalRecvSize() <= edcReceiveFloodSize()))
+                        pnode->GetTotalRecvSize() <= GetReceiveFloodSize()))
                         FD_SET(pnode->socket(), &fdsetRecv);
                 }
 			}
@@ -1213,7 +1214,7 @@ void CEDCConnman::ThreadSocketHandler()
                     TRY_LOCK(pnode->cs_vRecvMsg, lockRecv);
                     if (lockRecv && (
                         pnode->vRecvMsg.empty() || !pnode->vRecvMsg.front().complete() ||
-                        pnode->GetTotalRecvSize() <= edcReceiveFloodSize()))
+                        pnode->GetTotalRecvSize() <= GetReceiveFloodSize()))
                         FD_SET(pnode->socket(), &fdsetRecv);
                 }
             }
@@ -2085,7 +2086,7 @@ void CEDCConnman::ThreadMessageHandler()
                     if (!edcGetNodeSignals().ProcessMessages(pnode, *this))
                         pnode->CloseSocketDisconnect();
 
-                    if (pnode->nSendSize < edcSendBufferSize())
+                    if (pnode->nSendSize < GetSendBufferSize())
                     {
                         if (!pnode->vRecvGetData.empty() || 
 						(!pnode->vRecvMsg.empty() && 
@@ -2140,7 +2141,7 @@ void CEDCConnman::ThreadMessageHandler()
                     if (!edcGetNodeSignals().ProcessMessages(pnode, *this))
                         pnode->CloseSocketDisconnect();
 
-                    if (pnode->nSendSize < edcSendBufferSize())
+                    if (pnode->nSendSize < GetSendBufferSize())
                     {
                         if (!pnode->vRecvGetData.empty() || 
 						(!pnode->vRecvMsg.empty() && 
@@ -2377,6 +2378,8 @@ CEDCConnman::CEDCConnman()
 	setBannedIsDirty = false;
 	fAddressesInitialized = false;
 	nLastNodeId = 0;
+    nSendBufferMaxSize = 0;
+    nReceiveFloodSize = 0;
 }
 
 bool edcStartNode(
@@ -2403,6 +2406,7 @@ bool CEDCConnman::Start(
 			std::string & strNodeError)
 {
 	EDCapp & theApp = EDCapp::singleton();
+	EDCparams & params = EDCparams::singleton();
 
     nTotalBytesRecv = 0;
     nTotalBytesSent = 0;
@@ -2410,6 +2414,9 @@ bool CEDCConnman::Start(
     nMaxOutboundTotalBytesSentInCycle = 0;
     nMaxOutboundTimeframe = 60*60*24; //1 day
     nMaxOutboundCycleStartTime = 0;
+
+    nSendBufferMaxSize = 1000*params.maxsendbuffer;
+    nReceiveFloodSize = 1000*params.maxreceivebuffer;
 
     edcUiInterface.InitMessage(_("Loading addresses..."));
     // Load addresses from peers.dat
@@ -2470,7 +2477,6 @@ bool CEDCConnman::Start(
     // Start threads
     //
 
-	EDCparams & params = EDCparams::singleton();
     if (!params.dnsseed)
         edcLogPrintf("DNS seeding disabled\n");
     else
@@ -2910,15 +2916,13 @@ void CEDCNode::Fuzz(int nChance)
     Fuzz(2);
 }
 
-unsigned int edcReceiveFloodSize() 
+unsigned int CEDCConnman::GetReceiveFloodSize() const
 { 
-	EDCparams & params = EDCparams::singleton();
-	return 1000*params.maxreceivebuffer; 
+	return nReceiveFloodSize; 
 }
-unsigned int edcSendBufferSize() 
+unsigned int CEDCConnman::GetSendBufferSize() const
 { 
-	EDCparams & params = EDCparams::singleton();
-	return 1000*params.maxsendbuffer; 
+	return nSendBufferMaxSize; 
 }
 
 CEDCNode::CEDCNode(

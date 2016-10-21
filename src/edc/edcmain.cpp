@@ -5543,6 +5543,7 @@ void ProcessGetData(
 	EDCapp & theApp = EDCapp::singleton();
 
     std::deque<CInv>::iterator it = pfrom->vRecvGetData.begin();
+	unsigned int nMaxSendBufferSize = connman.GetSendBufferSize();
 
     vector<CInv> vNotFound;
 
@@ -5551,7 +5552,7 @@ void ProcessGetData(
     while (it != pfrom->vRecvGetData.end()) 
 	{
         // Don't bother if send buffer is too full to respond anyway
-        if (pfrom->nSendSize >= edcSendBufferSize())
+        if (pfrom->nSendSize >= nMaxSendBufferSize)
             break;
 
         const CInv &inv = *it;
@@ -5748,6 +5749,8 @@ bool ProcessMessage(
 	const CEDCChainParams & chainparams,
 			  CEDCConnman & connman)
 {
+    unsigned int nMaxSendBufferSize = connman.GetSendBufferSize();
+
     edcLogPrint("net", "received: %s (%u bytes) peer=%d\n", SanitizeString(strCommand), vRecv.size(), pfrom->id);
 
  	EDCparams & params = EDCparams::singleton();
@@ -6118,7 +6121,7 @@ bool ProcessMessage(
             // Track requests for our stuff
             edcGetMainSignals().Inventory(inv.hash);
 
-            if (pfrom->nSendSize > (edcSendBufferSize() * 2)) 
+            if (pfrom->nSendSize > (nMaxSendBufferSize * 2)) 
 			{
                 edcMisbehaving(pfrom->GetId(), 50);
                 return edcError("send buffer size() = %u", pfrom->nSendSize);
@@ -7154,6 +7157,8 @@ bool ProcessMessage(
 bool edcProcessMessages(CEDCNode* pfrom, CEDCConnman & connman)
 {
     const CEDCChainParams& chainparams = edcParams();
+	unsigned int nMaxSendBufferSize = connman.GetSendBufferSize();
+
     //if (params.debug.size() > 0 )
     //    edcLogPrintf("%s(%u messages)\n", __func__, pfrom->vRecvMsg.size());
 
@@ -7177,7 +7182,7 @@ bool edcProcessMessages(CEDCNode* pfrom, CEDCConnman & connman)
     while (!pfrom->fDisconnect && it != pfrom->vRecvMsg.end()) 
 	{
         // Don't bother if send buffer is too full to respond anyway
-        if (pfrom->nSendSize >= edcSendBufferSize())
+        if (pfrom->nSendSize >= nMaxSendBufferSize)
             break;
 
         // get next message

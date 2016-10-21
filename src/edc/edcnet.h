@@ -47,9 +47,6 @@ namespace boost
     class thread_group;
 }
 
-unsigned int edcReceiveFloodSize();
-unsigned int edcSendBufferSize();
-
 typedef int NodeId;
 
 void edcMapPort(bool fUseUPnP);
@@ -92,6 +89,7 @@ public:
     // socket
     ServiceFlags nServices;
 	ServiceFlags nServicesExpected;
+    SOCKET hSocket;
     CDataStream ssSend;
     size_t nSendSize; // total size of all vSendMsg entries
     size_t nSendOffset; // offset inside the first vSendMsg already sent
@@ -231,10 +229,6 @@ public:
 	virtual void	closeSocket();
 	virtual ssize_t send(const void *buf, size_t len, int flags);
 	virtual ssize_t recv(void *buf, size_t len, int flags);
-
-protected:
-
-    SOCKET hSocket;
 
 private:
     CEDCNode(const CEDCNode&);
@@ -656,6 +650,8 @@ public:
     bool DisconnectNode(NodeId id);
     bool DisconnectSubnet(const CSubNet& subnet);
 
+    unsigned int GetSendBufferSize() const;
+
 	void AddWhitelistedRange(const CSubNet &subnet);
 
     //!set the max outbound target in bytes
@@ -723,6 +719,8 @@ private:
     void DumpData();
     void DumpBanlist();
 
+    unsigned int GetReceiveFloodSize() const;
+
     // Network stats
     void RecordBytesRecv(uint64_t bytes);
     void RecordBytesSent(uint64_t bytes);
@@ -743,6 +741,9 @@ private:
     // whitelisted (as well as those connecting to whitelisted binds).
     std::vector<CSubNet> vWhitelistedRange;
     CCriticalSection cs_vWhitelistedRange;
+
+    unsigned int nSendBufferMaxSize;
+    unsigned int nReceiveFloodSize;
 
 	std::vector<ListenSocket> vhListenSocket;
     banmap_t setBanned;
