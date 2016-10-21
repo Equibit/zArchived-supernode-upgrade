@@ -606,18 +606,23 @@ public:
         CONNECTIONS_ALL = (CONNECTIONS_IN | CONNECTIONS_OUT),
     };
 
+    struct Options
+    {
+        ServiceFlags nLocalServices = NODE_NONE;
+        ServiceFlags nRelevantServices = NODE_NONE;
+        int nMaxConnections = 0;
+        int nMaxOutbound = 0;
+        int nBestHeight = 0;
+        CEDCClientUIInterface* uiInterface = nullptr;
+    };
+
     CEDCConnman();
     ~CEDCConnman();
 
     bool Start(	boost::thread_group& threadGroup, 
 				CScheduler& scheduler, 
-				ServiceFlags nLocalServicesIn, 
-				ServiceFlags nRelevantServicesIn, 
-				int nMaxConnectionsIn, 
-				int nMaxOutboundIn, 
-				int nBestHeightIn, 
-				CEDCClientUIInterface * interfaceIn,
-				std::string& strNodeError);
+				std::string& strNodeError,
+				Options options);
     void Stop();
 	bool BindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
 

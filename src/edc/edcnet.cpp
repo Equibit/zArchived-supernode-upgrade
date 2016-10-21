@@ -2388,13 +2388,8 @@ NodeId CEDCConnman::GetNewNodeId()
 bool CEDCConnman::Start(
 	  boost::thread_group & threadGroup, 
 			   CScheduler & scheduler, 
-			   ServiceFlags nLocalServicesIn, 
-			   ServiceFlags nRelevantServicesIn,
-						int nMaxConnectionsIn, 
-						int nMaxOutboundIn,
-						int nBestHeightIn,
-	CEDCClientUIInterface * interfaceIn,
-			std::string & strNodeError)
+			  std::string & strNodeError,
+					Options connOptions)
 {
 	EDCapp & theApp = EDCapp::singleton();
 	EDCparams & params = EDCparams::singleton();
@@ -2404,19 +2399,19 @@ bool CEDCConnman::Start(
     nMaxOutboundLimit = 0;
     nMaxOutboundTotalBytesSentInCycle = 0;
     nMaxOutboundTimeframe = 60*60*24; //1 day
-    nLocalServices = nLocalServicesIn;
-    nRelevantServices = nRelevantServicesIn;
     nMaxOutboundCycleStartTime = 0;
 
-    nMaxConnections = nMaxConnectionsIn;
-    nMaxOutbound = std::min((nMaxOutboundIn), nMaxConnections);
+    nRelevantServices = connOptions.nRelevantServices;
+    nLocalServices = connOptions.nLocalServices;
+    nMaxConnections = connOptions.nMaxConnections;
+    nMaxOutbound = std::min((connOptions.nMaxOutbound), nMaxConnections);
 
     nSendBufferMaxSize = 1000*params.maxsendbuffer;
     nReceiveFloodSize = 1000*params.maxreceivebuffer;
 
-    SetBestHeight(nBestHeightIn);
+    SetBestHeight(connOptions.nBestHeightIn);
 
-    clientInterface = interfaceIn;
+    clientInterface = connOptions.interfaceIn;
     if (clientInterface)
         clientInterface->InitMessage(_("Loading addresses..."));
 
