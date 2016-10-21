@@ -1536,7 +1536,7 @@ void CEDCConnman::ThreadDNSAddressSeed()
             std::vector<CNetAddr> vIPs;
             std::vector<CAddress> vAdd;
 
-            ServiceFlags requiredServiceBits = theApp.relevantServices();
+            ServiceFlags requiredServiceBits = nRelevantServices;
 			if (LookupHost(edcGetDNSHost(seed, &requiredServiceBits).c_str(), vIPs, 0, true))
             {
                 BOOST_FOREACH(const CNetAddr& ip, vIPs)
@@ -1681,7 +1681,7 @@ CEDCNode * CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, b
 		}
 		else
 		{
-			pnode = new CEDCNode( GetNewNodeId(), nLocalServices, hSocket, addrConnect, pszDest ? pszDest : "", false);
+			pnode = new CEDCNode( GetNewNodeId(), nLocalServices, GetBestHeight(), hSocket, addrConnect, pszDest ? pszDest : "", false);
 			edcGetNodeSignals().InitializeNode(pnode->GetId(), pnode);
 		}
         pnode->AddRef();
@@ -1986,8 +1986,7 @@ void CEDCConnman::ThreadOpenConnections()
                 continue;
 
             // only consider nodes missing relevant services after 40 failed attempts
-            if ((addr.nServices & theApp.relevantServices()) != theApp.relevantServices() && 
-			nTries < 40)
+            if ((addr.nServices & nRelevantServices) != nRelevantServices && nTries < 40)
                 continue;
 
             // do not allow non-default ports, unless after 50 invalid addresses selected already
@@ -2382,16 +2381,16 @@ CEDCConnman::CEDCConnman()
 }
 
 bool edcStartNode(
-		CEDCConnman & connman, 
-boost::thread_group & threadGroup, 
-		 CScheduler & scheduler, 
-		 ServiceFlags nLocalServices, 
-		 ServiceFlags nRelevantServices, 
-				  int nMaxConnectionsIn, 
-				  int nMaxOutboundIn, 
-				  int nBestHeightIn,
- CClientUIInterface * interfaceIn,
-		std::string & strNodeError)
+		  CEDCConnman & connman, 
+  boost::thread_group & threadGroup, 
+		   CScheduler & scheduler, 
+		   ServiceFlags nLocalServices, 
+		   ServiceFlags nRelevantServices, 
+					int nMaxConnectionsIn, 
+					int nMaxOutboundIn, 
+					int nBestHeightIn,
+CEDCClientUIInterface * interfaceIn,
+		  std::string & strNodeError)
 {
     Discover(threadGroup);
 
@@ -2415,14 +2414,14 @@ NodeId CEDCConnman::GetNewNodeId()
 }
  
 bool CEDCConnman::Start(
-	boost::thread_group & threadGroup, 
-			 CScheduler & scheduler, 
-			 ServiceFlags nLocalServicesIn, 
-			 ServiceFlags nRelevantServicesIn,
-					  int nMaxConnectionsIn, 
-					  int nMaxOutboundIn,
-					  int nBestHeightIn,
-	 CClientUIInterface * interfaceIn,
+	  boost::thread_group & threadGroup, 
+			   CScheduler & scheduler, 
+			   ServiceFlags nLocalServicesIn, 
+			   ServiceFlags nRelevantServicesIn,
+						int nMaxConnectionsIn, 
+						int nMaxOutboundIn,
+						int nBestHeightIn,
+	CEDCClientUIInterface * interfaceIn,
 			std::string & strNodeError)
 {
 	EDCapp & theApp = EDCapp::singleton();
@@ -3249,12 +3248,14 @@ ssize_t CEDCNode::recv( void *buf, size_t len, int flags )
 CEDCSSLNode::CEDCSSLNode(
 		  		 NodeId id,
 		   ServiceFlags nLocalServicesIn, 
+					int nMyStartingHeightIn, 
 		  		 SOCKET hSocketIn, 
 	   const CAddress & addrIn, 
 	const std::string & addrNameIn, 
 				   bool fInboundIn,
 				  SSL * ssl ):
-		CEDCNode( id, nLocalServicesIn, hSocketIn, addrIn, addrNameIn, fInboundIn ),
+		CEDCNode(id, nLocalServicesIn, nMyStartingHeightIn, hSocketIn, 
+				 addrIn, addrNameIn, fInboundIn ),
 		ssl_(ssl)
 {
 }

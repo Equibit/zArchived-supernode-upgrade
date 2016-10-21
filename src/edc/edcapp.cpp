@@ -33,7 +33,6 @@ EDCapp::EDCapp():
 	nfHardServer_(NULL),
 	nfCardLoadingLib_(NULL),
 	nfModule_(NULL),
-	relevantServices_(NODE_NETWORK),
 	lastBlockWeight_(0)
 {
 	//TODO: Does maxConnects_ need to take into account the bitcoin connections?

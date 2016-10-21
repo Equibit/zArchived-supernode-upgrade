@@ -220,7 +220,7 @@ public:
     CCriticalSection cs_userMessage;
 	std::vector<CUserMessage *>	vUserMessages;
 
-    CEDCNode(NodeId id, 
+    CEDCNode(		 NodeId id, 
 			   ServiceFlags nLocalServicesIn, 
 						int nMyStartingHeightIn,
 					 SOCKET hSocketIn, 
@@ -556,8 +556,14 @@ public:
 class CEDCSSLNode : public CEDCNode
 {
 public:
-    CEDCSSLNode( NodeId id, ServiceFlags nLocalServicesIn, SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn, bool fInboundIn, SSL * = NULL );
-
+    CEDCSSLNode( 	  NodeId id, 
+				ServiceFlags nLocalServicesIn, 
+						 int nMyStartingHeightIn,
+					  SOCKET hSocketIn, 
+			const CAddress & addrIn, 
+		 const std::string & addrNameIn, 
+						bool fInboundIn, 
+					   SSL * = NULL );
 
 	virtual void	closeSocket();
 
@@ -579,7 +585,7 @@ private:
 
 class CEDCTransaction;
 class CUserMessage;
-class CClientUIInterface;
+class CEDCClientUIInterface;
 
 void RelayUserMessage( CUserMessage *, bool );
 
@@ -609,7 +615,7 @@ public:
 				int nMaxConnectionsIn, 
 				int nMaxOutboundIn, 
 				int nBestHeightIn, 
-				CClientUIInterface * interfaceIn,
+				CEDCClientUIInterface * interfaceIn,
 				std::string& strNodeError);
     void Stop();
 	bool BindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
@@ -797,11 +803,11 @@ private:
     int nMaxConnections;
     int nMaxOutbound;
     std::atomic<int> nBestHeight;
-	CClientUIInterface * clientInterface;
+	CEDCClientUIInterface * clientInterface;
 };
 
 void edcSetLimited(enum Network net, bool fLimited);
 
-bool edcStartNode(CEDCConnman & connman, boost::thread_group & threadGroup, CScheduler & scheduler, ServiceFlags nLocalServices, ServiceFlags nRelevantServices, int nMaxConnections, int nMaxOutbound,int nBestHeightIn, CClientUIInterface * interfaceIn, std::string & strNodeError);
+bool edcStartNode(CEDCConnman & connman, boost::thread_group & threadGroup, CScheduler & scheduler, ServiceFlags nLocalServices, ServiceFlags nRelevantServices, int nMaxConnections, int nMaxOutbound,int nBestHeightIn, CEDCClientUIInterface * interfaceIn, std::string & strNodeError);
 bool edcStopNode(CEDCConnman & connman);
 CAddress edcGetLocalAddress(const CNetAddr *paddrPeer, ServiceFlags nLocalServices);

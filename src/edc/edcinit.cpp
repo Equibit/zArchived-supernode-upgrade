@@ -1080,7 +1080,7 @@ bool EdcAppInit(
 
         	// Only care about others providing witness capabilities if there is a softfork
         	// defined.
-        	theApp.relevantServices( ServiceFlags( theApp.relevantServices() | NODE_WITNESS) );
+        	nRelevantServices = ServiceFlags( nRelevantServices | NODE_WITNESS);
     	}
 
     	// ********************************************* Step 10: import blocks

@@ -69,9 +69,6 @@ public:
 	CAmount maxTxFee() const		{ return maxTxFee_; }
 	void maxTxFee( CAmount & m )	{ maxTxFee_ = m; }
 
-	ServiceFlags relevantServices() const	{ return relevantServices_; }
-	void relevantServices( ServiceFlags r )	{ relevantServices_ = r; }
-
 	CEDCBlockTreeDB * blocktree() const		{ return blocktree_; }
 	void blocktree( CEDCBlockTreeDB * bt )	{ blocktree_ = bt; }
 
@@ -207,8 +204,6 @@ private:
 	uint64_t lastBlockSize_;
 	uint64_t lastBlockWeight_;
 	uint64_t lastBlockTx_;
-
-	ServiceFlags relevantServices_;
 
 	/** Absolute maximum transaction fee (in satoshis) used by wallet
 	 *  and mempool (rejects high fee in sendrawtransaction) 
