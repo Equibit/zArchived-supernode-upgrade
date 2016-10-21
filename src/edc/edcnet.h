@@ -549,7 +549,7 @@ public:
 class CEDCSSLNode : public CEDCNode
 {
 public:
-    CEDCSSLNode( NodeId id, SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn, bool fInboundIn, SSL * = NULL );
+    CEDCSSLNode( NodeId id, ServiceFlags nLocalServicesIn, SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn, bool fInboundIn, SSL * = NULL );
 
 
 	virtual void	closeSocket();

@@ -159,8 +159,6 @@ int64_t edcGetAdjustedTime();
 // one by discovery.
 CAddress edcGetLocalAddress(const CNetAddr *paddrPeer, ServiceFlags nLocalServices)
 {
-	EDCapp & theApp = EDCapp::singleton();
-
     CAddress ret(CService(CNetAddr(), edcGetListenPort()), NODE_NONE);
     CService addr;
     if (edcGetLocal(addr, paddrPeer))
@@ -390,7 +388,7 @@ void CEDCNode::PushVersion()
     PushMessage(
 		NetMsgType::VERSION, 
 		PROTOCOL_VERSION, 
-		(uint64_t)theApp.localServices(), 
+		(uint64_t)nLocalServices, 
 		nTime, 
 		addrYou, 
 		addrMe,
@@ -1682,7 +1680,7 @@ CEDCNode * CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, b
 		}
 		else
 		{
-			pnode = new CEDCNode( GetNewNodeId(), hSocket, addrConnect, pszDest ? pszDest : "", false);
+			pnode = new CEDCNode( GetNewNodeId(), nLocalServices, hSocket, addrConnect, pszDest ? pszDest : "", false);
 			edcGetNodeSignals().InitializeNode(pnode->GetId(), pnode);
 		}
         pnode->AddRef();
@@ -1695,7 +1693,7 @@ CEDCNode * CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, b
 	            vNodes.push_back(pnode);
         }
 
-		pnode->nServicesExpected = ServiceFlags( addrConnect.nServices & RelevantServices);
+		pnode->nServicesExpected = ServiceFlags( addrConnect.nServices & nRelevantServices);
         pnode->nTimeConnected = GetTime();
 
         return pnode;
@@ -3206,13 +3204,14 @@ ssize_t CEDCNode::recv( void *buf, size_t len, int flags )
 }
 
 CEDCSSLNode::CEDCSSLNode(
-	NodeId id,
-	SOCKET hSocketIn, 
-	const CAddress & addrIn, 
+		  		 NodeId id,
+		   ServiceFlags nLocalServicesIn, 
+		  		 SOCKET hSocketIn, 
+	   const CAddress & addrIn, 
 	const std::string & addrNameIn, 
-	bool fInboundIn,
-	SSL * ssl ):
-		CEDCNode( id, hSocketIn, addrIn, addrNameIn, fInboundIn ),
+				   bool fInboundIn,
+				  SSL * ssl ):
+		CEDCNode( id, nLocalServicesIn, hSocketIn, addrIn, addrNameIn, fInboundIn ),
 		ssl_(ssl)
 {
 }
