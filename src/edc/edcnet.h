@@ -56,7 +56,7 @@ void edcMapPort(bool fUseUPnP);
 unsigned short edcGetListenPort();
 unsigned short edcGetListenSecurePort();
 bool edcBindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
-void SocketSendData(CEDCNode *pnode);
+size_t SocketSendData(CEDCNode *pnode);
 
 // Signals for message handling
 struct CEDCNodeSignals

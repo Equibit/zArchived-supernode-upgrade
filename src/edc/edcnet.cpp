@@ -705,9 +705,10 @@ bool CEDCNode::ReceiveMsgBytes(const char *pch, unsigned int nBytes, bool & comp
 }
 
 // requires LOCK(cs_vSend)
-void SocketSendData(CEDCNode *pnode)
+size_t SocketSendData(CEDCNode *pnode)
 {
     std::deque<CSerializeData>::iterator it = pnode->vSendMsg.begin();
+	size_t nSendSize = 0;
 
     while (it != pnode->vSendMsg.end()) 
 	{
@@ -720,6 +721,7 @@ void SocketSendData(CEDCNode *pnode)
             pnode->nSendBytes += nBytes;
             pnode->nSendOffset += nBytes;
             pnode->RecordBytesSent(nBytes);
+			nSendSize += nBytes;
 
             if (pnode->nSendOffset == data.size()) 
 			{
@@ -756,6 +758,7 @@ void SocketSendData(CEDCNode *pnode)
         assert(pnode->nSendSize == 0);
     }
     pnode->vSendMsg.erase(pnode->vSendMsg.begin(), it);
+	return nSendSize;
 }
 
 static std::list<CEDCNode*> vNodesDisconnected;
