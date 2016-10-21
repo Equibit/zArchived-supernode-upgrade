@@ -773,6 +773,8 @@ private:
 
     /** Services this instance cares about */
     ServiceFlags nRelevantServices;
+
+	CSemaphore * semOutbound;
 };
 
 void edcSetLimited(enum Network net, bool fLimited);

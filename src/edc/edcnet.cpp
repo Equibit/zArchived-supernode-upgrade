@@ -80,8 +80,6 @@ bool vfLimited[NET_MAX] = {};
 CEDCNode* pnodeLocalHost = NULL;
 }
 
-static CSemaphore *semOutbound = NULL;
-
 // Signals for message handling
 static CEDCNodeSignals g_edcsignals;
 CEDCNodeSignals & edcGetNodeSignals() { return g_edcsignals; }
@@ -2377,6 +2375,7 @@ CEDCConnman::CEDCConnman()
 	nLastNodeId = 0;
     nSendBufferMaxSize = 0;
     nReceiveFloodSize = 0;
+	semOutbound = NULL;
 }
 
 bool edcStartNode(
