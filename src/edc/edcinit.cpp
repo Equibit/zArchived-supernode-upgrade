@@ -497,6 +497,9 @@ bool EdcAppInit(
    			return false;
 #endif // ENABLE_WALLET
 
+	    ServiceFlags nLocalServices = NODE_NETWORK;
+    	ServiceFlags nRelevantServices = NODE_NETWORK;
+
 	    if ( params.peerbloomfilters )
    	    	theApp.localServices( ServiceFlags( theApp.localServices() | NODE_BLOOM ) );
 
@@ -1130,7 +1133,7 @@ bool EdcAppInit(
 			edcStartTorControl( threadGroup, scheduler );
 
 		std::string strNodeError;
-		if(!edcStartNode(connman, threadGroup, scheduler, strNodeError))
+		if(!edcStartNode(connman, threadGroup, scheduler, nLocalServices, nRelevantServices, strNodeError ))
         	return InitError(strNodeError);
 
 		// *************************************************** Step 12: finished

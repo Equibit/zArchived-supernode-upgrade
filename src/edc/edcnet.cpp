@@ -76,9 +76,6 @@ const int MAX_FEELER_CONNECTIONS = 1;
 
 const std::string NET_MESSAGE_COMMAND_OTHER = "*other*";
 
-/** Services this node implementation cares about */
-const ServiceFlags RelevantServices = NODE_NETWORK;
-
 bool vfLimited[NET_MAX] = {};
 CEDCNode* pnodeLocalHost = NULL;
 }
@@ -162,7 +159,7 @@ int64_t edcGetAdjustedTime();
 // Otherwise, return the unroutable 0.0.0.0 but filled in with
 // the normal parameters, since the IP may be changed to a useful
 // one by discovery.
-CAddress edcGetLocalAddress(const CNetAddr *paddrPeer)
+CAddress edcGetLocalAddress(const CNetAddr *paddrPeer, ServiceFlags nLocalServices)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -170,7 +167,7 @@ CAddress edcGetLocalAddress(const CNetAddr *paddrPeer)
     CService addr;
     if (edcGetLocal(addr, paddrPeer))
     {
-        ret = CAddress(addr, theApp.localServices() );
+        ret = CAddress(addr, nLocalServices );
     }
     ret.nTime = edcGetAdjustedTime();
     return ret;
@@ -200,7 +197,7 @@ void AdvertiseLocal(CEDCNode *pnode)
 
     if (params.listen && pnode->fSuccessfullyConnected)
     {
-        CAddress addrLocal = edcGetLocalAddress(&pnode->addr);
+        CAddress addrLocal = edcGetLocalAddress(&pnode->addr, pnode->GetLocalServices());
         // If discovery is enabled, sometimes give our peer the address it
         // tells us that it sees us as in case it has a better idea of our
         // address than we do.
@@ -385,7 +382,7 @@ void CEDCNode::PushVersion()
 	CAddress addrYou = (addr.IsRoutable() && !edcIsProxy(addr) ? addr : 
 		CAddress(CService(), addr.nServices));
 
-    CAddress addrMe = edcGetLocalAddress(&addr);
+    CAddress addrMe = edcGetLocalAddress(&addr, nLocalServices);
 
     if (params.logips)
         edcLogPrint("net", "send version message: version %d, blocks=%d, us=%s, them=%s, peer=%d\n", PROTOCOL_VERSION, nBestHeight, addrMe.ToString(), addrYou.ToString(), id);
@@ -1008,7 +1005,7 @@ void CEDCConnman::AcceptConnection(const ListenSocket& hListenSocket)
 	{
 		if( SSL * ssl = CEDCSSLNode::sslAccept(hSocket) )
 		{
-			pnode = new CEDCSSLNode( GetNewNodeId(), hSocket, addr, "", true, ssl );
+			pnode = new CEDCSSLNode( GetNewNodeId(), nLocalServices, hSocket, addr, "", true, ssl );
 		}
 		else
 		{
@@ -1018,7 +1015,7 @@ void CEDCConnman::AcceptConnection(const ListenSocket& hListenSocket)
 	}
 	else
 	{
-		pnode = new CEDCNode( GetNewNodeId(), hSocket, addr, "", true );
+		pnode = new CEDCNode( GetNewNodeId(), nLocalServices, hSocket, addr, "", true );
 	}
 
 	edcGetNodeSignals().InitializeNode(pnode->GetId(), pnode);
@@ -1676,7 +1673,7 @@ CEDCNode * CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, b
 		{
 			if( SSL * ssl = CEDCSSLNode::sslConnect(hSocket))
 			{
-       			pnode = new CEDCSSLNode( GetNewNodeId(), hSocket, addrConnect, pszDest ? pszDest : "", false, ssl );
+       			pnode = new CEDCSSLNode( GetNewNodeId(), nLocalServices, hSocket, addrConnect, pszDest ? pszDest : "", false, ssl );
 				edcGetNodeSignals().InitializeNode(pnode->GetId(), pnode);
 			}
 			else
@@ -2386,11 +2383,13 @@ bool edcStartNode(
 		CEDCConnman & connman, 
 boost::thread_group & threadGroup, 
 		 CScheduler & scheduler, 
+		 ServiceFlags nLocalServices, 
+		 ServiceFlags nRelevantServices, 
 		std::string & strNodeError)
 {
     Discover(threadGroup);
 
-    bool ret = connman.Start(threadGroup, scheduler, strNodeError);
+    bool ret = connman.Start(threadGroup, scheduler, nLocalServices, nRelevantServices, strNodeError);
 
     return ret;
 }
@@ -2403,6 +2402,8 @@ NodeId CEDCConnman::GetNewNodeId()
 bool CEDCConnman::Start(
 	boost::thread_group & threadGroup, 
 			 CScheduler & scheduler, 
+			 ServiceFlags nLocalServicesIn, 
+			 ServiceFlags nRelevantServicesIn,
 			std::string & strNodeError)
 {
 	EDCapp & theApp = EDCapp::singleton();
@@ -2413,6 +2414,8 @@ bool CEDCConnman::Start(
     nMaxOutboundLimit = 0;
     nMaxOutboundTotalBytesSentInCycle = 0;
     nMaxOutboundTimeframe = 60*60*24; //1 day
+    nLocalServices = nLocalServicesIn;
+    nRelevantServices = nRelevantServicesIn;
     nMaxOutboundCycleStartTime = 0;
 
     nSendBufferMaxSize = 1000*params.maxsendbuffer;
@@ -2469,7 +2472,7 @@ bool CEDCConnman::Start(
 	{
         CNetAddr local;
         LookupHost("127.0.0.1", local, false);
-        pnodeLocalHost = new CEDCNode( GetNewNodeId(), INVALID_SOCKET, CAddress(CService(local, 0), nLocalServices));
+        pnodeLocalHost = new CEDCNode( GetNewNodeId(), nLocalServices, INVALID_SOCKET, CAddress(CService(local, 0), nLocalServices));
 		edcGetNodeSignals().InitializeNode(pnodeLocalHost->GetId(), pnodeLocalHost);
     }
 
@@ -2879,6 +2882,11 @@ uint64_t CEDCConnman::GetTotalBytesSent()
     return nTotalBytesSent;
 }
 
+ServiceFlags CEDCConnman::GetLocalServices() const
+{
+    return nLocalServices;
+}
+
 void CEDCNode::Fuzz(int nChance)
 {
     if (!fSuccessfullyConnected) return; // Don't fuzz initial handshake
@@ -2927,6 +2935,7 @@ unsigned int CEDCConnman::GetSendBufferSize() const
 
 CEDCNode::CEDCNode(
 				 NodeId idIn,
+		   ServiceFlags nLocalServicesIn,
 			     SOCKET hSocketIn, 
 	   const CAddress & addrIn, 
 	const std::string & addrNameIn, 
@@ -2985,6 +2994,7 @@ CEDCNode::CEDCNode(
     nextSendTimeFeeFilter = 0;
 	id = idIn;
 	nOptimisticBytesWritten = 0;
+	nLocalServices = nLocalServicesIn;
 
 	GetRandBytes((unsigned char*)&nLocalHostNonce, sizeof(nLocalHostNonce));
 

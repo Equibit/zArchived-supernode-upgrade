@@ -526,13 +526,13 @@ void MaybeSetPeerAsAnnouncingHeaderAndIDs(
 {
 	EDCapp & theApp = EDCapp::singleton();
 
-    if (theApp.localServices() & NODE_WITNESS) 
+    if (pfrom->GetLocalServices() & NODE_WITNESS) 
 	{
         // Don't ever request compact blocks when segwit is enabled.
         return;
     }
 
-	if (nodestate->fProvidesHeaderAndIDs && !(theApp.localServices() & NODE_WITNESS))
+	if (nodestate->fProvidesHeaderAndIDs)
 	{
         BOOST_FOREACH(const NodeId nodeid, lNodesAnnouncingHeaderAndIDs)
             if (nodeid == pfrom->GetId())
@@ -5720,7 +5720,6 @@ void ProcessGetData(
 }
 }
 
-CAddress edcGetLocalAddress(const CNetAddr *paddrPeer);
 void edcAddTimeData(const CNetAddr& ip, int64_t nOffsetSample);
 
 namespace
@@ -5763,7 +5762,7 @@ bool ProcessMessage(
 
 	EDCapp & theApp = EDCapp::singleton();
 
-    if (!(theApp.localServices() & NODE_BLOOM) &&
+    if (!(pfrom->GetlocalServices() & NODE_BLOOM) &&
        (strCommand == NetMsgType::FILTERLOAD ||
         strCommand == NetMsgType::FILTERADD ||
         strCommand == NetMsgType::FILTERCLEAR))
@@ -5895,7 +5894,7 @@ bool ProcessMessage(
 			EDCparams & params = EDCparams::singleton();
             if (params.listen && !edcIsInitialBlockDownload())
             {
-                CAddress addr = edcGetLocalAddress(&pfrom->addr);
+                CAddress addr = edcGetLocalAddress(&pfrom->addr, pfrom->GetLocalServices());
                 if (addr.IsRoutable())
                 {
                     edcLogPrint( "net", "edcProcessMessages: advertising address %s\n", addr.ToString());
@@ -6097,7 +6096,7 @@ bool ProcessMessage(
 					{
                         inv.type |= nFetchFlags;
 
-                        if (nodestate->fProvidesHeaderAndIDs)
+                        if (nodestate->fProvidesHeaderAndIDs && !(pfrom->GetLocalServices() & NODE_WITNESS))
                             vToFetch.push_back(CInv(MSG_CMPCT_BLOCK, inv.hash));
                         else
                             vToFetch.push_back(inv);
@@ -6838,7 +6837,7 @@ bool ProcessMessage(
 					if (nodestate->fProvidesHeaderAndIDs && vGetData.size() == 1 && 
 						mapBlocksInFlight.size() == 1 && 
 						pindexLast->pprev->IsValid(BLOCK_VALID_CHAIN) && 
-						!(theApp.localServices() & NODE_WITNESS))
+						!(pfrom->GetlocalServices() & NODE_WITNESS))
 					{
                         // We seem to be rather well-synced, so it appears pfrom was the first to provide us
                         // with this block! Let's get them to announce using compact blocks in the future.
@@ -6916,7 +6915,7 @@ bool ProcessMessage(
     }
     else if (strCommand == NetMsgType::MEMPOOL)
     {
-        if (!(theApp.localServices() & NODE_BLOOM) && !pfrom->fWhitelisted)
+        if (!(pfrom->GetlocalServices() & NODE_BLOOM) && !pfrom->fWhitelisted)
         {
             edcLogPrint("net", "mempool request with bloom filters disabled, disconnect peer=%d\n", pfrom->GetId());
             pfrom->fDisconnect = true;

@@ -72,9 +72,6 @@ public:
 	CAmount maxTxFee() const		{ return maxTxFee_; }
 	void maxTxFee( CAmount & m )	{ maxTxFee_ = m; }
 
-	ServiceFlags localServices() const	{ return localServices_; }
-	void localServices( ServiceFlags l ){ localServices_ = l; }
-
 	ServiceFlags relevantServices() const	{ return relevantServices_; }
 	void relevantServices( ServiceFlags r )	{ relevantServices_ = r; }
 
@@ -215,7 +212,6 @@ private:
 	uint64_t lastBlockWeight_;
 	uint64_t lastBlockTx_;
 
-	ServiceFlags localServices_;
 	ServiceFlags relevantServices_;
 
 	/** Absolute maximum transaction fee (in satoshis) used by wallet

@@ -477,7 +477,8 @@ UniValue edcgetnetworkinfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("version",       CLIENT_VERSION));
     obj.push_back(Pair("subversion",    theApp.strSubVersion() ));
     obj.push_back(Pair("protocolversion",PROTOCOL_VERSION));
-    obj.push_back(Pair("localservices",       strprintf("%016x", theApp.localServices())));
+	if(theApp.connman())
+		obj.push_back(Pair("localservices", strprintf("%016x", theApp.connman()->GetLocalServices())));
 	obj.push_back(Pair("localreply",    theParams.blocksonly));
     obj.push_back(Pair("timeoffset",    edcGetTimeOffset()));
     if(theApp.connman())
