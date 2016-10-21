@@ -1651,8 +1651,16 @@ bool CEDCWalletTx::RelayWalletTransaction(CEDCConnman * connman)
         if (GetDepthInMainChain() == 0 && !isAbandoned() && InMempool()) 
 		{
             edcLogPrintf("Relaying wtx %s\n", GetHash().ToString());
-            RelayTransaction((CEDCTransaction)*this);
-            return true;
+            if (connman) 
+			{
+                CInv inv(MSG_TX, GetHash());
+                connman->ForEachNode([&inv](CEDCNode* pnode)
+                {
+                    pnode->PushInventory(inv);
+                    return true;
+                });
+                return true;
+            }
         }
     }
     return false;

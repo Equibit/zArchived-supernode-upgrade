@@ -94,7 +94,8 @@ UniValue broadcastMessage( const UniValue & params, bool fHelp )
 	
 	CBroadcast	* msg = CBroadcast::create( type, senderID, assetId, data );
 
-	RelayUserMessage( msg, false );
+	EDCapp & theApp = EDCapp::singleton();
+	theApp.connman()->RelayUserMessage( msg, false );
 
 	return NullUniValue;
 }
@@ -129,7 +130,8 @@ UniValue multicastMessage( const UniValue & params, bool fHelp )
 
 	CMulticast	* msg = CMulticast::create( type, senderID, assetID, data );
 
-	RelayUserMessage( msg, true );
+	EDCapp & theApp = EDCapp::singleton();
+	theApp.connman()->RelayUserMessage( msg, true );
 
 	return NullUniValue;
 }
@@ -173,7 +175,8 @@ UniValue message( const UniValue & params, bool fHelp )
 
 	CPeerToPeer	* msg = CPeerToPeer::create( type, senderID, receiverID, data );
 
-	RelayUserMessage( msg, true );
+	EDCapp & theApp = EDCapp::singleton();
+	theApp.connman()->RelayUserMessage( msg, true );
 
 	return NullUniValue;
 }

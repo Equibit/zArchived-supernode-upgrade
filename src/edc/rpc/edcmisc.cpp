@@ -524,16 +524,20 @@ UniValue edcsetmocktime(const UniValue& params, bool fHelp)
     // atomically with the time change to prevent peers from being
     // disconnected because we think we haven't communicated with them
     // in a long time.
-    LOCK2(EDC_cs_main, theApp.vNodesCS());
+    LOCK(EDC_cs_main);
 
     RPCTypeCheck(params, boost::assign::list_of(UniValue::VNUM));
     SetMockTime(params[0].get_int64());
 
     uint64_t t = GetTime();
-    BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes()) 
+    if(theApp.connman()) 
 	{
-        pnode->nLastSend = pnode->nLastRecv = t;
-    }
+        theApp.connman()->ForEachNode([t](CEDCNode* pnode) 
+		{
+            pnode->nLastSend = pnode->nLastRecv = t;
+            return true;
+        });
+	}
 
     return NullUniValue;
 }

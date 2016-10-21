@@ -295,101 +295,75 @@ uint64_t CEDCNode::nMaxOutboundTotalBytesSentInCycle = 0;
 uint64_t CEDCNode::nMaxOutboundTimeframe = 60*60*24; //1 day
 uint64_t CEDCNode::nMaxOutboundCycleStartTime = 0;
 
-CEDCNode* edcFindNode(const CNetAddr& ip, bool secure )
+CEDCNode* CEDCConnman::FindNode(const CNetAddr& ip, bool secure )
 {
-	EDCapp & theApp = EDCapp::singleton();
-    LOCK(theApp.vNodesCS());
+    LOCK(cs_vNodes);
 	if(!secure)
 	{
-    	BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
+    	BOOST_FOREACH(CEDCNode* pnode, vNodes)
         	if ((CNetAddr)pnode->addr == ip)
             	return (pnode);
 	}
 	else
 	{
-    	BOOST_FOREACH(CEDCSSLNode* pnode, theApp.vSSLNodes())
+    	BOOST_FOREACH(CEDCSSLNode* pnode, vSSLNodes)
         	if ((CNetAddr)pnode->addr == ip)
             	return (pnode);
 	}
     return NULL;
 }
 
-CEDCNode* edcFindNode(const CSubNet& subNet, bool secure )
+CEDCNode* CEDCConnman::FindNode(const CSubNet& subNet, bool secure )
 {
-	EDCapp & theApp = EDCapp::singleton();
-    LOCK(theApp.vNodesCS());
+    LOCK(cs_vNodes);
 	if(!secure)
 	{
-	    BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
+	    BOOST_FOREACH(CEDCNode* pnode, vNodes)
     	if (subNet.Match((CNetAddr)pnode->addr))
         	return (pnode);
 	}
 	else
 	{
-	    BOOST_FOREACH(CEDCSSLNode* pnode, theApp.vSSLNodes())
+	    BOOST_FOREACH(CEDCSSLNode* pnode, vSSLNodes)
     	if (subNet.Match((CNetAddr)pnode->addr))
         	return (pnode);
 	}
     return NULL;
 }
 
-CEDCNode* edcFindNode(const std::string& addrName, bool secure )
+CEDCNode* CEDCConnman::FindNode(const std::string& addrName, bool secure )
 {	
-	EDCapp & theApp = EDCapp::singleton();
-    LOCK(theApp.vNodesCS());
+    LOCK(cs_vNodes);
 	if(!secure)
 	{
-    	BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
+    	BOOST_FOREACH(CEDCNode* pnode, vNodes)
        		if (pnode->addrName == addrName)
        	     	return (pnode);
 	}
 	else
 	{
-    	BOOST_FOREACH(CEDCSSLNode* pnode, theApp.vSSLNodes())
+    	BOOST_FOREACH(CEDCSSLNode* pnode, vSSLNodes)
        		if (pnode->addrName == addrName)
        	     	return (pnode);
 	}
     return NULL;
 }
 
-CEDCNode* edcFindNode(const CService& addr, bool secure )
+CEDCNode* CEDCConnman::FindNode(const CService& addr, bool secure )
 {
-	EDCapp & theApp = EDCapp::singleton();
-    LOCK(theApp.vNodesCS());
+    LOCK(cs_vNodes);
 	if(!secure)
 	{
-	    BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
+	    BOOST_FOREACH(CEDCNode* pnode, vNodes)
    	     	if ((CService)pnode->addr == addr)
             	return (pnode);
 	}
 	else
 	{
-	    BOOST_FOREACH(CEDCSSLNode* pnode, theApp.vSSLNodes())
+	    BOOST_FOREACH(CEDCSSLNode* pnode, vSSLNodes)
    	     	if ((CService)pnode->addr == addr)
             	return (pnode);
 	}
-    return NULL;
-}
-
-//TODO: This is used in only one place in main, and should be removed
-CEDCNode * edcFindNode(const NodeId nodeid, bool secure )
-{
-	EDCapp & theApp = EDCapp::singleton();
-    LOCK(theApp.vNodesCS());
-
-	if(!secure)
-	{
-    	BOOST_FOREACH(CEDCNode * pnode, theApp.vNodes() )
-       		if (pnode->GetId() == nodeid)
-            	return (pnode);
-	}
-	else
-	{
-	    BOOST_FOREACH(CEDCSSLNode * pnode, theApp.vSSLNodes() )
-   	     	if (pnode->GetId() == nodeid )
-            	return (pnode);
-	}
-
     return NULL;
 }
 
@@ -546,10 +520,8 @@ void CEDCConnman::Ban(
     }
     edcUiInterface.BannedListChanged();
     {
-		EDCapp & theApp = EDCapp::singleton();
-
-        LOCK(theApp.vNodesCS());
-        BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes()) 
+        LOCK(cs_vNodes);
+        BOOST_FOREACH(CEDCNode* pnode, vNodes) 
 		{
             if (subNet.Match((CNetAddr)pnode->addr))
                 pnode->fDisconnect = true;
@@ -853,14 +825,13 @@ static bool CompareNodeTXTime(const NodeEvictionCandidate &a, const NodeEviction
   *   to forge.  In order to partition a node the attacker must be
   *   simultaneously better at all of them than honest peers.
   */
-static bool AttemptToEvictConnection() 
+bool CEDCConnman::AttemptToEvictConnection() 
 {
-	EDCapp & theApp = EDCapp::singleton();
     std::vector<NodeEvictionCandidate> vEvictionCandidates;
     {
-        LOCK(theApp.vNodesCS());
+        LOCK(cs_vNodes);
 
-        BOOST_FOREACH(CEDCNode *node, theApp.vNodes()) 
+        BOOST_FOREACH(CEDCNode *node, vNodes) 
 		{
             if (node->fWhitelisted)
                 continue;
@@ -940,9 +911,9 @@ static bool AttemptToEvictConnection()
 
 	// Disconnect from the network group with the most connections
     NodeId evicted = vEvictionCandidates.front().id;
-    LOCK(theApp.vNodesCS());
-    for(std::vector<CEDCNode*>::const_iterator it(theApp.vNodes().begin()); 
-	it != theApp.vNodes().end(); ++it) 
+    LOCK(cs_vNodes);
+    for(std::vector<CEDCNode*>::const_iterator it(vNodes.begin()); 
+	it != vNodes.end(); ++it) 
 	{
         if ((*it)->GetId() == evicted) 
 		{
@@ -960,7 +931,6 @@ void CEDCConnman::AcceptConnection(const ListenSocket& hListenSocket)
     SOCKET hSocket = accept(hListenSocket.socket, (struct sockaddr*)&sockaddr, &len);
     CAddress addr;
     int nInbound = 0;
-	EDCapp & theApp = EDCapp::singleton();
     int nMaxInbound = nMaxConnections - (MAX_OUTBOUND_CONNECTIONS + MAX_FEELER_CONNECTIONS);
     assert(nMaxInbound > 0);
 
@@ -970,8 +940,8 @@ void CEDCConnman::AcceptConnection(const ListenSocket& hListenSocket)
 
     bool whitelisted = hListenSocket.whitelisted || CEDCNode::IsWhitelistedRange(addr);
     {
-        LOCK(theApp.vNodesCS());
-        BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
+        LOCK(cs_vNodes);
+        BOOST_FOREACH(CEDCNode* pnode, vNodes)
             if (pnode->fInbound)
                 nInbound++;
     }
@@ -1072,14 +1042,13 @@ void CEDCConnman::AcceptConnection(const ListenSocket& hListenSocket)
     edcLogPrint("net", "connection from %s accepted\n", addr.ToString());
 
     {
-        LOCK(theApp.vNodesCS());
-        theApp.vNodes().push_back(pnode);
+        LOCK(cs_vNodes);
+        vNodes.push_back(pnode);
     }
 }
 
 void CEDCConnman::ThreadSocketHandler()
 {
-	EDCapp & theApp = EDCapp::singleton();
     unsigned int nPrevNodeCount = 0;
     while (true)
     {
@@ -1087,21 +1056,21 @@ void CEDCConnman::ThreadSocketHandler()
         // Disconnect nodes
         //
         {
-            LOCK(theApp.vNodesCS());
+            LOCK(cs_vNodes);
             // Disconnect unused nodes
-            std::vector<CEDCNode*> vNodesCopy = theApp.vNodes();
-			vNodesCopy.insert( vNodesCopy.end(), theApp.vSSLNodes().begin(), theApp.vSSLNodes().end());
+            std::vector<CEDCNode*> vNodesCopy = vNodes;
+			vNodesCopy.insert( vNodesCopy.end(), vSSLNodes.begin(), vSSLNodes.end());
             BOOST_FOREACH(CEDCNode* pnode, vNodesCopy)
             {
                 if (pnode->fDisconnect ||
                     (pnode->GetRefCount() <= 0 && pnode->vRecvMsg.empty() && pnode->nSendSize == 0 && pnode->ssSend.empty()))
                 {
                     // remove from vNodes
-                    theApp.vNodes().erase(
-						remove(	theApp.vNodes().begin(), 
-								theApp.vNodes().end(), 
+                    vNodes.erase(
+						remove(	vNodes.begin(), 
+								vNodes.end(), 
 								pnode), 
-						theApp.vNodes().end());
+						vNodes.end());
 
                     // release outbound grant (if any)
                     pnode->grantOutbound.Release();
@@ -1146,9 +1115,9 @@ void CEDCConnman::ThreadSocketHandler()
                 }
             }
         }
-        if(theApp.vNodes().size() != nPrevNodeCount) 
+        if(vNodes.size() != nPrevNodeCount) 
 		{
-            nPrevNodeCount = theApp.vNodes().size();
+            nPrevNodeCount = vNodes.size();
             edcUiInterface.NotifyNumConnectionsChanged(nPrevNodeCount);
         }
 
@@ -1176,8 +1145,8 @@ void CEDCConnman::ThreadSocketHandler()
         }
 
         {
-            LOCK(theApp.vNodesCS());
-            BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
+            LOCK(cs_vNodes);
+            BOOST_FOREACH(CEDCNode* pnode, vNodes)
             {
                 if (pnode->invalidSocket())
                     continue;
@@ -1216,7 +1185,7 @@ void CEDCConnman::ThreadSocketHandler()
                         FD_SET(pnode->socket(), &fdsetRecv);
                 }
 			}
-            BOOST_FOREACH(CEDCSSLNode* pnode, theApp.vSSLNodes())
+            BOOST_FOREACH(CEDCSSLNode* pnode, vSSLNodes)
             {
                 if (pnode->invalidSocket())
                     continue;
@@ -1291,10 +1260,10 @@ void CEDCConnman::ThreadSocketHandler()
         //
         std::vector<CEDCNode*> vNodesCopy;
         {
-            LOCK(theApp.vNodesCS());
-            vNodesCopy = theApp.vNodes();
+            LOCK(cs_vNodes);
+            vNodesCopy = vNodes;
 			vNodesCopy.insert( vNodesCopy.end(), 
-				theApp.vSSLNodes().begin(), theApp.vSSLNodes().end());
+				vSSLNodes.begin(), vSSLNodes.end());
             BOOST_FOREACH(CEDCNode* pnode, vNodesCopy)
                 pnode->AddRef();
         }
@@ -1387,7 +1356,7 @@ void CEDCConnman::ThreadSocketHandler()
             }
         }
         {
-            LOCK(theApp.vNodesCS());
+            LOCK(cs_vNodes);
             BOOST_FOREACH(CEDCNode* pnode, vNodesCopy)
                 pnode->Release();
         }
@@ -1547,8 +1516,8 @@ void CEDCConnman::ThreadDNSAddressSeed()
 	{
         MilliSleep(11 * 1000);
 
-        LOCK(theApp.vNodesCS());
-        if (theApp.vNodes().size() >= 2) 
+        LOCK(cs_vNodes);
+        if (vNodes.size() >= 2) 
 		{
             edcLogPrintf("P2P peers available. Skipped DNS seeding.\n");
             return;
@@ -1625,7 +1594,7 @@ CEDCNode * CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, b
             return NULL;
 
         // Look for an existing connection
-        CEDCNode* pnode = edcFindNode((CService)addrConnect, fCountFailure );
+        CEDCNode* pnode = FindNode((CService)addrConnect, fCountFailure );
         if (pnode)
         {
             pnode->AddRef();
@@ -1669,13 +1638,13 @@ CEDCNode * CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, b
             // In that case, drop the connection that was just created, and return the existing 
 			// CEDCNode instead. Also store the name we used to connect in that CNode, so that 
 			// future edcFindNode() calls to that name catch this early.
-            CEDCNode * pnode = edcFindNode((CService)addrConnect, false );
+            CEDCNode * pnode = FindNode((CService)addrConnect, false );
 
             if (pnode)
             {
                 pnode->AddRef();
                 {
-                    LOCK(theApp.vNodesCS());
+                    LOCK(cs_vNodes);
                     if (pnode->addrName.empty()) 
 					{
                         pnode->addrName = std::string(pszDest);
@@ -1711,11 +1680,11 @@ CEDCNode * CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, b
         pnode->AddRef();
 
         {
-            LOCK(theApp.vNodesCS());
+            LOCK(cs_vNodes);
 			if(fCountFailure)
-	            theApp.vSSLNodes().push_back(static_cast<CEDCSSLNode *>(pnode));
+	            vSSLNodes.push_back(static_cast<CEDCSSLNode *>(pnode));
 			else
-	            theApp.vNodes().push_back(pnode);
+	            vNodes.push_back(pnode);
         }
 
 		pnode->nServicesExpected = ServiceFlags( addrConnect.nServices & RelevantServices);
@@ -1752,12 +1721,12 @@ bool CEDCConnman::OpenNetworkConnection(
     if (!pszDest) 
 	{
         if (edcIsLocal(addrConnect) ||
-            FindNode((CNetAddr)addrConnect ) || 
+            FindNode((CNetAddr)addrConnect, false ) || 
 			IsBanned(addrConnect) ||
-            edcFindNode(addrConnect.ToStringIPPort(), false ))
+            FindNode(addrConnect.ToStringIPPort(), false ))
             return false;
     } 
-	else if (edcFindNode(std::string(pszDest), false ))
+	else if (FindNode(std::string(pszDest), false ))
         return false;
 
     CEDCNode* pnode = ConnectNode(addrConnect, pszDest, fCountFailure );
@@ -1829,8 +1798,8 @@ std::vector<AddedNodeInfo> CEDCConnman::GetAddedNodeInfo()
     std::map<CService, bool> mapConnected;
     std::map<std::string, std::pair<bool, CService>> mapConnectedByName;
     {
-        LOCK(theApp.vNodesCS());
-        for (const CEDCNode* pnode : theApp.vNodes()) 
+        LOCK(cs_vNodes);
+        for (const CEDCNode* pnode : vNodes) 
 		{
             if (pnode->addr.IsValid()) 
 			{
@@ -1942,8 +1911,8 @@ void CEDCConnman::ThreadOpenConnections()
         int nOutbound = 0;
         std::set<std::vector<unsigned char> > setConnected;
         {
-            LOCK(theApp.vNodesCS());
-            BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes()) 
+            LOCK(cs_vNodes);
+            BOOST_FOREACH(CEDCNode* pnode, vNodes) 
 			{
                 if (!pnode->fInbound) 
 				{
@@ -2074,7 +2043,6 @@ void CEDCConnman::ThreadOpenAddedConnections()
 
 void CEDCConnman::ThreadMessageHandler()
 {
-	EDCapp & theApp = EDCapp::singleton();
     boost::mutex condition_mutex;
     boost::unique_lock<boost::mutex> lock(condition_mutex);
 
@@ -2082,8 +2050,8 @@ void CEDCConnman::ThreadMessageHandler()
     {
         std::vector<CEDCNode*> vNodesCopy;
         {
-            LOCK(theApp.vNodesCS());
-            vNodesCopy = theApp.vNodes();
+            LOCK(cs_vNodes);
+            vNodesCopy = vNodes;
             BOOST_FOREACH(CEDCNode* pnode, vNodesCopy) 
 			{
                 pnode->AddRef();
@@ -2128,15 +2096,15 @@ void CEDCConnman::ThreadMessageHandler()
         }
 
         {
-            LOCK(theApp.vNodesCS());
+            LOCK(cs_vNodes);
             BOOST_FOREACH(CEDCNode* pnode, vNodesCopy)
                 pnode->Release();
         }
 
         std::vector<CEDCSSLNode*> vSSLNodesCopy;
         {
-            LOCK(theApp.vNodesCS());
-            vSSLNodesCopy = theApp.vSSLNodes();
+            LOCK(cs_vNodes);
+            vSSLNodesCopy = vSSLNodes;
             BOOST_FOREACH(CEDCSSLNode* pnode, vSSLNodesCopy) 
 			{
                 pnode->AddRef();
@@ -2183,7 +2151,7 @@ void CEDCConnman::ThreadMessageHandler()
         }
 
         {
-            LOCK(theApp.vNodesCS());
+            LOCK(cs_vNodes);
             BOOST_FOREACH(CEDCSSLNode* pnode, vSSLNodesCopy)
                 pnode->Release();
         }
@@ -2537,8 +2505,6 @@ edcinstance_of_cnetcleanup;
 
 void CEDCConnman::Stop()
 {
-	EDCapp & theApp = EDCapp::singleton();
-
     if (semOutbound)
         for (int i=0; i<(MAX_OUTBOUND_CONNECTIONS + MAX_FEELER_CONNECTIONS); i++)
             semOutbound->post();
@@ -2550,10 +2516,10 @@ void CEDCConnman::Stop()
     }
 
 	// Close sockets
-	BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
+	BOOST_FOREACH(CEDCNode* pnode, vNodes)
 		if (!pnode->invalidSocket())
 			pnode->closeSocket();
-	BOOST_FOREACH(CEDCSSLNode* pnode, theApp.vSSLNodes())
+	BOOST_FOREACH(CEDCSSLNode* pnode, vSSLNodes)
 		if (!pnode->invalidSocket())
 			pnode->closeSocket();
 	BOOST_FOREACH(ListenSocket& hListenSocket, vhListenSocket)
@@ -2562,15 +2528,15 @@ void CEDCConnman::Stop()
 				edcLogPrintf("CloseSocket(hListenSocket) failed with error %s\n", NetworkErrorString(WSAGetLastError()));
 
 	// clean up some globals (to help leak detection)
-	BOOST_FOREACH(CEDCNode *pnode, theApp.vNodes())
+	BOOST_FOREACH(CEDCNode *pnode, vNodes)
 		DeleteNode( pnode );
-	BOOST_FOREACH(CEDCSSLNode *pnode, theApp.vSSLNodes())
+	BOOST_FOREACH(CEDCSSLNode *pnode, vSSLNodes)
 		DeleteNode( pnode );
 	BOOST_FOREACH(CEDCNode *pnode, vNodesDisconnected)
 		DeleteNode( pnode );
 
-	theApp.vNodes().clear();
-	theApp.vSSLNodes().clear();
+	vNodes.clear();
+	vSSLNodes.clear();
 	vNodesDisconnected.clear();
 	vhListenSocket.clear();
 	delete semOutbound;
@@ -2661,16 +2627,14 @@ bool CEDCConnman::RemoveAddedNode(const std::string& strNode)
 
 size_t CEDCConnman::GetNodeCount(NumConnections flags)
 {
-	EDCapp & theApp = EDCapp::singleton();
-
-    LOCK(theApp.vNodesCS());
+    LOCK(cs_vNodes);
 
     if (flags == CEDCConnman::CONNECTIONS_ALL) // Shortcut if we want total
         return vNodes.size();
 
     int nNum = 0;
-    for(std::vector<CEDCNode*>::const_iterator it = theApp.vNodes().begin(); 
-	it != theApp.vNodes().end(); ++it)
+    for(std::vector<CEDCNode*>::const_iterator it = vNodes.begin(); 
+	it != vNodes.end(); ++it)
         if (flags & ((*it)->fInbound ? CONNECTIONS_IN : CONNECTIONS_OUT))
             nNum++;
 
@@ -2681,13 +2645,11 @@ void CEDCConnman::GetNodeStats(std::vector<CNodeStats>& vstats)
 {
     vstats.clear();
 
-	EDCapp & theApp = EDCapp::singleton();
-
-    LOCK(theApp.vNodesCS());
+    LOCK(cs_vNodes);
     vstats.reserve(vNodes.size());
 
-    for(std::vector<CEDCNode*>::iterator it = theApp.vNodes().begin(); 
-	it != theApp.vNodes().end(); ++it) 
+    for(std::vector<CEDCNode*>::iterator it = vNodes.begin(); 
+	it != vNodes.end(); ++it) 
 	{
         CEDCNode* pnode = *it;
         CNodeStats stats;
@@ -2698,7 +2660,7 @@ void CEDCConnman::GetNodeStats(std::vector<CNodeStats>& vstats)
 
 bool CEDCConnman::DisconnectAddress(const CNetAddr& netAddr)
 {
-    if (CEDCNode* pnode = edcFindNode(netAddr, false )) 
+    if (CEDCNode* pnode = FindNode(netAddr, false )) 
 	{
         pnode->fDisconnect = true;
         return true;
@@ -2708,7 +2670,7 @@ bool CEDCConnman::DisconnectAddress(const CNetAddr& netAddr)
 
 bool CEDCConnman::DisconnectSubnet(const CSubNet& subNet)
 {
-    if (CEDCNode* pnode = edcFindNode(subNet, false )) 
+    if (CEDCNode* pnode = FindNode(subNet, false )) 
 	{
         pnode->fDisconnect = true;
         return true;
@@ -2718,7 +2680,7 @@ bool CEDCConnman::DisconnectSubnet(const CSubNet& subNet)
 
 bool CEDCConnman::DisconnectNode(const std::string& strNode)
 {
-    if (CEDCNode* pnode = edcFindNode(strNode, false )) 
+    if (CEDCNode* pnode = FindNode(strNode, false )) 
 	{
         pnode->fDisconnect = true;
         return true;
@@ -2728,11 +2690,9 @@ bool CEDCConnman::DisconnectNode(const std::string& strNode)
 
 bool CEDCConnman::DisconnectNode(NodeId id)
 {
-	EDCapp & theApp = EDCapp::singleton();
+    LOCK(cs_vNodes);
 
-    LOCK(theApp.vNodesCS());
-
-    for(CEDCNode* pnode : theApp.vNodes()) 
+    for(CEDCNode* pnode : vNodes) 
 	{
         if (id == pnode->id) 
 		{
@@ -2743,34 +2703,33 @@ bool CEDCConnman::DisconnectNode(NodeId id)
     return false;
 }
 
-void RelayTransaction(const CEDCTransaction& tx)
+void CEDCConnman::RelayTransaction(const CEDCTransaction& tx)
 {
-	EDCapp & theApp = EDCapp::singleton();
     CInv inv(MSG_TX, tx.GetHash());
-    LOCK(theApp.vNodesCS());
-    BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
+    LOCK(cs_vNodes);
+    BOOST_FOREACH(CEDCNode* pnode, vNodes)
     {
         pnode->PushInventory(inv);
     }
 }
 
-void RelayUserMessage( CUserMessage * um, bool secure )
+void CEDCConnman::RelayUserMessage( CUserMessage * um, bool secure )
 {
 	EDCapp & theApp = EDCapp::singleton();
 
 	theApp.walletMain()->AddMessage( um->tag(), um->GetHash(), um );
 
-	LOCK(theApp.vNodesCS());
+	LOCK(cs_vNodes);
 	if(secure)
 	{
-		BOOST_FOREACH(CEDCSSLNode * pnode, theApp.vSSLNodes())
+		BOOST_FOREACH(CEDCSSLNode * pnode, vSSLNodes)
 		{
 			pnode->PushUserMessage(um);
 		}
 	}
 	else
 	{
-		BOOST_FOREACH(CEDCNode * pnode, theApp.vNodes())
+		BOOST_FOREACH(CEDCNode * pnode, vNodes)
 		{
 			pnode->PushUserMessage(um);
 		}
@@ -3126,6 +3085,67 @@ void CEDCNode::EndMessage(const char* pszCommand) UNLOCK_FUNCTION(cs_vSend)
         SocketSendData(this);
 
     LEAVE_CRITICAL_SECTION(cs_vSend);
+}
+
+bool CEDCConnman::ForNode(NodeId id, std::function<bool(CEDCNode* pnode)> func)
+{
+    CEDCNode* found = nullptr;
+    LOCK(cs_vNodes);
+    for (auto&& pnode : vNodes) 
+	{
+        if(pnode->id == id) 
+		{
+            found = pnode;
+            break;
+        }
+    }
+    return found != nullptr && func(found);
+}
+
+bool CEDCConnman::ForEachNode(std::function<bool(CEDCNode* pnode)> func)
+{
+    LOCK(cs_vNodes);
+    for (auto&& node : vNodes)
+        if(!func(node))
+            return false;
+    return true;
+}
+
+bool CEDCConnman::ForEachNode(std::function<bool(const CEDCNode* pnode)> func) const
+{
+    LOCK(cs_vNodes);
+    for (const auto& node : vNodes)
+        if(!func(node))
+            return false;
+    return true;
+}
+
+bool CEDCConnman::ForEachNodeThen(std::function<bool(CEDCNode* pnode)> pre, std::function<void()> post)
+{
+    bool ret = true;
+    LOCK(cs_vNodes);
+    for (auto&& node : vNodes)
+        if(!pre(node)) 
+		{
+            ret = false;
+            break;
+        }
+    post();
+    return ret;
+}
+
+bool CEDCConnman::ForEachNodeThen(std::function<bool(const CEDCNode* pnode)> pre, std::function<void()> post) const
+{
+    bool ret = true;
+    LOCK(cs_vNodes);
+    for (const auto& node : vNodes)
+        if(!pre(node)) 
+		{
+            ret = false;
+            break;
+        }
+    post();
+    return ret;
 }
 
 int64_t edcPoissonNextSend(int64_t nNow, int average_interval_seconds) 

@@ -983,7 +983,16 @@ UniValue edcsendrawtransaction(const UniValue & params, bool fHelp)
 	{
         throw JSONRPCError(RPC_TRANSACTION_ALREADY_IN_CHAIN, "transaction already in block chain");
     }
-    RelayTransaction(tx);
+
+    if(!theApp.connman())
+        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
+ 
+    CInv inv(MSG_TX, hashTx);
+    theApp.connman()->ForEachNode([&inv](CEDCNode* pnode)
+    {
+        pnode->PushInventory(inv);
+        return true;
+    });
 
     return hashTx.GetHex();
 }

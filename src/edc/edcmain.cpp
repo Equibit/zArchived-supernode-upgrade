@@ -519,7 +519,10 @@ void UpdateBlockAvailability(NodeId nodeid, const uint256 &hash)
     }
 }
 
-void MaybeSetPeerAsAnnouncingHeaderAndIDs( const CNodeState * nodestate, CEDCNode * pfrom ) 
+void MaybeSetPeerAsAnnouncingHeaderAndIDs( 
+	const CNodeState * nodestate, 
+			CEDCNode * pfrom, 
+		 CEDCConnman & connman ) 
 {
 	EDCapp & theApp = EDCapp::singleton();
 
@@ -542,14 +545,15 @@ void MaybeSetPeerAsAnnouncingHeaderAndIDs( const CNodeState * nodestate, CEDCNod
 		{
             // As per BIP152, we only get 3 of our peers to announce
             // blocks using compact encodings.
-            CEDCNode* pnodeStop = edcFindNode(lNodesAnnouncingHeaderAndIDs.front(), false );
-
-            if (pnodeStop) 
+            bool found = connman.ForNode(lNodesAnnouncingHeaderAndIDs.front(), [fAnnounceUsingCMPCTBLOCK, nCMPCTBLOCKVersion](CEDCNode* pnodeStop)
 			{
                 pnodeStop->PushMessage(NetMsgType::SENDCMPCT, fAnnounceUsingCMPCTBLOCK, 
 					nCMPCTBLOCKVersion);
+
+				return true;
+			});
+			if(found)
                 lNodesAnnouncingHeaderAndIDs.pop_front();
-            }
         }
 
         fAnnounceUsingCMPCTBLOCK = true;
@@ -3639,9 +3643,9 @@ bool ActivateBestChain(
 				EDCparams & params = EDCparams::singleton();
                 if (params.checkpoints)
                     nBlockEstimate = Checkpoints::GetTotalBlocksEstimate(chainparams.Checkpoints());
-                {
-                    LOCK(theApp.vNodesCS());
-                    BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes()) 
+				if(connman)
+				{
+					connman->ForEachNode([nNewHeight, nBlockEstimate, &vHashes](CEDCNode* pnode)
 					{
 						if (nNewHeight > (pnode->nStartingHeight != -1 ? 
 						pnode->nStartingHeight - 2000 : nBlockEstimate)) 
@@ -3651,7 +3655,8 @@ bool ActivateBestChain(
                                 pnode->PushBlockHash(hash);
                             }
                         }
-                    }
+						return true;
+                    });
                 }
                 // Notify external listeners about the new tip.
                 if (!vHashes.empty()) 
@@ -5488,6 +5493,48 @@ bool AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(EDC_cs_main)
     return true;
 }
 
+void RelayTransaction(const CEDCTransaction& tx, CEDCConnman& connman)
+{
+    CInv inv(MSG_TX, tx.GetHash());
+    connman.ForEachNode([&inv](CEDCNode* pnode)
+    {
+        pnode->PushInventory(inv);
+        return true;
+    });
+}
+
+void RelayAddress(const CAddress& addr, bool fReachable, CEDCConnman& connman)
+{
+    int nRelayNodes = fReachable ? 2 : 1; // limited relaying of addresses outside our network(s)
+
+    // Relay to a limited number of other nodes
+    // Use deterministic randomness to send to the same nodes for 24 hours
+    // at a time so the addrKnowns of the chosen nodes prevent repeats
+    static const uint64_t salt0 = GetRand(std::numeric_limits<uint64_t>::max());
+    static const uint64_t salt1 = GetRand(std::numeric_limits<uint64_t>::max());
+    uint64_t hashAddr = addr.GetHash();
+    std::multimap<uint64_t, CEDCNode*> mapMix;
+
+    const CSipHasher hasher = CSipHasher(salt0, salt1).Write(hashAddr << 32).Write((GetTime() + hashAddr) / (24*60*60));
+
+    auto sortfunc = [&mapMix, &hasher](CEDCNode* pnode) 
+	{
+        if (pnode->nVersion >= CADDR_TIME_VERSION) {
+            uint64_t hashKey = CSipHasher(hasher).Write(pnode->id).Finalize();
+            mapMix.emplace(hashKey, pnode);
+        }
+        return true;
+    };
+
+    auto pushfunc = [&addr, &mapMix, &nRelayNodes] 
+	{
+        for (auto mi = mapMix.begin(); mi != mapMix.end() && nRelayNodes-- > 0; ++mi)
+            mi->second->PushAddress(addr);
+    };
+
+    connman.ForEachNodeThen(std::move(sortfunc), std::move(pushfunc));
+}
+
 void ProcessGetData(CEDCNode* pfrom, const Consensus::Params& consensusParams)
 {
 	EDCapp & theApp = EDCapp::singleton();
@@ -5952,26 +5999,7 @@ bool ProcessMessage(
             if (addr.nTime > nSince && !pfrom->fGetAddr && vAddr.size() <= 10 && addr.IsRoutable())
             {
                 // Relay to a limited number of other nodes
-                {
-                    LOCK(theApp.vNodesCS());
-                    // Use deterministic randomness to send to the same nodes for 24 hours
-                    // at a time so the addrKnowns of the chosen nodes prevent repeats
-                    static const uint64_t salt0 = GetRand(std::numeric_limits<uint64_t>::max());
-                    static const uint64_t salt1 = GetRand(std::numeric_limits<uint64_t>::max());
-                    uint64_t hashAddr = addr.GetHash();
-                    multimap<uint64_t, CEDCNode*> mapMix;
-                    const CSipHasher hasher = CSipHasher(salt0, salt1).Write(hashAddr << 32).Write((GetTime() + hashAddr) / (24*60*60));
-                    BOOST_FOREACH(CEDCNode* pnode, theApp.vNodes())
-                    {
-                        if (pnode->nVersion < CADDR_TIME_VERSION)
-                            continue;
-						uint64_t hashKey = CSipHasher(hasher).Write(pnode->id).Finalize();
-                        mapMix.insert(make_pair(hashKey, pnode));
-                    }
-                    int nRelayNodes = fReachable ? 2 : 1; // limited relaying of addresses outside our network(s)
-					for (multimap<uint64_t, CEDCNode*>::iterator mi = mapMix.begin(); mi != mapMix.end() && nRelayNodes-- > 0; ++mi)
-                        ((*mi).second)->PushAddress(addr);
-                }
+				RelayAddress( addr, fReachable, connman);
             }
             // Do not store addresses outside our network
             if (fReachable)
@@ -6271,7 +6299,7 @@ bool ProcessMessage(
         if (!AlreadyHave(inv) && AcceptToMemoryPool(theApp.mempool(), state, tx, true, &fMissingInputs)) 
 		{
             theApp.mempool().check(theApp.coinsTip());
-            RelayTransaction(tx);
+            RelayTransaction(tx, connman);
             for (unsigned int i = 0; i < tx.vout.size(); i++) 
 			{
                 vWorkQueue.emplace_back(inv.hash, i);
@@ -6311,7 +6339,7 @@ bool ProcessMessage(
 					true, &fMissingInputs2)) 
 					{
                         edcLogPrint("mempool", "   accepted orphan tx %s\n", orphanHash.ToString());
-                        RelayTransaction(orphanTx);
+                        RelayTransaction(orphanTx, connman);
 
                         for (unsigned int i = 0; i < orphanTx.vout.size(); i++) 
 						{
@@ -6413,7 +6441,7 @@ bool ProcessMessage(
                 if (!state.IsInvalid(nDoS) || nDoS == 0) 
 				{
                     edcLogPrintf("Force relaying tx %s from whitelisted peer=%d\n", tx.GetHash().ToString(), pfrom->id);
-                    RelayTransaction(tx);
+                    RelayTransaction(tx, connman);
                 } 
 				else 
 				{
@@ -6808,7 +6836,7 @@ bool ProcessMessage(
 					{
                         // We seem to be rather well-synced, so it appears pfrom was the first to provide us
                         // with this block! Let's get them to announce using compact blocks in the future.
-                        MaybeSetPeerAsAnnouncingHeaderAndIDs(nodestate, pfrom);
+                        MaybeSetPeerAsAnnouncingHeaderAndIDs(nodestate, pfrom, connman);
                         // In any case, we want to download using a compact block, not a regular one
 
                         vGetData[0] = CInv(MSG_CMPCT_BLOCK, vGetData[0].hash);

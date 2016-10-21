@@ -61,13 +61,15 @@ UniValue edcping(const UniValue& params, bool fHelp)
             + HelpExampleRpc("eb_ping", "")
         );
 
+    if(!theApp.connman())
+        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
+ 
     // Request that each node send a ping during next message processing pass
-    LOCK2(EDC_cs_main, theApp.vNodesCS());
-
-    BOOST_FOREACH(CEDCNode* pNode, theApp.vNodes()) 
+    theApp.connman()->ForEachNode([](CEDCNode* pnode) 
 	{
-        pNode->fPingQueued = true;
-    }
+        pnode->fPingQueued = true;
+        return true;
+    });
 
     return NullUniValue;
 }

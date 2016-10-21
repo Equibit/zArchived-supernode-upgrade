@@ -108,10 +108,6 @@ public:
 	bool txIndex() const	{ return txIndex_; }
 	void txIndex( bool b )	{ txIndex_ = b; }
 
-	std::vector<CEDCNode*>		& vNodes()		{ return vNodes_; }
-	std::vector<CEDCSSLNode*>	& vSSLNodes()	{ return vSSLNodes_; }
-	CCriticalSection 			& vNodesCS()	{ return vNodesCS_; }
-
 	MapRelay & mapRelay()						{ return mapRelay_; }
 	CCriticalSection & mapRelayCS()				{ return mapRelayCS_; }
 
@@ -249,10 +245,6 @@ private:
 
 	MapRelay mapRelay_;
 	CCriticalSection mapRelayCS_;
-
-	std::vector<CEDCNode*> 		vNodes_;
-	std::vector<CEDCSSLNode*> 	vSSLNodes_;
-	CCriticalSection 			vNodesCS_;
 
 	limitedmap<uint256, int64_t> mapAlreadyAskedFor_;
 

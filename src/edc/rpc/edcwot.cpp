@@ -182,6 +182,8 @@ UniValue edcrequestwotcertificate(const UniValue& params, bool fHelp)
             + HelpExampleRpc("eb_requestwotcertificate", "\"39sdfd34341q5q45qdfaert2gfgrD301\" \"dvj4entdva4tqkdaadfv\" \"ACME Corp.\" \"100 Avenue Road\" \"519 435-1932\" \"\" \"\"" )
         );
 
+	EDCapp & theApp = EDCapp::singleton();
+
 	std::string pubkey = params[0].get_str();
 	std::string saddr  = params[1].get_str();
 	std::string name   = params[2].get_str();
@@ -224,7 +226,7 @@ UniValue edcrequestwotcertificate(const UniValue& params, bool fHelp)
 	// Send message
     CPeerToPeer * msg = CPeerToPeer::create( "WoT-certificate-request", pk.GetID(), signerID, data);
 
-	RelayUserMessage( msg, true );
+	theApp.connman()->RelayUserMessage( msg, true );
 
     return NullUniValue;
 }

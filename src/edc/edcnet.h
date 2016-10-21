@@ -608,19 +608,12 @@ private:
 };
 
 class CEDCTransaction;
-void RelayTransaction(const CEDCTransaction& tx);
-
 class CUserMessage;
+
 void RelayUserMessage( CUserMessage *, bool );
 
 /** Return a timestamp in the future (in microseconds) for exponentially distributed events. */
 int64_t edcPoissonNextSend(int64_t nNow, int average_interval_seconds);
-
-CEDCNode * edcFindNode(const CNetAddr& ip, bool );
-CEDCNode * edcFindNode(const CSubNet& subNet, bool );
-CEDCNode * edcFindNode(const std::string& addrName, bool );
-CEDCNode * edcFindNode(const CService& ip, bool );
-CEDCNode * edcFindNode( const NodeId id, bool ); //TODO: Remove this
 
 
 class CEDCConnman
@@ -644,6 +637,14 @@ public:
 
 	bool OpenNetworkConnection( const CAddress & addrConnect, bool fCountFailure, CSemaphoreGrant * grantOutbound  = NULL, CSemaphoreGrant * sgrantOutbound  = NULL, const char * pszDest = NULL, bool fOneShot = false, bool fFeeler = false ); 
 
+    bool ForNode(NodeId id, std::function<bool(CEDCNode* pnode)> func);
+    bool ForEachNode(std::function<bool(CEDCNode* pnode)> func);
+    bool ForEachNode(std::function<bool(const CEDCNode* pnode)> func) const;
+    bool ForEachNodeThen(std::function<bool(CEDCNode* pnode)> pre, std::function<void()> post);
+    bool ForEachNodeThen(std::function<bool(const CEDCNode* pnode)> pre, std::function<void()> post) const;
+
+    void RelayTransaction(const CEDCTransaction& tx);
+
     // Addrman functions
     size_t GetAddressCount() const;
     void SetServices(const CService &addr, ServiceFlags nServices);
@@ -652,6 +653,7 @@ public:
     void AddNewAddresses(const std::vector<CAddress>& vAddr, const CAddress& addrFrom, int64_t nTimePenalty = 0);
     std::vector<CAddress> GetAddresses();
     void AddressCurrentlyConnected(const CService& addr);
+	void RelayUserMessage( CUserMessage * um, bool secure );
 
     // Denial-of-service detection/prevention
     // The idea is to detect peers that are behaving
@@ -707,6 +709,13 @@ private:
     void ThreadSocketHandler();
     void ThreadDNSAddressSeed();
 
+    CEDCNode* FindNode(const CNetAddr& ip, bool );
+    CEDCNode* FindNode(const CSubNet& subNet, bool );
+    CEDCNode* FindNode(const std::string& addrName, bool );
+    CEDCNode* FindNode(const CService& addr, bool );
+
+    bool AttemptToEvictConnection();
+
 	CEDCNode* ConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure);
 	void DeleteNode( CEDCNode * pnode );
     //!check is the banlist has unwritten changes
@@ -727,6 +736,10 @@ private:
     CAddrMan addrman;
     std::deque<std::string> vOneShots;
     CCriticalSection cs_vOneShots;
+
+    std::vector<CEDCNode*>    vNodes;
+    std::vector<CEDCSSLNode*> vSSLNodes;
+    mutable CCriticalSection  cs_vNodes;
 };
 
 void edcSetLimited(enum Network net, bool fLimited);
