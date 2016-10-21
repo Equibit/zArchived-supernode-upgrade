@@ -991,7 +991,6 @@ UniValue edcsendrawtransaction(const UniValue & params, bool fHelp)
     theApp.connman()->ForEachNode([&inv](CEDCNode* pnode)
     {
         pnode->PushInventory(inv);
-        return true;
     });
 
     return hashTx.GetHex();

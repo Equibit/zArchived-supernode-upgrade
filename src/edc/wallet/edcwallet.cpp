@@ -1657,7 +1657,6 @@ bool CEDCWalletTx::RelayWalletTransaction(CEDCConnman * connman)
                 connman->ForEachNode([&inv](CEDCNode* pnode)
                 {
                     pnode->PushInventory(inv);
-                    return true;
                 });
                 return true;
             }

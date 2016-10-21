@@ -632,10 +632,14 @@ public:
 	bool CheckIncomingNonce(uint64_t nonce);
 
     bool ForNode(NodeId id, std::function<bool(CEDCNode* pnode)> func);
-    bool ForEachNode(std::function<bool(CEDCNode* pnode)> func);
-    bool ForEachNode(std::function<bool(const CEDCNode* pnode)> func) const;
-    bool ForEachNodeThen(std::function<bool(CEDCNode* pnode)> pre, std::function<void()> post);
-    bool ForEachNodeThen(std::function<bool(const CEDCNode* pnode)> pre, std::function<void()> post) const;
+    bool ForEachNodeContinueIf(std::function<bool(CEDCNode* pnode)> func);
+    bool ForEachNodeContinueIf(std::function<bool(const CEDCNode* pnode)> func) const;
+    bool ForEachNodeContinueIfThen(std::function<bool(CEDCNode* pnode)> pre, std::function<void()> post);
+    bool ForEachNodeContinueIfThen(std::function<bool(const CEDCNode* pnode)> pre, std::function<void()> post) const;
+    void ForEachNode(std::function<void(CEDCNode* pnode)> func);
+    void ForEachNode(std::function<void(const CEDCNode* pnode)> func) const;
+    void ForEachNodeThen(std::function<void(CEDCNode* pnode)> pre, std::function<void()> post);
+    void ForEachNodeThen(std::function<void(const CEDCNode* pnode)> pre, std::function<void()> post) const;
 
     void RelayTransaction(const CEDCTransaction& tx);
 

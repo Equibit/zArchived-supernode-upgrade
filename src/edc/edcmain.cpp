@@ -3648,7 +3648,6 @@ bool ActivateBestChain(
                                 pnode->PushBlockHash(hash);
                             }
                         }
-						return true;
                     });
                 }
                 // Notify external listeners about the new tip.
@@ -5492,7 +5491,6 @@ void RelayTransaction(const CEDCTransaction& tx, CEDCConnman& connman)
     connman.ForEachNode([&inv](CEDCNode* pnode)
     {
         pnode->PushInventory(inv);
-        return true;
     });
 }
 
@@ -5516,7 +5514,6 @@ void RelayAddress(const CAddress& addr, bool fReachable, CEDCConnman& connman)
             uint64_t hashKey = CSipHasher(hasher).Write(pnode->id).Finalize();
             mapMix.emplace(hashKey, pnode);
         }
-        return true;
     };
 
     auto pushfunc = [&addr, &mapMix, &nRelayNodes] 

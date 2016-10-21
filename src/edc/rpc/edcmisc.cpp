@@ -535,7 +535,6 @@ UniValue edcsetmocktime(const UniValue& params, bool fHelp)
         theApp.connman()->ForEachNode([t](CEDCNode* pnode) 
 		{
             pnode->nLastSend = pnode->nLastRecv = t;
-            return true;
         });
 	}
 

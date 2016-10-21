@@ -3131,7 +3131,7 @@ bool CEDCConnman::ForNode(NodeId id, std::function<bool(CEDCNode* pnode)> func)
     return found != nullptr && func(found);
 }
 
-bool CEDCConnman::ForEachNode(std::function<bool(CEDCNode* pnode)> func)
+bool CEDCConnman::ForEachNodeContinueIf(std::function<bool(CEDCNode* pnode)> func)
 {
     LOCK(cs_vNodes);
     for (auto&& node : vNodes)
@@ -3140,7 +3140,7 @@ bool CEDCConnman::ForEachNode(std::function<bool(CEDCNode* pnode)> func)
     return true;
 }
 
-bool CEDCConnman::ForEachNode(std::function<bool(const CEDCNode* pnode)> func) const
+bool CEDCConnman::ForEachNodeContinueIf(std::function<bool(const CEDCNode* pnode)> func) const
 {
     LOCK(cs_vNodes);
     for (const auto& node : vNodes)
@@ -3149,7 +3149,7 @@ bool CEDCConnman::ForEachNode(std::function<bool(const CEDCNode* pnode)> func) c
     return true;
 }
 
-bool CEDCConnman::ForEachNodeThen(std::function<bool(CEDCNode* pnode)> pre, std::function<void()> post)
+bool CEDCConnman::ForEachNodeContinueIfThen(std::function<bool(CEDCNode* pnode)> pre, std::function<void()> post)
 {
     bool ret = true;
     LOCK(cs_vNodes);
@@ -3163,7 +3163,7 @@ bool CEDCConnman::ForEachNodeThen(std::function<bool(CEDCNode* pnode)> pre, std:
     return ret;
 }
 
-bool CEDCConnman::ForEachNodeThen(std::function<bool(const CEDCNode* pnode)> pre, std::function<void()> post) const
+bool CEDCConnman::ForEachNodeContinueIfThen(std::function<bool(const CEDCNode* pnode)> pre, std::function<void()> post) const
 {
     bool ret = true;
     LOCK(cs_vNodes);
@@ -3175,6 +3175,36 @@ bool CEDCConnman::ForEachNodeThen(std::function<bool(const CEDCNode* pnode)> pre
         }
     post();
     return ret;
+}
+
+void CEDCConnman::ForEachNode(std::function<void(CEDCNode* pnode)> func)
+{
+    LOCK(cs_vNodes);
+    for (auto&& node : vNodes)
+        func(node);
+}
+
+void CEDCConnman::ForEachNode(std::function<void(const CEDCNode* pnode)> func) const
+{
+    LOCK(cs_vNodes);
+    for (const auto& node : vNodes)
+        func(node);
+}
+
+void CEDCConnman::ForEachNodeThen(std::function<void(CEDCNode* pnode)> pre, std::function<void()> post)
+{
+    LOCK(cs_vNodes);
+    for (auto&& node : vNodes)
+               pre(node);
+    post();
+}
+
+void CEDCConnman::ForEachNodeThen(std::function<void(const CEDCNode* pnode)> pre, std::function<void()> post) const
+{
+    LOCK(cs_vNodes);
+    for (const auto& node : vNodes)
+               pre(node);
+    post();
 }
 
 int64_t edcPoissonNextSend(int64_t nNow, int average_interval_seconds) 

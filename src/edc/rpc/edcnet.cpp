@@ -68,7 +68,6 @@ UniValue edcping(const UniValue& params, bool fHelp)
     theApp.connman()->ForEachNode([](CEDCNode* pnode) 
 	{
         pnode->fPingQueued = true;
-        return true;
     });
 
     return NullUniValue;
