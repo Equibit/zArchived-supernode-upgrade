@@ -423,7 +423,8 @@ void CEDCConnman::ClearBanned()
         setBannedIsDirty = true;
     }
     DumpBanlist(); //store banlist to disk
-	edcUiInterface.BannedListChanged();
+	if(clientInterface)
+		clientInterface->BannedListChanged();
 }
 
 bool CEDCConnman::IsBanned(CNetAddr ip)
@@ -495,7 +496,8 @@ void CEDCConnman::Ban(
         else
             return;
     }
-    edcUiInterface.BannedListChanged();
+    if(clientInterface)
+		clientInterface->BannedListChanged();
     {
         LOCK(cs_vNodes);
         BOOST_FOREACH(CEDCNode* pnode, vNodes) 
@@ -522,7 +524,8 @@ bool CEDCConnman::Unban(const CSubNet &subNet)
             return false;
         setBannedIsDirty = true;
     }
-    edcUiInterface.BannedListChanged();
+	if(clientInterface)
+		clientInterface->BannedListChanged();
     DumpBanlist(); //store banlist to disk immediately
     return true;
 }
@@ -1094,7 +1097,8 @@ void CEDCConnman::ThreadSocketHandler()
         if(vNodes.size() != nPrevNodeCount) 
 		{
             nPrevNodeCount = vNodes.size();
-            edcUiInterface.NotifyNumConnectionsChanged(nPrevNodeCount);
+			if(clientInterface)
+				clientInterface->NotifyNumConnectionsChanged(nPrevNodeCount);
         }
 
         //
@@ -2374,6 +2378,7 @@ CEDCConnman::CEDCConnman()
     nMaxConnections = 0;
     nMaxOutbound = 0;
 	nBestHeight = 0;
+	clientInterface = NULL;
 }
 
 bool edcStartNode(
@@ -2385,12 +2390,21 @@ boost::thread_group & threadGroup,
 				  int nMaxConnectionsIn, 
 				  int nMaxOutboundIn, 
 				  int nBestHeightIn,
+ CClientUIInterface * interfaceIn,
 		std::string & strNodeError)
 {
     Discover(threadGroup);
 
-    bool ret = connman.Start(threadGroup, scheduler, nLocalServices, nRelevantServices, 
-							 nMaxConnectionsIn, nMaxOutboundIn, nBestHeightIn, strNodeError);
+    bool ret = connman.Start(
+		threadGroup, 
+		scheduler, 
+		nLocalServices, 
+		nRelevantServices, 
+		nMaxConnectionsIn, 
+		nMaxOutboundIn, 
+		nBestHeightIn, 
+		interfaceIn,
+		strNodeError);
 
     return ret;
 }
@@ -2408,6 +2422,7 @@ bool CEDCConnman::Start(
 					  int nMaxConnectionsIn, 
 					  int nMaxOutboundIn,
 					  int nBestHeightIn,
+	 CClientUIInterface * interfaceIn,
 			std::string & strNodeError)
 {
 	EDCapp & theApp = EDCapp::singleton();
@@ -2430,7 +2445,10 @@ bool CEDCConnman::Start(
 
     SetBestHeight(nBestHeightIn);
 
-    edcUiInterface.InitMessage(_("Loading addresses..."));
+    clientInterface = interfaceIn;
+    if (clientInterface)
+        clientInterface->InitMessage(_("Loading addresses..."));
+
     // Load addresses from peers.dat
     int64_t nStart = GetTimeMillis();
     {
@@ -2445,7 +2463,9 @@ bool CEDCConnman::Start(
         }
     }
 
-    edcUiInterface.InitMessage(_("Loading banlist..."));
+    if (clientInterface)
+        clientInterface->InitMessage(_("Loading banlist..."));
+
     // Load addresses from banlist.dat
     nStart = GetTimeMillis();
     CEDCBanDB bandb;

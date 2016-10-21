@@ -1133,7 +1133,7 @@ bool EdcAppInit(
 
 		std::string strNodeError;
 		int nMaxOutbound = std::min(MAX_OUTBOUND_CONNECTIONS, nMaxConnections);
-		if(!edcStartNode(connman, threadGroup, scheduler, nLocalServices, nRelevantServices, nMaxConnections, nMaxOutbound, chainActive.Height(), strNodeError))
+		if(!edcStartNode(connman, threadGroup, scheduler, nLocalServices, nRelevantServices, nMaxConnections, nMaxOutbound, chainActive.Height(), &edcUiInterface, strNodeError))
         	return InitError(strNodeError);
 
 		// *************************************************** Step 12: finished

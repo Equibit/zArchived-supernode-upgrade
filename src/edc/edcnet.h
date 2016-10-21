@@ -579,6 +579,7 @@ private:
 
 class CEDCTransaction;
 class CUserMessage;
+class CClientUIInterface;
 
 void RelayUserMessage( CUserMessage *, bool );
 
@@ -608,6 +609,7 @@ public:
 				int nMaxConnectionsIn, 
 				int nMaxOutboundIn, 
 				int nBestHeightIn, 
+				CClientUIInterface * interfaceIn,
 				std::string& strNodeError);
     void Stop();
 	bool BindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
@@ -795,10 +797,11 @@ private:
     int nMaxConnections;
     int nMaxOutbound;
     std::atomic<int> nBestHeight;
+	CClientUIInterface * clientInterface;
 };
 
 void edcSetLimited(enum Network net, bool fLimited);
 
-bool edcStartNode(CEDCConnman & connman, boost::thread_group & threadGroup, CScheduler & scheduler, ServiceFlags nLocalServices, ServiceFlags nRelevantServices, int nMaxConnections, int nMaxOutbound,int nBestHeightIn, std::string & strNodeError);
+bool edcStartNode(CEDCConnman & connman, boost::thread_group & threadGroup, CScheduler & scheduler, ServiceFlags nLocalServices, ServiceFlags nRelevantServices, int nMaxConnections, int nMaxOutbound,int nBestHeightIn, CClientUIInterface * interfaceIn, std::string & strNodeError);
 bool edcStopNode(CEDCConnman & connman);
 CAddress edcGetLocalAddress(const CNetAddr *paddrPeer, ServiceFlags nLocalServices);
