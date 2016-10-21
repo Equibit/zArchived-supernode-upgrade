@@ -5848,7 +5848,7 @@ bool ProcessMessage(
         }
 
         // Disconnect if we connected to ourself
-		if (pfrom->fInbound && !theApp.connman().CheckIncomingNonce(nNonce))
+		if (pfrom->fInbound && !theApp.connman()->CheckIncomingNonce(nNonce))
         {
             edcLogPrintf("connected to self at %s, disconnecting\n", pfrom->addr.ToString());
             pfrom->fDisconnect = true;

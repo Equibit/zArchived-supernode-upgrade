@@ -83,7 +83,6 @@ CEDCNode* pnodeLocalHost = NULL;
 }
 
 static CSemaphore *semOutbound = NULL;
-boost::condition_variable edcmessageHandlerCondition;
 
 // Signals for message handling
 static CEDCNodeSignals g_edcsignals;
@@ -655,8 +654,9 @@ void CEDCNode::copyStats(CNodeStats &stats)
 #undef X
 
 // requires LOCK(cs_vRecvMsg)
-bool CEDCNode::ReceiveMsgBytes(const char *pch, unsigned int nBytes)
+bool CEDCNode::ReceiveMsgBytes(const char *pch, unsigned int nBytes, bool & complete)
 {
+	complete = false;
     while (nBytes > 0) 
 	{
         // get current incomplete message, or create a new one
@@ -697,7 +697,7 @@ bool CEDCNode::ReceiveMsgBytes(const char *pch, unsigned int nBytes)
             i->second += msg.hdr.nMessageSize + CMessageHeader::HEADER_SIZE;
 
             msg.nTime = GetTimeMicros();
-            edcmessageHandlerCondition.notify_one();
+			complete = true;
         }
     }
 
@@ -1280,8 +1280,12 @@ void CEDCConnman::ThreadSocketHandler()
                         int nBytes = pnode->recv( pchBuf, sizeof(pchBuf), MSG_DONTWAIT);
                         if (nBytes > 0)
                         {
-                            if (!pnode->ReceiveMsgBytes(pchBuf, nBytes))
-                                pnode->CloseSocketDisconnect();
+                            bool notify = false;
+                            if (!pnode->ReceiveMsgBytes(pchBuf, nBytes, notify))
+                                 pnode->CloseSocketDisconnect();
+                            if(notify)
+                                messageHandlerCondition.notify_one();
+
                             pnode->nLastRecv = GetTime();
                             pnode->nRecvBytes += nBytes;
                             pnode->RecordBytesRecv(nBytes);
@@ -2161,7 +2165,7 @@ void CEDCConnman::ThreadMessageHandler()
         }
 
         if (fSleep)
-            edcmessageHandlerCondition.timed_wait(lock, 
+            messageHandlerCondition.timed_wait(lock, 
 				boost::posix_time::microsec_clock::universal_time() + 
 				boost::posix_time::milliseconds(100));
     }
