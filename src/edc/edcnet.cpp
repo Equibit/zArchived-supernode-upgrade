@@ -596,11 +596,7 @@ void CEDCConnman::SetBannedSetDirty(bool dirty)
     setBannedIsDirty = dirty;
 }
 
-
-std::vector<CSubNet> CEDCNode::vWhitelistedRange;
-CCriticalSection CEDCNode::cs_vWhitelistedRange;
-
-bool CEDCNode::IsWhitelistedRange(const CNetAddr &addr) 
+bool CEDCConnman::IsWhitelistedRange(const CNetAddr &addr) 
 {
     LOCK(cs_vWhitelistedRange);
     BOOST_FOREACH(const CSubNet& subnet, vWhitelistedRange) 
@@ -611,7 +607,7 @@ bool CEDCNode::IsWhitelistedRange(const CNetAddr &addr)
     return false;
 }
 
-void CEDCNode::AddWhitelistedRange(const CSubNet &subnet) 
+void CEDCConnman::AddWhitelistedRange(const CSubNet &subnet) 
 {
     LOCK(cs_vWhitelistedRange);
     vWhitelistedRange.push_back(subnet);
@@ -938,7 +934,7 @@ void CEDCConnman::AcceptConnection(const ListenSocket& hListenSocket)
         if (!addr.SetSockAddr((const struct sockaddr*)&sockaddr))
             edcLogPrintf("Warning: Unknown socket family\n");
 
-    bool whitelisted = hListenSocket.whitelisted || CEDCNode::IsWhitelistedRange(addr);
+    bool whitelisted = hListenSocket.whitelisted || IsWhitelistedRange(addr);
     {
         LOCK(cs_vNodes);
         BOOST_FOREACH(CEDCNode* pnode, vNodes)

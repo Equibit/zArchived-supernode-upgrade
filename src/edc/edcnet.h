@@ -550,9 +550,6 @@ public:
 
     void copyStats(CNodeStats &stats);
 
-    static bool IsWhitelistedRange(const CNetAddr &ip);
-    static void AddWhitelistedRange(const CSubNet &subnet);
-
     // Network stats
     static void RecordBytesRecv(uint64_t bytes);
     static void RecordBytesSent(uint64_t bytes);
@@ -692,6 +689,7 @@ public:
     bool DisconnectNode(NodeId id);
     bool DisconnectSubnet(const CSubNet& subnet);
 
+	void AddWhitelistedRange(const CSubNet &subnet);
 private:
     struct ListenSocket 
 	{
@@ -717,6 +715,8 @@ private:
     bool AttemptToEvictConnection();
 
 	CEDCNode* ConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure);
+    bool IsWhitelistedRange(const CNetAddr &addr);
+
 	void DeleteNode( CEDCNode * pnode );
     //!check is the banlist has unwritten changes
     bool BannedSetIsDirty();
@@ -727,6 +727,11 @@ private:
     void DumpAddresses();
     void DumpData();
     void DumpBanlist();
+
+    // Whitelisted ranges. Any node connecting from these is automatically
+    // whitelisted (as well as those connecting to whitelisted binds).
+    std::vector<CSubNet> vWhitelistedRange;
+    CCriticalSection cs_vWhitelistedRange;
 
 	std::vector<ListenSocket> vhListenSocket;
     banmap_t setBanned;

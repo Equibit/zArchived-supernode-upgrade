@@ -687,7 +687,7 @@ bool EdcAppInit(
             	if (!subnet.IsValid())
                 	return edcInitError(strprintf(_("Invalid netmask specified "
 						"in -eb_whitelist: '%s'"), net));
-            	CEDCNode::AddWhitelistedRange(subnet);
+            	connman.AddWhitelistedRange(subnet);
         	}
     	}
 
