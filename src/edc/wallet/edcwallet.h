@@ -688,7 +688,7 @@ public:
 	void ListAccountCreditDebit(const std::string& strAccount, std::list<CAccountingEntry>& entries);
 
     bool AddAccountingEntry(const CAccountingEntry&);
-    bool AddAccountingEntry(const CAccountingEntry&, CWalletDB *pwalletdb);
+    bool AddAccountingEntry(const CAccountingEntry&, CEDCWalletDB *pwalletdb);
 
     static CFeeRate minTxFee;
     static CFeeRate fallbackFee;
