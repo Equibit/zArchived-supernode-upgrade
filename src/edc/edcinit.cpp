@@ -1239,7 +1239,6 @@ void edcShutdown()
         theApp.walletMain()->Flush(false);
 #endif
 	MapPort(false);
-	theApp.connman()->Stop();
 	theApp.connman().reset();
 
     edcStopTorControl();

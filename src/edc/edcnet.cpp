@@ -2572,6 +2572,7 @@ void CEDCConnman::DeleteNode(CEDCNode* pnode)
 
 CEDCConnman::~CEDCConnman()
 {
+	Stop();
 }
 
 size_t CEDCConnman::GetAddressCount() const

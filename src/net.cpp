@@ -2197,6 +2197,7 @@ void CConnman::DeleteNode(CNode* pnode)
 
 CConnman::~CConnman()
 {
+    Stop();
 }
 
 size_t CConnman::GetAddressCount() const
