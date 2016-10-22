@@ -1313,12 +1313,13 @@ public:
     bool operator()(const CKeyID &keyID) 
 	{
         CPubKey pubkey;
-        if (pwalletMain && pwalletMain->GetPubKey(keyID, pubkey)) 
+		EDCapp & theApp = EDCapp::singleton();
+        if (theApp.walletMain() && theApp.walletMain()->GetPubKey(keyID, pubkey)) 
 		{
             CScript basescript;
             basescript << ToByteVector(pubkey) << OP_CHECKSIG;
             CScript witscript = GetScriptForWitness(basescript);
-            pwalletMain->AddCScript(witscript);
+            theApp.walletMain()->AddCScript(witscript);
             result = CScriptID(witscript);
             return true;
         }
@@ -1328,7 +1329,8 @@ public:
     bool operator()(const CScriptID &scriptID) 
 	{
         CScript subscript;
-        if (pwalletMain && pwalletMain->GetCScript(scriptID, subscript)) 
+		EDCapp & theApp = EDCapp::singleton();
+        if (theApp.walletMain() && theApp.walletMain()->GetCScript(scriptID, subscript)) 
 		{
             int witnessversion;
             std::vector<unsigned char> witprog;
@@ -1338,7 +1340,7 @@ public:
                 return true;
             }
             CScript witscript = GetScriptForWitness(subscript);
-            pwalletMain->AddCScript(witscript);
+            theApp.walletMain()->AddCScript(witscript);
             result = CScriptID(witscript);
             return true;
         }
@@ -1348,6 +1350,8 @@ public:
 
 UniValue edcaddwitnessaddress(const UniValue& params, bool fHelp)
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
@@ -1390,6 +1394,8 @@ UniValue edcaddwitnessaddress(const UniValue& params, bool fHelp)
 	{
         throw JSONRPCError(RPC_WALLET_ERROR, "Public key or redeemscript not known to wallet");
     }
+
+	theApp.walletMain()->SetAddressBook(w.result, "", "receive");
 
     return CBitcoinAddress(w.result).ToString();
 }

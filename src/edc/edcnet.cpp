@@ -71,8 +71,6 @@
 namespace 
 {
 
-const int MAX_FEELER_CONNECTIONS = 1;
-
 const std::string NET_MESSAGE_COMMAND_OTHER = "*other*";
 
 bool vfLimited[NET_MAX] = {};
@@ -908,7 +906,7 @@ void CEDCConnman::AcceptConnection(const ListenSocket& hListenSocket)
     SOCKET hSocket = accept(hListenSocket.socket, (struct sockaddr*)&sockaddr, &len);
     CAddress addr;
     int nInbound = 0;
-	int nMaxInbound = nMaxConnections - (nMaxOutbound + MAX_FEELER_CONNECTIONS);
+	int nMaxInbound = nMaxConnections - (nMaxOutbound + nMaxFeeler);
     assert(nMaxInbound > 0);
 
     if (hSocket != INVALID_SOCKET)
@@ -1926,7 +1924,7 @@ void CEDCConnman::ThreadOpenConnections()
                 }
             }
         }
-		assert(nOutbound <= (nMaxOutbound + MAX_FEELER_CONNECTIONS));
+		assert(nOutbound <= (nMaxOutbound + nMaxFeeler));
  
         // Feeler Connections
         //
@@ -2403,6 +2401,7 @@ bool CEDCConnman::Start(
     nLocalServices = connOptions.nLocalServices;
     nMaxConnections = connOptions.nMaxConnections;
     nMaxOutbound = std::min((connOptions.nMaxOutbound), nMaxConnections);
+	nMaxFeeler = connOptions.nMaxFeeler;
 
     nSendBufferMaxSize = connOptions.nSendBufferMaxSize;
     nReceiveFloodSize = connOptions.nSendBufferMaxSize;
@@ -2457,7 +2456,7 @@ bool CEDCConnman::Start(
     if (semOutbound == NULL) 
 	{
         // initialize semaphore
-		semOutbound = new CSemaphore(std::min((nMaxOutbound + MAX_FEELER_CONNECTIONS), nMaxConnections));
+		semOutbound = new CSemaphore(std::min((nMaxOutbound + nMaxFeeler), nMaxConnections));
     }
 
     if (pnodeLocalHost == NULL) 
@@ -2521,7 +2520,7 @@ void CEDCConnman::Stop()
 {
 	edcLogPrintf( "%s\n",__func__);
     if (semOutbound)
-		for (int i=0; i<(nMaxOutbound + MAX_FEELER_CONNECTIONS); i++)
+		for (int i=0; i<(nMaxOutbound + nMaxFeeler); i++)
             semOutbound->post();
 
     if (fAddressesInitialized)
