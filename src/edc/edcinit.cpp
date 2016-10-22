@@ -36,8 +36,11 @@ extern std::atomic<bool> fRequestShutdown;
 
 namespace
 {
-const char* FEE_ESTIMATES_FILENAME="fee_estimates.dat";
-bool fFeeEstimatesInitialized = false;
+
+const char *FEE_ESTIMATES_FILENAME	= "fee_estimates.dat";
+bool 		fFeeEstimatesInitialized= false;
+uint64_t 	MAX_UPLOAD_TIMEFRAME 	= 60 * 60 * 24;
+
 
 void BlockNotifyCallback(
 	               bool initialSync, 
@@ -805,9 +808,12 @@ bool EdcAppInit(
     	BOOST_FOREACH(const std::string& strDest, params.seednode)
         	theApp.connman()->AddOneShot(strDest);
 
+	    uint64_t nMaxOutboundLimit = 0; //unlimited unless -maxuploadtarget is set
+    	uint64_t nMaxOutboundTimeframe = MAX_UPLOAD_TIMEFRAME;
+
     	if (params.maxuploadtarget > 0 ) 
 		{
-        	theApp.connman()->SetMaxOutboundTarget(params.maxuploadtarget *1024*1024);
+			nMaxOutboundLimit = params.maxuploadtarget *1024*1024;
     	}
 
     	// ******************************************** Step 7: load block chain
@@ -1147,6 +1153,8 @@ bool EdcAppInit(
 		connOptions.uiInterface = &edcUiInterface;
 		connOptions.nSendBufferMaxSize = 1000*params.maxsendbuffer;
 		connOptions.nReceiveFloodSize = 1000*params.maxreceivebuffer;
+	    connOptions.nMaxOutboundTimeframe = nMaxOutboundTimeframe;
+   		connOptions.nMaxOutboundLimit = nMaxOutboundLimit;
 
 		if(!connman.Start(threadGroup, scheduler, strNodeError, connOptions))
         	return InitError(strNodeError);
