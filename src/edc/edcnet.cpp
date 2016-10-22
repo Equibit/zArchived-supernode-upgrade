@@ -73,6 +73,8 @@ namespace
 
 const std::string NET_MESSAGE_COMMAND_OTHER = "*other*";
 
+const uint64_t RANDOMIZER_ID_NETGROUP = 0x6c0edd8036ef4036ULL; // SHA256("netgroup")[0:8]
+
 bool vfLimited[NET_MAX] = {};
 CEDCNode* pnodeLocalHost = NULL;
 }
@@ -997,7 +999,7 @@ void CEDCConnman::AcceptConnection(const ListenSocket& hListenSocket)
 	{
 		if( SSL * ssl = CEDCSSLNode::sslAccept(hSocket) )
 		{
-			pnode = new CEDCSSLNode( GetNewNodeId(), nLocalServices, GetBestHeight(), hSocket, addr, "", true, ssl );
+			pnode = new CEDCSSLNode( GetNewNodeId(), nLocalServices, GetBestHeight(), hSocket, addr, CalculateKeyedNetGroup(addr), "", true, ssl );
 		}
 		else
 		{
@@ -1007,7 +1009,8 @@ void CEDCConnman::AcceptConnection(const ListenSocket& hListenSocket)
 	}
 	else
 	{
-		pnode = new CEDCNode( GetNewNodeId(), nLocalServices, GetBestHeight(), hSocket, addr, "", true );
+		pnode = new CEDCNode( GetNewNodeId(), nLocalServices, GetBestHeight(), hSocket, addr, 
+								CalculateKeyedNetGroup(addr), "", true );
 	}
 
 	edcGetNodeSignals().InitializeNode(pnode->GetId(), pnode);
@@ -1666,7 +1669,7 @@ CEDCNode * CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, b
 		{
 			if( SSL * ssl = CEDCSSLNode::sslConnect(hSocket))
 			{
-       			pnode = new CEDCSSLNode( GetNewNodeId(), nLocalServices, GetBestHeight(), hSocket, addrConnect, pszDest ? pszDest : "", false, ssl );
+       			pnode = new CEDCSSLNode( GetNewNodeId(), nLocalServices, GetBestHeight(), hSocket, addrConnect, CalculateKeyedNetGroup(addrConnect), pszDest ? pszDest : "", false, ssl );
 				edcGetNodeSignals().InitializeNode(pnode->GetId(), pnode);
 			}
 			else
@@ -1677,7 +1680,7 @@ CEDCNode * CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, b
 		}
 		else
 		{
-			pnode = new CEDCNode( GetNewNodeId(), nLocalServices, GetBestHeight(), hSocket, addrConnect, pszDest ? pszDest : "", false);
+			pnode = new CEDCNode( GetNewNodeId(), nLocalServices, GetBestHeight(), hSocket, addrConnect, CalculateKeyedNetGroup(addrConnect), pszDest ? pszDest : "", false);
 			edcGetNodeSignals().InitializeNode(pnode->GetId(), pnode);
 		}
         pnode->AddRef();
@@ -2362,7 +2365,7 @@ bool edcAddLocal(const CNetAddr &addr, int nScore)
     		edcAddLocal(CService(addr, edcGetListenSecurePort()), nScore);
 }
 
-CEDCConnman::CEDCConnman()
+CEDCConnman::CEDCConnman(uint64_t nSeed0In, uint64_t nSeed1In) : nSeed0(nSeed0In), nSeed1(nSeed1In)
 {
 	setBannedIsDirty = false;
 	fAddressesInitialized = false;
@@ -2464,7 +2467,7 @@ bool CEDCConnman::Start(
 	{
         CNetAddr local;
         LookupHost("127.0.0.1", local, false);
-        pnodeLocalHost = new CEDCNode( GetNewNodeId(), nLocalServices, GetBestHeight(), INVALID_SOCKET, CAddress(CService(local, 0), nLocalServices));
+        pnodeLocalHost = new CEDCNode( GetNewNodeId(), nLocalServices, GetBestHeight(), INVALID_SOCKET, CAddress(CService(local, 0), nLocalServices), 0);
 		edcGetNodeSignals().InitializeNode(pnodeLocalHost->GetId(), pnodeLocalHost);
     }
 
@@ -2927,11 +2930,12 @@ CEDCNode::CEDCNode(
 					int nMyStartingHeightIn, 
 			     SOCKET hSocketIn, 
 	   const CAddress & addrIn, 
+			   uint64_t nKeyedNetGroupIn, 
 	const std::string & addrNameIn, 
 				   bool fInboundIn) :
     ssSend(SER_NETWORK, INIT_PROTO_VERSION),
     addr(addrIn),
-    nKeyedNetGroup(CalculateKeyedNetGroup(addrIn)),
+	nKeyedNetGroup(nKeyedNetGroupIn),
     addrKnown(5000, 0.001),
     filterInventoryKnown(50000, 0.000001)
 {
@@ -3156,11 +3160,12 @@ CEDCSSLNode::CEDCSSLNode(
 					int nMyStartingHeightIn, 
 		  		 SOCKET hSocketIn, 
 	   const CAddress & addrIn, 
+			   uint64_t nKeyedNetGroupIn, 
 	const std::string & addrNameIn, 
 				   bool fInboundIn,
 				  SSL * ssl ):
 		CEDCNode(id, nLocalServicesIn, nMyStartingHeightIn, hSocketIn, 
-				 addrIn, addrNameIn, fInboundIn ),
+				 addrIn, nKeyedNetGroupIn, addrNameIn, fInboundIn ),
 		ssl_(ssl)
 {
 }
@@ -3391,12 +3396,14 @@ ssize_t CEDCSSLNode::recv( void *buf, size_t len, int )
 	}
 }
 
-/* static */ uint64_t CEDCNode::CalculateKeyedNetGroup(const CAddress& ad)
+CSipHasher CEDCConnman::GetDeterministicRandomizer(uint64_t id)
 {
-    static const uint64_t k0 = GetRand(std::numeric_limits<uint64_t>::max());
-    static const uint64_t k1 = GetRand(std::numeric_limits<uint64_t>::max());
-
-    std::vector<unsigned char> vchNetGroup(ad.GetGroup());
-
-    return CSipHasher(k0, k1).Write(&vchNetGroup[0], vchNetGroup.size()).Finalize();
+    return CSipHasher(nSeed0, nSeed1).Write(id);
 }
+ 
+uint64_t CEDCConnman::CalculateKeyedNetGroup(const CAddress& ad)
+{
+     std::vector<unsigned char> vchNetGroup(ad.GetGroup());
+ 
+    return GetDeterministicRandomizer(RANDOMIZER_ID_NETGROUP).Write(&vchNetGroup[0], vchNetGroup.size()).Finalize();
+ }

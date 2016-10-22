@@ -12,6 +12,7 @@
 #include "amount.h"
 #include "edc/edcbloom.h"
 #include "compat.h"
+#include "hash.h"
 #include "limitedmap.h"
 #include "edcnetbase.h"
 #include "edcprotocol.h"
@@ -226,6 +227,7 @@ public:
 						int nMyStartingHeightIn,
 					 SOCKET hSocketIn, 
 		   const CAddress & addrIn, 
+				   uint64_t nKeyedNetGroupIn,
 		const std::string & addrNameIn = "", 
 					   bool fInboundIn = false);
     virtual ~CEDCNode();
@@ -240,8 +242,6 @@ public:
 private:
     CEDCNode(const CEDCNode&);
     void operator=(const CEDCNode&);
-
-	static uint64_t CalculateKeyedNetGroup(const CAddress& ad);
 
 	uint64_t nLocalHostNonce;
     ServiceFlags nLocalServices;
@@ -562,6 +562,7 @@ public:
 						 int nMyStartingHeightIn,
 					  SOCKET hSocketIn, 
 			const CAddress & addrIn, 
+				    uint64_t nKeyedNetGroupIn,
 		 const std::string & addrNameIn, 
 						bool fInboundIn, 
 					   SSL * = NULL );
@@ -621,7 +622,7 @@ public:
         uint64_t nMaxOutboundLimit = 0;
     };
 
-    CEDCConnman();
+    CEDCConnman(uint64_t seed0, uint64_t seed1);
     ~CEDCConnman();
 
     bool Start(	boost::thread_group& threadGroup, 
@@ -802,6 +803,9 @@ public:
     void SetBestHeight(int height);
     int GetBestHeight() const;
 
+    /** Get a unique deterministic randomizer. */
+    CSipHasher GetDeterministicRandomizer(uint64_t id);
+
 private:
     struct ListenSocket 
 	{
@@ -818,6 +822,8 @@ private:
     void AcceptConnection(const ListenSocket& hListenSocket);
     void ThreadSocketHandler();
     void ThreadDNSAddressSeed();
+
+    uint64_t CalculateKeyedNetGroup(const CAddress& ad);
 
     CEDCNode* FindNode(const CNetAddr& ip, bool );
     CEDCNode* FindNode(const CSubNet& subNet, bool );
@@ -897,6 +903,9 @@ private:
 	int nMaxFeeler;
     std::atomic<int> nBestHeight;
 	CEDCClientUIInterface * clientInterface;
+
+    /** SipHasher seeds for deterministic randomness */
+    const uint64_t nSeed0, nSeed1;
 };
 
 void edcSetLimited(enum Network net, bool fLimited);

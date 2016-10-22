@@ -642,7 +642,7 @@ bool EdcAppInit(
     	// ************************************* Step 6: network initialization
 
 		assert(!theApp.connman());
-		theApp.connman(new CEDCConnman());
+		theApp.connman(new CEDCConnman(GetRand(std::numeric_limits<uint64_t>::max()), GetRand(std::numeric_limits<uint64_t>::max())));
 		CEDCConnman & connman = *theApp.connman();
 
 	    RegisterNodeSignals(edcGetNodeSignals());
