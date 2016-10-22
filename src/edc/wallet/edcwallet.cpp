@@ -2703,7 +2703,7 @@ bool CEDCWallet::CreateTransaction(
                 // behavior."
                 BOOST_FOREACH(const PAIRTYPE(const CEDCWalletTx*,unsigned int)& coin, setCoins)
                     txNew.vin.push_back(CEDCTxIn(coin.first->GetHash(),coin.second,CScript(),
-						std::numeric_limits<unsigned int>::max() - (params.optintrofullrbf ? 2:1)));
+						std::numeric_limits<unsigned int>::max() - (params.walletrbf ? 2:1)));
 
                 // Sign
                 int nIn = 0;
@@ -4005,7 +4005,7 @@ std::string CEDCWallet::GetWalletHelpString(bool showDebug)
                                                                CURRENCY_UNIT, FormatMoney(DEFAULT_FALLBACK_FEE)));
     strUsage += HelpMessageOpt("-eb_mintxfee=<amt>", strprintf(_("Fees (in %s/kB) smaller than this are considered zero fee for transaction creation (default: %s)"),
                                                             CURRENCY_UNIT, FormatMoney(DEFAULT_TRANSACTION_MINFEE)));
-	strUsage += HelpMessageOpt("-eb_optintofullrbf", strprintf(_("Send transactions with full-RBF opt-in enabled (default: %u)"), EDC_DEFAULT_OPT_INTO_FULL_RBF));
+	strUsage += HelpMessageOpt("-eb_walletrbf", strprintf(_("Send transactions with full-RBF opt-in enabled (default: %u)"), EDC_DEFAULT_WALLET_RBF));
     strUsage += HelpMessageOpt("-eb_paytxfee=<amt>", strprintf(_("Fee (in %s/kB) to add to transactions you send (default: %s)"),
                                                             CURRENCY_UNIT, FormatMoney(theApp.payTxFee().GetFeePerK())));
 	strUsage += HelpMessageOpt("-eb_prematurewitness", _("Enable transactions with witness"));

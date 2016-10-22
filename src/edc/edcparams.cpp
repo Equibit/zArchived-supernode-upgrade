@@ -216,7 +216,6 @@ EDCparams::EDCparams()
 	logtimestamps       = GetBoolArg( "-eb_logtimestamps", EDC_DEFAULT_LOGTIMESTAMPS );
 	mempoolreplacement  = GetBoolArg( "-eb_mempoolreplacement", EDC_DEFAULT_ENABLE_REPLACEMENT );
 	nodebug             = GetBoolArg( "-eb_nodebug", false );
-	optintrofullrbf		= GetBoolArg( "-eb_optintofullrbf", EDC_DEFAULT_OPT_INTO_FULL_RBF);
 	printpriority       = GetBoolArg( "-eb_printpriority", EDC_DEFAULT_PRINTPRIORITY );
 	printtoconsole      = GetBoolArg( "-eb_printtoconsole", false );
 	privdb              = GetBoolArg( "-eb_privdb", EDC_DEFAULT_WALLET_PRIVDB );
@@ -242,6 +241,7 @@ EDCparams::EDCparams()
 	walletbroadcast     = GetBoolArg( "-eb_walletbroadcast", EDC_DEFAULT_WALLETBROADCAST );
 	walletprematurewitness
 						= GetBoolArg( "-eb_walletprematurewitness", false );
+	walletrbf		    = GetBoolArg( "-eb_walletrbf", EDC_DEFAULT_WALLET_RBF);
 	whitelistrelay      = GetBoolArg( "-eb_whitelistrelay", EDC_DEFAULT_WHITELISTRELAY );
 	whitelistforcerelay = GetBoolArg( "-eb_whitelistforcerelay", EDC_DEFAULT_WHITELISTFORCERELAY );
 	zapwallettxes       = GetBoolArg( "-eb_zapwallettxes", false );
@@ -975,8 +975,6 @@ void EDCparams::dumpToLog() const
 	edcLogPrintf( "eb_onion                  \"%s\"\n", onion.c_str() );
 	printStrVec( "eb_onlynet               ", onlynet );
 
-	edcLogPrintf( "eb_optintrofullrbf        %s\n", toString(optintrofullrbf) );
-
 	edcLogPrintf( "eb_par                    %lld\n", par );
 	edcLogPrintf( "eb_paytxfee               \"%s\"\n", paytxfee.c_str() );
 	edcLogPrintf( "eb_peerbloomfilters       %s\n", toString(peerbloomfilters) );
@@ -1033,8 +1031,9 @@ void EDCparams::dumpToLog() const
 
 	edcLogPrintf( "eb_wallet                 \"%s\"\n", wallet.c_str() );
 	edcLogPrintf( "eb_walletbroadcast        %s\n", toString( walletbroadcast) );
-	edcLogPrintf( "eb_walletprematurewitness %s\n", toString( walletprematurewitness ) );
 	edcLogPrintf( "eb_walletnotify           \"%s\"\n", walletnotify.c_str() );
+	edcLogPrintf( "eb_walletprematurewitness %s\n", toString( walletprematurewitness ) );
+	edcLogPrintf( "eb_walletrbf              %s\n", toString(walletrbf) );
 	printStrVec( "eb_whitebind             ", whitebind );
 	printStrVec( "eb_whitelist             ", whitelist );
 	edcLogPrintf( "eb_whitelistforcerelay    %s\n", toString( whitelistforcerelay) );
@@ -1121,7 +1120,6 @@ void EDCparams::checkParams() const
 	validparams.insert("-nodebug");
 	validparams.insert("-onion");
 	validparams.insert("-onlynet");
-	validparams.insert("-optintrofullrbf");
 	validparams.insert("-par");
 	validparams.insert("-paytxfee");
 	validparams.insert("-peerbloomfilters");
@@ -1175,6 +1173,7 @@ void EDCparams::checkParams() const
 	validparams.insert("-walletbroadcast");
 	validparams.insert("-walletnotify");
 	validparams.insert("-walletprematurewitness");
+	validparams.insert("-walletrbf");
 	validparams.insert("-whitebind");
 	validparams.insert("-whitelist");
 	validparams.insert("-whitelistforcerelay");
@@ -1253,7 +1252,6 @@ void EDCparams::checkParams() const
 	validparams.insert("-eb_nodebug");
 	validparams.insert("-eb_onion");
 	validparams.insert("-eb_onlynet");
-	validparams.insert("-eb_optintrofullrbf");
 	validparams.insert("-eb_par");
 	validparams.insert("-eb_paytxfee");
 	validparams.insert("-eb_peerbloomfilters");
@@ -1309,6 +1307,7 @@ void EDCparams::checkParams() const
 	validparams.insert("-eb_walletbroadcast");
 	validparams.insert("-eb_walletnotify");
 	validparams.insert("-eb_walletprematurewitness");
+	validparams.insert("-eb_walletrbf");
 	validparams.insert("-eb_whitebind");
 	validparams.insert("-eb_whitelist");
 	validparams.insert("-eb_whitelistforcerelay");
