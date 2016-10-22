@@ -684,6 +684,8 @@ public:
 
     bool CommitTransaction(CEDCWalletTx& wtxNew, CEDCReserveKey& reservekey, CEDCConnman * connman);
 
+	void ListAccountCreditDebit(const std::string& strAccount, std::list<CAccountingEntry>& entries);
+
     bool AddAccountingEntry(const CAccountingEntry&, CEDCWalletDB & pwalletdb);
 
     static CFeeRate minTxFee;

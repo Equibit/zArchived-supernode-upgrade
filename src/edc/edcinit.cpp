@@ -37,9 +37,9 @@ extern std::atomic<bool> fRequestShutdown;
 namespace
 {
 
-const char *FEE_ESTIMATES_FILENAME	= "fee_estimates.dat";
-bool 		fFeeEstimatesInitialized= false;
-uint64_t 	MAX_UPLOAD_TIMEFRAME 	= 60 * 60 * 24;
+const char *FEE_ESTIMATES_FILENAME	 = "fee_estimates.dat";
+bool 		fFeeEstimatesInitialized = false;
+uint64_t 	EDC_MAX_UPLOAD_TIMEFRAME = 60 * 60 * 24;
 
 
 void BlockNotifyCallback(
@@ -809,7 +809,7 @@ bool EdcAppInit(
         	theApp.connman()->AddOneShot(strDest);
 
 	    uint64_t nMaxOutboundLimit = 0; //unlimited unless -maxuploadtarget is set
-    	uint64_t nMaxOutboundTimeframe = MAX_UPLOAD_TIMEFRAME;
+    	uint64_t nMaxOutboundTimeframe = EDC_MAX_UPLOAD_TIMEFRAME;
 
     	if (params.maxuploadtarget > 0 ) 
 		{

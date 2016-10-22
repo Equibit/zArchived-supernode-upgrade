@@ -2843,6 +2843,14 @@ bool CEDCWallet::CommitTransaction(
     return true;
 }
 
+void CEDCWallet::ListAccountCreditDebit(
+	const std::string& strAccount, 
+	std::list<CAccountingEntry>& entries) 
+{
+    CEDCWalletDB walletdb(strWalletFile);
+    return walletdb.ListAccountCreditDebit(strAccount, entries);
+}
+
 bool CEDCWallet::AddAccountingEntry(const CAccountingEntry& acentry, CEDCWalletDB & pwalletdb)
 {
     if (!pwalletdb.WriteAccountingEntry_Backend(acentry))
