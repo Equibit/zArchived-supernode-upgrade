@@ -793,7 +793,7 @@ bool CEDCWallet::AccountMove(
     debit.nTime = nNow;
     debit.strOtherAccount = strTo;
     debit.strComment = strComment;
-    theApp.walletMain()->AddAccountingEntry(debit, walletdb);
+    AddAccountingEntry(debit, &walletdb);
 
     // Credit
     CAccountingEntry credit;
@@ -803,7 +803,7 @@ bool CEDCWallet::AccountMove(
     credit.nTime = nNow;
     credit.strOtherAccount = strFrom;
     credit.strComment = strComment;
-    theApp.walletMain()->AddAccountingEntry(credit, walletdb);
+    AddAccountingEntry(credit, &walletdb);
 
     if (!walletdb.TxnCommit())
 		return false;
@@ -2857,9 +2857,16 @@ void CEDCWallet::ListAccountCreditDebit(
     return walletdb.ListAccountCreditDebit(strAccount, entries);
 }
 
-bool CEDCWallet::AddAccountingEntry(const CAccountingEntry& acentry, CEDCWalletDB & pwalletdb)
+bool CEDCWallet::AddAccountingEntry(const CAccountingEntry& acentry)
 {
-    if (!pwalletdb.WriteAccountingEntry_Backend(acentry))
+	CEDCWalletDB walletdb(strWalletFile);
+
+	return AddAccountingEntry( acentry, &walletdb );
+}
+
+bool CEDCWallet::AddAccountingEntry(const CAccountingEntry& acentry, CEDCWalletDB * pwalletdb )
+{
+	if(!pwalletdb->WriteAccountingEntry_Backend(acentry))
         return false;
 
     laccentries.push_back(acentry);
