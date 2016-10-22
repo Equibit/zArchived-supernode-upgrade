@@ -373,7 +373,7 @@ void CEDCNode::PushVersion()
 	CAddress addrYou = (addr.IsRoutable() && !edcIsProxy(addr) ? addr : 
 		CAddress(CService(), addr.nServices));
 
-    CAddress addrMe = edcGetLocalAddress(&addr, nLocalServices);
+    CAddress addrMe = CAddress(CService(), nLocalServices);
 
     if (params.logips)
         edcLogPrint("net", "send version message: version %d, blocks=%d, us=%s, them=%s, peer=%d\n", PROTOCOL_VERSION, nMyStartingHeight, addrMe.ToString(), addrYou.ToString(), id);
