@@ -762,6 +762,12 @@ int64_t CEDCWallet::IncOrderPosNext(CEDCWalletDB *pwalletdb)
     return nRet;
 }
 
+DBErrors CEDCWallet::ReorderTransactions()
+{
+    CEDCWalletDB walletdb(strWalletFile);
+    return walletdb.ReorderTransactions(this);
+}
+
 int64_t edcGetAdjustedTime();
 
 bool CEDCWallet::AccountMove(
