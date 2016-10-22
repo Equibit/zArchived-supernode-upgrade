@@ -632,14 +632,90 @@ public:
 	bool CheckIncomingNonce(uint64_t nonce);
 
     bool ForNode(NodeId id, std::function<bool(CEDCNode* pnode)> func);
-    bool ForEachNodeContinueIf(std::function<bool(CEDCNode* pnode)> func);
-    bool ForEachNodeContinueIf(std::function<bool(const CEDCNode* pnode)> func) const;
-    bool ForEachNodeContinueIfThen(std::function<bool(CEDCNode* pnode)> pre, std::function<void()> post);
-    bool ForEachNodeContinueIfThen(std::function<bool(const CEDCNode* pnode)> pre, std::function<void()> post) const;
-    void ForEachNode(std::function<void(CEDCNode* pnode)> func);
-    void ForEachNode(std::function<void(const CEDCNode* pnode)> func) const;
-    void ForEachNodeThen(std::function<void(CEDCNode* pnode)> pre, std::function<void()> post);
-    void ForEachNodeThen(std::function<void(const CEDCNode* pnode)> pre, std::function<void()> post) const;
+
+    template<typename Callable>
+    bool ForEachNodeContinueIf(Callable&& func)
+    {
+        LOCK(cs_vNodes);
+        for (auto&& node : vNodes)
+            if(!func(node))
+                return false;
+        return true;
+    };
+
+    template<typename Callable>
+    bool ForEachNodeContinueIf(Callable&& func) const
+    {
+        LOCK(cs_vNodes);
+        for (const auto& node : vNodes)
+            if(!func(node))
+                return false;
+        return true;
+    };
+
+    template<typename Callable, typename CallableAfter>
+    bool ForEachNodeContinueIfThen(Callable&& pre, CallableAfter&& post)
+    {
+        bool ret = true;
+        LOCK(cs_vNodes);
+        for (auto&& node : vNodes)
+            if(!pre(node)) 
+			{
+                ret = false;
+                break;
+            }
+        post();
+        return ret;
+    };
+
+    template<typename Callable, typename CallableAfter>
+    bool ForEachNodeContinueIfThen(Callable&& pre, CallableAfter&& post) const
+    {
+        bool ret = true;
+        LOCK(cs_vNodes);
+        for (const auto& node : vNodes)
+            if(!pre(node)) 
+			{
+                ret = false;
+                break;
+            }
+        post();
+        return ret;
+    };
+
+    template<typename Callable>
+    void ForEachNode(Callable&& func)
+    {
+        LOCK(cs_vNodes);
+        for (auto&& node : vNodes)
+            func(node);
+    };
+
+    template<typename Callable>
+    void ForEachNode(Callable&& func) const
+    {
+        LOCK(cs_vNodes);
+        for (const auto& node : vNodes)
+            func(node);
+    };
+
+    template<typename Callable, typename CallableAfter>
+    void ForEachNodeThen(Callable&& pre, CallableAfter&& post)
+    {
+        LOCK(cs_vNodes);
+        for (auto&& node : vNodes)
+            pre(node);
+        post();
+    };
+
+    template<typename Callable, typename CallableAfter>
+    void ForEachNodeThen(Callable&& pre, CallableAfter&& post) const
+    {
+        LOCK(cs_vNodes);
+        for (const auto& node : vNodes)
+            pre(node);
+        post();
+    };
 
     void RelayTransaction(const CEDCTransaction& tx);
 
