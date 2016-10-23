@@ -389,8 +389,6 @@ UniValue edcremoveprunedfunds(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Transaction does not exist in wallet.");
     }
 
-    edcThreadFlushWalletDB(theApp.walletMain()->strWalletFile);
-
     return NullUniValue;
 }
 
