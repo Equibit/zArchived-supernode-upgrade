@@ -73,10 +73,10 @@ TEST_FILES = \
 	$(TEST_DATA_DIR)/fail35.json \
 	$(TEST_DATA_DIR)/fail36.json \
 	$(TEST_DATA_DIR)/fail37.json \
-    $(TEST_DATA_DIR)/fail38.json \
-    $(TEST_DATA_DIR)/fail39.json \
-    $(TEST_DATA_DIR)/fail40.json \
-    $(TEST_DATA_DIR)/fail41.json \
+	$(TEST_DATA_DIR)/fail38.json \
+	$(TEST_DATA_DIR)/fail39.json \
+	$(TEST_DATA_DIR)/fail40.json \
+	$(TEST_DATA_DIR)/fail41.json \
 	$(TEST_DATA_DIR)/fail3.json \
 	$(TEST_DATA_DIR)/fail4.json \
 	$(TEST_DATA_DIR)/fail5.json \

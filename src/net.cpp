@@ -762,6 +762,14 @@ int CNetMessage::readData(const char *pch, unsigned int nBytes)
     return nCopy;
 }
 
+
+
+
+
+
+
+
+
 // requires LOCK(cs_vSend)
 size_t SocketSendData(CNode *pnode)
 {

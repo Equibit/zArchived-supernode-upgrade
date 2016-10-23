@@ -6301,6 +6301,8 @@ bool ProcessMessage(
                 vWorkQueue.emplace_back(inv.hash, i);
             }
 
+			pfrom->nLastTXTime = GetTime();
+
             edcLogPrint("mempool", "AcceptToMemoryPool: peer=%d: accepted %s (poolsz %u txn, %u kB)\n",
                 pfrom->id,
                 tx.GetHash().ToString(),

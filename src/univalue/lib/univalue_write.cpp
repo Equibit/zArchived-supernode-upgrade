@@ -21,7 +21,6 @@ static string json_escape(const string& inS)
 
         if (escStr)
             outS += escStr;
-
         else
             outS += ch;
     }

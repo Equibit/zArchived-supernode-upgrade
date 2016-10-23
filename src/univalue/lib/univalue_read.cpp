@@ -175,10 +175,10 @@ enum jtokentype getJsonToken(string& tokenVal, unsigned int& consumed,
         raw++;                                // skip "
 
         string valStr;
-		JSONUTF8StringFilter writer(valStr);	
+        JSONUTF8StringFilter writer(valStr);
 
         while (*raw) {
-			if ((unsigned char)*raw < 0x20)
+            if ((unsigned char)*raw < 0x20)
                 return JTOK_ERR;
 
             else if (*raw == '\\') {
@@ -194,14 +194,12 @@ enum jtokentype getJsonToken(string& tokenVal, unsigned int& consumed,
                 case 'r':  writer.push_back('\r'); break;
                 case 't':  writer.push_back('\t'); break;
 
-
                 case 'u': {
                     unsigned int codepoint;
                     if (hatoui(raw + 1, raw + 1 + 4, codepoint) !=
                                raw + 1 + 4)
                         return JTOK_ERR;
-
-					writer.push_back_u(codepoint);
+                    writer.push_back_u(codepoint);
                     raw += 4;
                     break;
                     }
@@ -219,7 +217,7 @@ enum jtokentype getJsonToken(string& tokenVal, unsigned int& consumed,
             }
 
             else {
-				writer.push_back(*raw);
+                writer.push_back(*raw);
                 raw++;
             }
         }

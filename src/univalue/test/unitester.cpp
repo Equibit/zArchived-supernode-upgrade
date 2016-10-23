@@ -21,7 +21,8 @@ using namespace std;
 string srcdir(JSON_TEST_SRC);
 static bool test_failed = false;
 
-#define d_assert(expr) { if (!(expr)) { test_failed = true; fprintf(stderr, "%s failed\n", __func__); } }
+#define d_assert(expr) { if (!(expr)) { test_failed = true; fprintf(stderr, "%s failed\n", filename.c_str()); } }
+#define f_assert(expr) { if (!(expr)) { test_failed = true; fprintf(stderr, "%s failed\n", __func__); } }
 
 static std::string rtrim(std::string s)
 {
@@ -123,7 +124,7 @@ static const char *filenames[] = {
         "pass2.json",
         "pass3.json",
         "round1.json",              // round-trip test
-		"round2.json",              // unicode
+        "round2.json",              // unicode
 };
 
 // Test \u handling

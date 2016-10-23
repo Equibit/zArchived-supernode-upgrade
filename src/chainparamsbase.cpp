@@ -33,7 +33,7 @@ public:
     CBaseMainParams()
     {
         nRPCPort = 8332;
-        edcnRPCPort = 8331;
+        edcnRPCPort = 8331;	// EDC
     }
 };
 static CBaseMainParams mainParams;
@@ -47,7 +47,7 @@ public:
     CBaseTestNetParams()
     {
         nRPCPort = 18332;
-        edcnRPCPort = 18331;
+        edcnRPCPort = 18331;	// EDC
         strDataDir = "testnet3";
     }
 };
@@ -62,7 +62,7 @@ public:
     CBaseRegTestParams()
     {
         nRPCPort = 18332;
-        edcnRPCPort = 18331;
+        edcnRPCPort = 18331;	// EDC
         strDataDir = "regtest";
     }
 };
