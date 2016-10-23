@@ -4250,6 +4250,17 @@ bool CEDCWallet::ParameterInteraction()
 {
 	EDCparams & params = EDCparams::singleton();
 
+    if (params.blocksonly && params.walletbroadcast) 
+	{
+		params.walletbroadcast = false;
+        edcLogPrintf("%s: parameter interaction: -blocksonly=1 -> setting -walletbroadcast=0\n", __func__);
+    }
+
+    if (GetBoolArg("-sysperms", false))
+        return edcInitError("-sysperms is not allowed in combination with enabled wallet functionality");
+    if (params.prune && params.rescan)
+        return edcInitError(_("Rescans are not possible in pruned mode. You will need to use -reindex which will download the whole blockchain again."));
+
     if ( params.mintxfee.size() > 0 )
     {
         CAmount n = 0;

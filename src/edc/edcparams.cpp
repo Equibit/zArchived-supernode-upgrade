@@ -782,13 +782,7 @@ bool EDCparams::validate()
         	whitelistrelay = false;
 	        edcLogPrintf("%s: parameter interaction: -eb_blocksonly=1 -> setting -eb_whitelistrelay=0\n", __func__);
 		}
-#ifdef ENABLE_WALLET
-        if( mapArgs.count( "-eb_walletbroadcast" ) == 0 )
-		{
-        	walletbroadcast = false;
-	        edcLogPrintf("%s: parameter interaction: -eb_blocksonly=1 -> setting -eb_walletbroadcast=0\n", __func__);
-		}
-#endif
+		// walletbroadcast is disabled in CEDCWallet::ParameterInteraction()
     }
 
     // Forcing relay from whitelisted hosts implies we will accept relays from them in the first place.
@@ -801,32 +795,16 @@ bool EDCparams::validate()
 		}
     }
 
-	if (GetBoolArg( "-sysperms", false))
-    {
-#ifdef ENABLE_WALLET
-        if (!disablewallet)
-            return edcInitError("-sysperms is not allowed in combination "
-                "with enabled wallet functionality");
-#endif
-    }
-    else
+	if (!GetBoolArg( "-sysperms", false))
     {
         umask(077);
     }
 
-    // if using block pruning, then disable txindex
+    // if using block pruning, then disallow txindex
     if ( prune ) 
 	{
         if (txindex)
             return edcInitError(_("Prune mode is incompatible with -eb_txindex."));
-#ifdef ENABLE_WALLET
-        if (rescan) 
-		{
-            return edcInitError(_("Rescans are not possible in pruned mode. "
-				"You will need to use -eb_reindex which will download the whole "
-				"blockchain again."));
-        }
-#endif
     }
 
     // mempool limits
@@ -1157,6 +1135,7 @@ void EDCparams::checkParams() const
 	validparams.insert("-shrinkdebugfile");
 	validparams.insert("-spendzeroconfchange");
 	validparams.insert("-stopafterblockimport");
+	validparams.insert("-sysperms");
 	validparams.insert("-testnet");
 	validparams.insert("-testsafemode");
 	validparams.insert("-timeout");
