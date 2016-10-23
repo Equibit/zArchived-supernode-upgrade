@@ -44,6 +44,7 @@ const char * const EDC_DEFAULT_CONF_FILENAME           = "equibit.conf";
 const unsigned int EDC_DEFAULT_DESCENDANT_LIMIT        = 25;
 const unsigned int EDC_DEFAULT_DESCENDANT_SIZE_LIMIT   = 101;
 const bool         EDC_DEFAULT_DISABLE_SAFEMODE        = false;
+const bool         EDC_DEFAULT_DISABLE_WALLET          = false;
 
 const bool         EDC_DEFAULT_ENABLE_REPLACEMENT      = true;
 
@@ -203,6 +204,7 @@ EDCparams::EDCparams()
 	checkpoints         = GetBoolArg( "-eb_checkpoints", EDC_DEFAULT_CHECKPOINTS_ENABLED );
 	datacarrier         = GetBoolArg( "-eb_datacarrier", EDC_DEFAULT_ACCEPT_DATACARRIER );
 	disablesafemode     = GetBoolArg( "-eb_disablesafemode", EDC_DEFAULT_DISABLE_SAFEMODE );
+	disablewallet       = GetBoolArg( "-eb_disablewallet", EDC_DEFAULT_DISABLE_WALLET );
 	discover            = GetBoolArg( "-eb_discover", true );
 	dns                 = GetBoolArg( "-eb_dns", true );
 	dnsseed             = GetBoolArg( "-eb_dnsseed", true );
