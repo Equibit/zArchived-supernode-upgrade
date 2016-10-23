@@ -244,6 +244,7 @@ private:
     void operator=(const CEDCNode&);
 
 	uint64_t nLocalHostNonce;
+	// Services offered to this peer
     ServiceFlags nLocalServices;
 	int nMyStartingHeight;
 public:
