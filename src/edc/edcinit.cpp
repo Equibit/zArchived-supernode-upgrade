@@ -472,9 +472,7 @@ bool EdcAppInit(
     	edcRegisterAllCoreRPCCommands(edcTableRPC);
 
 #ifdef ENABLE_WALLET
-    	bool fDisableWallet = params.disablewallet;
-    	if (!fDisableWallet)
-        	edcRegisterWalletRPCCommands(edcTableRPC);
+       	edcRegisterWalletRPCCommands(edcTableRPC);
 #endif
 	    theApp.connectTimeout( params.timeout );
    	 	if ( theApp.connectTimeout() <= 0)
@@ -495,9 +493,9 @@ bool EdcAppInit(
             	return edcInitError(AmountErrMsg("eb_minrelaytxfee", params.minrelaytxfee));
     	}
 #ifdef ENABLE_WALLET
-		if (!fDisableWallet && !CEDCWallet::ParameterInteraction())
+		if (!CEDCWallet::ParameterInteraction())
    			return false;
-#endif // ENABLE_WALLET
+#endif
 
 	    ServiceFlags nLocalServices = NODE_NETWORK;
     	ServiceFlags nRelevantServices = NODE_NETWORK;
@@ -632,12 +630,9 @@ bool EdcAppInit(
 
     	// **************************** Step 5: verify wallet database integrity
 #ifdef ENABLE_WALLET
-    	if (!fDisableWallet) 
-		{
-        	if (!CEDCWallet::Verify())
-            	return false;
-    	}
-#endif // ENABLE_WALLET
+       	if (!CEDCWallet::Verify())
+           	return false;
+#endif
 
     	// ************************************* Step 6: network initialization
 
@@ -1046,17 +1041,8 @@ bool EdcAppInit(
 
     	// ************************************************* Step 8: load wallet
 #ifdef ENABLE_WALLET
-    	if (fDisableWallet) 
-		{
-        	theApp.walletMain( NULL );
-        	edcLogPrintf("Wallet disabled!\n");
-    	} 
-		else 
-		{
-        	CEDCWallet::InitLoadWallet();
-        	if (!theApp.walletMain())
-            	return false;
-    	}
+       	if(!CEDCWallet::InitLoadWallet())
+           	return false;
 #else 
     	edcLogPrintf("No wallet support compiled in!\n");
 #endif 

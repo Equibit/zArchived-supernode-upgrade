@@ -476,9 +476,12 @@ void CEDCWallet::Flush(bool shutdown)
 bool CEDCWallet::Verify()
 {
 	EDCapp & theApp = EDCapp::singleton();
+	EDCparams & params = EDCparams::singleton();
+
+	if( params.disablewallet )
+		return true;
 
     edcLogPrintf("Using BerkeleyDB version %s\n", DbEnv::version(0, 0, 0));
-	EDCparams & params = EDCparams::singleton();
     std::string walletFile = params.wallet;
 
     edcLogPrintf("Using wallet %s\n", walletFile);
@@ -4061,6 +4064,14 @@ bool CEDCWallet::InitLoadWallet()
 {	
 	EDCapp & theApp = EDCapp::singleton();
 	EDCparams & params = EDCparams::singleton();
+
+    if (params.disablewallet) 
+	{
+    	theApp.walletMain( NULL );
+        edcLogPrintf("Wallet disabled!\n");
+        return true;
+    }
+
     std::string walletFile = params.wallet;
 
     // needed to restore wallet transaction meta data after -eb_zapwallettxes
@@ -4249,6 +4260,9 @@ bool CEDCWallet::InitLoadWallet()
 bool CEDCWallet::ParameterInteraction()
 {
 	EDCparams & params = EDCparams::singleton();
+
+    if (params.disablewallet)
+        return true;
 
     if (params.blocksonly && params.walletbroadcast) 
 	{

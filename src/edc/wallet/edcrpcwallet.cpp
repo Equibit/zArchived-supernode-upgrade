@@ -3070,6 +3070,10 @@ static const CRPCCommand edcCommands[] =
 
 void edcRegisterWalletRPCCommands(CEDCRPCTable & t)
 {
+	EDCparams & params = EDCparams::singleton();
+    if (params.disablewallet)
+        return;
+
     for (unsigned int vcidx = 0; vcidx < ARRAYLEN(edcCommands); vcidx++)
         t.appendCommand(edcCommands[vcidx].name, &edcCommands[vcidx]);
 }
