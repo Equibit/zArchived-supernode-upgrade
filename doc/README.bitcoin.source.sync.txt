@@ -5,7 +5,7 @@ How to sync equibit source tree to bitcoin source tree:
 
 	git clone https://github.com/bitcoin/bitcoin.git
 
-1) Use 
+1) In the bitcoin clone base directory, use 
 
 		git log -p > change.log
 
@@ -14,10 +14,11 @@ How to sync equibit source tree to bitcoin source tree:
 2) Compare the list of commits contained in log generated in step 1
    to the list of commits from the previous clone (listed below).
    Note that the list of new commits could be arbitrarily old, not 
-   just after the last update.
+   just after the last source sync. This is a property of distributed
+   source control systems such as git.
 
-3) For each new commit, apply it to the equibit tree. If the files
-   affected have an edc version (for example, src/main.cpp has
+3) For each new commit, apply it to the bitcoin file(s) in the equibit tree. 
+   If the files affected have an edc version (for example, src/main.cpp has
    edc version src/edc/edcmain.cpp ), then apply the equivalent
    change to the edc version.
 
@@ -25,9 +26,11 @@ How to sync equibit source tree to bitcoin source tree:
 
 	git  ls-tree --full-tree -r HEAD
 
+   for both trees.
+
 5) Make sure the difference in the files contained in the two source tree 
    are accounted for. The equibit tree should contain the extra files for
-   the edc implementation and Thales files.
+   documentation, the edc implementation and Thales files.
 
 6) For all files contained in both trees, make sure the differences
    make sense. Equibit changes to bitcoin files should be marked with
@@ -36,6 +39,8 @@ How to sync equibit source tree to bitcoin source tree:
 	// EDC
 
    comment.
+
+7) Update this file with the git commit list for the new clone.
 
 -------------------------------------------------------------------------------
 September 22: bitcoin commit list

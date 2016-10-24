@@ -745,11 +745,11 @@ UniValue edcsignmessage(const UniValue& params, bool fHelp)
 
     CEDCBitcoinAddress addr(strAddress);
     if (!addr.IsValid())
-        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
 
     CKeyID keyID;
     if (!addr.GetKeyID(keyID))
-        throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to key");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Address does not refer to key");
 
     CKey key;
     if (!theApp.walletMain()->GetKey(keyID, key))
@@ -770,7 +770,7 @@ UniValue edcsignmessage(const UniValue& params, bool fHelp)
 
    		 		if (!NFast::sign( *theApp.nfHardServer(), *theApp.nfModule(), 
 				hsmid, ss.GetHash().begin(), 256, vchSig))
-       				return false;
+        			throw JSONRPCError(RPC_MISC_ERROR, "HSM Sign failed");
 	
 				secp256k1_ecdsa_signature sig;
 				memcpy( sig.data, vchSig.data(), sizeof(sig.data));
@@ -784,12 +784,14 @@ UniValue edcsignmessage(const UniValue& params, bool fHelp)
 	
     			return EncodeBase64(&vchSig[0], vchSig.size());
 			}
+			else
+        		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Address does not refer to key");
 		}
 		else
-    		throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM processing disabled. "
+    		throw JSONRPCError(RPC_MISC_ERROR, "Error: HSM processing disabled. "
 				"Use -eb_usehsm command line option to enable HSM processing" );
 #endif
-        throw JSONRPCError(RPC_WALLET_ERROR, "Private key not available");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Private key not available");
 	}
 
     CHashWriter ss(SER_GETHASH, 0);
@@ -798,7 +800,7 @@ UniValue edcsignmessage(const UniValue& params, bool fHelp)
 
     vector<unsigned char> vchSig;
     if (!key.SignCompact(ss.GetHash(), vchSig))
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Sign failed");
+        throw JSONRPCError(RPC_MISC_ERROR, "Sign failed");
 
     return EncodeBase64(&vchSig[0], vchSig.size());
 }

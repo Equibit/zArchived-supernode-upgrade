@@ -7,8 +7,38 @@
 #include "edc/rpc/edcserver.h"
 #include "utilstrencodings.h"
 #include "edc/edcbase58.h"
-#include "./edc/edcnet.h"
+#include "edc/edcnet.h"
+#include "edc/edcmain.h"
+#include "edc/wallet/edcwallet.h"
 #include "edc/message/edcmessage.h"
+
+#ifdef USE_HSM
+
+#include "edc/edcparams.h"
+#include "Thales/interface.h"
+#include <secp256k1.h>
+
+namespace
+{
+secp256k1_context   * secp256k1_context_verify;
+
+struct Verifier
+{
+    Verifier()
+    {
+        secp256k1_context_verify = secp256k1_context_create(SECP256K1_CONTEXT_VERIFY);
+    }
+    ~Verifier()
+    {
+        secp256k1_context_destroy(secp256k1_context_verify);
+    }
+};
+
+Verifier    verifier;
+
+}
+
+#endif
 
 namespace
 {
@@ -202,12 +232,12 @@ UniValue edcrequestwotcertificate(const UniValue& params, bool fHelp)
 	{
 		CPubKey vchPubKey(ParseHex(pubkey));
 		if (!vchPubKey.IsFullyValid())
-			throw std::runtime_error("Invalid public key: " + pubkey );
+			throw JSONRPCError( RPC_INVALID_ADDRESS_OR_KEY, "Invalid public key: " + pubkey );
 		pk = vchPubKey;
 	}
 	else
 	{
-		throw std::runtime_error("Invalid public key: " + pubkey );
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid public key: " + pubkey );
 	}
 
 	// Convert signer address string to bitcoin address
@@ -318,6 +348,74 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
 		semail,
 		shttp,
 		expire );
+
+	// Sign the certificate
+	//
+	EDCapp & theApp = EDCapp::singleton();
+	EDCparams & theParams = EDCparams::singleton();
+
+    CEDCBitcoinAddress addr(saddr);
+    if (!addr.IsValid())
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
+
+    CKeyID keyID;
+    if (!addr.GetKeyID(keyID))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to key");
+
+	LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
+
+	edcEnsureWalletIsUnlocked();
+
+	std::vector<unsigned char> vchSig;
+
+	CKey key;
+	if(theApp.walletMain()->GetKey( keyID, key))
+	{
+	    CHashWriter ss(SER_GETHASH, 0);
+   	 	ss << cert;
+
+    	std::vector<unsigned char> vchSig;
+	    if (!key.Sign(ss.GetHash(), vchSig))
+			throw JSONRPCError(RPC_MISC_ERROR, "Sign failed");
+
+	}
+	else	// else, attempt to use HSM key 
+	{
+#ifdef USE_HSM
+		if( theParams.usehsm )
+		{
+	    	CHashWriter ss(SER_GETHASH, 0);
+	   	 	ss << cert;
+
+			std::string hsmID;
+			if(theApp.walletMain()->GetHSMKey(keyID, hsmID ))
+            {
+        		if (!NFast::sign( *theApp.nfHardServer(), *theApp.nfModule(),
+	        	hsmID, ss.GetHash().begin(), 256, vchSig ))
+   	        		throw JSONRPCError( RPC_MISC_ERROR, "Sign failed");
+
+            	secp256k1_ecdsa_signature sig;
+            	memcpy( sig.data, vchSig.data(), sizeof(sig.data));
+
+            	secp256k1_ecdsa_signature_normalize( secp256k1_context_verify, &sig, &sig );
+   
+            	vchSig.resize(72);
+            	size_t nSigLen = 72;
+
+            	secp256k1_ecdsa_signature_serialize_der( secp256k1_context_verify, 
+					(unsigned char*)&vchSig[0], &nSigLen,&sig);
+            	vchSig.resize(nSigLen);
+            	vchSig.push_back((unsigned char)SIGHASH_ALL);
+
+			}
+			else
+				throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Address does not refer to key");
+		}
+		else
+			throw JSONRPCError(RPC_MISC_ERROR, "Error: HSM processing disabled. "
+                "Use -eb_usehsm command line option to enable HSM processing" );
+#endif
+	}
 
 	// TODO:
 
