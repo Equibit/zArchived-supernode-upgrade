@@ -1,0 +1,17 @@
+#
+# The purpose of this script is used to ensure the Thales HSM is properly 
+# configured.
+#
+# The first two commands stop and re-start the Thales server process.
+# The third step (enquiry) outputs the current status of the server and
+# connected HSM. Make sure the line starting with 'serial number' contains
+# a serial number. If 'serial number' is not followed by a 'serial number'
+# then make sure the HSM is properly connected to the machine are re-run
+# this script.
+#
+# NOTE: HSM key processing cannot be done by a Equibit server unless an HSM
+#       is properly configured.
+#
+sudo /opt/nfast/sbin/init.d-ncipher stop
+sudo /opt/nfast/sbin/init.d-ncipher start
+enquiry

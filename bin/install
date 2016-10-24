@@ -1,0 +1,24 @@
+#
+# Build Equibit binaries and copy them here
+#
+
+echo "Build Equibit binaries"
+
+cd ../src;build
+cd -
+
+echo "Copy Equibit binaries"
+
+cp ../src/bitcoind . 
+cp ../src/bitcoin-cli . 
+
+
+echo "Build Thales interface shared library"
+
+cd ../src/Thales;make
+cd -
+
+echo "Copy Thales interface shared library"
+
+mkdir -f Thales
+cp ../src/Thales/libnfast.so Thales
