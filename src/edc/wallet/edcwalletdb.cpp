@@ -59,6 +59,7 @@ const std::string USER_MSG          = "user_msg";          // USER_MSG:(tag:hash
 const std::string VERSION           = "version";           // VERSION/version
 const std::string WATCHS            = "watchs";            // WATCHS/dest
 const std::string WKEY              = "wkey";              // WKEY/pub-key
+const std::string WOTCERT           = "wotcert";           // WOTCERT/pubkey
 }
 
 bool CEDCWalletDB::WriteName(const string& strAddress, const string& strName)

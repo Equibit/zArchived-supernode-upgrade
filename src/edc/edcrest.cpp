@@ -30,7 +30,7 @@ UniValue blockToJSON(const CEDCBlock& block, const CBlockIndex* blockindex, bool
 UniValue edcmempoolInfoToJSON();
 UniValue edcmempoolToJSON(bool fVerbose = false);
 void edcScriptPubKeyToJSON(const CScript& scriptPubKey, UniValue& out, bool fIncludeHex);
-UniValue blockheaderToJSON(const CBlockIndex* blockindex);
+UniValue edcblockheaderToJSON(const CBlockIndex* blockindex);
 
 // A bit of a hack - dependency on a function defined in edc/rpc/edcblockchain.cpp
 UniValue edcgetblockchaininfo(const UniValue& params, bool fHelp);
@@ -212,7 +212,7 @@ bool rest_headers(
         UniValue jsonHeaders(UniValue::VARR);
         BOOST_FOREACH(const CBlockIndex *pindex, headers) 
 		{
-            jsonHeaders.push_back(blockheaderToJSON(pindex));
+            jsonHeaders.push_back(edcblockheaderToJSON(pindex));
         }
         string strJSON = jsonHeaders.write() + "\n";
         req->WriteHeader("Content-Type", "application/json");

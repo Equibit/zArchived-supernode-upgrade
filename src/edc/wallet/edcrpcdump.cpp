@@ -686,7 +686,7 @@ UniValue edcdumpwallet(const UniValue& params, bool fHelp)
         CKey key;
         if (theApp.walletMain()->GetKey(keyid, key)) 
 		{
-			file << strprintf("%s %s ", CBitcoinSecret(key).ToString(), strTime);
+			file << strprintf("%s %s ", CEDCBitcoinSecret(key).ToString(), strTime);
             if (theApp.walletMain()->mapAddressBook.count(keyid)) 
 			{
 				file << strprintf("label=%s", 

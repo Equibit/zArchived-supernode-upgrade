@@ -618,6 +618,8 @@ static void TxInErrorToJSON(const CEDCTxIn& txin, UniValue& vErrorsRet, const st
     vErrorsRet.push_back(entry);
 }
 
+std::string edcHelpRequiringPassphrase();
+
 UniValue edcsignrawtransaction(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
@@ -631,7 +633,7 @@ UniValue edcsignrawtransaction(const UniValue& params, bool fHelp)
             "The third optional argument (may be null) is an array of base58-encoded private\n"
             "keys that, if given, will be the only keys used to sign the transaction.\n"
 #ifdef ENABLE_WALLET
-            + HelpRequiringPassphrase() + "\n"
+            + edcHelpRequiringPassphrase() + "\n"
 #endif
 
             "\nArguments:\n"

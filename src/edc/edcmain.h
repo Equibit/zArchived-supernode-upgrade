@@ -348,3 +348,10 @@ FILE* edcOpenBlockFile(const CDiskBlockPos &pos, bool fReadOnly = false );
 bool edcCheckDiskSpace(uint64_t nAdditionalBytes = 0);
 
 bool edcCheckBlock(const CEDCBlock& block, CValidationState& state, const Consensus::Params & consensusParams, bool fCheckPOW = true, bool fCheckMerkleRoot = true);
+
+/** Block files containing a block-height within EDC_MIN_BLOCKS_TO_KEEP of chainActive.Tip() will not be pruned. */
+const unsigned int EDC_MIN_BLOCKS_TO_KEEP = 288;
+
+/** Maximum length of strSubVer in `version` message */
+const unsigned int EDC_MAX_SUBVERSION_LENGTH = 256;
+

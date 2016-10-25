@@ -118,7 +118,7 @@ std::string ResolveErrMsg(const char * const optname, const std::string& strBind
 
 bool Bind(CEDCConnman & connman, const CService &addr, unsigned int flags) 
 {
-    if (!(flags & BF_EXPLICIT) && IsLimited(addr))
+    if (!(flags & BF_EXPLICIT) && edcIsLimited(addr))
         return false;
 
     std::string strError;
@@ -651,12 +651,12 @@ bool EdcAppInit(
         	uacomments.push_back(SanitizeString(cmt, SAFE_CHARS_UA_COMMENT));
     	}
     	theApp.strSubVersion( FormatSubVersion(CLIENT_NAME, CLIENT_VERSION, uacomments) );
-    	if (theApp.strSubVersion().size() > MAX_SUBVERSION_LENGTH) 
+    	if (theApp.strSubVersion().size() > EDC_MAX_SUBVERSION_LENGTH) 
 		{
         	return edcInitError(strprintf(_("Total length of network version "
 				"string (%i) exceeds maximum length (%i). Reduce the number or "
 				"size of uacomments."),
-            	theApp.strSubVersion().size(), MAX_SUBVERSION_LENGTH));
+            	theApp.strSubVersion().size(), EDC_MAX_SUBVERSION_LENGTH));
     	}
 
 	    if ( params.onlynet.size() > 0 ) 
@@ -939,7 +939,7 @@ bool EdcAppInit(
 	                    break;
 	                }
 	
-					if (!fReindex && theApp.chainActive().Tip() != NULL)
+					if (!theApp.reindex() && theApp.chainActive().Tip() != NULL)
 					{
                     	edcUiInterface.InitMessage(_("Rewinding blocks..."));
 
@@ -952,10 +952,10 @@ bool EdcAppInit(
                 	}
 
 	                edcUiInterface.InitMessage(_("Verifying blocks..."));
-	                if (theApp.havePruned() && params.checkblocks > MIN_BLOCKS_TO_KEEP) 
+	                if (theApp.havePruned() && params.checkblocks > EDC_MIN_BLOCKS_TO_KEEP) 
 					{
 	                    edcLogPrintf("Prune: pruned datadir may not have more than %d blocks; only checking available blocks",
-	                        MIN_BLOCKS_TO_KEEP );
+	                        EDC_MIN_BLOCKS_TO_KEEP );
 	                }
 	
 	                {
@@ -1126,7 +1126,7 @@ bool EdcAppInit(
 	    edcDiscover(threadGroup);
 
  		// Map ports with UPnP
-		MapPort(params.upnp);
+		edcMapPort(params.upnp);
 
 		std::string strNodeError;
 		CEDCConnman::Options connOptions;
@@ -1135,7 +1135,7 @@ bool EdcAppInit(
 		connOptions.nMaxConnections = nMaxConnections;
 		connOptions.nMaxOutbound = std::min(MAX_OUTBOUND_CONNECTIONS, connOptions.nMaxConnections);
 		connOptions.nMaxFeeler = 1;
-		connOptions.nBestHeight = chainActive.Height();
+		connOptions.nBestHeight = theApp.chainActive().Height();
 		connOptions.uiInterface = &edcUiInterface;
 		connOptions.nSendBufferMaxSize = 1000*params.maxsendbuffer;
 		connOptions.nReceiveFloodSize = 1000*params.maxreceivebuffer;
@@ -1232,7 +1232,7 @@ void edcShutdown()
     if (theApp.walletMain())
         theApp.walletMain()->Flush(false);
 #endif
-	MapPort(false);
+	edcMapPort(false);
 	theApp.connman().reset();
 
     edcStopTorControl();

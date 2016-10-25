@@ -1376,9 +1376,9 @@ UniValue edcaddwitnessaddress(const UniValue& params, bool fHelp)
 	EDCparams & theParams = EDCparams::singleton();
 
     {
-        LOCK(cs_main);
-        if (!IsWitnessEnabled(chainActive.Tip(), edcParams().GetConsensus())) 
-		if (!IsWitnessEnabled(chainActive.Tip(), edcParams().GetConsensus()) && 
+        LOCK(EDC_cs_main);
+        if (!IsWitnessEnabled(theApp.chainActive().Tip(), edcParams().GetConsensus())) 
+		if (!IsWitnessEnabled(theApp.chainActive().Tip(), edcParams().GetConsensus()) && 
 		theParams.walletprematurewitness)
 		{
             throw JSONRPCError(RPC_WALLET_ERROR, "Segregated witness not enabled on network");

@@ -22,7 +22,6 @@ namespace
 
 const int64_t      EDC_DEFAULT_DB_CACHE               = 300;
 const unsigned int EDC_MAX_OP_RETURN_RELAY            = 83;
-const unsigned int EDC_MIN_BLOCKS_TO_KEEP             = 288;
 const uint64_t     EDC_MIN_DISK_SPACE_FOR_BLOCK_FILES = 550 * 1024 * 1024;
 
 

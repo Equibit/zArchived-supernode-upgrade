@@ -27,6 +27,8 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/assign/list_of.hpp>
 
+std::string edcChainNameFromCommandLine();
+
 using namespace std;
 
 static bool fCreateBlank;
@@ -42,7 +44,7 @@ static bool AppInitRawTx(int argc, char* argv[])
     // Check for -testnet or -regtest parameter (Params() calls are only valid after this clause)
     try 
 	{
-        SelectParams(ChainNameFromCommandLine());
+        SelectParams(edcChainNameFromCommandLine());
     } 
 	catch (const std::exception& e) 
 	{
@@ -506,7 +508,7 @@ static void MutateTxSign(CEDCMutableTransaction& tx, const string& flagStr)
 		SignatureData sigdata;
         // Only sign SIGHASH_SINGLE if there's a corresponding output:
         if (!fHashSingle || (i < mergedTx.vout.size()))
-			ProduceSignature(EDCMutableTransactionSignatureCreator(&keystore, &mergedTx, i, amount, nHashType), prevPubKey, sigdata);
+			edcProduceSignature(EDCMutableTransactionSignatureCreator(&keystore, &mergedTx, i, amount, nHashType), prevPubKey, sigdata);
 
         // ... and merge in other signatures:
         BOOST_FOREACH(const CEDCTransaction& txv, txVariants)

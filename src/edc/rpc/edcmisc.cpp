@@ -11,6 +11,7 @@
 #include "edc/edcnet.h"
 #include "edc/edcnetbase.h"
 #include "edc/rpc/edcserver.h"
+#include "edc/script/edcscript.h"
 #include "timedata.h"
 #include "edc/edcutil.h"
 #include "utilstrencodings.h"
@@ -106,7 +107,7 @@ UniValue edcgetinfo(const UniValue& params, bool fHelp)
     if(theApp.connman())
         obj.push_back(Pair("connections",   (int)theApp.connman()->GetNodeCount(CEDCConnman::CONNECTIONS_ALL)));
     obj.push_back(Pair("proxy",         (proxy.IsValid() ? proxy.proxy.ToStringIPPort() : string())));
-    obj.push_back(Pair("difficulty",    (double)GetDifficulty()));
+    obj.push_back(Pair("difficulty",    (double)edcGetDifficulty()));
     obj.push_back(Pair("testnet",       edcParams().TestnetToBeDeprecatedFieldRPC()));
 #ifdef ENABLE_WALLET
     if (theApp.walletMain()) 
@@ -320,9 +321,9 @@ CScript edc_createmultisig_redeemScript(const UniValue& params)
     }
     CScript result = GetScriptForMultisig(nRequired, pubkeys);
 
-    if (result.size() > MAX_SCRIPT_ELEMENT_SIZE)
+    if (result.size() > EDC_MAX_SCRIPT_ELEMENT_SIZE)
         throw runtime_error(
-                strprintf("redeemScript exceeds size limit: %d > %d", result.size(), MAX_SCRIPT_ELEMENT_SIZE));
+                strprintf("redeemScript exceeds size limit: %d > %d", result.size(), EDC_MAX_SCRIPT_ELEMENT_SIZE));
 
     return result;
 }
@@ -414,7 +415,7 @@ UniValue edcverifymessage(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Malformed base64 encoding");
 
     CHashWriter ss(SER_GETHASH, 0);
-    ss << strMessageMagic;
+    ss << edcstrMessageMagic;
     ss << strMessage;
 
     CPubKey pubkey;
@@ -456,7 +457,7 @@ UniValue edcsignmessagewithprivkey(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Private key outside allowed range");
 
     CHashWriter ss(SER_GETHASH, 0);
-    ss << strMessageMagic;
+    ss << edcstrMessageMagic;
     ss << strMessage;
 
     vector<unsigned char> vchSig;

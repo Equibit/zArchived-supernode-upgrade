@@ -25,7 +25,7 @@
 #include "edc/primitives/edcblock.h"
 #include "edc/primitives/edctransaction.h"
 #include "random.h"
-#include "script/script.h"
+#include "edc/script/edcscript.h"
 #include "edc/script/edcsigcache.h"
 #include "script/standard.h"
 #include "tinyformat.h"
@@ -79,6 +79,12 @@ const int64_t EDC_ORPHAN_TX_EXPIRE_TIME = 20 * 60;
 
 /** Minimum time between orphan transactions expire time checks in seconds */
 const int64_t EDC_ORPHAN_TX_EXPIRE_INTERVAL = 5 * 60;
+
+//! In this version, 'getheaders' was introduced.
+const int EDC_GETHEADERS_VERSION = 31800;
+
+//! disconnect from peers older than this proto version
+const int EDC_MIN_PEER_PROTO_VERSION = EDC_GETHEADERS_VERSION;
 
 /** Expiration-time ordered list of (expire time, relay map entry) pairs, protected by cs_main). */
 std::deque<std::pair<int64_t, MapRelay::iterator>> relayExpiration;
@@ -520,8 +526,6 @@ void MaybeSetPeerAsAnnouncingHeaderAndIDs(
 			CEDCNode * pfrom, 
 		 CEDCConnman & connman ) 
 {
-	EDCapp & theApp = EDCapp::singleton();
-
     if (pfrom->GetLocalServices() & NODE_WITNESS) 
 	{
         // Don't ever request compact blocks when segwit is enabled.
@@ -823,7 +827,7 @@ int64_t edcGetTransactionSigOpCost(
     for (unsigned int i = 0; i < tx.vin.size(); i++)
     {
         const CEDCTxOut &prevout = inputs.GetOutputFor(tx.vin[i]);
-        nSigOps += CountWitnessSigOps(tx.vin[i].scriptSig, prevout.scriptPubKey, 
+        nSigOps += edcCountWitnessSigOps(tx.vin[i].scriptSig, prevout.scriptPubKey, 
 				i < tx.wit.vtxinwit.size() ? &tx.wit.vtxinwit[i].scriptWitness : NULL, flags);
     }
     return nSigOps;
@@ -2865,7 +2869,7 @@ bool edcConnectBlock(
             std::vector<CEDCScriptCheck> vChecks;
             bool fCacheResults = fJustCheck; /* Don't cache results if we're actually connecting blocks (still consult the cache, though) */
 
-			if (!CheckInputs(tx, state, view, fScriptChecks, flags, fCacheResults, txdata[i], nScriptCheckThreads ? &vChecks : NULL))
+			if (!CheckInputs(tx, state, view, fScriptChecks, flags, fCacheResults, txdata[i], params.par ? &vChecks : NULL))
                 return edcError("ConnectBlock(): CheckInputs on %s failed with %s",
                     tx.GetHash().ToString(), FormatStateMessage(state));
             control.Add(vChecks);
@@ -3523,7 +3527,7 @@ void NotifyHeaderTip()
         if (pindexHeader != pindexHeaderOld) 
 		{
             fNotify = true;
-            fInitialBlockDownload = IsInitialBlockDownload();
+            fInitialBlockDownload = edcIsInitialBlockDownload();
             pindexHeaderOld = pindexHeader;
         }
     }
@@ -4193,7 +4197,7 @@ bool AcceptBlockHeader(
         if (params.checkpoints && !CheckIndexAgainstCheckpoint(pindexPrev, state, chainparams, hash))
             return edcError("%s: CheckIndexAgainstCheckpoint(): %s", __func__, state.GetRejectReason().c_str());
 
-        if (!edcContextualCheckBlockHeader(block, state, chainparams.GetConsensus(), pindexPrev, GetAdjustedTime()))
+        if (!edcContextualCheckBlockHeader(block, state, chainparams.GetConsensus(), pindexPrev, edcGetAdjustedTime()))
             return edcError("%s: Consensus::ContextualCheckBlockHeader: %s, %s", __func__, hash.ToString(), FormatStateMessage(state));
     }
     if (pindex == NULL)
@@ -4237,7 +4241,7 @@ bool AcceptBlock(
     // blocks which are too close in height to the tip.  Apply this test
     // regardless of whether pruning is enabled; it should generally be safe to
     // not process unrequested blocks.
-    bool fTooFarAhead = (pindex->nHeight > int(theApp.chainActive().Height() + MIN_BLOCKS_TO_KEEP));
+    bool fTooFarAhead = (pindex->nHeight > int(theApp.chainActive().Height() + EDC_MIN_BLOCKS_TO_KEEP));
 
     // TODO: deal better with return value and error conditions for duplicate
     // and unrequested blocks.
@@ -4439,7 +4443,7 @@ bool TestBlockValidity(
     indexDummy.nHeight = pindexPrev->nHeight + 1;
 
     // NOTE: edcCheckBlockHeader is called by edcCheckBlock
-    if (!edcContextualCheckBlockHeader(block, state, chainparams.GetConsensus(), pindexPrev, GetAdjustedTime()))
+    if (!edcContextualCheckBlockHeader(block, state, chainparams.GetConsensus(), pindexPrev, edcGetAdjustedTime()))
         return edcError("%s: Consensus::ContextualCheckBlockHeader: %s", __func__, FormatStateMessage(state));
     if (!edcCheckBlock(block, state, chainparams.GetConsensus(), fCheckPOW, fCheckMerkleRoot))
         return edcError("%s: Consensus::CheckBlock: %s", __func__, FormatStateMessage(state));
@@ -4506,7 +4510,15 @@ void edcUnlinkPrunedFiles(std::set<int>& setFilesToPrune)
     }
 }
 
-uint64_t CalculateCurrentUsage();
+/* Calculate the amount of disk space the block & undo files currently use */
+uint64_t edcCalculateCurrentUsage()
+{
+    uint64_t retval = 0;
+    BOOST_FOREACH(const CBlockFileInfo &file, vinfoBlockFile) {
+        retval += file.nSize + file.nUndoSize;
+    }
+    return retval;
+}
 
 /* Calculate the block/rev files that should be deleted to remain under target*/
 void edcFindFilesToPrune(std::set<int>& setFilesToPrune, uint64_t nPruneAfterHeight)
@@ -4522,8 +4534,8 @@ void edcFindFilesToPrune(std::set<int>& setFilesToPrune, uint64_t nPruneAfterHei
         return;
     }
 
-    unsigned int nLastBlockWeCanPrune = theApp.chainActive().Tip()->nHeight - MIN_BLOCKS_TO_KEEP;
-    uint64_t nCurrentUsage = CalculateCurrentUsage();
+    unsigned int nLastBlockWeCanPrune = theApp.chainActive().Tip()->nHeight - EDC_MIN_BLOCKS_TO_KEEP;
+    uint64_t nCurrentUsage = edcCalculateCurrentUsage();
     // We don't check to prune until after we've allocated new space for files
     // So we should leave a buffer under our target to account for another allocation
     // before the next pruning.
@@ -4543,7 +4555,7 @@ void edcFindFilesToPrune(std::set<int>& setFilesToPrune, uint64_t nPruneAfterHei
             if (nCurrentUsage + nBuffer < theApp.pruneTarget() )  // are we below our target?
                 break;
 
-            // don't prune files that could have a block within MIN_BLOCKS_TO_KEEP of the main chain's tip but keep scanning
+            // don't prune files that could have a block within EDC_MIN_BLOCKS_TO_KEEP of the main chain's tip but keep scanning
             if (vinfoBlockFile[fileNumber].nHeightLast > nLastBlockWeCanPrune)
                 continue;
 
@@ -4888,11 +4900,11 @@ bool edcRewindBlockIndex(const CEDCChainParams& params)
 
     // nHeight is now the height of the first insufficiently-validated block, or tipheight + 1
     CValidationState state;
-    CBlockIndex* pindex = chainActive.Tip();
+    CBlockIndex* pindex = theApp.chainActive().Tip();
 
     while (theApp.chainActive().Height() >= nHeight) 
 	{
-        if (fPruneMode && !(theApp.chainActive().Tip()->nStatus & BLOCK_HAVE_DATA)) 
+        if (theApp.pruneMode() && !(theApp.chainActive().Tip()->nStatus & BLOCK_HAVE_DATA)) 
 		{
             // If pruning, don't try rewinding past the HAVE_DATA point;
             // since older blocks can't be served anyway, there's
@@ -5812,12 +5824,13 @@ bool ProcessMessage(
             return false;
         }
 
-        if (pfrom->nVersion < MIN_PEER_PROTO_VERSION)
+        if (pfrom->nVersion < EDC_MIN_PEER_PROTO_VERSION)
         {
             // disconnect from peers older than this proto version
             edcLogPrintf("peer=%d using obsolete version %i; disconnecting\n", pfrom->id, pfrom->nVersion);
             pfrom->PushMessage(NetMsgType::REJECT, strCommand, REJECT_OBSOLETE,
-                               strprintf("Version must be %d or greater", MIN_PEER_PROTO_VERSION));
+                               strprintf("Version must be %d or greater", 
+								EDC_MIN_PEER_PROTO_VERSION));
             pfrom->fDisconnect = true;
             return false;
         }
@@ -5828,7 +5841,7 @@ bool ProcessMessage(
             vRecv >> addrFrom >> nNonce;
         if (!vRecv.empty()) 
 		{
-            vRecv >> LIMITED_STRING(pfrom->strSubVer, MAX_SUBVERSION_LENGTH);
+            vRecv >> LIMITED_STRING(pfrom->strSubVer, EDC_MAX_SUBVERSION_LENGTH);
             pfrom->cleanSubVer = SanitizeString(pfrom->strSubVer);
         }
         if (!vRecv.empty()) 
@@ -5865,7 +5878,7 @@ bool ProcessMessage(
 
         if((pfrom->nServices & NODE_WITNESS))
         {
-            LOCK(cs_main);
+            LOCK(EDC_cs_main);
             State(pfrom->GetId())->fHaveWitness = true;
         }
 
@@ -6044,7 +6057,7 @@ bool ProcessMessage(
 
         LOCK(EDC_cs_main);
 
-		uint32_t nFetchFlags = GetFetchFlags(pfrom, chainActive.Tip(), chainparams.GetConsensus());
+		uint32_t nFetchFlags = GetFetchFlags(pfrom, theApp.chainActive().Tip(), chainparams.GetConsensus());
 
         std::vector<CInv> vToFetch;
 
@@ -6082,7 +6095,7 @@ bool ProcessMessage(
                     CNodeState *nodestate = State(pfrom->GetId());
                     if (CanDirectFetch(chainparams.GetConsensus()) &&
                         nodestate->nBlocksInFlight < MAX_BLOCKS_IN_TRANSIT_PER_PEER &&
-                        (!IsWitnessEnabled(chainActive.Tip(), chainparams.GetConsensus()) || 
+                        (!IsWitnessEnabled(theApp.chainActive().Tip(), chainparams.GetConsensus()) || 
 						State(pfrom->GetId())->fHaveWitness)) 
 					{
                         inv.type |= nFetchFlags;
@@ -6166,7 +6179,7 @@ bool ProcessMessage(
             }
             // If pruning, don't inv blocks unless we have on disk and are likely to still have
             // for some reasonable time window (1 hour) that block relay might require.
-            const int nPrunedBlocksLikelyToHave = MIN_BLOCKS_TO_KEEP - 3600 / chainparams.GetConsensus().nPowTargetSpacing;
+            const int nPrunedBlocksLikelyToHave = EDC_MIN_BLOCKS_TO_KEEP - 3600 / chainparams.GetConsensus().nPowTargetSpacing;
             if (theApp.pruneMode() && (!(pindex->nStatus & BLOCK_HAVE_DATA) || pindex->nHeight <= theApp.chainActive().Tip()->nHeight - nPrunedBlocksLikelyToHave))
             {
                 edcLogPrint("net", " getblocks stopping, pruned or too old block at %d %s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
@@ -6473,7 +6486,7 @@ bool ProcessMessage(
         if (theApp.mapBlockIndex().find(cmpctblock.header.hashPrevBlock) == theApp.mapBlockIndex().end()) 
 		{
             // Doesn't connect (or is genesis), instead of DoSing in AcceptBlockHeader, request deeper headers
-            if (!IsInitialBlockDownload())
+            if (!edcIsInitialBlockDownload())
                 pfrom->PushMessage(NetMsgType::GETHEADERS, theApp.chainActive().GetLocator(theApp.indexBestHeader() ) , uint256());
             return true;
         }
@@ -6701,13 +6714,13 @@ bool ProcessMessage(
 			nCount < MAX_BLOCKS_TO_ANNOUNCE) 
 		{
             nodestate->nUnconnectingHeaders++;
-            pfrom->PushMessage(NetMsgType::GETHEADERS, chainActive.GetLocator(pindexBestHeader), 
+            pfrom->PushMessage(NetMsgType::GETHEADERS, theApp.chainActive().GetLocator(theApp.indexBestHeader()), 
 				uint256());
             edcLogPrint("net", "received header %s: missing prev block %s, sending getheaders (%d)"
 				" to end (peer=%d, nUnconnectingHeaders=%d)\n",
                 headers[0].GetHash().ToString(),
                 headers[0].hashPrevBlock.ToString(),
-                pindexBestHeader->nHeight,
+                theApp.indexBestHeader()->nHeight,
                 pfrom->id, nodestate->nUnconnectingHeaders);
 
             // Set hashLastUnknownBlock for this peer, so that if we
@@ -7043,7 +7056,7 @@ bool ProcessMessage(
         // Nodes must NEVER send a data item > 520 bytes (the max size for a script data object,
         // and thus, the maximum size any matched object can have) in a filteradd message
         bool bad = false;
-        if (vData.size() > MAX_SCRIPT_ELEMENT_SIZE) 
+        if (vData.size() > EDC_MAX_SCRIPT_ELEMENT_SIZE) 
 		{
             bad = true;
         } 
@@ -8038,8 +8051,8 @@ std::string edcGetWarnings(const std::string& strFor)
     // Misc warnings like out of disk space and clock is wrong
     if (edcstrMiscWarning != "")
     {
-        strStatusBar = strMiscWarning;
-        strGUI += (strGUI.empty() ? "" : uiAlertSeperator) + strMiscWarning;
+        strStatusBar = edcstrMiscWarning;
+        strGUI += (strGUI.empty() ? "" : uiAlertSeperator) + edcstrMiscWarning;
     }
 
     if (fLargeWorkForkFound)

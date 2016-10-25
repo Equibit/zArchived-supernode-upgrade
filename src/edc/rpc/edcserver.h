@@ -86,6 +86,8 @@ public:
 
 extern CEDCRPCTable edcTableRPC;
 
+double edcGetDifficulty(const CBlockIndex* blockindex = NULL);
+
 void edcEnsureWalletIsUnlocked();
 
 bool edcStartRPC();

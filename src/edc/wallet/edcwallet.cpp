@@ -19,7 +19,7 @@
 #include "edc/policy/edcpolicy.h"
 #include "edc/primitives/edcblock.h"
 #include "edc/primitives/edctransaction.h"
-#include "script/script.h"
+#include "edc/script/edcscript.h"
 #include "edc/script/edcsign.h"
 #include "timedata.h"
 #include "edc/edctxmempool.h"
@@ -142,7 +142,7 @@ CPubKey CEDCWallet::GenerateNewKey()
         secret = childKey.key;
 
         // update the chain model in the database
-        if (!CWalletDB(strWalletFile).WriteHDChain(hdChain))
+        if (!CEDCWalletDB(strWalletFile).WriteHDChain(hdChain))
 			throw std::runtime_error(std::string(__func__) + ": Writing HD chain model failed");
     } 
 	else 
@@ -255,12 +255,12 @@ bool CEDCWallet::LoadCScript(const CScript& redeemScript)
     /* A sanity check was added in pull #3843 to avoid adding redeemScripts
      * that never can be redeemed. However, old wallets may still contain
      * these. Do not add them to the wallet and warn. */
-    if (redeemScript.size() > MAX_SCRIPT_ELEMENT_SIZE)
+    if (redeemScript.size() > EDC_MAX_SCRIPT_ELEMENT_SIZE)
     {
         std::string strAddr = CEDCBitcoinAddress(CScriptID(redeemScript)).
 			ToString();
         edcLogPrintf("%s: Warning: This wallet contains a redeemScript of size %i which exceeds maximum size %i thus can never be redeemed. Do not use address %s.\n",
-            __func__, redeemScript.size(), MAX_SCRIPT_ELEMENT_SIZE, strAddr);
+            __func__, redeemScript.size(), EDC_MAX_SCRIPT_ELEMENT_SIZE, strAddr);
         return true;
     }
 
@@ -885,7 +885,7 @@ bool CEDCWallet::AddToWallet(
 
     if (fInsertedNew)
     {
-        wtx.nTimeReceived = GetAdjustedTime();
+        wtx.nTimeReceived = edcGetAdjustedTime();
         wtx.nOrderPos = IncOrderPosNext(&walletdb);
 
         wtxOrdered.insert(make_pair(wtx.nOrderPos, TxPair(&wtx, (CAccountingEntry*)0)));

@@ -270,7 +270,7 @@ UniValue edcgetmininginfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("currentblocksize", (uint64_t)theApp.lastBlockSize()));
 	obj.push_back(Pair("currentblockweight", (uint64_t)theApp.lastBlockWeight() ));
     obj.push_back(Pair("currentblocktx",   (uint64_t)theApp.lastBlockTx() ));
-    obj.push_back(Pair("difficulty",       (double)GetDifficulty()));
+    obj.push_back(Pair("difficulty",       (double)edcGetDifficulty()));
     obj.push_back(Pair("errors",           edcGetWarnings("statusbar")));
     obj.push_back(Pair("networkhashps",    edcgetnetworkhashps(params, false)));
     obj.push_back(Pair("pooledtx",         (uint64_t)theApp.mempool().size()));
@@ -808,7 +808,7 @@ UniValue edcsubmitblock(const UniValue& params, bool fHelp)
     }
 
     {
-        LOCK(cs_main);
+        LOCK(EDC_cs_main);
         BlockMap::iterator mi = theApp.mapBlockIndex().find(block.hashPrevBlock);
         if (mi != mapBlockIndex.end()) 
 		{

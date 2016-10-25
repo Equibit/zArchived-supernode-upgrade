@@ -526,7 +526,7 @@ TorController::~TorController()
     }
     if (service.IsValid()) 
 	{
-        RemoveLocal(service);
+        edcRemoveLocal(service);
     }
 }
 
@@ -547,7 +547,7 @@ void TorController::add_onion_cb(TorControlConnection& conn, const TorControlRep
                 private_key = i->second;
         }
 
-		service = LookupNumeric(std::string(service_id+".onion").c_str(), GetListenPort());
+		service = LookupNumeric(std::string(service_id+".onion").c_str(), edcGetListenPort());
         edcLogPrintf("tor: Got service ID %s, advertising service %s\n", service_id, service.ToString());
 
         if (WriteBinaryFile(GetPrivateKeyFile(), private_key)) 
@@ -808,7 +808,7 @@ void TorController::disconnected_cb(TorControlConnection& conn)
 {
     // Stop advertising service when disconnected
     if (service.IsValid())
-        RemoveLocal(service);
+        edcRemoveLocal(service);
 
     service = CService();
     if (!reconnect)

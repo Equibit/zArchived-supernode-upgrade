@@ -213,7 +213,7 @@ bool edcRemoveLocal(const CService& addr)
 {
 	EDCapp & theApp = EDCapp::singleton();
     LOCK(theApp.mapLocalHostCS());
-    edcLogPrintf("RemoveLocal(%s)\n", addr.ToString());
+    edcLogPrintf("edcRemoveLocal(%s)\n", addr.ToString());
     theApp.mapLocalHost().erase(addr);
     return true;
 }
@@ -1884,7 +1884,7 @@ void CEDCConnman::ThreadOpenConnections()
     int64_t nStart = GetTime();
 
     // Minimum time before next feeler connection (in microseconds).
-    int64_t nNextFeeler = PoissonNextSend(nStart*1000*1000, FEELER_INTERVAL);
+    int64_t nNextFeeler = edcPoissonNextSend(nStart*1000*1000, FEELER_INTERVAL);
     while (true)
     {
         ProcessOneShot();
@@ -1947,7 +1947,7 @@ void CEDCConnman::ThreadOpenConnections()
             int64_t nTime = GetTimeMicros(); // The current time right now (in microseconds).
             if (nTime > nNextFeeler) 
 			{
-                nNextFeeler = PoissonNextSend(nTime, FEELER_INTERVAL);
+                nNextFeeler = edcPoissonNextSend(nTime, FEELER_INTERVAL);
                 fFeeler = true;
             } 
 			else 
@@ -1956,7 +1956,7 @@ void CEDCConnman::ThreadOpenConnections()
             }
         }
 
-        int64_t nANow = GetAdjustedTime();
+        int64_t nANow = edcGetAdjustedTime();
         int nTries = 0;
         while (true)
         {
@@ -2002,7 +2002,7 @@ void CEDCConnman::ThreadOpenConnections()
                 // Add small amount of random noise before connection to avoid synchronization.
                 int randsleep = GetRandInt(FEELER_SLEEP_WINDOW * 1000);
                 MilliSleep(randsleep);
-                LogPrint("net", "Making feeler connection to %s\n", addrConnect.ToString());
+                edcLogPrint("net", "Making feeler connection to %s\n", addrConnect.ToString());
             }
 
         	CSemaphoreGrant grant(*semOutbound);
@@ -2339,7 +2339,7 @@ bool edcAddLocal(const CService& addr, int nScore)
     if (!params.discover && nScore < LOCAL_MANUAL)
         return false;
 
-    if (IsLimited(addr))
+    if (edcIsLimited(addr))
         return false;
 
     edcLogPrintf("edcAddLocal(%s,%i)\n", addr.ToString(), nScore);

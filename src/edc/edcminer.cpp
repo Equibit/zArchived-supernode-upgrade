@@ -56,6 +56,26 @@ public:
     }
 };
 
+int64_t edcGetAdjustedTime();
+
+int64_t edcUpdateTime(
+			   CBlockHeader * pblock, 
+	const Consensus::Params & consensusParams, 
+		  const CBlockIndex * pindexPrev)
+{
+    int64_t nOldTime = pblock->nTime;
+    int64_t nNewTime = std::max(pindexPrev->GetMedianTimePast()+1, edcGetAdjustedTime());
+
+    if (nOldTime < nNewTime)
+        pblock->nTime = nNewTime;
+
+    // Updating time can change work required on testnet:
+    if (consensusParams.fPowAllowMinDifficultyBlocks)
+        pblock->nBits = GetNextWorkRequired(pindexPrev, pblock, consensusParams);
+
+    return nNewTime - nOldTime;
+}
+
 EDCBlockAssembler::EDCBlockAssembler(const CEDCChainParams& _chainparams)
     : chainparams(_chainparams)
 {
@@ -111,8 +131,6 @@ void EDCBlockAssembler::resetBlock()
     lastFewTxs = 0;
     blockFinished = false;
 }
-
-int64_t edcGetAdjustedTime();
 
 CAmount edcGetBlockSubsidy(
                           int nHeight,
@@ -206,7 +224,7 @@ CEDCBlockTemplate* EDCBlockAssembler::CreateNewBlock(const CScript& scriptPubKey
 
     // Fill in header
     pblock->hashPrevBlock  = pindexPrev->GetBlockHash();
-    UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
+    edcUpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
     pblock->nBits          = GetNextWorkRequired(pindexPrev, pblock, chainparams.GetConsensus());
     pblock->nNonce         = 0;
 	pblocktemplate->vTxSigOpsCost[0] = WITNESS_SCALE_FACTOR * edcGetLegacySigOpCount(pblock->vtx[0]);
@@ -505,7 +523,7 @@ void EDCBlockAssembler::addPackageTxs()
 			packageSigOpsCost = modit->nSigOpCostWithAncestors;
         }
 
-		if (packageFees < ::minRelayTxFee.GetFee(packageSize))
+		if (packageFees < theApp.minRelayTxFee().GetFee(packageSize))
 		{
             // Everything else we might consider has a lower fee rate
             return;
@@ -700,6 +718,8 @@ void IncrementExtraNonce(
 	const CBlockIndex* pindexPrev, 
 	unsigned int& nExtraNonce )
 {
+	EDCapp & theApp = EDCapp::singleton();
+
     // Update nExtraNonce
     static uint256 hashPrevBlock;
     if (hashPrevBlock != pblock->hashPrevBlock)
@@ -710,7 +730,7 @@ void IncrementExtraNonce(
     ++nExtraNonce;
     unsigned int nHeight = pindexPrev->nHeight+1; // Height first in coinbase required for block.version=2
     CEDCMutableTransaction txCoinbase(pblock->vtx[0]);
-    txCoinbase.vin[0].scriptSig = (CScript() << nHeight << CScriptNum(nExtraNonce)) + COINBASE_FLAGS;
+    txCoinbase.vin[0].scriptSig = (CScript() << nHeight << CScriptNum(nExtraNonce)) + theApp.coinbaseFlags();
     assert(txCoinbase.vin[0].scriptSig.size() <= 100);
 
     pblock->vtx[0] = txCoinbase;

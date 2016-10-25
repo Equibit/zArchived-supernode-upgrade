@@ -11,7 +11,7 @@
 #include "crypto/sha1.h"
 #include "crypto/sha256.h"
 #include "pubkey.h"
-#include "script/script.h"
+#include "edc/script/edcscript.h"
 #include "uint256.h"
 
 using namespace std;
@@ -331,7 +331,7 @@ bool edcEvalScript(
             //
             if (!script.GetOp(pc, opcode, vchPushValue))
                 return set_error(serror, SCRIPT_ERR_BAD_OPCODE);
-            if (vchPushValue.size() > MAX_SCRIPT_ELEMENT_SIZE)
+            if (vchPushValue.size() > EDC_MAX_SCRIPT_ELEMENT_SIZE)
                 return set_error(serror, SCRIPT_ERR_PUSH_SIZE);
             // Note how OP_RESERVED does not count towards the opcode limit.
             if (opcode > OP_16 && ++nOpCount > MAX_OPS_PER_SCRIPT)
@@ -1477,10 +1477,10 @@ static bool VerifyWitnessProgram(
         return set_success(serror);
     }
 
-    // Disallow stack item size > MAX_SCRIPT_ELEMENT_SIZE in witness stack
+    // Disallow stack item size > EDC_MAX_SCRIPT_ELEMENT_SIZE in witness stack
     for (unsigned int i = 0; i < stack.size(); i++) 
 	{
-        if (stack.at(i).size() > MAX_SCRIPT_ELEMENT_SIZE)
+        if (stack.at(i).size() > EDC_MAX_SCRIPT_ELEMENT_SIZE)
             return set_error(serror, SCRIPT_ERR_PUSH_SIZE);
     }
 
