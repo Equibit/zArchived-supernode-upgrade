@@ -261,6 +261,41 @@ UniValue edcrequestwotcertificate(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
+namespace
+{
+
+void addressToPubKey(
+	const std::string & addr,
+			  CPubKey & pubkey,
+				   bool usehsm,
+			   EDCapp & theApp ) 
+{
+    CEDCBitcoinAddress pkAddr(addr);
+    if (!pkAddr.IsValid())
+	{
+		std::string msg = "invalid address " + addr;
+        throw JSONRPCError(RPC_TYPE_ERROR, msg );
+	}
+
+    CKeyID pkeyID;
+    if (!pkAddr.GetKeyID(pkeyID))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Address of public key does not refer to key");
+
+	if( !theApp.walletMain()->GetPubKey( pkeyID, pubkey ))
+	{
+#ifdef USE_HSM
+		if(!usehsm || !theApp.walletMain()->GetHSMPubKey( pkeyID, pubkey ))
+			throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
+				"Address of public key does not refer to key");
+#else
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
+			"Address of public key does not refer to key");
+#endif
+	}
+}
+
+}
+
 /******************************************************************************
 eb_getwotcertificate
 
@@ -298,7 +333,7 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
             "eb_requestwotcertificate \"pubkey\" \"address\" \"oname\" \"ogeo-addr\" \"ophone\" \"oe-mail\" \"ohttp\" \"sname\" \"sgeo-addr\" \"sphone\" \"semail\" \"shttp\" ( expire )\n"
     		"\nCreates a new WOT certificate.\n"
             "\nArguments:\n"
-    		"1. \"pubkey\"         (string, required) Pubkey of to be certified\n"
+    		"1. \"address\"        (string, required) Adddres of Pubkey of to be certified\n"
     		"2. \"address\"        (string, required) Address of signer\n"
     		"3. \"oname\"          (string, required) Name of owner of public key\n"
     		"4. \"ogeo-addr\"      (string, required) Geographic address of owner of public key\n"
@@ -317,7 +352,7 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
             + HelpExampleRpc("eb_signrawtransaction", "\"39sdfd34341q5q45qdfaert2gfgrD301\" \"dvj4entdva4tqkdaadfv\" \"ACME Corp.\" \"100 Avenue Road\" \"519 435-1932\" \"pr@acme.com\" \"www.acme.com\" \"Western Ratings\" \"1210 Main Street\" \"\" \"\" \"www.western-ratings.com\" 5000\n" )
         );
 
-	std::string pubkey = params[0].get_str();
+	std::string pkAddrs= params[0].get_str();
 	std::string saddr  = params[1].get_str();
 	std::string oname  = params[2].get_str();
 	std::string ogaddr = params[3].get_str();
@@ -334,8 +369,14 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
 	if( params.size() == 13 )
 		expire = static_cast<uint32_t>(params[7].get_int());
 
+	EDCapp & theApp = EDCapp::singleton();
+	EDCparams & theParams = EDCparams::singleton();
+
+	CPubKey	pubkey;
+	addressToPubKey( pkAddrs, pubkey, theParams.usehsm, theApp );
+
 	std::vector<unsigned char>	cert = buildWoTCertificate(
-		pubkey,
+		pkAddrs,
 		saddr,
 		oname,
 		ogaddr,
@@ -351,9 +392,6 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
 
 	// Sign the certificate
 	//
-	EDCapp & theApp = EDCapp::singleton();
-	EDCparams & theParams = EDCparams::singleton();
-
     CEDCBitcoinAddress addr(saddr);
     if (!addr.IsValid())
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
@@ -369,15 +407,18 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
 	std::vector<unsigned char> vchSig;
 
 	CKey key;
+	CPubKey	sPubkey;
+
 	if(theApp.walletMain()->GetKey( keyID, key))
 	{
+		theApp.walletMain()->GetPubKey( keyID, sPubkey );
+
 	    CHashWriter ss(SER_GETHASH, 0);
    	 	ss << cert;
 
     	std::vector<unsigned char> vchSig;
 	    if (!key.Sign(ss.GetHash(), vchSig))
 			throw JSONRPCError(RPC_MISC_ERROR, "Sign failed");
-
 	}
 	else	// else, attempt to use HSM key 
 	{
@@ -390,6 +431,8 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
 			std::string hsmID;
 			if(theApp.walletMain()->GetHSMKey(keyID, hsmID ))
             {
+				theApp.walletMain()->GetHSMPubKey( keyID, sPubkey );
+
         		if (!NFast::sign( *theApp.nfHardServer(), *theApp.nfModule(),
 	        	hsmID, ss.GetHash().begin(), 256, vchSig ))
    	        		throw JSONRPCError( RPC_MISC_ERROR, "Sign failed");
@@ -406,7 +449,6 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
 					(unsigned char*)&vchSig[0], &nSigLen,&sig);
             	vchSig.resize(nSigLen);
             	vchSig.push_back((unsigned char)SIGHASH_ALL);
-
 			}
 			else
 				throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Address does not refer to key");
@@ -414,10 +456,12 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
 		else
 			throw JSONRPCError(RPC_MISC_ERROR, "Error: HSM processing disabled. "
                 "Use -eb_usehsm command line option to enable HSM processing" );
+#else
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Address does not refer to key");
 #endif
 	}
 
-	// TODO:
+	theApp.walletMain()->AddWoTCertificate( pubkey, sPubkey, cert, vchSig );
 
     return NullUniValue;
 }
@@ -445,28 +489,37 @@ UniValue edcrevokewotcertificate(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 3 )
         throw std::runtime_error(
-            "eb_requestwotcertificate \"pubkey\" \"address\" ( \"reason\" )\n"
+            "eb_requestwotcertificate \"address\" \"sign-address\" ( \"reason\" )\n"
     		"\nRevokes a WOT certificate.\n"
             "\nArguments:\n"
-			"1. \"pubkey\"    (string, required) Public key to be revoked\n"
-			"2. \"pubkey\"    (string, required) Public key of signer\n"
-			"3. \"reason\"    (string, optional) Reason for revocation\n"
+			"1. \"address\"      (string, required) Address of public key to be revoked\n"
+			"2. \"sign-address\" (string, required) Address of public key of signer\n"
+			"3. \"reason\"       (string, optional) Reason for revocation\n"
             "\nResult: true or false\n"
             "\nExamples:\n"
             + HelpExampleCli("eb_signrawtransaction", "\"1234d20sdmDScedc2edscad\" \"0cmscadc9dcadsadvadvava\"")
             + HelpExampleRpc("eb_signrawtransaction", "\"1234d20sdmDScedc2edscad\" \"0cmscadc9dcadsadvadvava\"")
         );
 
-	std::string pubkey = params[0].get_str();
-	std::string spubkey  = params[1].get_str();
+	std::string addr  = params[0].get_str();
+	std::string saddr = params[1].get_str();
 
 	std::string reason;
 	if( params.size() == 3 )
 		reason  = params[2].get_str();
 
-	// TODO
+	EDCapp & theApp = EDCapp::singleton();
+	EDCparams & theParams = EDCparams::singleton();
 
-    UniValue result(true);	// or false
+	CPubKey	pubkey;
+	addressToPubKey( addr, pubkey, theParams.usehsm, theApp );
+
+	CPubKey	spubkey;
+	addressToPubKey( saddr, spubkey, theParams.usehsm, theApp );
+
+	bool rc = theApp.walletMain()->RevokeWoTCertificate( pubkey, spubkey, reason );
+
+    UniValue result(rc);
     return result;
 }
 
@@ -506,12 +559,12 @@ UniValue edcwotchainexists(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 3 )
         throw std::runtime_error(
-            "eb_requestwotcertificate \"epubkey\" \"bpubkey\" ( maxlen )\n"
+            "eb_requestwotcertificate \"eaddr\" \"baddr\" ( maxlen )\n"
 			"\nDetermines if a trust chain exists between two entities (indentified by\n"
 			"their public keys).\n"
             "\nArguments:\n"
-			"1. \"epubkey\"    (string, required) Public key at the end of the chain\n"
-			"2. \"bpubkey\"    (string, required) Public key at the beginning of the chain\n"
+			"1. \"eaddr\"      (string, required) Address of public key at the end of the chain\n"
+			"2. \"baddr\"      (string, required) Address of public key at the beginning of the chain\n"
 			"3. maxlen         (number, optional) Maximum length of the chain. Defaults to 2\n"
             "\nResult: true or false\n"
             "\nExamples:\n"
@@ -519,16 +572,25 @@ UniValue edcwotchainexists(const UniValue& params, bool fHelp)
             + HelpExampleRpc("eb_wotchainexists", "\"1234d20sdmDScedc2edscad\" \"0cmscadc9dcadsadvadvava\"")
         );
 
-	std::string epubkey = params[0].get_str();
-	std::string bpubkey  = params[1].get_str();
+	std::string eaddr = params[0].get_str();
+	std::string baddr = params[1].get_str();
 
-	uint64_t maxlen = 0;
+	uint64_t maxlen = 2;
 	if( params.size() == 3 )
 		maxlen  = params[2].get_int();
 
-	// TODO
+	EDCapp & theApp = EDCapp::singleton();
+	EDCparams & theParams = EDCparams::singleton();
 
-    UniValue result(true);	// or false
+	CPubKey	epubkey;
+	addressToPubKey( eaddr, epubkey, theParams.usehsm, theApp );
+
+	CPubKey	bpubkey;
+	addressToPubKey( baddr, bpubkey, theParams.usehsm, theApp );
+
+	bool rc = theApp.walletMain()->WoTchainExists( epubkey, bpubkey, maxlen );
+
+    UniValue result(rc);
     return result;
 }
 

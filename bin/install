@@ -20,5 +20,5 @@ cd -
 
 echo "Copy Thales interface shared library"
 
-mkdir -f Thales
+mkdir -p Thales
 cp ../src/Thales/libnfast.so Thales

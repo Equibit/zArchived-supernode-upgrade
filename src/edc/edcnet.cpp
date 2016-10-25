@@ -1504,7 +1504,6 @@ std::string edcGetDNSHost(const CDNSSeedData& data, ServiceFlags * requiredServi
 void CEDCConnman::ThreadDNSAddressSeed()
 {
 	EDCparams & params = EDCparams::singleton();
-	EDCapp & theApp = EDCapp::singleton();
 
     // goal: only query DNS seeds if address need is acute
     if ((addrman.size() > 0) && !params.forcednsseed ) 
@@ -1877,8 +1876,6 @@ void CEDCConnman::ThreadOpenConnections()
             MilliSleep(500);
         }
     }
-
-	EDCapp & theApp = EDCapp::singleton();
 
     // Initiate network connections
     int64_t nStart = GetTime();
@@ -2390,7 +2387,6 @@ bool CEDCConnman::Start(
 			  std::string & strNodeError,
 					Options connOptions)
 {
-	EDCapp & theApp = EDCapp::singleton();
 	EDCparams & params = EDCparams::singleton();
 
     nTotalBytesRecv = 0;

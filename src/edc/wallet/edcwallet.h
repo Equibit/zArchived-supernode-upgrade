@@ -892,6 +892,12 @@ public:
 
     /* Set the current HD master key (will reset the chain child index counters) */
     bool SetHDMasterKey(const CPubKey& key);
+
+	void AddWoTCertificate( const CPubKey & pk1, const CPubKey & pk2,
+			const std::vector<unsigned char> &, const std::vector<unsigned char> & );
+	bool RevokeWoTCertificate(const CPubKey & pk1, const CPubKey & pk2, 
+							  const std::string & reason );
+	bool WoTchainExists( const CPubKey &, const CPubKey &, uint64_t );
 };
 
 /** A key allocated from the key pool. */

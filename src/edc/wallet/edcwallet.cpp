@@ -4605,3 +4605,32 @@ bool CEDCWallet::GetHSMPubKey(const CKeyID & id, CPubKey & out ) const
 }
 
 #endif
+
+void CEDCWallet::AddWoTCertificate( 
+					   const CPubKey & pk, 		// Key to be certified
+					   const CPubKey & spk, 	// Signing public key
+	const std::vector<unsigned char> & cert,	// The certificate
+	const std::vector<unsigned char> & sig )	// The signature of the certificate
+{
+	// TODO
+}
+
+
+bool CEDCWallet::RevokeWoTCertificate(
+		const CPubKey & pk, 		// Key to be certified
+		const CPubKey & spk, 		// Signing public key
+	const std::string & reason )
+{
+	// TODO
+	return false;
+}
+
+bool CEDCWallet::WoTchainExists( 
+		const CPubKey & epk, 		// Last key in chain
+		const CPubKey & spk, 		// First key in chain
+			   uint64_t maxlen )
+{
+	// TODO
+	return false;
+}
+

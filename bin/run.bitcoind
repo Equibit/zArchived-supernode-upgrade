@@ -43,7 +43,7 @@
 # -eb_privkey=key-file	SSL security files. All three files must be specified in order to enable
 #						secure user messaging. 
 
-./bitcoind \
+sudo ./bitcoind \
 -eb_usehsm \
 -logtimestamps -eb_logtimestamps \
 -logtimemicros -eb_logtimemicros \
