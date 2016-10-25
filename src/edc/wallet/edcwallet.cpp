@@ -4612,16 +4612,128 @@ void CEDCWallet::AddWoTCertificate(
 	const std::vector<unsigned char> & cert,	// The certificate
 	const std::vector<unsigned char> & sig )	// The signature of the certificate
 {
-	// TODO
+	if(!CEDCWalletDB(strWalletFile).WriteWoTcertificate( pk, spk, cert, sig ))
+		throw runtime_error(std::string(__func__) + 
+			": writing WoT certificate failed");
+
+	auto itPair = wotCertificates.equal_range( pk );
+
+	if( itPair.first == itPair.second )
+	{
+		wotCertificates.insert( std::make_pair( pk, std::make_pair( spk, false ) ) );
+	}
+	else
+	{
+		auto it = itPair.first;
+		auto end = itPair.second;
+
+		bool found = false;
+
+		while( it != end )
+		{
+			if( it->second.first == spk )
+			{
+				found = true;
+				break;
+			}
+			++it;
+		}
+
+		if(!found)
+		{
+			wotCertificates.insert( std::make_pair( pk, std::make_pair( spk, false ) ) );
+		}
+		else
+		{
+			// If the certificate was revoked, then un-revoke it
+			if( it->second.second )
+			{
+				// Remove from DB
+				if(!CEDCWalletDB(strWalletFile).EraseWoTcertificateRevocation( pk, spk ))
+					throw runtime_error(std::string(__func__) + 
+						": deleting WoT certificate revocation failed");
+
+				it->second.second = false;
+			}
+		}
+	}
 }
 
 
 bool CEDCWallet::RevokeWoTCertificate(
 		const CPubKey & pk, 		// Key to be certified
 		const CPubKey & spk, 		// Signing public key
-	const std::string & reason )
+	const std::string & reason )	// Reason for revocation
 {
-	// TODO
+	if(!CEDCWalletDB(strWalletFile).WriteWoTcertificateRevocation( pk, spk, reason ))
+		throw runtime_error(std::string(__func__) + 
+			": writing WoT certificate revocation failed");
+
+	auto itPair = wotCertificates.equal_range( pk );
+
+	if( itPair.first == itPair.second )
+	{
+		wotCertificates.insert( std::make_pair( pk, std::make_pair( spk, true ) ) );
+	}
+	else
+	{
+		auto it = itPair.first;
+		auto end = itPair.second;
+
+		bool found = false;
+
+		while( it != end )
+		{
+			if( it->second.first == spk )
+			{
+				found = true;
+				break;
+			}
+			++it;
+		}
+
+		if(!found)
+		{
+			wotCertificates.insert( std::make_pair( pk, std::make_pair( spk, true ) ) );
+		}
+		else
+		{
+			it->second.second = true;
+		}
+	}
+
+	return true;
+}
+
+bool CEDCWallet::wotChainExists( 
+	 const CPubKey & spk, 
+	 const CPubKey & epk, 
+			uint64_t currlen, 
+			uint64_t maxlen )
+{
+	auto itPair = wotCertificates.equal_range( spk );
+
+	// No pairs found
+	if( itPair.first == itPair.second )
+		return false;
+
+	auto it = itPair.first;
+	auto end= itPair.second;
+
+	// Iterate over all pubkeys that have authorized the pubkey
+	while( it != end )
+	{
+		if( it->second.first == epk )
+			return !it->second.second;	// return false if revoked
+		else if( currlen < maxlen )
+		{
+			if(wotChainExists( it->second.first, epk, currlen+1, maxlen ))
+				return true;
+		}
+
+		++it;
+	}
+
 	return false;
 }
 
@@ -4630,7 +4742,6 @@ bool CEDCWallet::WoTchainExists(
 		const CPubKey & spk, 		// First key in chain
 			   uint64_t maxlen )
 {
-	// TODO
-	return false;
+	return wotChainExists( spk, epk, 1, maxlen );
 }
 

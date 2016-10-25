@@ -138,6 +138,25 @@ public:
     	const std::set<std::string> & senders,
     	const std::set<std::string> & receivers );
 
+	bool WriteWoTcertificate(
+                       const CPubKey & pk,      // Key to be certified
+                       const CPubKey & spk,     // Signing public key
+    const std::vector<unsigned char> & cert,    // The certificate
+    const std::vector<unsigned char> & sig );   // The signature of the certificate
+
+	bool WriteWoTcertificateRevocation(
+        const CPubKey & pk,         // Key to be certified
+        const CPubKey & spk,        // Signing public key
+    const std::string & reason );	// Reason for revocation
+
+	bool EraseWoTcertificate(
+       const CPubKey & pk,      	// Key to be certified
+       const CPubKey & spk );   	// Signing public key
+
+	bool EraseWoTcertificateRevocation(
+        const CPubKey & pk,         // Key to be certified
+        const CPubKey & spk );      // Signing public key
+
 private:
     CEDCWalletDB(const CEDCWalletDB&);
     void operator=(const CEDCWalletDB&);

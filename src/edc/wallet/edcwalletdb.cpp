@@ -59,7 +59,8 @@ const std::string USER_MSG          = "user_msg";          // USER_MSG:(tag:hash
 const std::string VERSION           = "version";           // VERSION/version
 const std::string WATCHS            = "watchs";            // WATCHS/dest
 const std::string WKEY              = "wkey";              // WKEY/pub-key
-const std::string WOTCERT           = "wotcert";           // WOTCERT/pubkey
+const std::string WOTCERT           = "wotcert";           // WOTCERT:(pubkey:spubkey)/(sig,cert)
+const std::string WOTCRTRVK         = "wotcrtrvk";         // WOTCERT:(pubkey:spubkey)/reason
 }
 
 bool CEDCWalletDB::WriteName(const string& strAddress, const string& strName)
@@ -774,6 +775,20 @@ ReadKeyValue(
 			}
 			pwallet->LoadMessage( tag, hash, msg );
 		}
+		else if( strType == WOTCERT )
+		{
+            CPubKey pubkey, spubkey;
+            ssKey >> pubkey;
+            ssKey >> spubkey;
+// TODO
+		}
+		else if( strType == WOTCRTRVK )
+		{
+            CPubKey pubkey, spubkey;
+            ssKey >> pubkey;
+            ssKey >> spubkey;
+// TODO
+		}
 #ifdef USE_HSM
 		else if( strType == HSM_POOL )
 		{
@@ -1403,6 +1418,20 @@ bool dumpKey(
 			ssKey >> hash;
 			out << ':' << msgTag << ':' << hash.ToString();
 		}
+		else if( strType == WOTCERT )
+		{
+            CPubKey pubkey, spubkey;
+            ssKey >> pubkey;
+            ssKey >> spubkey;
+// TODO
+		}
+		else if( strType == WOTCRTRVK )
+		{
+            CPubKey pubkey, spubkey;
+            ssKey >> pubkey;
+            ssKey >> spubkey;
+// TODO
+		}
 #ifdef USE_HSM
 		else if( strType == HSM_POOL )
 		{
@@ -1651,6 +1680,14 @@ dumpValue(
 			CUserMessage * msg = CUserMessage::create( msgTag, ssValue );
 			out << msg->ToJSON() << endl;
 			delete msg;
+		}
+		else if( strType == WOTCERT )
+		{
+// TODO
+		}
+		else if( strType == WOTCRTRVK )
+		{
+// TODO
 		}
 #ifdef USE_HSM
 		else if( strType == HSM_POOL )
@@ -2252,4 +2289,36 @@ bool CEDCWalletDB::WriteHDChain(const CHDChain& chain)
 
     theApp.incWalletDBUpdated();
     return Write(std::string(HDCHAIN), chain);
+}
+
+bool CEDCWalletDB::WriteWoTcertificate(
+                   const CPubKey & pk,      // Key to be certified
+                   const CPubKey & spk,     // Signing public key
+const std::vector<unsigned char> & cert,    // The certificate
+const std::vector<unsigned char> & sig )	// The signature of the certificate
+{
+	std::vector<unsigned char>	data( cert.size() + sig.size() );
+
+	data.insert( data.end(), sig.begin(), sig.end() );
+	data.insert( data.end(), cert.begin(), cert.end() );
+
+	return Write( std::make_pair( WOTCERT, std::make_pair( pk, spk )), data );
+}
+
+bool CEDCWalletDB::WriteWoTcertificateRevocation(
+    const CPubKey & pk,         // Key to be certified
+    const CPubKey & spk,        // Signing public key
+const std::string & reason )	// Reason for revocation
+{
+	return Write( std::make_pair( WOTCRTRVK, std::make_pair( pk, spk )), reason );
+}
+
+bool CEDCWalletDB::EraseWoTcertificate(CPubKey const & pk, CPubKey const & spk )
+{
+	return Erase( std::make_pair( WOTCERT, std::make_pair( pk, spk )) );
+}
+
+bool CEDCWalletDB::EraseWoTcertificateRevocation(CPubKey const & pk, CPubKey const & spk )
+{
+	return Erase( std::make_pair( WOTCRTRVK, std::make_pair( pk, spk )) );
 }

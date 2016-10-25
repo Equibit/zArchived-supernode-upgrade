@@ -406,12 +406,17 @@ private:
 
     std::map< std::pair<std::string, uint256 >, CUserMessage *> messageMap;
 
+	//               pubkey      authoring Key/revoked
+	std::multimap< CPubKey, std::pair<CPubKey,bool > >	wotCertificates;
+
 #ifdef USE_HSM
 	std::map<CKeyID, std::pair<CPubKey, std::string > > hsmKeyMap;
 
 	void GetHSMKeys( std::set<CKeyID> & ) const;
 #endif
 
+	bool wotChainExists(const CPubKey & spk, const CPubKey & epk, 
+						uint64_t currlen, uint64_t maxlen );
 public:
     /*
      * Main wallet lock.
