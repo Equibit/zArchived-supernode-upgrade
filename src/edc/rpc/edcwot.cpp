@@ -11,6 +11,8 @@
 #include "edc/edcmain.h"
 #include "edc/wallet/edcwallet.h"
 #include "edc/message/edcmessage.h"
+#include "edc/rpc/edcwot.h"
+
 
 #ifdef USE_HSM
 
@@ -39,6 +41,121 @@ Verifier    verifier;
 }
 
 #endif
+
+namespace
+{
+
+void addressToPubKey(
+	const std::string & addr,
+			  CPubKey & pubkey,
+				   bool usehsm,
+			   EDCapp & theApp ) 
+{
+    CEDCBitcoinAddress pkAddr(addr);
+    if (!pkAddr.IsValid())
+	{
+		std::string msg = "invalid address " + addr;
+        throw JSONRPCError(RPC_TYPE_ERROR, msg );
+	}
+
+    CKeyID pkeyID;
+    if (!pkAddr.GetKeyID(pkeyID))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Address of public key does not refer to key");
+
+	if( !theApp.walletMain()->GetPubKey( pkeyID, pubkey ))
+	{
+#ifdef USE_HSM
+		if(!usehsm || !theApp.walletMain()->GetHSMPubKey( pkeyID, pubkey ))
+			throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
+				"Address of public key does not refer to key");
+#else
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
+			"Address of public key does not refer to key");
+#endif
+	}
+}
+
+}
+
+void WoTCertificate::sign( CPubKey & pubkey, CPubKey & sPubkey )
+{
+	EDCapp    & theApp    = EDCapp::singleton();
+	EDCparams & theParams = EDCparams::singleton();
+
+	addressToPubKey( saddr, pubkey, theParams.usehsm, theApp );
+
+	// Sign the certificate
+	//
+    CEDCBitcoinAddress addr(saddr);
+    if (!addr.IsValid())
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
+
+    CKeyID keyID;
+    if (!addr.GetKeyID(keyID))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to key");
+
+    CHashWriter ss(SER_GETHASH, 0);
+    ss	<< pubkey
+    	<< saddr
+    	<< oname
+    	<< ogaddr
+    	<< ophone
+    	<< oemail
+    	<< ohttp
+    	<< sname
+    	<< sgaddr
+    	<< sphone
+    	<< semail
+    	<< shttp
+    	<< expire;
+
+	CKey key;
+
+    if(theApp.walletMain()->GetKey( keyID, key))
+    {
+		theApp.walletMain()->GetPubKey( keyID, sPubkey );
+
+        if (!key.Sign(ss.GetHash(), signature ))
+             throw JSONRPCError(RPC_MISC_ERROR, "Sign failed");
+    }
+    else    // else, attempt to use HSM key 
+    {
+#ifdef USE_HSM
+		if( theParams.usehsm )
+        {
+			std::string hsmID;
+			if(theApp.walletMain()->GetHSMKey(keyID, hsmID ))
+            {
+				theApp.walletMain()->GetHSMPubKey( keyID, sPubkey );
+
+				if (!NFast::sign( *theApp.nfHardServer(), *theApp.nfModule(),
+				hsmID, ss.GetHash().begin(), 256, signature ))
+					throw JSONRPCError( RPC_MISC_ERROR, "Sign failed");
+
+               	secp256k1_ecdsa_signature sig;
+               	memcpy( sig.data, signature.data(), sizeof(sig.data));
+
+               secp256k1_ecdsa_signature_normalize( secp256k1_context_verify, &sig, &sig );
+   
+               signature.resize(72);
+               size_t nSigLen = 72;
+
+               secp256k1_ecdsa_signature_serialize_der( secp256k1_context_verify, 
+                                       (unsigned char*)&signature[0], &nSigLen, &sig );
+               signature.resize(nSigLen);
+               signature.push_back((unsigned char)SIGHASH_ALL);
+			}
+            else
+           		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Address does not refer to key");
+		}
+        else
+        	throw JSONRPCError(RPC_MISC_ERROR, "Error: HSM processing disabled. "
+                "Use -eb_usehsm command line option to enable HSM processing" );
+#else
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Address does not refer to key");
+#endif
+	}
+}
 
 namespace
 {
@@ -261,41 +378,6 @@ UniValue edcrequestwotcertificate(const UniValue& params, bool fHelp)
     return NullUniValue;
 }
 
-namespace
-{
-
-void addressToPubKey(
-	const std::string & addr,
-			  CPubKey & pubkey,
-				   bool usehsm,
-			   EDCapp & theApp ) 
-{
-    CEDCBitcoinAddress pkAddr(addr);
-    if (!pkAddr.IsValid())
-	{
-		std::string msg = "invalid address " + addr;
-        throw JSONRPCError(RPC_TYPE_ERROR, msg );
-	}
-
-    CKeyID pkeyID;
-    if (!pkAddr.GetKeyID(pkeyID))
-        throw JSONRPCError(RPC_TYPE_ERROR, "Address of public key does not refer to key");
-
-	if( !theApp.walletMain()->GetPubKey( pkeyID, pubkey ))
-	{
-#ifdef USE_HSM
-		if(!usehsm || !theApp.walletMain()->GetHSMPubKey( pkeyID, pubkey ))
-			throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
-				"Address of public key does not refer to key");
-#else
-		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
-			"Address of public key does not refer to key");
-#endif
-	}
-}
-
-}
-
 /******************************************************************************
 eb_getwotcertificate
 
@@ -372,10 +454,7 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
 	EDCapp & theApp = EDCapp::singleton();
 	EDCparams & theParams = EDCparams::singleton();
 
-	CPubKey	pubkey;
-	addressToPubKey( pkAddrs, pubkey, theParams.usehsm, theApp );
-
-	std::vector<unsigned char>	cert = buildWoTCertificate(
+	WoTCertificate	cert(
 		pkAddrs,
 		saddr,
 		oname,
@@ -390,78 +469,14 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
 		shttp,
 		expire );
 
-	// Sign the certificate
-	//
-    CEDCBitcoinAddress addr(saddr);
-    if (!addr.IsValid())
-        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
-
-    CKeyID keyID;
-    if (!addr.GetKeyID(keyID))
-        throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to key");
+	CPubKey pubkey;
+	CPubKey sPubkey;
+ 	cert.sign( pubkey, sPubkey );
 
 	LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
 	edcEnsureWalletIsUnlocked();
-
-	std::vector<unsigned char> vchSig;
-
-	CKey key;
-	CPubKey	sPubkey;
-
-	if(theApp.walletMain()->GetKey( keyID, key))
-	{
-		theApp.walletMain()->GetPubKey( keyID, sPubkey );
-
-	    CHashWriter ss(SER_GETHASH, 0);
-   	 	ss << cert;
-
-    	std::vector<unsigned char> vchSig;
-	    if (!key.Sign(ss.GetHash(), vchSig))
-			throw JSONRPCError(RPC_MISC_ERROR, "Sign failed");
-	}
-	else	// else, attempt to use HSM key 
-	{
-#ifdef USE_HSM
-		if( theParams.usehsm )
-		{
-	    	CHashWriter ss(SER_GETHASH, 0);
-	   	 	ss << cert;
-
-			std::string hsmID;
-			if(theApp.walletMain()->GetHSMKey(keyID, hsmID ))
-            {
-				theApp.walletMain()->GetHSMPubKey( keyID, sPubkey );
-
-        		if (!NFast::sign( *theApp.nfHardServer(), *theApp.nfModule(),
-	        	hsmID, ss.GetHash().begin(), 256, vchSig ))
-   	        		throw JSONRPCError( RPC_MISC_ERROR, "Sign failed");
-
-            	secp256k1_ecdsa_signature sig;
-            	memcpy( sig.data, vchSig.data(), sizeof(sig.data));
-
-            	secp256k1_ecdsa_signature_normalize( secp256k1_context_verify, &sig, &sig );
-   
-            	vchSig.resize(72);
-            	size_t nSigLen = 72;
-
-            	secp256k1_ecdsa_signature_serialize_der( secp256k1_context_verify, 
-					(unsigned char*)&vchSig[0], &nSigLen,&sig);
-            	vchSig.resize(nSigLen);
-            	vchSig.push_back((unsigned char)SIGHASH_ALL);
-			}
-			else
-				throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Address does not refer to key");
-		}
-		else
-			throw JSONRPCError(RPC_MISC_ERROR, "Error: HSM processing disabled. "
-                "Use -eb_usehsm command line option to enable HSM processing" );
-#else
-		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Address does not refer to key");
-#endif
-	}
-
-	theApp.walletMain()->AddWoTCertificate( pubkey, sPubkey, cert, vchSig );
+//	theApp.walletMain()->AddWoTCertificate( pubkey, sPubkey, cert );
 
     return NullUniValue;
 }
