@@ -1,0 +1,217 @@
+HTTP Server	(edchttpserver.[cpp,h])
+
+------------------------------------------------------------------------------
+Node P2P:
+
+edcConnectNode 					(edcnet.cpp)
+edcFindNode						(edcnet.cpp)
+CEDCNode::PushVersion()			(edcnet.cpp)
+CEDCNode::ReceiveMsgBytes()		(edcnet.cpp)
+SocketSendData					(edcnet.cpp)
+edcThreadMessageHandler			(edcnet.cpp)
+edcStartNode					(edcnet.cpp)
+edcStopNode						(edcnet.cpp)
+RelayTransaction				(edcnet.cpp)
+CEDCNode::BeginMessage			(edcnet.cpp)
+CEDCNode::EndMessage			(edcnet.cpp)
+edcSendMessages					(edcmain.cpp)
+edcProcessMessages				(edcmain.cpp)
+
+edcStartNode
+	-> edcThreadMessageHandler
+		-> edcSendMessages
+		-> edcProcessMessages
+			-> ProcessMessage
+				-> ProcessGetData
+			-> ProcessGetData
+
+ProcessGetData				BLOCK, MERKLEBLOCK, TX, INV, *, NOTFOUND
+CEDCNode::PushVersion		VERSION
+	-> PushMessage
+ProcessMessage				REJECT, VERACK, GETADDR, SENDHEADERS, GETHEADERS, GETDATA, HEADERS, PONG
+edcProcessMessages			REJECT, PING, ADDR, GETHEADERS, HEADERS, INV, GETDATA, FEEFILTER
+	CEDCNode::PushMessage
+		-> CEDCNode::EndMessage
+			-> SocketSendData ==> socket send
+
+edcThreadSocketHandler	==> socket recv
+ConnectThroughProxy
+	-> Socks5
+		-> InterruptibleRecv	==> socket recv
+	
+theApp.vNodes()	- list of nodes to be communicated with
+
+CEDCNode::vSendMsg		Send message deque	(SocketSendData consumes queue. EndMessage pushes messages onto queue)
+CEDCNode::vRecvMsg		Recv message deque	(processed by edcProcessMessages)
+CEDCNode::vRecvGetData	Recv GetData deque	(processed by ProcessGetData)
+
+================================================================================
+Message Types (defined in namespace NetMsgType protocol.h)
+--------------------------------------------------------------------------------
+VERSION 
+Provides information about the transmitting node to the receiving node at the 
+beginning of a connection.
+https://bitcoin.org/en/developer-reference#version
+
+Send: PushVersion
+Recv: ProcessMessage
+--------------------------------------------------------------------------------
+VERACK
+Acknowledges a previously-received VERSION message, informing the connecting 
+node that it can begin to send other messages.
+https://bitcoin.org/en/developer-reference#verack
+
+Send: ProcessMessage
+Recv: ProcessMessage
+--------------------------------------------------------------------------------
+ADDR
+Relays connection information for peers on the network.
+https://bitcoin.org/en/developer-reference#addr
+
+Send: edcSendMessage
+Recv: ProcessMessage
+--------------------------------------------------------------------------------
+GETADDR
+Requests an ADDR message from the receiving node, preferably one with lots of IP 
+addresses of other receiving nodes.
+https://bitcoin.org/en/developer-reference#getaddr
+
+Send: ProcessMessage
+Recv: ProcessMessage
+--------------------------------------------------------------------------------
+INV
+Transmits one or more inventories of objects known to the transmitting peer.
+https://bitcoin.org/en/developer-reference#inv
+
+Send: ProcessGetData, edcSendMessage,
+Recv: ProcessMessage
+--------------------------------------------------------------------------------
+GETDATA
+Requests one or more data objects from another node.
+https://bitcoin.org/en/developer-reference#getdata
+
+Send:	ProcessMessage, edcSendMessages
+Recv:	ProcessMessage
+--------------------------------------------------------------------------------
+MERKLEBLOCK
+A reply to a GETDATA message which requested a block using the inventory type.
+MSG_MERKLEBLOCK.
+https://bitcoin.org/en/developer-reference#merkleblock
+
+Send:	ProcessGetData
+Recv:
+--------------------------------------------------------------------------------
+GETBLOCKS
+Requests an INV message that provides block header hashes starting from a 
+particular point in the block chain.
+@see https://bitcoin.org/en/developer-reference#getblocks
+
+Send: N/A
+Recv: ProcessMessage
+--------------------------------------------------------------------------------
+GETHEADERS
+Requests a HEADERS message that provides block headers starting from a 
+particular point in the block chain.
+https://bitcoin.org/en/developer-reference#getheaders
+
+Send: ProcessMessage, edcSendMessage
+Recv: ProcessMessage
+--------------------------------------------------------------------------------
+TX
+Transmits a single transaction.
+https://bitcoin.org/en/developer-reference#tx
+
+Send:	ProcessGetData
+Recv:	ProcessMessage
+--------------------------------------------------------------------------------
+HEADERS
+Sends one or more block headers to a node which previously requested certain 
+headers with a GETHEADERS message.
+https://bitcoin.org/en/developer-reference#headers
+
+Send: ProcessMessage, edcSendMessages
+Recv: ProcessMessage
+--------------------------------------------------------------------------------
+BLOCK
+Transmits a single serialized block.
+https://bitcoin.org/en/developer-reference#block
+
+Send:	ProcessGetData
+Recv:	ProcessMessage
+--------------------------------------------------------------------------------
+MEMPOOL
+Requests the TXIDs of transactions that the receiving node has verified as valid 
+but which have not yet appeared in a block.
+https://bitcoin.org/en/developer-reference#mempool
+
+Send: N/A
+Recv: ProcessMessage
+--------------------------------------------------------------------------------
+PING
+Sent periodically to help confirm that the receiving peer is still connected.
+https://bitcoin.org/en/developer-reference#ping
+
+Send: edcSendMessage
+Recv: ProcessMessage
+--------------------------------------------------------------------------------
+PONG
+Replies to a PING message, proving to the pinging node that the ponging node is 
+still alive.
+https://bitcoin.org/en/developer-reference#pong
+
+Send: ProcessMessage
+Recv: ProcessMessage
+--------------------------------------------------------------------------------
+NOTFOUND
+A reply to a GETDATA message which requested an object the receiving node does 
+not have available for relay.
+https://bitcoin.org/en/developer-reference#notfound
+
+Send:	ProcessGetData
+Recv:	N/A
+--------------------------------------------------------------------------------
+FILTERLOAD
+Tells the receiving peer to filter all relayed transactions and requested merkle 
+blocks through the provided filter.
+https://bitcoin.org/en/developer-reference#filterload
+
+Send: N/A
+Recv: ProcessMessage
+--------------------------------------------------------------------------------
+FILTERADD
+Tells the receiving peer to add a single element to a previously-set bloom 
+filter, such as a new public key.
+https://bitcoin.org/en/developer-reference#filteradd
+
+Send: N/A
+Recv: ProcessMessage
+--------------------------------------------------------------------------------
+FILTERCLEAR
+Tells the receiving peer to remove a previously-set bloom filter.
+https://bitcoin.org/en/developer-reference#filterclear
+
+Send: N/A
+Recv: ProcessMessage
+--------------------------------------------------------------------------------
+REJECT
+Informs the receiving node that one of its previous messages has been rejected.
+https://bitcoin.org/en/developer-reference#reject
+
+Send: ProcessMessage, edcProcessMessages, edcSendMessages
+Recv: ProcessMessage
+--------------------------------------------------------------------------------
+SENDHEADERS
+Indicates that a node prefers to receive new block announcements via a HEADERS 
+message rather than an "inv".
+https://bitcoin.org/en/developer-reference#sendheaders
+
+Send: ProcessMessage
+Recv: ProcessMessage
+--------------------------------------------------------------------------------
+FEEFILTER
+Tells the receiving peer not to inv us any txs which do not meet the specified 
+min fee rate.
+
+Send: edcSendMessage
+Recv: ProcessMessage
+--------------------------------------------------------------------------------

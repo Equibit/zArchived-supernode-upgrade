@@ -1,0 +1,487 @@
+2016.09.21:
+
+This document describes the enhancements to the bitcoin interface that have been
+implemented in the Equibit Node.
+
+-------------------------------------------------------------------------------
+Parameters
+-------------------------------------------------------------------------------
+For every bitcoin parameter, there is a corresponding equibit parameter whose
+name is the bitcoin parameter, prefixed with eb_. For example, to the bitcoin 
+parameter -port corresponds the equibit parameter -eb_port. However, there is 
+one command line parameter that is not duplicated for equibit processing:
+
+-daemon
+
+It is used to specified that the process (which acts as a node on both the 
+bitcoin network and the equibit network) operates as a daemon.
+
+
+The following command line parameters have been added:
+
+-eb_cacert          This parameter is used to specify the location of the CA
+                    certificate file. This file is used during SSL handshake
+                    processing by peer nodes to authenticate the public key of 
+                    the node. Equibit private messaging, which uses SSL to 
+                    encrypt the messages, requires parameters -eb_cacert, 
+                    -eb_cert and -eb_privkey to be specified.
+
+-eb_cert            This parameter is used to specify the location of the node's 
+                    certificate file. The certificate file contains the public
+                    key of the node. The public key is passed to peer nodes
+                    during SSL processing to enable the peer to decrypt data
+                    signed with the nodes private key. Equibit private 
+                    messaging, which uses SSL to encrypt the messages, requires 
+                    parameters -eb_cacert, -eb_cert and -eb_privkey to be 
+                    specified.
+
+-eb_checkparams     If this parameter is set to true, then only valid parameters
+                    can be specified. Otherwise, invalid parameters will be
+                    silently ignored. Silently ingoring invalid parameters
+                    is the default behavoir.
+
+-eb_hsmkeypool      This parameter specifies the size of the pool of HSM keys
+                    that are generated automatically by the node. Maintaining
+                    a pool of keys ensures that a key can be quickly provided
+                    when an RPC request is made that requires a new key such
+                    as eb_getnewhsmaddress.
+
+-eb_maxverdepth     This parameter specifies the maximum depth for the 
+                    certificate chain verification that shall be allowed when
+                    verifying certificates. It defaults to 1.
+
+-eb_privkey         This parameter is used to specify the location of the
+                    node's private key file. The private key is used during
+                    SSL processing to encrypt the symmetric key that is 
+                    negotiated during the hand shake. The symmetic key is
+                    used to encrypt messaging data that is passed between
+                    the nodes. Equibit private messaging, which uses SSL to 
+                    encrypt the messages, requires parameters -eb_cacert, 
+                    -eb_cert and -eb_privkey to be specified.
+
+-eb_sport           This parameter is used to specify the port that will be
+                    used for SSL messaging. If it is not explicitly specified
+                    then it will default to a valid value, based on the type
+                    of network used.
+
+-eb_usehsm          If this parameter is set to true (the default value), then
+                    HSM processing is enabled. Otherwise, all RPCs that require
+                    HSM processing will fail. Note that only one of -eb_usehsm
+                    and -daemon can be specified because -eb_usehsm requires
+                    the user to enter a pass phrase and the -daemon parameter
+                    disconnects the process from the terminal, disabling
+                    user input.
+
+-------------------------------------------------------------------------------
+Cryptography
+-------------------------------------------------------------------------------
+
+Digital Signatures
+------------------
+
+Bitcoin uses Digital Signatures to verify transactions. It uses ECDSA with the
+secp256k1 curve. Bitcoin generates the ECDSA key pairs and performs all 
+crypto operations on the host machine. The keys (both public and private) are
+stored in the wallet. 
+TODO: Encrypted wallet
+
+Equibit will also support native ECDSA operations. In addition, Equibit can be
+built and configured to utilize a Thales HSM to perform crypto operations. In
+order to ensure that Equibit nodes that do not use a Thales HSM are able to
+work with transactions signed by such a node, the Thales HSM also uses ECDSA
+with the secp256k1 curve.  
+
+If the Thales HSM is used, then the HSM is used to create the ECDSA key pairs 
+and perform all crypto operations. Unencrypted private keys are never loaded
+into the host machines storage. The Thales HSM stores encrypted data blobs
+that can be used to re-generate the private keys in files on the host machine.
+The default path is /opt/nfast/kmdata/local.
+
+Thales requires a pass phrase and one or more security cards to ensure the
+private keys are managed in a secure manor. 
+
+If HSM security is enabled (via the -eb_usehsm command line parameter) then 
+one or more security cards must be inserted into the HSM and a pass phrase 
+must be entered during node initialization processing.
+
+
+Message Encryption
+------------------
+
+Equibit nodes provide support for secure messaging. Messages are digitally 
+signed to authenticate the sender and may be encrypted to ensure privacy.
+
+Mesage digitally signing uses the same mechanisms that are used to to sign
+transactions.
+
+Message encryption uses SSL. Certificates are used to store public keys and
+encrypted private keys are stored in files on the host machine. A phase
+phrase is used to decrypt the private key.
+
+If the node is configured to support SSL, via command line parameters 
+
+-eb_cacert
+-eb_cert
+-eb_privkey
+
+then the user will be prompted for the SSL pass phrase during node 
+initialization processing.
+
+-------------------------------------------------------------------------------
+RPC Commands
+-------------------------------------------------------------------------------
+All bitcoin RPC commands are implemented by the equibit node. All such RPC
+commands have the name of the bitcoin prefixed with eb_. For example,
+eb_getnewaddress gets a new equibit address. Its semantics are equivalent to the 
+bitcoin getnewaddress RPC.
+
+In addition to the bitcoin RPC commands, following RPC commands are supported by 
+an equibit node: 
+
+eb_authorizeequibit
+
+Command: eb_authorizeequibit issuer transaction-id transaction-offset
+
+Description: Authorizes (or labels) an eqibit.
+
+Arguments:
+
+1. Issuer             The issuer that will be authorizing the equibit.
+
+2. transaction-id     The address of the transaction that contains the output transaction.
+
+3. transaction-off    The offset of the TxOut within that stores the equibit to be authorized.
+
+Return value:
+
+transaction id
+------------------------------------------------------------------------------
+eb_broadcastmessage
+
+Command: eb_broadcastmessage type send-address asset message
+
+Description: Broadcasts a message to all equibit nodes on the network.
+
+Arguments:
+
+1. type           Type of message. Type must be one of:
+
+                  Acquisition
+                  Ask
+                  Assimilation
+                  Bankruptcy
+                  Bid
+                  BonusIssue
+                  BonusRights
+                  BuyBackProgram
+                  CashDividend
+                  CashStockOption
+                  ClassAction
+                  ConversionOfConvertibleBonds
+                  CouponPayment
+                  Delisting
+                  DeMerger
+                  DividendReinvestmentPlan
+                  DutchAuction
+                  EarlyRedemption
+                  FinalRedemption
+                  GeneralAnnouncement
+                  InitialPublicOffering
+                  Liquidation
+                  Lottery
+                  MandatoryExchange
+                  Merger
+                  MergerWithElections
+                  NameChange
+                  OddLotTender
+                  OptionalPut
+                  OtherEvent
+                  PartialRedemption
+                  ParValueChange
+                  ReturnOfCapital
+                  ReverseStockSplit
+                  RightsAuction
+                  RightsIssue
+                  SchemeofArrangement
+                  ScripDividend
+                  ScripIssue
+                  Spinoff
+                  SpinOffWithElections
+                  StockDividend
+                  StockSplit
+                  SubscriptionOffer
+                  Takeover
+                  TenderOffer
+                  VoluntaryExchange
+                  WarrantExercise
+                  WarrantExpiry
+                  WarrantIssue
+
+2. send-address   The sender address
+
+3. asset          Owners of the identified asset will receive the message
+
+4. message        The message to be sent to the all addresses
+------------------------------------------------------------------------------
+eb_deletemessage
+
+Command: eb_deletemessage hash
+
+Description: Deletes the message with the specified hash value.
+
+Arguments:
+
+1. hash - the hash of the message to be deleted
+------------------------------------------------------------------------------
+eb_deletemessages
+
+Command: eb_deletemessages from(date[:time]) to(date[:time]) type(name[,...]) asset(name[,...]) sender(hash[,...]) receiver(hash[,...])
+
+Description: Deletes the messages whose attributes match the specified conditions.
+
+Arguments:
+
+All arguments are optional and can be specified in any order. The date format is of the form YYYY-MM-DD.
+The optional time format is of the form HH:MM:SS. If no filtering conditions are specified, then no messages will be deleted.
+
+from(date[:time])      Matches messages whose time stamp is greater than or equal to the specified date/time.
+to(date[:time])        Matches messages whose time stamp is less than the specified date/time.
+type(name[,...])       Matches messages which have the specified types.
+asset(name[,..])       Matches messages which are not associated with the specified assets. This filter
+                       has no effect on peer-to-peer messages.
+sender(hash[,...])     Matches messages which are sent by the specified senders.
+receiver(hash[,...])   Matches peer-to-peer messages which are sent to the specified receivers. This 
+                       filter has no effect on broadcast and multicast messages.
+------------------------------------------------------------------------------
+eb_dumpwalletdb
+
+Command: eb_dumpwalletdb filename
+
+Description: Dumps the wallet DB in a human-readable format.
+
+Arguments:
+
+1. filename    The filename into which the contents of the wallet will be written.
+------------------------------------------------------------------------------
+eb_gethsmaccountaddress
+
+Command: eb_gethsmaccountaddress account
+
+Description: Returns the current equibit HSM address for receiving payments to this account.
+
+Arguments:
+1. account      The account name for the address. It can also be set to the empty 
+                string \"\" to represent the default account. The account does not 
+                need to exist, it will be created and a new HSM address created if 
+                there is no account by the given name.
+
+Return value:
+
+The account equibit address.
+------------------------------------------------------------------------------
+eb_getissuers
+
+Command: eb_getissuers
+
+Description: Lists all known Issuers.
+
+Sample return value:
+
+[                                
+  {                             
+    "name": "ACME", 
+    "location": "1313 Mockingbird Lane",       
+    "phone": "123-456-7890",      
+    "e-mail": "acme.com",   
+    "address": "d30mdv...cnjnf" 
+  }, 
+...
+]
+
+------------------------------------------------------------------------------
+eb_getmessage
+
+Command: eb_getmessage hash
+
+Description: Gets the message with the specified hash value.
+
+Arguments:
+
+1. hash - the hash of the message to be loaded
+
+Sample return value:
+
+For Broadcast and Multicast messages:
+
+{
+    "type":"Poll",
+    "hash":"4ad192a...ce4a92ad",
+    "sender":"ab320ac...2098aced",
+    "timestamp":"2016-09-13:12:20:02",
+    "nonce":121344792,
+    "data":"Vote for board member positions",
+    "signature":"c03deb50...2498ade",
+    "asset":"ACME Co."
+}
+
+For Peer-to-Peer messages:
+
+{
+    "type":"Poll",
+    "hash":"4ad1efa...ce4a9efd",
+    "sender":"ab320ac...2098aced",
+    "timestamp":"2016-09-13:12:20:02",
+    "nonce":121344792,
+    "data":"Vote for board member positions",
+    "signature":"c03deb50...2498ade",
+    "receiver":"432b0...d0e029ae"
+}
+
+------------------------------------------------------------------------------
+eb_getmessages
+
+Command: eb_getmessages from(date[:time]) to(date[:time]) type(name[,...]) asset(name[,...]) sender(hash[,...]) receiver(hash[,...])
+
+Description: Gets all messages whose attributes match the specified filtering conditions.
+
+Arguments:
+
+All arguments are optional and can be specified in any order. The date format is of the form YYYY-MM-DD.
+The optional time format is of the form HH:MM:SS. If no filtering conditions are specified, then all messages are
+returned.
+
+from(date[:time])     Filters messages whose time stamp is less than the specified date/time.
+to(date[:time])       Filters messages whose time stamp is greater than the specified date/time.
+type(name[,...])      Filters messages which have the specified types.
+asset(name[,..])      Filters messages which are not associated with the specified assets. This filter has no
+                      effect on peer-to-peer messages.
+sender(hash[,...])    Filters messages which are sent by the specified senders.
+receiver(hash[,...])  Filters peer-to-peer messages which are sent to the specified receivers.
+
+Sample return value:
+
+[
+  {
+      "type":"Poll",
+      "hash":"ced192a...ced192ad",
+      "sender":"ab320ac...2098aced",
+      "timestamp":"2016-09-13:12:20:02",
+      "nonce":121344792,"
+      "data":"Vote for board member positions",
+      "signature":"c03deb50...2498ade",
+      "asset":"ACME Co."
+  },
+  {
+      "type":"Poll",
+      "hash":"4ad192a...ce4a92ad",
+      "sender":"ab320ac...2098aced",
+      "timestamp":"2016-09-13:12:20:02",
+      "nonce":121344792,
+      "data":"Vote for board member positions",
+      "signature":"c03deb50...2498ade",
+      "receiver":"432b0...d0e029ae"
+  },
+  ...
+]
+
+------------------------------------------------------------------------------
+eb_getnewhsmaddress
+
+Command: eb_getnewhsmaddress account
+
+Description: Returns a new Equibit address, derived from an HSM key pair, that can be used for receiving payments.
+             If 'account' is specified, it is added to the address book so payments received with the address will 
+             be credited to 'account'.
+
+Arguments:
+1. account      (optional) The account name for the address to be linked to. If not provided, the default account 
+                is used. The account does not need to exist, it will be created if there is no account by the given name.
+
+Return value:
+The new equibit address.
+------------------------------------------------------------------------------
+eb_getnewhsmissuer
+
+Command: eb_getnewhsmissuer name location phone-number e-mail-address
+
+Description: Creates a new Issuer with an HSM key pair.
+
+Arguments:
+1. Name            The name of the Issuer.
+
+2. Location        The geographic address of the Issuer.
+
+3. Phone number    The phone number of the Issuer.
+
+4. E-mail address  The e-mail address of the Issuer.
+
+Return value:
+
+The address associated with the Issuer. The address is derived from an HSM 
+generated key pair.
+------------------------------------------------------------------------------
+eb_getnewissuer
+
+Command: eb_getnewissuer name location phone-number e-mail-address
+
+Description: Creates a new Issuer.
+
+Arguments:
+1. Name            The name of the Issuer.
+
+2. Location        The geographic address of the Issuer.
+
+3. Phone number    The phone number of the Issuer.
+
+4. E-mail address  The e-mail address of the Issuer.
+
+Return value:
+
+The address associated with the Issuer.
+------------------------------------------------------------------------------
+eb_hsmkeypoolrefill
+
+Command: eb_hsmkeypoolrefill newsize
+
+Description: Fills the keypool.
+
+Arguments:
+
+1. newsize     (optional, default=50) The new HSM keypool size.
+------------------------------------------------------------------------------
+eb_multicastmessage
+
+Command: eb_multicastmessage type send-address asset message
+
+Description: Multi-casts a message to all owners of an equibit asset.
+
+Arguments:
+
+1. type          Type of message. Type must be one of:
+
+                 Poll
+
+2. send-address  The sender address
+
+3. asset         The message applies to the identified asset
+
+4. message       The message to be sent to the multiple addresses
+------------------------------------------------------------------------------
+eb_p2pmessage
+
+Command:  eb_p2pmessage type send-address recv-address message
+
+Description: Sends a peer-to-peer message.
+
+Arguments:
+
+1. type           Type of message. Type must be one of:
+
+                  Private
+                  Vote
+
+2. send-address   The sender address
+3. recv-address   The receiver address
+4. message        The message to be sent to the specified address
+
+------------------------------------------------------------------------------

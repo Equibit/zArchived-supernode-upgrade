@@ -1,0 +1,293 @@
+Equibit Files
+
+.equibit/
+
+Root path of files created by Equibit client. Can be configured with -eb_datadir
+parameter. Main net files are stored under this directory. Test net files are 
+stored under .equibit/testnet3. Reg test files are stored under 
+.equibit/regtest. $NET_ROOT will be used designate the root of each network. 
+Ie. If test net is used then $NET_ROOT == .equibit/testnet3.
+................................................................................
+.equibit/equibit.conf (text)
+
+The Equibit client configuration file. It is read at startup.
+................................................................................
+$NET_ROOT/banlist.dat
+
+List of banned addresses.
+................................................................................
+$NET_ROOT/db.log
+
+Berkeley DB error logging file.
+................................................................................
+$NET_ROOT/debug.log (text)
+
+Main log file. Controlled by -eb_debug option.
+................................................................................
+$NET_ROOT/fee_estimates.dat
+
+Transaction fee estimates.
+................................................................................
+$NET_ROOT/peers.dat
+
+Network peers data
+................................................................................
+$NET_ROOT/wallet.dat
+
+The wallet data
+................................................................................
+$NET_ROOT/.lock
+
+This file is used to ensure only one Equibit server is runnning at a time.
+................................................................................
+$NET_ROOT/blocks
+
+blk<n>.dat
+Stores the block data. Does NOT use Berkley DB.
+
+rev<n>.dat
+Stores the DB Transaction undo data. Does NOT use Berkley DB. This information
+is used in the event a block has to be removed because a better block is found.
+................................................................................
+$NET_ROOT/blocks/index/*	CEDCBlockTreeDB -> theApp.blocktree()
+The blockchain data. Uses Berkley DB. See below for information stored here.
+
+$NET_ROOT/chainstate/*		CEDCCoinsViewDB
+The tip coins, not yet added to the block chain. Uses Berkley DB.
+................................................................................
+
+$NET_ROOT/database
+
+log.<n>
+Berkley DB log file
+................................................................................
+
+================================================================================
+CEDCCoinsViewDB
+
+DB_COINS 'c' 
+DB_BEST_BLOCK 'B'
+
+key/value pair: DB_COINS:txid / CEDCCoins 
+- Stores cached coins
+
+key/value pair: DB_BEST_BLOCK / uint256	(best block hash)
+- Stores hash of best block
+================================================================================
+CEDCBlockTreeDB
+
+DB_BLOCK_FILES 'f'
+DB_REINDEX_FLAG 'R'
+DB_LAST_BLOCK 'l'
+DB_BLOCK_INDEX 'b'
+DB_TXINDEX 't'
+DB_FLAG 'F'
+
+Read: ReadBlockFileInfo
+write: WriteBatchSync
+key/value pair: DB_BLOCK_FILES:file-id /  CBlockFileInfo 
+- Describes contents of a block file
+
+
+key/value pair: DB_REINDEX_FLAG / flag
+- Indicates that reindexing is (is not) running
+
+key/value pair: DB_LAST_BLOCK / last-file-id
+- Records file containing the last block
+
+key/value pair: DB_BLOCK_INDEX:block-hash / CDiskBlockIndex
+- Contains all data related to the block chain. It contains the header.
+
+key/value pair: DB_TXINDEX:txid / CDiskTxPos
+- Position of the txn within the block files (file-id/block-offset/txn-offset)
+
+key/value pair: DB_FLAG:name / 0 or 1
+- Records system processing status. The name values are
+
+	txindex				Set to true if a full transaction index is maintained.
+	prunedblockfiles	Indicates that the blocks were pruned.
+
+
+Re-indexing
+Re-builds the index from current blk00000.dat files on startup.
+
+Pruning
+Delete old blocks.
+
+Re-scanning
+Rescan the block chain for missing wallet transactions on startup
+
+txindex
+ Maintain a full transaction index, used by the getrawtransaction rpc call
+
+--------------------------------------------------------------------------------
+Types saved
+--------------------------------------------------------------------------------
+CBlockFileInfo		block file structure. No changes required.
+CDiskBlockIndex		block contents. No changes required.
+CDiskTxPos			Txn position data. No changes required.
+
+################################################################################
+Read/Writes blk*.dat files (edcOpenBlockFile)
+
+edcOpenBlockFile
+	edcThreadImport
+		EdcAppInit 
+			AppInit
+				main
+	GetTransaction
+		edcgetrawtransaction RPC
+		edcgettxoutproof RPC
+		rest_tx REST
+	WriteBlockToDisk
+		AcceptBlock
+			ProcessNewBlock
+				edcgenerateBlock
+					edcgenerate RPC
+					edcgeneratetoaddress RPC
+				edcsubmitblock RPC
+				edcLoadExternalBlockFile
+					edcThreadImport above
+				ProcessMessage
+					edcProcessMessages
+						edcThreadMessageHandler
+							edcStartNode
+								EdcAppInit above
+		edcInitBlockIndex
+			edcThreadImport above
+			EdcAppInit above
+	ReadBlockFromDisk
+		ScanForWalletTransactions
+			InitLoadWallet
+				EdcAppInit above
+			edcimportprivkey RPC
+			edcimportaddress RPC
+			edcimportpubkey RPC
+			edcimportwallet RPC
+		DisconnectTip
+			ActivateBestChainStep
+				ActivateBestChain
+					EdcAppInit above
+					edcinvalidateblock RPC
+					edcreconsiderblock RPC
+					edcInvalidateBlock
+						edcinvalidateblock RPC
+					ProcessNewBlock above
+					edcInitBlockIndex above
+			edcInvalidateBlock above
+		ConnectTip
+			ActivateBestChainStep above
+		VerifyDB
+			EdcAppInit above
+			edcverifychain RPC
+		edcLoadExternalBlockFile above
+		ProcessGetData
+			ProcessMessage above
+			edcProcessMessages above
+		edcgettxoutproof RPC
+		edcgetblock RPC
+	FlushBlockFile
+		FlushStateToDisk
+			edcFlushStateToDisk
+				edcShutdown
+					Shutdown
+						AppInit above	
+				edcgettxoutsetinfo RPC
+			edcPruneAndFlush
+				AppInit above
+			DisconnectTip above
+			ConnectTip above
+			ActivateBestChain above
+			AcceptBlock above
+			edcInitBlockIndex above
+			ProcessMessage above
+		edcFindBlockPos below
+	LoadBlockIndexDB
+		edcLoadBlockIndex
+			EdcAppInit above
+	edcFindBlockPos write
+		AcceptBlock above
+		edcInitBlockIndex above
+
+Read/Writes rev*.dat files
+
+edcOpenUndoFile
+	UndoWriteToDisk
+		edcConnectBlock
+			ConnectTip above
+			TestBlockValidity
+				edcCreateNewBlock
+					edcgenerateBlocks
+						edcgenerate RPC
+						edcgeneratetoaddress RPC
+					edcgetblocktemplate RPC
+				edcgetblocktemplate RPC
+			VerifyDB above
+	UndoReadFromDisk 
+		edcDisconnectBlock
+			DisconnectTip above
+			VerifyDB above
+		VerifyDB above
+	FlushBlockFile above
+	edcFindUndoPos 
+		edcConnectBlock above
+
+================================================================================
+Index Read/Writes
+
+ReadTxIndex
+	GetTransaction above
+
+WriteTxIndex
+	edcConnectBlock above
+
+WriteBatchSync
+	FlushStateToDisk above
+
+LoadBlockIndexGuts
+	LoadBlockIndexDB above
+
+ReadBlockFileInfo
+	LoadBlockIndexDB above
+	
+================================================================================
+Root of DB Calls
+
+rev*.dat:
+
+edcConnectBlock
+	UndoWriteToDisk
+		edcOpenUndoFile
+
+edcDisconnectBlock
+	UndoReadFromDisk 
+
+edcConnectBlock
+	edcFindUndoPos 
+
+.................................................................
+blk*.dat:
+
+edcThreadImport			paths customized
+	edcOpenBlockFile
+
+GetTransaction
+
+ProcessNewBlock
+	AcceptBlock
+		WriteBlockToDisk
+		edcFindBlockPos
+
+edcThreadImport 
+	edcInitBlockIndex
+
+ScanForWalletTransactions
+DisconnectTip
+	ReadBlockFromDisk
+
+edcLoadBlockIndex
+
+FlushStateToDisk
+	FlushBlockFile
+
+edcFindBlockPos 

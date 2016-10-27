@@ -1,0 +1,40 @@
+
+bitcoind tests
+
+Directories:
+./src/test/
+./src/test/data/*	Data
+
+Driver:
+./src/test/test_bitcoin
+
+Source:
+./src/test/*.cpp			Test C++ Source
+./src/wallet/test/*.cpp
+
+Results:
+./src/test/test_bitcoin.trs
+*.log
+
+Doc:
+./src/test/README.md
+
+Makefile:
+./src/Makefile.test.include
+
+===============================================================================
+RPC Tests
+
+./qa/README.md
+./qa/rpc-tests/*.py
+./qa/rpc-tests/test_framework/*.py
+./qa/pull-tester/tests_config.py
+./qa/pull-tester/run-bitcoind-for-test.sh
+./qa/pull-tester/rpc-tests.py
+===============================================================================
+./build-aux/test-driver
+./build-aux/m4/ax_boost_unit_test_framework.m4
+
+./contrib/testgen/gen_base58_test_vectors.py
+./contrib/testgen/base58.py
+./contrib/testgen/README.md
