@@ -469,14 +469,15 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
 		shttp,
 		expire );
 
-	CPubKey pubkey;
-	CPubKey sPubkey;
+	CPubKey pubkey;	// public key to be certified
+	CPubKey sPubkey;// public key corresponding to private key that signed the certificate
+
  	cert.sign( pubkey, sPubkey );
 
 	LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
 	edcEnsureWalletIsUnlocked();
-//	theApp.walletMain()->AddWoTCertificate( pubkey, sPubkey, cert );
+	theApp.walletMain()->AddWoTCertificate( pubkey, sPubkey, cert );
 
     return NullUniValue;
 }

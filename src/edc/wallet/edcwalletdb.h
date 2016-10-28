@@ -30,6 +30,7 @@ class CEDCWalletTx;
 class CUserMessage;
 class uint160;
 class uint256;
+class WoTCertificate;
 
 /** Access to the wallet database */
 class CEDCWalletDB : public CEDCDB
@@ -141,8 +142,7 @@ public:
 	bool WriteWoTcertificate(
                        const CPubKey & pk,      // Key to be certified
                        const CPubKey & spk,     // Signing public key
-    const std::vector<unsigned char> & cert,    // The certificate
-    const std::vector<unsigned char> & sig );   // The signature of the certificate
+    			const WoTCertificate & cert );  // The certificate
 
 	bool WriteWoTcertificateRevocation(
         const CPubKey & pk,         // Key to be certified

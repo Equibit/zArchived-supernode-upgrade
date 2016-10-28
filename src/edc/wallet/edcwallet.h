@@ -48,6 +48,7 @@ class CScript;
 class CEDCTxMemPool;
 class CEDCWalletTx;
 class CEDCBlock;
+class WoTCertificate;
 
 
 /** A transaction with a merkle branch linking it to the block chain. */
@@ -898,8 +899,7 @@ public:
     /* Set the current HD master key (will reset the chain child index counters) */
     bool SetHDMasterKey(const CPubKey& key);
 
-	void AddWoTCertificate( const CPubKey & pk1, const CPubKey & pk2,
-			const std::vector<unsigned char> &, const std::vector<unsigned char> & );
+	void AddWoTCertificate( const CPubKey & pk1, const CPubKey & pk2, const WoTCertificate & cert );
 	bool RevokeWoTCertificate(const CPubKey & pk1, const CPubKey & pk2, 
 							  const std::string & reason );
 	bool WoTchainExists( const CPubKey &, const CPubKey &, uint64_t );

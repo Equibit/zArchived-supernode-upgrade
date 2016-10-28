@@ -18,6 +18,7 @@
 #include "edc/edcparams.h"
 #include "edc/edcapp.h"
 #include "edc/message/edcmessage.h"
+#include "edc/rpc/edcwot.h"
 
 #include <boost/version.hpp>
 #include <boost/filesystem.hpp>
@@ -2294,15 +2295,9 @@ bool CEDCWalletDB::WriteHDChain(const CHDChain& chain)
 bool CEDCWalletDB::WriteWoTcertificate(
                    const CPubKey & pk,      // Key to be certified
                    const CPubKey & spk,     // Signing public key
-const std::vector<unsigned char> & cert,    // The certificate
-const std::vector<unsigned char> & sig )	// The signature of the certificate
+		   const WoTCertificate  & cert )   // The certificate
 {
-	std::vector<unsigned char>	data( cert.size() + sig.size() );
-
-	data.insert( data.end(), sig.begin(), sig.end() );
-	data.insert( data.end(), cert.begin(), cert.end() );
-
-	return Write( std::make_pair( WOTCERT, std::make_pair( pk, spk )), data );
+	return Write( std::make_pair( WOTCERT, std::make_pair( pk, spk )), cert );
 }
 
 bool CEDCWalletDB::WriteWoTcertificateRevocation(

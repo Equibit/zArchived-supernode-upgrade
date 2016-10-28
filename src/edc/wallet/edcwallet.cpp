@@ -29,6 +29,7 @@
 #include "edc/edcapp.h"
 #include "edc/edcparams.h"
 #include "edc/edcchainparams.h"
+#include "edc/rpc/edcwot.h"
 #ifdef USE_HSM
 #include "Thales/interface.h"
 #endif
@@ -4607,12 +4608,11 @@ bool CEDCWallet::GetHSMPubKey(const CKeyID & id, CPubKey & out ) const
 #endif
 
 void CEDCWallet::AddWoTCertificate( 
-					   const CPubKey & pk, 		// Key to be certified
-					   const CPubKey & spk, 	// Signing public key
-	const std::vector<unsigned char> & cert,	// The certificate
-	const std::vector<unsigned char> & sig )	// The signature of the certificate
+					   const CPubKey & pk, 	  // Key to be certified
+					   const CPubKey & spk,   // Signing public key
+				const WoTCertificate & cert	) // The certificate
 {
-	if(!CEDCWalletDB(strWalletFile).WriteWoTcertificate( pk, spk, cert, sig ))
+	if(!CEDCWalletDB(strWalletFile).WriteWoTcertificate( pk, spk, cert ))
 		throw runtime_error(std::string(__func__) + 
 			": writing WoT certificate failed");
 

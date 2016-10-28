@@ -71,6 +71,10 @@ openssl version
 apt-cache show openssl
 -------------------------------------------------------------------------
 
+Edit /etc/ld.so.conf (as root), adding the line
+
+/usr/local/lib
+
 -----------------------------------------
 5. Install Thales software
 -----------------------------------------
