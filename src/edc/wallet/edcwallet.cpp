@@ -737,7 +737,9 @@ bool CEDCWallet::EncryptWallet(const SecureString& strWalletPassphrase)
 
         NewKeyPool();
 #ifdef USE_HSM
-        NewHSMKeyPool();
+		EDCparams & params = EDCparams::singleton();
+		if(params.usehsm)
+			NewHSMKeyPool();
 #endif
         Lock();
 
@@ -3208,6 +3210,10 @@ void CEDCWallet::ReturnHSMKey(int64_t nIndex)
  */
 bool CEDCWallet::NewHSMKeyPool()
 {
+	EDCparams & params = EDCparams::singleton();
+	if( !params.usehsm )
+		return true;
+
     {
         LOCK(cs_wallet);
         CEDCWalletDB walletdb(strWalletFile);
@@ -3218,7 +3224,6 @@ bool CEDCWallet::NewHSMKeyPool()
         if (IsLocked())
             return false;
 
-		EDCparams & params = EDCparams::singleton();
         int64_t nKeys = max(params.hsmkeypool, (int64_t)0);
         for (int i = 0; i < nKeys; i++)
         {
@@ -3296,6 +3301,8 @@ void CEDCWallet::KeepHSMKey( long nIndex )
 CPubKey CEDCWallet::GenerateNewHSMKey()
 {
 	EDCapp & theApp = EDCapp::singleton();
+
+	assert( EDCparams::singleton().usehsm );
 
     AssertLockHeld(cs_wallet); // mapKeyMetadata
     bool fCompressed = CanSupportFeature(FEATURE_COMPRPUBKEY); // default to compressed public keys
