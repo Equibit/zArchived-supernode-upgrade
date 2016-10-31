@@ -133,7 +133,9 @@ Step 3: Then, run menu 1-1-3 on the front panel of the HSM to setup the IP addre
 Step 4: Make sure that the HSM uploaded its config files to the RFS under directory:
         /opt/nfast/kmdata/hsm-[ESN]/config/config
  
-Step 5: Whitelist the IP address of each client that needs to connect to the HSM. This can be done via menu 1-1-4 (Client Config). This menu will prompt you to insert the IP address of each client and also specify if they are a privileged or un-privileged connection.
+Step 5: Whitelist the IP address of each client that needs to connect to the HSM. This can be done 
+        via menu 1-1-4 (Client Config). This menu will prompt you to insert the IP address of each 
+		client and also specify if they are a privileged or un-privileged connection.
  
 Step 6: Next, enroll the new HSM’s from each client:
         Run nethsmenroll [HSM IP]
@@ -141,11 +143,25 @@ Step 6: Next, enroll the new HSM’s from each client:
 Step 7: Finally, initialize the Security World for each HSM (this will require the ACS quorum).
         If the RFS is on the same existing Security World as your clients, then you can navigate 
         to front panel menu 3-2-2 (Load Security World). Otherwise select 3-2-1 to initialize a 
-        New Security World.  Alternatively , you can run the following command from a privileged 
-		client connection to program your module with an existing Security World:
+        New Security World.  
+
+		Alternatively , you can run the following command from a privileged client connection to 
+		program your module with an existing Security World:
+
             Run new-world -l -m[Module Number from Enquiry]
+
             Or initialize a New Security World:
+
             Run new-world -i -m[Module Number from Enquiry]
+
+
+Optional: 
+
+	Ensure link speed is set to auto:
+	System > System Configuration > Network config > Set up interface #1 > Set link speed for #1
+
+	Set Default gateway:
+	System > System Configuration > Network config > Set default gateway > IPv4 Gateway
 
 
 -----------------------------------------
@@ -166,20 +182,39 @@ The first line after the heading should list the ESN and YES/NO for each feature
 8. Create Security World
 -----------------------------------------
 
+Create
 
 new-world 	--initialize \
-			--factory \
-			--no-remoteshare-cert \
 			--cipher-suite=DLf1024s160mRijndael \
-			--acs-quorum=1/2 \
-			--reduced-features
+			--module=1 \
+			--acs-quorum=1/3
 
+new-world 	--initialize --cipher-suite=DLf1024s160mRijndael --module=1 --acs-quorum=1/>3
+
+
+Use nfkminfo to show the status of the Security World.
+
+Copy to HSM:
+
+nethsmadmin --module=1 --update-world
 
 -----------------------------------------
 9. Write nShield Operator Card Set
 -----------------------------------------
 
-/opt/nfast/bin/createocs 
+/opt/nfast/bin/createocs -m MODULE|--module=MODULE -Q|--ocs-quorum=K/N
+-N|--name=NAME [-M|--name-cards]
+[[-p|--persist]|[-P|--no-persist]] [[-R|--no-pp-recovery]|--pp-recovery]
+[-q|--remotely-readable] [-T|--timeout=TIME] [-e|--erase]
+
+
+/opt/nfast/bin/createocs --module=1 --ocs-quorum=K/N --name=EDC
+
+use 
+
+nfkninfo --cardset-list
+
+to list created OCSs
 
 -----------------------------------------
 10. Re-cycle hardserver
