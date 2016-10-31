@@ -157,6 +157,61 @@ void WoTCertificate::sign( CPubKey & pubkey, CPubKey & sPubkey )
 	}
 }
 
+char * toChar( unsigned char uc, char * out )
+{
+	char u = uc >> 4;
+	char l = uc & 0xf;
+
+	if( u > 9 )
+		out[0] = u - 10 + 'a';
+	else
+		out[0] = u + '0';
+
+	if( l > 9 )
+		out[1] = l - 10 + 'a';
+	else
+		out[1] = l + '0';
+
+	return out;
+}
+
+std::string WoTCertificate::toJSON() const
+{
+	std::stringstream ans;
+
+	ans << "{"
+		<< "\"pubkey\": \""  << pubkey << "\""
+		<< ",\"saddr\": \""  << saddr  << "\""
+		<< ",\"sname\": \""  << sname  << "\""
+		<< ",\"sgaddr\": \"" << sgaddr << "\""
+		<< ",\"sphone\": \"" << sphone << "\""
+		<< ",\"semail\": \"" << semail << "\""
+		<< ",\"shttp\": \""  << shttp  << "\""
+		<< ",\"oname\": \""  << oname  << "\""
+		<< ",\"ogaddr\": \"" << ogaddr << "\""
+		<< ",\"ophone\": \"" << ophone << "\""
+		<< ",\"oemail\": \"" << oemail << "\""
+		<< ",\"ohttp\": \""  << ohttp  << "\""
+		<< ",\"expire\": \"" << expire << "\""
+		<< ",\"signature\": \"";
+
+	auto i = signature.begin();
+	auto e = signature.end();
+
+	char out[3];
+	out[2] = 0;
+
+	while( i != e )
+	{
+		ans << toChar(*i, out );
+		++i;
+	}
+
+	ans << "\" }";
+
+	return ans.str();
+}
+
 namespace
 {
 std::string buildJSON( 

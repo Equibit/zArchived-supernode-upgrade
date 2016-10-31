@@ -781,6 +781,9 @@ ReadKeyValue(
             CPubKey pubkey, spubkey;
             ssKey >> pubkey;
             ssKey >> spubkey;
+
+			WoTCertificate cert;
+			ssValue >> cert;
 // TODO
 		}
 		else if( strType == WOTCRTRVK )
@@ -788,6 +791,9 @@ ReadKeyValue(
             CPubKey pubkey, spubkey;
             ssKey >> pubkey;
             ssKey >> spubkey;
+
+			std::string reason;
+			ssValue >> reason;
 // TODO
 		}
 #ifdef USE_HSM
@@ -1424,14 +1430,16 @@ bool dumpKey(
             CPubKey pubkey, spubkey;
             ssKey >> pubkey;
             ssKey >> spubkey;
-// TODO
+
+			out << ':' << HexStr(pubkey) << ':' << HexStr(spubkey);
 		}
 		else if( strType == WOTCRTRVK )
 		{
             CPubKey pubkey, spubkey;
             ssKey >> pubkey;
             ssKey >> spubkey;
-// TODO
+
+			out << ':' << HexStr(pubkey) << ':' << HexStr(spubkey);
 		}
 #ifdef USE_HSM
 		else if( strType == HSM_POOL )
@@ -1684,11 +1692,16 @@ dumpValue(
 		}
 		else if( strType == WOTCERT )
 		{
+			WoTCertificate	cert;
+			ssValue >> cert;
 // TODO
 		}
 		else if( strType == WOTCRTRVK )
 		{
-// TODO
+			std::string reason;
+			ssValue >> reason;
+
+			out << " " << reason;
 		}
 #ifdef USE_HSM
 		else if( strType == HSM_POOL )

@@ -25,6 +25,8 @@ class WoTCertificate
 	std::vector<unsigned char>	signature;
 
 public:
+	WoTCertificate():expire(0) {}
+
 	WoTCertificate(
 		const std::string & _pubkey,
 		const std::string & _saddr,
@@ -77,4 +79,6 @@ public:
     }
 
 	void sign( CPubKey &, CPubKey & );
+
+	std::string toJSON() const;
 };

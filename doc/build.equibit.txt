@@ -107,12 +107,117 @@ Edit /etc/ld.so.conf (as root), adding the line
 Use the nfast command enquiry to verify that the system is operational. 
 
 -----------------------------------------
-6. Configure nShield connect
+6. Configure nShield Connect
 -----------------------------------------
+VLAN Default Gateway:	77.77.77.1
+VLAN Network: 			77.77.77.0/24
+Host IPs:				77.77.77.11	 NAT'd to 76.9.199.37
+						77.77.77.12  NAT'd to 76.9.199.38
+HSM IP:					77.77.77.13  NAT'd to 76.9.199.39
+Default Public Gateway:	76.9.199.34
+
+
+Step 1:  For the new HSM’s received, they will need to be assigned an IP via menu 1-1-1-1 .
+
+Step 2: Next from your RFS:
+        Run anonkneti [HSM IP]
+            Anonkneti returns ESN and KNETI Hash
+        Run rfs-setup --force [HSM IP] [ESN] [KNETI Hash]
+ 
+ESN:		C005-BFDF-E0FA
+KNETI Hash:	2f70.9c7f.294f.653c.8131.fd64.bf97.46be.8c09.8e62
+
+
+Step 3: Then, run menu 1-1-3 on the front panel of the HSM to setup the IP address of the RFS.
+ 
+Step 4: Make sure that the HSM uploaded its config files to the RFS under directory:
+        /opt/nfast/kmdata/hsm-[ESN]/config/config
+ 
+Step 5: Whitelist the IP address of each client that needs to connect to the HSM. This can be done via menu 1-1-4 (Client Config). This menu will prompt you to insert the IP address of each client and also specify if they are a privileged or un-privileged connection.
+ 
+Step 6: Next, enroll the new HSM’s from each client:
+        Run nethsmenroll [HSM IP]
+ 
+Step 7: Finally, initialize the Security World for each HSM (this will require the ACS quorum).
+        If the RFS is on the same existing Security World as your clients, then you can navigate 
+        to front panel menu 3-2-2 (Load Security World). Otherwise select 3-2-1 to initialize a 
+        New Security World.  Alternatively , you can run the following command from a privileged 
+		client connection to program your module with an existing Security World:
+            Run new-world -l -m[Module Number from Enquiry]
+            Or initialize a New Security World:
+            Run new-world -i -m[Module Number from Enquiry]
 
 
 -----------------------------------------
-7. Write nShield cards
+7. Enable ECC
 -----------------------------------------
 
+1) Exec
+
+sudo /opt/nfast/bin/fet
+
+The first line after the heading should list the ESN and YES/NO for each feature.
+
+2) Select 1 to read from smart card. Insert card into slot and press Enter.
+
+
+
+-----------------------------------------
+8. Create Security World
+-----------------------------------------
+
+
+new-world 	--initialize \
+			--factory \
+			--no-remoteshare-cert \
+			--cipher-suite=DLf1024s160mRijndael \
+			--acs-quorum=1/2 \
+			--reduced-features
+
+
+-----------------------------------------
+9. Write nShield Operator Card Set
+-----------------------------------------
+
+/opt/nfast/bin/createocs 
+
+-----------------------------------------
+10. Re-cycle hardserver
+-----------------------------------------
+
+/etc/init.d/nc_hardserver stop
+/etc/init.d/nc_hardserver start
+enquiry
+
+-----------------------------------------
+11. Set the RPC password
+-----------------------------------------
+
+Set the RPC password in ~/.bitcoin/bitcoin.conf. Add a line of the form
+
+rpcpassword=<some-password>
+
+to the file.
+
+
+----------------------------------------------------------------------------------------------------
+Other Thales utilities:
+----------------------------------------------------------------------------------------------------
+
+/opt/nfast/bin/nfdiag - Generates Thales configuration file. Enter n/a when prompted during processing.
+
+/opt/nfast/bin/nfkminfo --name-list		Outputs list of generated keys
+
+----------------------------------------------------------------------------------------------------
+Equinix Contacts:
+----------------------------------------------------------------------------------------------------
+
+Nicole Mumford:	647.504.9949
+Michael Lee:	416.826.5482
+
+----------------------------------------------------------------------------------------------------
+Thales Contact:
+----------------------------------------------------------------------------------------------------
+
+Damian Rodriguez(Product Support Engineer):		1-954-888-6261
 
