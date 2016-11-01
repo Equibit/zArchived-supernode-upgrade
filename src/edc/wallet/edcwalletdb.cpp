@@ -784,7 +784,8 @@ ReadKeyValue(
 
 			WoTCertificate cert;
 			ssValue >> cert;
-// TODO
+
+			pwallet->LoadWoTCertificate( pubkey, spubkey, cert );
 		}
 		else if( strType == WOTCRTRVK )
 		{
@@ -794,7 +795,8 @@ ReadKeyValue(
 
 			std::string reason;
 			ssValue >> reason;
-// TODO
+
+			pwallet->LoadWoTCertificateRevoke( pubkey, spubkey, reason );
 		}
 #ifdef USE_HSM
 		else if( strType == HSM_POOL )
@@ -1694,7 +1696,8 @@ dumpValue(
 		{
 			WoTCertificate	cert;
 			ssValue >> cert;
-// TODO
+
+			out << cert.toJSON() << endl;
 		}
 		else if( strType == WOTCRTRVK )
 		{
@@ -2232,7 +2235,7 @@ const std::set<std::string> & receivers
 		{
 			if( keep( bmsg, from, to, senders, assets ))
 			{
-       			pcursor->close();	// TODO: Read cursor must be closed prior to update. Use write cursor
+       			pcursor->close();
 				pcursor = NULL;
 				EraseUserMsg( msg );
 			}
@@ -2243,7 +2246,7 @@ const std::set<std::string> & receivers
 		{
 			if( keep( mmsg, from, to, senders, assets ))
 			{
-       			pcursor->close();	// TODO: Read cursor must be closed prior to update. Use write cursor
+       			pcursor->close();
 				pcursor = NULL;
 				EraseUserMsg( msg );
 			}
@@ -2256,7 +2259,7 @@ const std::set<std::string> & receivers
 			assert(p2pmsg);
 			if( keep( p2pmsg, from, to, senders, receivers ))
 			{
-       			pcursor->close();	// TODO: Read cursor must be closed prior to update. Use write cursor
+       			pcursor->close();
 				pcursor = NULL;
 				EraseUserMsg( msg );
 			}

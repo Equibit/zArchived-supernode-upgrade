@@ -407,8 +407,23 @@ private:
 
     std::map< std::pair<std::string, uint256 >, CUserMessage *> messageMap;
 
-	//               pubkey      authoring Key/revoked
-	std::multimap< CPubKey, std::pair<CPubKey,bool > >	wotCertificates;
+	//               pubkey      authoring Key/revoke reason
+	struct WoTdata
+	{
+		WoTdata( const CPubKey & pk ): pubkey(pk), revoked(false)
+		{
+		}
+		WoTdata( const CPubKey & pk, const std::string & reason ): 
+			pubkey(pk), revoked(true), revokeReason(reason)
+		{
+		}
+
+		CPubKey		pubkey;
+		bool		revoked;
+		std::string	revokeReason;
+	};
+
+	std::multimap< CPubKey, WoTdata >	wotCertificates;
 
 #ifdef USE_HSM
 	std::map<CKeyID, std::pair<CPubKey, std::string > > hsmKeyMap;
@@ -903,6 +918,9 @@ public:
 	bool RevokeWoTCertificate(const CPubKey & pk1, const CPubKey & pk2, 
 							  const std::string & reason );
 	bool WoTchainExists( const CPubKey &, const CPubKey &, uint64_t );
+
+	void LoadWoTCertificate( const CPubKey & pk1, const CPubKey & pk2, const WoTCertificate & cert );
+	void LoadWoTCertificateRevoke( const CPubKey & pk1, const CPubKey & pk2, const std::string & reason );
 };
 
 /** A key allocated from the key pool. */

@@ -4627,7 +4627,7 @@ void CEDCWallet::AddWoTCertificate(
 
 	if( itPair.first == itPair.second )
 	{
-		wotCertificates.insert( std::make_pair( pk, std::make_pair( spk, false ) ) );
+		wotCertificates.insert( std::make_pair( pk, WoTdata( spk ) ) );
 	}
 	else
 	{
@@ -4638,7 +4638,7 @@ void CEDCWallet::AddWoTCertificate(
 
 		while( it != end )
 		{
-			if( it->second.first == spk )
+			if( it->second.pubkey == spk )
 			{
 				found = true;
 				break;
@@ -4648,19 +4648,19 @@ void CEDCWallet::AddWoTCertificate(
 
 		if(!found)
 		{
-			wotCertificates.insert( std::make_pair( pk, std::make_pair( spk, false ) ) );
+			wotCertificates.insert( std::make_pair( pk, WoTdata( spk ) ) );
 		}
 		else
 		{
 			// If the certificate was revoked, then un-revoke it
-			if( it->second.second )
+			if( it->second.revoked )
 			{
 				// Remove from DB
 				if(!CEDCWalletDB(strWalletFile).EraseWoTcertificateRevocation( pk, spk ))
 					throw runtime_error(std::string(__func__) + 
 						": deleting WoT certificate revocation failed");
 
-				it->second.second = false;
+				it->second.revoked = false;
 			}
 		}
 	}
@@ -4680,7 +4680,7 @@ bool CEDCWallet::RevokeWoTCertificate(
 
 	if( itPair.first == itPair.second )
 	{
-		wotCertificates.insert( std::make_pair( pk, std::make_pair( spk, true ) ) );
+		wotCertificates.insert( std::make_pair( pk, WoTdata( spk, reason ) ) );
 	}
 	else
 	{
@@ -4691,7 +4691,7 @@ bool CEDCWallet::RevokeWoTCertificate(
 
 		while( it != end )
 		{
-			if( it->second.first == spk )
+			if( it->second.pubkey == spk )
 			{
 				found = true;
 				break;
@@ -4701,11 +4701,12 @@ bool CEDCWallet::RevokeWoTCertificate(
 
 		if(!found)
 		{
-			wotCertificates.insert( std::make_pair( pk, std::make_pair( spk, true ) ) );
+			wotCertificates.insert( std::make_pair( pk, WoTdata( spk, reason ) ) );
 		}
 		else
 		{
-			it->second.second = true;
+			it->second.revoked = true;
+			it->second.revokeReason = reason;
 		}
 	}
 
@@ -4730,11 +4731,11 @@ bool CEDCWallet::wotChainExists(
 	// Iterate over all pubkeys that have authorized the pubkey
 	while( it != end )
 	{
-		if( it->second.first == epk )
-			return !it->second.second;	// return false if revoked
+		if( it->second.pubkey == epk )
+			return !it->second.revoked;	// return false if revoked
 		else if( currlen < maxlen )
 		{
-			if(wotChainExists( it->second.first, epk, currlen+1, maxlen ))
+			if(wotChainExists( it->second.pubkey, epk, currlen+1, maxlen ))
 				return true;
 		}
 
@@ -4752,3 +4753,34 @@ bool CEDCWallet::WoTchainExists(
 	return wotChainExists( spk, epk, 1, maxlen );
 }
 
+void CEDCWallet::LoadWoTCertificate( 
+			const CPubKey & pk1, 
+			const CPubKey & pk2, 
+	 const WoTCertificate & cert )
+{
+	wotCertificates.insert( std::make_pair( pk1, WoTdata( pk2 ) ) );
+}
+
+void CEDCWallet::LoadWoTCertificateRevoke( 
+		const CPubKey & pk1, 
+		const CPubKey & pk2, 
+	const std::string & reason )
+{
+	auto ip = wotCertificates.equal_range( pk1 );
+	if( ip.first != ip.second )
+	{
+		auto i = ip.first;
+		auto e = ip.second;
+
+		while( i != e )
+		{
+			if( i->second.pubkey == pk2 )
+			{
+				i->second.revokeReason = reason;
+			}
+			++i;
+		}
+	}
+	else
+		wotCertificates.insert( std::make_pair( pk1, WoTdata( pk2, reason ) ) );
+}
