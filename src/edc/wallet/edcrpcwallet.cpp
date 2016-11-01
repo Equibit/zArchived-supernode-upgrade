@@ -20,11 +20,11 @@
 #include "edcwallet.h"
 #include "edc/wallet/edcwalletdb.h"
 #include "edc/edcapp.h"
+#include "edc/edcparams.h"
 
 #ifdef USE_HSM
 
 #include "Thales/interface.h"
-#include "edc/edcparams.h"
 #include <secp256k1.h>
 
 namespace

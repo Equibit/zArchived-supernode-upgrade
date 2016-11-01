@@ -81,4 +81,6 @@ public:
 	void sign( CPubKey &, CPubKey & );
 
 	std::string toJSON() const;
+
+	uint160	GetID() const;
 };

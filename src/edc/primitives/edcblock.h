@@ -18,6 +18,9 @@ public:
     // network and disk
     std::vector<CEDCTransaction> vtx;
 
+	// WoT Certificate revocations
+	std::vector<uint160> wotCertRevokes;
+
     // memory only
     mutable bool fChecked;
 
@@ -39,6 +42,7 @@ public:
 	{
         READWRITE(*(CBlockHeader*)this);
         READWRITE(vtx);
+		READWRITE(wotCertRevokes);
     }
 
     void SetNull()

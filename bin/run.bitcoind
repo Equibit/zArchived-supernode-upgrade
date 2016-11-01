@@ -44,7 +44,8 @@
 #						secure user messaging. 
 
 sudo ./bitcoind \
--eb_usehsm \
+-eb_usehsm=false \
+-daemon \
 -logtimestamps -eb_logtimestamps \
 -logtimemicros -eb_logtimemicros \
 -debug -eb_debug \

@@ -28,11 +28,13 @@ EDCapp::EDCapp():
 	mapAlreadyAskedFor_(MAX_INV_SZ),
 	payTxFee_(EDC_DEFAULT_TRANSACTION_FEE),
 	sslCtx_(NULL),
+#ifdef USE_HSM
 	nfApp_(NULL),
 	nfSecWorld_(NULL),
 	nfHardServer_(NULL),
 	nfCardLoadingLib_(NULL),
 	nfModule_(NULL),
+#endif
 	lastBlockWeight_(0)
 {
 	//TODO: Does maxConnects_ need to take into account the bitcoin connections?

@@ -12,11 +12,11 @@
 #include "edc/wallet/edcwallet.h"
 #include "edc/message/edcmessage.h"
 #include "edc/rpc/edcwot.h"
+#include "edc/edcparams.h"
 
 
 #ifdef USE_HSM
 
-#include "edc/edcparams.h"
 #include "Thales/interface.h"
 #include <secp256k1.h>
 
@@ -212,6 +212,37 @@ std::string WoTCertificate::toJSON() const
 	return ans.str();
 }
 
+class Hasher
+{
+    CHash160 ctx;
+public:
+    Hasher & write(const char *pch, size_t size) 
+	{
+        ctx.Write((const unsigned char*)pch, size);
+        return (*this);
+    }
+    uint160 GetHash() 
+	{
+        uint160 result;
+        ctx.Finalize((unsigned char*)&result);
+        return result;
+    }
+
+    template<typename T>
+    Hasher & operator<<(const T& obj) 
+	{
+        ::Serialize(*this, obj, SER_GETHASH, PROTOCOL_VERSION );
+        return (*this);
+    }
+};
+
+uint160	WoTCertificate::GetID() const
+{
+	Hasher h;
+	h << *this;
+	return h.GetHash();	
+}
+
 namespace
 {
 std::string buildJSON( 
@@ -254,78 +285,6 @@ void insertStr(
 		*it++ = *i;
 		++i;
 	}
-}
-
-const std::string WoT_MAGIC = "!WoT";
-const uint16_t	CERT_VERSION = (0x1 << 8) + 0x0;	// 1.0
-
-std::vector<unsigned char> buildWoTCertificate(
-	const std::string & pubkey,
-	const std::string & saddr,
-	const std::string & oname,
-	const std::string & ogaddr,
-	const std::string & ophone,
-	const std::string & oemail,
-	const std::string & ohttp,
-	const std::string & sname,
-	const std::string & sgaddr,
-	const std::string & sphone,
-	const std::string & semail,
-	const std::string & shttp,
-	uint32_t expire )
-{
-	std::vector<unsigned char>	ans;
-
-	size_t size = WoT_MAGIC.size() + sizeof(unsigned short);
-
-	size += pubkey.size() + sizeof(uint16_t);
-	size += saddr.size()  + sizeof(uint16_t);
-	size += oname.size()  + sizeof(uint16_t);
-	size += ogaddr.size() + sizeof(uint16_t);
-	size += ophone.size() + sizeof(uint16_t);
-	size += oemail.size() + sizeof(uint16_t);
-	size += ohttp.size()  + sizeof(uint16_t);
-	size += sname.size()  + sizeof(uint16_t);
-	size += sgaddr.size() + sizeof(uint16_t);
-	size += sphone.size() + sizeof(uint16_t);
-	size += semail.size() + sizeof(uint16_t);
-	size += shttp.size()  + sizeof(uint16_t);
-	size += sizeof(uint32_t);
-	
-	ans.resize(size);
-
-	auto ai = ans.begin();
-
-	auto i = WoT_MAGIC.begin();
-	auto e = WoT_MAGIC.end();
-	while( i != e )
-	{
-		*ai++ = *i;
-		++i;
-	}
-
-	*ai++ = CERT_VERSION >> 8;
-	*ai++ = CERT_VERSION & 0xf;
-
-	insertStr( ai, pubkey );
-	insertStr( ai, saddr );
-	insertStr( ai, oname );
-	insertStr( ai, ogaddr );
-	insertStr( ai, ophone );
-	insertStr( ai, oemail );
-	insertStr( ai, ohttp );
-	insertStr( ai, sname );
-	insertStr( ai, sgaddr );
-	insertStr( ai, sphone );
-	insertStr( ai, semail );
-	insertStr( ai, shttp );
-
-	*ai++ = expire >> 24;
-	*ai++ = (expire >> 16) & 0xf;
-	*ai++ = (expire >> 8) & 0xf;
-	*ai++ = expire & 0xf;
-
-	return ans;
 }
 
 }
