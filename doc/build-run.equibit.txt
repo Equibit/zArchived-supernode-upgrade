@@ -1,7 +1,7 @@
 
------------------------------------------
+------------------------------------------------------
 0. System Initialization:
------------------------------------------
+------------------------------------------------------
 o Ubuntu 16.0.4 or higher
 o Install the following packages (using apt-get)
 
@@ -15,15 +15,15 @@ o Install the following packages (using apt-get)
 	bsdmainutils
 	libboost-all-dev
 
------------------------------------------
+------------------------------------------------------
 1. Get source from github:
------------------------------------------
+------------------------------------------------------
 
 git clone https://github.com/Equibit/EDC-core.git
 
------------------------------------------
+------------------------------------------------------
 2. Get berkleydb 4.8
------------------------------------------
+------------------------------------------------------
 
 cd ~
 mkdir bitcoin/db4/
@@ -34,16 +34,16 @@ cd db-4.8.30.NC/build_unix/
 ../dist/configure --enable-cxx --disable-shared --with-pic --prefix=/home/theusername/bitcoin/db4/
 make install
 
------------------------------------------
+------------------------------------------------------
 3. Set path to berkleydb 4.8 in rebuild script
------------------------------------------
+------------------------------------------------------
 
 Set the path to the berkleydb 4.8 files in the ./EDC-core/rebuild script.
 i.e. Assign the variable BDB_PREFIX.
 
------------------------------------------
+------------------------------------------------------
 4. Get latest openssl
------------------------------------------
+------------------------------------------------------
 
 The Equibit build requires Openssl with a version of 1.1.x or higher because lower versions do not
 support Elliptic Curve Algorithms.
@@ -75,9 +75,9 @@ Edit /etc/ld.so.conf (as root), adding the line
 
 /usr/local/lib
 
------------------------------------------
-5. Install Thales software
------------------------------------------
+------------------------------------------------------
+5. Install Thales software (HSM)
+------------------------------------------------------
 
 1. Create /etc/nfast.conf with the entry:
 
@@ -106,9 +106,30 @@ Edit /etc/ld.so.conf (as root), adding the line
 
 Use the nfast command enquiry to verify that the system is operational. 
 
------------------------------------------
-6. Configure nShield Connect
------------------------------------------
+------------------------------------------------------
+6. Enable HSM build (HSM)
+------------------------------------------------------
+Change the line in configure.ac from
+
+     CPPFLAGS="$CPPFLAGS"
+
+to
+
+     CPPFLAGS="$CPPFLAGS -DUSE_HSM"
+
+------------------------------------------------------
+7. Run the build server binaries
+------------------------------------------------------
+from the root directory, run the rebuild script
+
+------------------------------------------------------
+8. Build the Thales HSM interface shared library (HSM)
+------------------------------------------------------
+In ./src/Thales, run make
+
+------------------------------------------------------
+9. Configure nShield Connect (HSM)
+------------------------------------------------------
 VLAN Default Gateway:	77.77.77.1
 VLAN Network: 			77.77.77.0/24
 Host IPs:				77.77.77.11	 NAT'd to 76.9.199.37
@@ -163,10 +184,9 @@ Optional:
 	Set Default gateway:
 	System > System Configuration > Network config > Set default gateway > IPv4 Gateway
 
-
------------------------------------------
-7. Enable ECC
------------------------------------------
+------------------------------------------------------
+10. Enable ECC (HSM)
+------------------------------------------------------
 
 1) Exec
 
@@ -177,10 +197,9 @@ The first line after the heading should list the ESN and YES/NO for each feature
 2) Select 1 to read from smart card. Insert card into slot and press Enter.
 
 
-
------------------------------------------
-8. Create Security World
------------------------------------------
+------------------------------------------------------
+11. Create Security World (HSM)
+------------------------------------------------------
 
 Create
 
@@ -198,9 +217,9 @@ Copy to HSM:
 
 nethsmadmin --module=1 --update-world
 
------------------------------------------
-9. Write nShield Operator Card Set
------------------------------------------
+------------------------------------------------------
+12. Write nShield Operator Card Set (HSM)
+------------------------------------------------------
 
 /opt/nfast/bin/createocs -m MODULE|--module=MODULE -Q|--ocs-quorum=K/N
 -N|--name=NAME [-M|--name-cards]
@@ -216,17 +235,17 @@ nfkninfo --cardset-list
 
 to list created OCSs
 
------------------------------------------
-10. Re-cycle hardserver
------------------------------------------
+------------------------------------------------------
+13. Re-cycle hardserver (HSM)
+------------------------------------------------------
 
 /etc/init.d/nc_hardserver stop
 /etc/init.d/nc_hardserver start
 enquiry
 
------------------------------------------
-11. Set the RPC password
------------------------------------------
+------------------------------------------------------
+14. Set the RPC password (HSM)
+------------------------------------------------------
 
 Set the RPC password in ~/.bitcoin/bitcoin.conf. Add a line of the form
 
@@ -234,12 +253,21 @@ rpcpassword=<some-password>
 
 to the file.
 
+------------------------------------------------------
+15. Run server / client
+------------------------------------------------------
+Use the scripts in ./bin to run the server / client.
+
+run.bitcoind		Server script
+run.bitcoin-cli		Bitcoin RPC Client script
+run.equibit-clie 	Equibit RPC Client script
 
 ----------------------------------------------------------------------------------------------------
 Other Thales utilities:
 ----------------------------------------------------------------------------------------------------
 
-/opt/nfast/bin/nfdiag - Generates Thales configuration file. Enter n/a when prompted during processing.
+/opt/nfast/bin/nfdiag - Generates Thales configuration file. Enter 
+n/a when prompted during processing.
 
 /opt/nfast/bin/nfkminfo --name-list		Outputs list of generated keys
 
@@ -253,6 +281,4 @@ Michael Lee:	416.826.5482
 ----------------------------------------------------------------------------------------------------
 Thales Contact:
 ----------------------------------------------------------------------------------------------------
-
 Damian Rodriguez(Product Support Engineer):		1-954-888-6261
-
