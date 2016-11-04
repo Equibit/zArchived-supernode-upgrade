@@ -42,6 +42,7 @@ extern const char * edcDEFAULT_WALLET_DAT;
 
 class CBlockIndex;
 class CCoinControl;
+class CEDCBitcoinAddress;
 class CEDCOutput;
 class CEDCReserveKey;
 class CScript;
@@ -705,11 +706,12 @@ public:
         				  std::string & strFailReason );
 
     /**
-     * Create a new transaction paying the recipients with a set of coins
+     * Create a new trusted transaction paying the recipients with a set of coins
      * selected by SelectCoins(); Also create the change output, when needed
      * @note passing nChangePosInOut as -1 will result in setting a random position
      */
     bool CreateTrustedTransaction(
+				   CEDCBitcoinAddress & issuer, 
 		const std::vector<CRecipient> & vecSend, 
 						 CEDCWalletTx & wtxNew, 
 					   CEDCReserveKey & reservekey, 

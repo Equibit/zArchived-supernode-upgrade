@@ -2870,14 +2870,14 @@ UniValue edclistunspent(const UniValue& params, bool fHelp)
     return results;
 }
 
-UniValue edctrustedmove(const UniValue & params, bool fHelp)
+UniValue edctrustedsend(const UniValue & params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
 
     if (!edcEnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
-	// eb_trustedmove seller buyer issuer amount wot-level (min-confirm comment )
+	// eb_trustedsend seller buyer issuer amount wot-level (min-confirm comment )
 	//
 	// level 1		trust chain from issuer to buyer of length of up to 2
 	// level 2		trust chain from issuer to buyer
@@ -2885,7 +2885,7 @@ UniValue edctrustedmove(const UniValue & params, bool fHelp)
 	//
     if (fHelp || params.size() < 5 || params.size() > 7)
         throw runtime_error(
-            "eb_trustedmove \"seller\" \"buyer\" \"issuer\" amount wot-level txn-fee-amount ( min-confirm \"comment\" )\n"
+            "eb_trustedsend \"seller\" \"buyer\" \"issuer\" amount wot-level txn-fee-amount ( min-confirm \"comment\" )\n"
 			"\nMoves equibits authorized equibits from seller account to buyer account.\n"
 			"The wot-level parameter determines what level of trust is used as follows:\n\n"
 			"1	Trust chain from issuer to buyer of length of up to 2\n"
@@ -2900,25 +2900,81 @@ UniValue edctrustedmove(const UniValue & params, bool fHelp)
             "6. minconf        (numeric, optional, default=1) Only include transactions confirmed at least this many times.\n"
             "7. \"comment\"    (string, optional) An optional comment, stored in the wallet only.\n"
             "\nResult:\n"
-            "true|false           (boolean) true if successful.\n"
+            "\"transactionid\" (string) The transaction id.\n"
             "\nExamples:\n"
-            + HelpExampleCli("eb_trustedmove", "\"123bed..decf0de0\" \"1459d..fea0397c\" \"129dce865ce..987cdef\" 10.0 1 \"happy birthday!\"") +
+            + HelpExampleCli("eb_trustedsend", "\"123bed..decf0de0\" \"1459d..fea0397c\" \"129dce865ce..987cdef\" 10.0 1 \"happy birthday!\"") +
             "\nAs a json rpc call\n"
-            + HelpExampleRpc("eb_trustedmove", "\"1cd90s..decf0de0\", \"1459d..fea0397c\", \"129dce865ce..987cdef\" 80.50, 1, \"happy birthday!\"")
+            + HelpExampleRpc("eb_trustedsend", "\"1cd90s..decf0de0\", \"1459d..fea0397c\", \"129dce865ce..987cdef\" 80.50, 1, \"happy birthday!\"")
 		);
 	
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-    string  seller = params[0].get_str();
-    string  buyer  = params[1].get_str();
-    string  issuer = params[2].get_str();
-    CAmount amount = params[3].get_int64();
-    string  wotlvl = params[4].get_str();
-    int     mincnf = ( params.size() > 6 ) ? params[5].get_int() : 1;
-    string  comment= ( params.size() > 7 ) ? params[6].get_str() : "";
+    CEDCBitcoinAddress seller(params[0].get_str());
+    if (!seller.IsValid())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Equibit seller address");
 
+    CEDCBitcoinAddress buyer(params[1].get_str());
+    if (!buyer.IsValid())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Equibit buyer address");
 
-	return NullUniValue;
+    CEDCBitcoinAddress issuer(params[2].get_str());
+    if (!buyer.IsValid())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Equibit issuer address");
+
+    // Amount
+    CAmount nAmount = AmountFromValue(params[3]);
+    if (nAmount <= 0)
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
+
+    int wotlvl = params[4].get_int();
+	if( wotlvl < 0 || wotlvl > 2 )
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid WoT level value. It must be between 0 and 2");
+
+    int mincnf = ( params.size() > 6 ) ? params[5].get_int() : 1;
+	if( mincnf < 1 )
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid minimum confirmation value. It must be greater than 1");
+
+    string  comment = ( params.size() > 7 ) ? params[6].get_str() : "";
+
+    // Wallet comments
+    CEDCWalletTx wtx;
+
+    if (comment.size() > 0 )
+        wtx.mapValue["comment"] = comment;
+
+    edcEnsureWalletIsUnlocked();
+
+    if (theApp.walletMain()->GetBroadcastTransactions() && !theApp.connman())
+        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
+
+	if( wotlvl > 0 )
+		; // TODO: Make sure buyer is trusted at specified WoT level
+
+    // Parse Equibit address
+    CScript scriptPubKey = GetScriptForDestination(buyer.Get());
+
+    // Create and send the transaction
+    CEDCReserveKey reservekey(theApp.walletMain());
+    CAmount nFeeRequired;
+    std::string strError;
+    vector<CRecipient> vecSend;
+    int nChangePosRet = -1;
+    CRecipient recipient = { scriptPubKey, nAmount, false };
+
+    vecSend.push_back(recipient);
+
+    if (!theApp.walletMain()->CreateTrustedTransaction(
+		issuer, vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError)) 
+	{
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
+
+    if (!theApp.walletMain()->CommitTransaction(wtx, reservekey, theApp.connman().get()))
+        throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! This might "
+			"happen if some of the coins in your wallet were already spent, such as if you used "
+			"a copy of the wallet and coins were spent in the copy but not marked as spent here.");
+
+    return wtx.GetHash().GetHex();
 }
 
 UniValue edcfundrawtransaction(const UniValue& params, bool fHelp)
@@ -3118,7 +3174,7 @@ static const CRPCCommand edcCommands[] =
     { "wallet",             "eb_walletlock",               &edcwalletlock,               true  },
     { "wallet",             "eb_walletpassphrasechange",   &edcwalletpassphrasechange,   true  },
     { "wallet",             "eb_walletpassphrase",         &edcwalletpassphrase,         true  },
-	{ "wallet",             "eb_trustedmove",              &edctrustedmove,              true  },
+	{ "wallet",             "eb_trustedsend",              &edctrustedsend,              true  },
     { "wallet",             "eb_removeprunedfunds",        &edcremoveprunedfunds,        true  },
 };
 

@@ -2810,6 +2810,7 @@ bool CEDCWallet::CreateTransaction(
 }
 
 bool CEDCWallet::CreateTrustedTransaction(
+          CEDCBitcoinAddress & issuer,			// IN: address of issuer whose coins will be moved
 	const vector<CRecipient> & vecSend, 		// IN: Recipients of TXOUT
 				CEDCWalletTx & wtxNew, 			// IN/OUT: Created TXN
 			  CEDCReserveKey & reservekey, 		// IN: Key from pool to be destination of change
