@@ -19,19 +19,24 @@ o Install the following packages (using apt-get)
 1. Get source from github:
 ------------------------------------------------------
 
+cd
+mkdir edc
+cd edc
 git clone https://github.com/Equibit/EDC-core.git
 
+
+The root directory of the installation is $(HOME)/edc/EDC-core.
 ------------------------------------------------------
 2. Get berkleydb 4.8
 ------------------------------------------------------
 
-cd ~
+cd
 mkdir -p bitcoin/db4/
 
 wget 'http://download.oracle.com/berkeley-db/db-4.8.30.NC.tar.gz'
 tar -xzvf db-4.8.30.NC.tar.gz
 cd db-4.8.30.NC/build_unix/
-../dist/configure --enable-cxx --disable-shared --with-pic --prefix=~/bitcoin/db4/
+../dist/configure --enable-cxx --disable-shared --with-pic --prefix=$HOME/bitcoin/db4/
 make install
 
 ------------------------------------------------------
@@ -41,7 +46,7 @@ make install
 The Equibit build requires Openssl with a version of 1.1.x or higher because lower versions do not
 support Elliptic Curve Algorithms.
 
-Use the following list of commands to install openssl:
+1) Use the following list of commands to install openssl:
 -------------------------------------------------------------------------
 #compile and install newest version of openssl in Ubuntu 14.04 LTS
 cd
@@ -64,23 +69,25 @@ openssl version
 apt-cache show openssl
 -------------------------------------------------------------------------
 
-Edit /etc/ld.so.conf (as root), adding the line
+2) Edit /etc/ld.so.conf (as root), adding the line
 
 /usr/local/lib
+
+3) Run the utility ldconfig to load the new setting
 
 ------------------------------------------------------
 4. Install Thales software (HSM)
 ------------------------------------------------------
 
-1. Create /etc/nfast.conf with the entry:
+1) Create /etc/nfast.conf with the entry:
 
 	NFAST_CREATEDEVNFAST=1
 
-2. Mount iso file to /media/iso
+2) Mount iso file to /media/iso
 
 	sudo mount -o loop PATH/file.iso /media/iso
 
-3. Extra all tar files from the mounted file:
+3) Extra all tar files from the mounted file:
 
 	for all files found by find /media/iso -name '*.tar'
 
@@ -88,11 +95,11 @@ Edit /etc/ld.so.conf (as root), adding the line
 
 	Files will be extracted to /opt/nfast
 
-4. cd /opt/nfast/driver
+4) cd /opt/nfast/driver
    ./configure
    make
 
-5. cd /opt/nfast/sbin
+5) cd /opt/nfast/sbin
    sudo ./install
 
 6. Add /opt/nfast/bin to the PATH environment variable
@@ -115,10 +122,14 @@ to
 ------------------------------------------------------
 In ./src/Thales, run make
 
-------------------------------------------------------
-7. Run the build server binaries
-------------------------------------------------------
+--------------------------------------------------------
+7. Run the rebuild script to configure and run the build
+--------------------------------------------------------
 from the root directory, run the rebuild script
+
+NOTE: If your build does not include HSM, then make 
+sure the configure.ac file does not assign -DUSE_HSM
+to the CPPFLAGS variable.
 
 ------------------------------------------------------
 8. Link bitcoind to the Thales interface library (HSM)
@@ -254,12 +265,22 @@ to the file.
 ------------------------------------------------------
 15. Run server / client
 ------------------------------------------------------
+Run the install script
+
+~/edc/EDC-core/bin/install
+
+NOTE: If HSM is not used, then comment out lines following
+the echo "Build Thales interface shared library" line.
+
+
 Use the scripts in ./bin to run the server / client.
 
 run.bitcoind		Server script
 run.bitcoin-cli		Bitcoin RPC Client script
 run.equibit-clie 	Equibit RPC Client script
 
+NOTE: If HSM is not used, then add the command line option
+-daemon to the options listed in run.bitcoind.
 ----------------------------------------------------------------------------------------------------
 Other Thales utilities:
 ----------------------------------------------------------------------------------------------------
