@@ -362,7 +362,7 @@ case $host in
      OBJCXXFLAGS="$CXXFLAGS"
      ;;
    *linux*)
-     CPPFLAGS="$CPPFLAGS"
+     CPPFLAGS="$CPPFLAGS -DUSE_HSM"
      TARGET_OS=linux
      LEVELDB_TARGET_FLAGS="-DOS_LINUX"
      ;;

@@ -2870,6 +2870,57 @@ UniValue edclistunspent(const UniValue& params, bool fHelp)
     return results;
 }
 
+UniValue edctrustedmove(const UniValue & params, bool fHelp)
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+    if (!edcEnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+	// eb_trustedmove seller buyer issuer amount wot-level (min-confirm comment )
+	//
+	// level 1		trust chain from issuer to buyer of length of up to 2
+	// level 2		trust chain from issuer to buyer
+	// level 3		Issuer and buyer must both sign the transaction
+	//
+    if (fHelp || params.size() < 5 || params.size() > 7)
+        throw runtime_error(
+            "eb_trustedmove \"seller\" \"buyer\" \"issuer\" amount wot-level txn-fee-amount ( min-confirm \"comment\" )\n"
+			"\nMoves equibits authorized equibits from seller account to buyer account.\n"
+			"The wot-level parameter determines what level of trust is used as follows:\n\n"
+			"1	Trust chain from issuer to buyer of length of up to 2\n"
+			"2	Trust chain from issuer to buyer\n"
+			"3	Issuer and buyer must both sign the transaction\n"
+			"\nArguments:\n"
+			"1. \"seller\"     (string, required)  address of the seller.\n"
+            "2. \"buyer\"      (string, required)  address of the buyer.\n"
+			"3. \"issuer\"     (string, required)  address of the equibit issuer.\n"
+			"4. amount         (numeric, required) amount of equibit to move.\n"
+			"5. wot-level      (numeric, required) WoT security level.\n"
+            "6. minconf        (numeric, optional, default=1) Only include transactions confirmed at least this many times.\n"
+            "7. \"comment\"    (string, optional) An optional comment, stored in the wallet only.\n"
+            "\nResult:\n"
+            "true|false           (boolean) true if successful.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("eb_trustedmove", "\"123bed..decf0de0\" \"1459d..fea0397c\" \"129dce865ce..987cdef\" 10.0 1 \"happy birthday!\"") +
+            "\nAs a json rpc call\n"
+            + HelpExampleRpc("eb_trustedmove", "\"1cd90s..decf0de0\", \"1459d..fea0397c\", \"129dce865ce..987cdef\" 80.50, 1, \"happy birthday!\"")
+		);
+	
+    LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
+
+    string  seller = params[0].get_str();
+    string  buyer  = params[1].get_str();
+    string  issuer = params[2].get_str();
+    CAmount amount = params[3].get_int64();
+    string  wotlvl = params[4].get_str();
+    int     mincnf = ( params.size() > 6 ) ? params[5].get_int() : 1;
+    string  comment= ( params.size() > 7 ) ? params[6].get_str() : "";
+
+
+	return NullUniValue;
+}
+
 UniValue edcfundrawtransaction(const UniValue& params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
@@ -3067,6 +3118,7 @@ static const CRPCCommand edcCommands[] =
     { "wallet",             "eb_walletlock",               &edcwalletlock,               true  },
     { "wallet",             "eb_walletpassphrasechange",   &edcwalletpassphrasechange,   true  },
     { "wallet",             "eb_walletpassphrase",         &edcwalletpassphrase,         true  },
+	{ "wallet",             "eb_trustedmove",              &edctrustedmove,              true  },
     { "wallet",             "eb_removeprunedfunds",        &edcremoveprunedfunds,        true  },
 };
 

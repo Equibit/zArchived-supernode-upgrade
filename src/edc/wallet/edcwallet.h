@@ -704,6 +704,21 @@ public:
 					   CEDCReserveKey & reservekey, 
         				  std::string & strFailReason );
 
+    /**
+     * Create a new transaction paying the recipients with a set of coins
+     * selected by SelectCoins(); Also create the change output, when needed
+     * @note passing nChangePosInOut as -1 will result in setting a random position
+     */
+    bool CreateTrustedTransaction(
+		const std::vector<CRecipient> & vecSend, 
+						 CEDCWalletTx & wtxNew, 
+					   CEDCReserveKey & reservekey, 
+							  CAmount & nFeeRet, 
+								  int & nChangePosInOut,
+        				  std::string & strFailReason, 
+				   const CCoinControl * coinControl = NULL, 
+								   bool sign = true);
+
     bool CommitTransaction(CEDCWalletTx& wtxNew, CEDCReserveKey& reservekey, CEDCConnman * connman);
 
 	void ListAccountCreditDebit(const std::string& strAccount, std::list<CAccountingEntry>& entries);
