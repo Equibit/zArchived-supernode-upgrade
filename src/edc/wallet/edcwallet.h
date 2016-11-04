@@ -434,6 +434,8 @@ private:
 
 	bool wotChainExists(const CPubKey & spk, const CPubKey & epk, 
 						uint64_t currlen, uint64_t maxlen );
+	bool wotChainExists(const CPubKey & spk, const CPubKey & epk, const CPubKey & expk,
+						uint64_t currlen, uint64_t maxlen );
 public:
     /*
      * Main wallet lock.
@@ -935,6 +937,7 @@ public:
 	bool RevokeWoTCertificate(const CPubKey & pk1, const CPubKey & pk2, 
 							  const std::string & reason );
 	bool WoTchainExists( const CPubKey &, const CPubKey &, uint64_t );
+	bool WoTchainExists( const CPubKey &, const CPubKey &, const CPubKey &, uint64_t );
 
 	void LoadWoTCertificate( const CPubKey & pk1, const CPubKey & pk2, const WoTCertificate & cert );
 	void LoadWoTCertificateRevoke( const CPubKey & pk1, const CPubKey & pk2, const std::string & reason );

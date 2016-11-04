@@ -2870,6 +2870,36 @@ UniValue edclistunspent(const UniValue& params, bool fHelp)
     return results;
 }
 
+namespace
+{
+bool getPubKey( 
+			   CPubKey & pubkey, 	// OUT
+    CEDCBitcoinAddress & addr,		// IN
+			CEDCWallet & wallet )	// IN
+{
+#ifndef ENABLE_WALLET
+	return false;
+#endif
+
+	CKeyID keyID;
+	if (!addr.GetKeyID(keyID))
+		return false;
+
+	CPubKey vchPubKey;
+#ifndef USE_HSM
+	if (!wallet.GetPubKey(keyID, pubkey))
+#else
+	if (!wallet.GetPubKey(keyID, pubkey) && !wallet.GetHSMPubKey(keyID, pubkey))
+#endif
+		return false;
+
+	if (!pubkey.IsFullyValid())
+		return false;
+
+	return true;
+}
+}
+
 UniValue edctrustedsend(const UniValue & params, bool fHelp)
 {
 	EDCapp & theApp = EDCapp::singleton();
@@ -2930,11 +2960,12 @@ UniValue edctrustedsend(const UniValue & params, bool fHelp)
 	if( wotlvl < 0 || wotlvl > 2 )
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid WoT level value. It must be between 0 and 2");
 
-    int mincnf = ( params.size() > 6 ) ? params[5].get_int() : 1;
+    int mincnf = ( params.size() > 5 ) ? params[5].get_int() : 1;
 	if( mincnf < 1 )
-        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid minimum confirmation value. It must be greater than 1");
+        throw JSONRPCError(RPC_TYPE_ERROR, 
+			"Invalid minimum confirmation value. It must be greater than 1");
 
-    string  comment = ( params.size() > 7 ) ? params[6].get_str() : "";
+    string  comment = ( params.size() > 6 ) ? params[6].get_str() : "";
 
     // Wallet comments
     CEDCWalletTx wtx;
@@ -2945,10 +2976,25 @@ UniValue edctrustedsend(const UniValue & params, bool fHelp)
     edcEnsureWalletIsUnlocked();
 
     if (theApp.walletMain()->GetBroadcastTransactions() && !theApp.connman())
-        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
+        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, 
+			"Error: Peer-to-peer functionality missing or disabled");
 
 	if( wotlvl > 0 )
-		; // TODO: Make sure buyer is trusted at specified WoT level
+	{
+		CPubKey	epubkey;
+		CPubKey	bpubkey;
+		CPubKey	spubkey;
+
+		if(getPubKey( epubkey, issuer, *theApp.walletMain() ) )
+        	throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No public key corresponds to issuer address ");
+		if(getPubKey( bpubkey, buyer, *theApp.walletMain() ) )
+        	throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No public key corresponds to buyer address ");
+		if(getPubKey( spubkey, seller, *theApp.walletMain() ) )
+        	throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No public key corresponds to seller address ");
+
+		if(theApp.walletMain()->WoTchainExists( epubkey, bpubkey, spubkey, wotlvl ))
+			throw JSONRPCError(RPC_TYPE_ERROR, "No trust chain could be found to buyer" );
+	}
 
     // Parse Equibit address
     CScript scriptPubKey = GetScriptForDestination(buyer.Get());

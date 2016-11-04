@@ -5090,6 +5090,48 @@ bool CEDCWallet::WoTchainExists(
 	return wotChainExists( spk, epk, 1, maxlen );
 }
 
+bool CEDCWallet::wotChainExists( 
+	 const CPubKey & spk, 
+	 const CPubKey & epk, 
+	 const CPubKey & expk,
+			uint64_t currlen, 
+			uint64_t maxlen )
+{
+	auto itPair = wotCertificates.equal_range( spk );
+
+	// No pairs found
+	if( itPair.first == itPair.second )
+		return false;
+
+	auto it = itPair.first;
+	auto end= itPair.second;
+
+	// Iterate over all pubkeys that have authorized the pubkey
+	while( it != end )
+	{
+		if( it->second.pubkey == epk )
+			return !it->second.revoked;	// return false if revoked
+		else if( it->second.pubkey != expk && currlen < maxlen )
+		{
+			if(wotChainExists( it->second.pubkey, epk, currlen+1, maxlen ))
+				return true;
+		}
+
+		++it;
+	}
+
+	return false;
+}
+
+bool CEDCWallet::WoTchainExists( 
+		const CPubKey & epk, 		// Last key in chain
+		const CPubKey & spk, 		// First key in chain
+		const CPubKey & expk,		// Exceptional key. It cannot appear in the chain
+			   uint64_t maxlen )
+{
+	return wotChainExists( spk, epk, 1, maxlen );
+}
+
 void CEDCWallet::LoadWoTCertificate( 
 			const CPubKey & pk1, 
 			const CPubKey & pk2, 
