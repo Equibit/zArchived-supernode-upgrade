@@ -26,23 +26,16 @@ git clone https://github.com/Equibit/EDC-core.git
 ------------------------------------------------------
 
 cd ~
-mkdir bitcoin/db4/
+mkdir -p bitcoin/db4/
 
 wget 'http://download.oracle.com/berkeley-db/db-4.8.30.NC.tar.gz'
 tar -xzvf db-4.8.30.NC.tar.gz
 cd db-4.8.30.NC/build_unix/
-../dist/configure --enable-cxx --disable-shared --with-pic --prefix=/home/theusername/bitcoin/db4/
+../dist/configure --enable-cxx --disable-shared --with-pic --prefix=~/bitcoin/db4/
 make install
 
 ------------------------------------------------------
-3. Set path to berkleydb 4.8 in rebuild script
-------------------------------------------------------
-
-Set the path to the berkleydb 4.8 files in the ./EDC-core/rebuild script.
-i.e. Assign the variable BDB_PREFIX.
-
-------------------------------------------------------
-4. Get latest openssl
+3. Get latest openssl
 ------------------------------------------------------
 
 The Equibit build requires Openssl with a version of 1.1.x or higher because lower versions do not
@@ -76,7 +69,7 @@ Edit /etc/ld.so.conf (as root), adding the line
 /usr/local/lib
 
 ------------------------------------------------------
-5. Install Thales software (HSM)
+4. Install Thales software (HSM)
 ------------------------------------------------------
 
 1. Create /etc/nfast.conf with the entry:
@@ -107,7 +100,7 @@ Edit /etc/ld.so.conf (as root), adding the line
 Use the nfast command enquiry to verify that the system is operational. 
 
 ------------------------------------------------------
-6. Enable HSM build (HSM)
+5. Enable HSM build (HSM)
 ------------------------------------------------------
 Change the line in configure.ac from
 
@@ -118,22 +111,22 @@ to
      CPPFLAGS="$CPPFLAGS -DUSE_HSM"
 
 ------------------------------------------------------
-7. Build the Thales HSM interface shared library (HSM)
+6. Build the Thales HSM interface shared library (HSM)
 ------------------------------------------------------
 In ./src/Thales, run make
 
 ------------------------------------------------------
-8. Run the build server binaries
+7. Run the build server binaries
 ------------------------------------------------------
 from the root directory, run the rebuild script
 
 ------------------------------------------------------
-9. Link bitcoind to the Thales interface library (HSM)
+8. Link bitcoind to the Thales interface library (HSM)
 ------------------------------------------------------
 from the ./src directory, run the script ./build
 
 ------------------------------------------------------
-10. Configure nShield Connect (HSM)
+9. Configure nShield Connect (HSM)
 ------------------------------------------------------
 VLAN Default Gateway:	77.77.77.1
 VLAN Network: 			77.77.77.0/24
@@ -190,7 +183,7 @@ Optional:
 	System > System Configuration > Network config > Set default gateway > IPv4 Gateway
 
 ------------------------------------------------------
-11. Enable ECC (HSM)
+10. Enable ECC (HSM)
 ------------------------------------------------------
 
 1) Exec
@@ -203,7 +196,7 @@ The first line after the heading should list the ESN and YES/NO for each feature
 
 
 ------------------------------------------------------
-12. Create Security World (HSM)
+11. Create Security World (HSM)
 ------------------------------------------------------
 
 Create
@@ -223,7 +216,7 @@ Copy to HSM:
 nethsmadmin --module=1 --update-world
 
 ------------------------------------------------------
-13. Write nShield Operator Card Set (HSM)
+12. Write nShield Operator Card Set (HSM)
 ------------------------------------------------------
 
 /opt/nfast/bin/createocs -m MODULE|--module=MODULE -Q|--ocs-quorum=K/N
@@ -241,7 +234,7 @@ nfkninfo --cardset-list
 to list created OCSs
 
 ------------------------------------------------------
-14. Re-cycle hardserver (HSM)
+13. Re-cycle hardserver (HSM)
 ------------------------------------------------------
 
 /etc/init.d/nc_hardserver stop
@@ -249,7 +242,7 @@ to list created OCSs
 enquiry
 
 ------------------------------------------------------
-15. Set the RPC password (HSM)
+14. Set the RPC password (HSM)
 ------------------------------------------------------
 
 Set the RPC password in ~/.bitcoin/bitcoin.conf. Add a line of the form
@@ -259,7 +252,7 @@ rpcpassword=<some-password>
 to the file.
 
 ------------------------------------------------------
-16. Run server / client
+15. Run server / client
 ------------------------------------------------------
 Use the scripts in ./bin to run the server / client.
 
