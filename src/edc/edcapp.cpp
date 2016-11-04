@@ -20,22 +20,22 @@ const CAmount EDC_DEFAULT_TRANSACTION_FEE = 0;
 }
 
 EDCapp::EDCapp():
-	debug_(false),
-	coinCacheUsage_(5000*300),
-	maxTxFee_(EDC_DEFAULT_TRANSACTION_MAXFEE),
-	minRelayTxFee_(EDC_DEFAULT_MIN_RELAY_TX_FEE),
-	mempool_(minRelayTxFee_),
-	mapAlreadyAskedFor_(MAX_INV_SZ),
-	payTxFee_(EDC_DEFAULT_TRANSACTION_FEE),
-	sslCtx_(NULL),
+	  debug_(false)
+	, coinCacheUsage_(5000*300)
+	, lastBlockWeight_(0)
+	, maxTxFee_(EDC_DEFAULT_TRANSACTION_MAXFEE)
+	, minRelayTxFee_(EDC_DEFAULT_MIN_RELAY_TX_FEE)
+	, mempool_(minRelayTxFee_)
+	, mapAlreadyAskedFor_(MAX_INV_SZ)
+	, payTxFee_(EDC_DEFAULT_TRANSACTION_FEE)
+	, sslCtx_(NULL)
 #ifdef USE_HSM
-	nfApp_(NULL),
-	nfSecWorld_(NULL),
-	nfHardServer_(NULL),
-	nfCardLoadingLib_(NULL),
-	nfModule_(NULL),
+	, nfApp_(NULL)
+	, nfSecWorld_(NULL)
+	, nfHardServer_(NULL)
+	, nfCardLoadingLib_(NULL)
+	, nfModule_(NULL)
 #endif
-	lastBlockWeight_(0)
 {
 	//TODO: Does maxConnects_ need to take into account the bitcoin connections?
 }

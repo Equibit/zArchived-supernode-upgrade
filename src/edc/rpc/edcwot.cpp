@@ -466,7 +466,6 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
 		expire = static_cast<uint32_t>(params[7].get_int());
 
 	EDCapp & theApp = EDCapp::singleton();
-	EDCparams & theParams = EDCparams::singleton();
 
 	WoTCertificate	cert(
 		pkAddrs,
