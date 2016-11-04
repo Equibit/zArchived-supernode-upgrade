@@ -118,17 +118,22 @@ to
      CPPFLAGS="$CPPFLAGS -DUSE_HSM"
 
 ------------------------------------------------------
-7. Run the build server binaries
-------------------------------------------------------
-from the root directory, run the rebuild script
-
-------------------------------------------------------
-8. Build the Thales HSM interface shared library (HSM)
+7. Build the Thales HSM interface shared library (HSM)
 ------------------------------------------------------
 In ./src/Thales, run make
 
 ------------------------------------------------------
-9. Configure nShield Connect (HSM)
+8. Run the build server binaries
+------------------------------------------------------
+from the root directory, run the rebuild script
+
+------------------------------------------------------
+9. Link bitcoind to the Thales interface library (HSM)
+------------------------------------------------------
+from the ./src directory, run the script ./build
+
+------------------------------------------------------
+10. Configure nShield Connect (HSM)
 ------------------------------------------------------
 VLAN Default Gateway:	77.77.77.1
 VLAN Network: 			77.77.77.0/24
@@ -185,7 +190,7 @@ Optional:
 	System > System Configuration > Network config > Set default gateway > IPv4 Gateway
 
 ------------------------------------------------------
-10. Enable ECC (HSM)
+11. Enable ECC (HSM)
 ------------------------------------------------------
 
 1) Exec
@@ -198,7 +203,7 @@ The first line after the heading should list the ESN and YES/NO for each feature
 
 
 ------------------------------------------------------
-11. Create Security World (HSM)
+12. Create Security World (HSM)
 ------------------------------------------------------
 
 Create
@@ -218,7 +223,7 @@ Copy to HSM:
 nethsmadmin --module=1 --update-world
 
 ------------------------------------------------------
-12. Write nShield Operator Card Set (HSM)
+13. Write nShield Operator Card Set (HSM)
 ------------------------------------------------------
 
 /opt/nfast/bin/createocs -m MODULE|--module=MODULE -Q|--ocs-quorum=K/N
@@ -236,7 +241,7 @@ nfkninfo --cardset-list
 to list created OCSs
 
 ------------------------------------------------------
-13. Re-cycle hardserver (HSM)
+14. Re-cycle hardserver (HSM)
 ------------------------------------------------------
 
 /etc/init.d/nc_hardserver stop
@@ -244,7 +249,7 @@ to list created OCSs
 enquiry
 
 ------------------------------------------------------
-14. Set the RPC password (HSM)
+15. Set the RPC password (HSM)
 ------------------------------------------------------
 
 Set the RPC password in ~/.bitcoin/bitcoin.conf. Add a line of the form
@@ -254,7 +259,7 @@ rpcpassword=<some-password>
 to the file.
 
 ------------------------------------------------------
-15. Run server / client
+16. Run server / client
 ------------------------------------------------------
 Use the scripts in ./bin to run the server / client.
 
