@@ -89,6 +89,7 @@ class CEDCTxOut
 {
 public:
 	CAmount 	nValue;				// Num of equibits being transferred
+	unsigned	wotMinLevel;		// Minimum WoT level used when coins moved
 	bool		forSale;			// Equibits are for sale
 	uint256		receiptTxID;		// Related BTC Transaction ID (optional)
 	CPubKey		ownerPubKey;		// Public Key of transaction owner
@@ -104,7 +105,7 @@ public:
 	CScript		scriptPubKey;		// Script defining the conditions needed to
 									// spend the output (ie. smart contract)
 
-    CEDCTxOut():nValue(0), forSale(false), ownerPayCurr(BTC), issuerPayCurr(BTC)
+    CEDCTxOut():nValue(0), wotMinLevel(0), forSale(false), ownerPayCurr(BTC), issuerPayCurr(BTC)
     {
         SetNull();
     }
@@ -117,6 +118,7 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) 
 	{
 		READWRITE(nValue);
+		READWRITE(wotMinLevel);
 		READWRITE(forSale);
 		READWRITE(receiptTxID);
 		READWRITE(ownerPubKey);
@@ -202,6 +204,7 @@ public:
     friend bool operator==(const CEDCTxOut& a, const CEDCTxOut& b)
     {
         return a.nValue  == b.nValue
+			&& a.wotMinLevel == b.wotMinLevel
 			&& a.forSale == b.forSale
 			&& a.receiptTxID == b.receiptTxID
 			&& a.ownerPubKey == b.ownerPubKey

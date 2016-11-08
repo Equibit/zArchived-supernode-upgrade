@@ -40,6 +40,8 @@ static const bool EDC_DEFAULT_USE_HD_WALLET = true;
 
 extern const char * edcDEFAULT_WALLET_DAT;
 
+class EDCapp;
+class EDCparams;
 class CBlockIndex;
 class CCoinControl;
 class CEDCBitcoinAddress;
@@ -358,6 +360,24 @@ public:
 class CEDCWallet : public CCryptoKeyStore, public CEDCValidationInterface
 {
 private:
+
+	typedef std::set<std::pair<const CEDCWalletTx*,unsigned int> > CoinSet;
+
+	bool AddFee(
+                EDCapp & theApp,   			// IN
+             EDCparams & params,   	 		// IN
+                double dPriorityIn,	 		// IN: Priority from authorized coins
+               CoinSet & authCoins, 		// IN: Authorized coins
+CEDCMutableTransaction & txIn,				// IN: Input Transaction
+		  CEDCWalletTx & wtxNew,   			// OUT: The wallet transaction
+	    CEDCReserveKey & reservekey,		// IN/OUT: Key from pool to be destination of change
+				   int & nChangePosInOut,	// IN/OUT: Position in txn for change
+               CAmount & nFeeRet,   		// OUT: The computed fee
+		   std::string & strFailReason,		// OUT: Reason for failure
+	const CCoinControl * coinControl = NULL,// IN
+				    bool sign = true		// IN
+		) const;
+
     /**
      * Select a set of coins such that nValueRet >= nTargetValue and at least
      * all coins from coinControl are selected; Never select unconfirmed coins
@@ -541,6 +561,18 @@ public:
 		bool fIncludeZeroValue=false) const;
 
     /**
+     * populate vCoins with vector of available CEDCOutputs authorized by issuer.
+     */
+    void AvailableCoins(
+		std::vector<CEDCOutput>& vCoins, 
+		CEDCBitcoinAddress & issuer,
+					unsigned wotlvl,
+						bool fOnlyConfirmed=true, 
+		const CCoinControl * coinControl = NULL, 
+						bool fIncludeZeroValue=false
+	) const;
+
+    /**
      * Shuffle and select coins until nTargetValue is reached while avoiding
      * small change; This method is stochastic for some inputs and upon
      * completion the coin set and corresponding actual target value is
@@ -701,6 +733,7 @@ public:
      */
     bool CreateAuthorizingTransaction(
                         const CIssuer & issuer,
+							   unsigned wotLvl,
                    const CEDCWalletTx & wtx,
                                  size_t outId, 
 						 CEDCWalletTx & wtxNew, 
@@ -714,6 +747,7 @@ public:
      */
     bool CreateTrustedTransaction(
 				   CEDCBitcoinAddress & issuer, 
+							   unsigned wotLevel,
 		const std::vector<CRecipient> & vecSend, 
 						 CEDCWalletTx & wtxNew, 
 					   CEDCReserveKey & reservekey, 

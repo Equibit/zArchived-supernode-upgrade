@@ -3010,7 +3010,7 @@ UniValue edctrustedsend(const UniValue & params, bool fHelp)
     vecSend.push_back(recipient);
 
     if (!theApp.walletMain()->CreateTrustedTransaction(
-		issuer, vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError)) 
+		issuer, wotlvl, vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError)) 
 	{
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
