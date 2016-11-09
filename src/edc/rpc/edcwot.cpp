@@ -426,7 +426,7 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 12 || params.size() > 13 )
         throw std::runtime_error(
-            "eb_requestwotcertificate \"pubkey\" \"address\" \"oname\" \"ogeo-addr\" \"ophone\" \"oe-mail\" \"ohttp\" \"sname\" \"sgeo-addr\" \"sphone\" \"semail\" \"shttp\" ( expire )\n"
+            "eb_getwotcertificate \"pubkey\" \"address\" \"oname\" \"ogeo-addr\" \"ophone\" \"oe-mail\" \"ohttp\" \"sname\" \"sgeo-addr\" \"sphone\" \"semail\" \"shttp\" ( expire )\n"
     		"\nCreates a new WOT certificate.\n"
             "\nArguments:\n"
     		"1. \"address\"        (string, required) Adddres of Pubkey of to be certified\n"
@@ -444,8 +444,8 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
     		"13.\"expire\"         (number, optional) Expiration time of certificate in number of blocks from current block\n"
             "\nResult: None\n"
             "\nExamples:\n"
-            + HelpExampleCli("eb_signrawtransaction", "\"39sdfd34341q5q45qdfaert2gfgrD301\" \"dvj4entdva4tqkdaadfv\" \"ACME Corp.\" \"100 Avenue Road\" \"519 435-1932\" \"pr@acme.com\" \"www.acme.com\" \"Western Ratings\" \"1210 Main Street\" \"\" \"\" \"www.western-ratings.com\" 5000\n" )
-            + HelpExampleRpc("eb_signrawtransaction", "\"39sdfd34341q5q45qdfaert2gfgrD301\" \"dvj4entdva4tqkdaadfv\" \"ACME Corp.\" \"100 Avenue Road\" \"519 435-1932\" \"pr@acme.com\" \"www.acme.com\" \"Western Ratings\" \"1210 Main Street\" \"\" \"\" \"www.western-ratings.com\" 5000\n" )
+            + HelpExampleCli("eb_getwotcertificate", "\"39sdfd34341q5q45qdfaert2gfgrD301\" \"dvj4entdva4tqkdaadfv\" \"ACME Corp.\" \"100 Avenue Road\" \"519 435-1932\" \"pr@acme.com\" \"www.acme.com\" \"Western Ratings\" \"1210 Main Street\" \"\" \"\" \"www.western-ratings.com\" 5000\n" )
+            + HelpExampleRpc("eb_getwotcertificate", "\"39sdfd34341q5q45qdfaert2gfgrD301\" \"dvj4entdva4tqkdaadfv\" \"ACME Corp.\" \"100 Avenue Road\" \"519 435-1932\" \"pr@acme.com\" \"www.acme.com\" \"Western Ratings\" \"1210 Main Street\" \"\" \"\" \"www.western-ratings.com\" 5000\n" )
         );
 
 	std::string pkAddrs= params[0].get_str();
@@ -518,7 +518,7 @@ UniValue edcrevokewotcertificate(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 3 )
         throw std::runtime_error(
-            "eb_requestwotcertificate \"address\" \"sign-address\" ( \"reason\" )\n"
+            "eb_revokewotcertificate \"address\" \"sign-address\" ( \"reason\" )\n"
     		"\nRevokes a WOT certificate.\n"
             "\nArguments:\n"
 			"1. \"address\"      (string, required) Address of public key to be revoked\n"
@@ -526,8 +526,8 @@ UniValue edcrevokewotcertificate(const UniValue& params, bool fHelp)
 			"3. \"reason\"       (string, optional) Reason for revocation\n"
             "\nResult: true or false\n"
             "\nExamples:\n"
-            + HelpExampleCli("eb_signrawtransaction", "\"1234d20sdmDScedc2edscad\" \"0cmscadc9dcadsadvadvava\"")
-            + HelpExampleRpc("eb_signrawtransaction", "\"1234d20sdmDScedc2edscad\" \"0cmscadc9dcadsadvadvava\"")
+            + HelpExampleCli("eb_revokewotcertificate", "\"1234d20sdmDScedc2edscad\" \"0cmscadc9dcadsadvadvava\"")
+            + HelpExampleRpc("eb_revokewotcertificate", "\"1234d20sdmDScedc2edscad\" \"0cmscadc9dcadsadvadvava\"")
         );
 
 	std::string addr  = params[0].get_str();
@@ -588,7 +588,7 @@ UniValue edcwotchainexists(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 3 )
         throw std::runtime_error(
-            "eb_requestwotcertificate \"eaddr\" \"baddr\" ( maxlen )\n"
+            "eb_wotchainexists \"eaddr\" \"baddr\" ( maxlen )\n"
 			"\nDetermines if a trust chain exists between two entities (indentified by\n"
 			"their public keys).\n"
             "\nArguments:\n"
