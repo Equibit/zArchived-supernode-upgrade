@@ -2915,7 +2915,7 @@ UniValue edctrustedsend(const UniValue & params, bool fHelp)
 	//
     if (fHelp || params.size() < 5 || params.size() > 7)
         throw runtime_error(
-            "eb_trustedsend \"seller\" \"buyer\" \"issuer\" amount wot-level txn-fee-amount ( min-confirm \"comment\" )\n"
+            "eb_trustedsend \"seller\" \"buyer\" \"issuer\" amount wot-level ( min-confirm \"comment\" )\n"
 			"\nMoves equibits authorized equibits from seller account to buyer account.\n"
 			"The wot-level parameter determines what level of trust is used as follows:\n\n"
 			"1	Trust chain from issuer to buyer of length of up to 2\n"
