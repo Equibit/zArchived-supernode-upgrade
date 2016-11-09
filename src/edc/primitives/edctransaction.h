@@ -88,28 +88,27 @@ enum Currency
 class CEDCTxOut
 {
 public:
-	CAmount 	nValue;				// Num of equibits being transferred
-	bool		forSale;			// Equibits are for sale
-	uint256		receiptTxID;		// Related BTC Transaction ID (optional)
-	CPubKey		ownerPubKey;		// Public Key of transaction owner
-	CKeyID 		ownerBitMsgAddr;	// Bitmessage address of transaction owner
-	Currency	ownerPayCurr;		// Owner's payment currency
-	CKeyID 		ownerPayAddr;		// Owner's payment address
-	CPubKey		issuerPubKey;		// Public Key of issuer
-	CKeyID 		issuerBitMsgAddr;	// Bitmessage address of issuer
-	Currency	issuerPayCurr;		// Issuer's payment currency
-	CKeyID 		issuerPayAddr;		// Issuer's payment address
-	CPubKey		proxyPubKey;		// Public Key of proxy agent (optional)
-	CKeyID 		proxyBitMsgAddr;	// Bitmessage address of proxy agent (optional)
-	CScript		scriptPubKey;		// Script defining the conditions needed to
-									// spend the output (ie. smart contract)
+	CAmount 	nValue;			// Num of equibits being transferred
+	unsigned	wotMinLevel;	// Minimum WoT level used when coins moved
+	uint256		receiptTxID;	// Related BTC Transaction ID (optional)
+	Currency	payCurr;		// Payment currency
+	CPubKey		issuerPubKey;	// Public Key of issuer
+	CKeyID 		issuerAddr;		// Issuer's payment address
+	CScript		scriptPubKey;	// Script defining the conditions needed to
+								// spend the output (ie. smart contract)
 
-    CEDCTxOut():nValue(0), forSale(false), ownerPayCurr(BTC), issuerPayCurr(BTC)
+    CEDCTxOut():nValue(0), wotMinLevel(0), payCurr(BTC)
     {
         SetNull();
     }
 
-    CEDCTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn);
+	CEDCTxOut( const CAmount & nValueIn, CScript scriptPubKeyIn );
+
+    CEDCTxOut(	const CAmount & nValueIn, 
+				       unsigned wotMinLevel, 
+				const CPubKey &	issuerPubKey,
+				 const CKeyID & issuerAddr,
+				        CScript scriptPubKeyIn);
 
     ADD_SERIALIZE_METHODS;
 
@@ -117,31 +116,21 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) 
 	{
 		READWRITE(nValue);
-		READWRITE(forSale);
+		READWRITE(wotMinLevel);
 		READWRITE(receiptTxID);
-		READWRITE(ownerPubKey);
-		READWRITE(ownerBitMsgAddr);
-		READWRITE(ownerPayAddr);
 		READWRITE(issuerPubKey);
-		READWRITE(issuerBitMsgAddr);
-		READWRITE(issuerPayAddr);
-		READWRITE(proxyPubKey);
-		READWRITE(proxyBitMsgAddr);
+		READWRITE(issuerAddr);
 		READWRITE(*(CScriptBase*)(&scriptPubKey));
 
 		if(ser_action.ForRead())
 		{
 			int curr;
 			READWRITE(curr);
-			ownerPayCurr = static_cast<Currency>(curr);
-			READWRITE(curr);
-			issuerPayCurr = static_cast<Currency>(curr);
+			payCurr = static_cast<Currency>(curr);
 		}
 		else
 		{
-			int curr = ownerPayCurr;
-			READWRITE(curr);
-			curr = issuerPayCurr;
+			int curr = payCurr;
 			READWRITE(curr);
 		}
     }
@@ -202,18 +191,10 @@ public:
     friend bool operator==(const CEDCTxOut& a, const CEDCTxOut& b)
     {
         return a.nValue  == b.nValue
-			&& a.forSale == b.forSale
+			&& a.wotMinLevel == b.wotMinLevel
 			&& a.receiptTxID == b.receiptTxID
-			&& a.ownerPubKey == b.ownerPubKey
-			&& a.ownerBitMsgAddr == b.ownerBitMsgAddr
-			&& a.ownerPayCurr == b.ownerPayCurr
-			&& a.ownerPayAddr == b.ownerPayAddr
 			&& a.issuerPubKey == b.issuerPubKey
-			&& a.issuerBitMsgAddr == b.issuerBitMsgAddr
-			&& a.issuerPayCurr == b.issuerPayCurr
-			&& a.issuerPayAddr == b.issuerPayAddr
-			&& a.proxyPubKey == b.proxyPubKey
-			&& a.proxyBitMsgAddr == b.proxyBitMsgAddr
+			&& a.issuerAddr == b.issuerAddr
             && a.scriptPubKey == b.scriptPubKey;
 		;
     }

@@ -102,9 +102,23 @@ uint256 CEDCMutableTransaction::GetHash() const
 
 CEDCTxOut::CEDCTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn):
 	nValue(nValueIn), 
-	forSale(false), 
-	ownerPayCurr(BTC), 
-	issuerPayCurr(BTC),
+	wotMinLevel(0),
+	payCurr(BTC),
+	scriptPubKey(scriptPubKeyIn)
+{
+}
+
+CEDCTxOut::CEDCTxOut(
+	const CAmount & nValueIn, 
+	       unsigned wotMinLevelIn, 
+	const CPubKey &	issuerPubKeyIn,
+	 const CKeyID & issuerAddrIn,
+	        CScript scriptPubKeyIn):
+	nValue(nValueIn), 
+	wotMinLevel(wotMinLevelIn),
+	payCurr(BTC),
+	issuerPubKey(issuerPubKeyIn),
+	issuerAddr(issuerAddrIn),
 	scriptPubKey(scriptPubKeyIn)
 {
 }
@@ -251,33 +265,20 @@ const char * ToString( Currency c )
 
 std::string CEDCTxOut::ToString() const
 {
-    return strprintf("CEDCTxOut(nValue=%d.%08d, "
-					"forSale=%s, "
-					"receiptTxID=%s, "
-					"ownerPubKey=%s, "
-					"ownerBitMsgAddr=%s, "
-					"ownerPayCurr=%s, "
-					"ownerPayAddr=%s, "
-					"issuerPubKey=%s, "
-					"issuerBitMsgAddr=%s, "
-					"issuerPayCurr=%s, "
-					"issuerPayAddr=%s, "
-					"proxyPubKey=%s, "
-					"proxyBitMsgAddr=%s, "
-					 "scriptPubKey=%s ...)", 
+    return strprintf( "CEDCTxOut("
+		"nValue=%d.%08d, "
+		"wotMinLevel=%d, "
+		"receiptTxID=%s, "
+		"payCurr=%s, "
+		"issuerPubKey=%s, "
+		"issuerAddr=%s, "
+		 "scriptPubKey=%s ...)", 
 		nValue / COIN, nValue % COIN, 
-		(forSale?"true":"false"),
+		wotMinLevel,
 		receiptTxID.ToString().c_str(),
-		HexStr(ownerPubKey).c_str(),
-		(ownerBitMsgAddr.IsNull() ? "" : CEDCBitcoinAddress(ownerBitMsgAddr).ToString().c_str()),
-		::ToString(ownerPayCurr),
-		(ownerPayAddr.IsNull() ? "" : CEDCBitcoinAddress(ownerPayAddr).ToString().c_str()),
+		::ToString(payCurr),
 		HexStr(issuerPubKey).c_str(),
-		(issuerBitMsgAddr.IsNull() ? "" : CEDCBitcoinAddress(issuerBitMsgAddr).ToString().c_str()),
-		::ToString(issuerPayCurr),
-		(issuerPayAddr.IsNull() ? "" : CEDCBitcoinAddress(issuerPayAddr).ToString().c_str()),
-		HexStr(proxyPubKey).c_str(),
-		(proxyBitMsgAddr.IsNull() ? "" : CEDCBitcoinAddress(proxyBitMsgAddr).ToString().c_str()),
+		(issuerAddr.IsNull() ? "" : CEDCBitcoinAddress(issuerAddr).ToString().c_str()),
 		HexStr(scriptPubKey).substr(0, 30));
 }
 
@@ -287,23 +288,12 @@ std::string CEDCTxOut::toJSON( const char * margin ) const
 
 	ans << margin << "{\n" 
 		<< margin << "\"value\":" << nValue << ",\n"
-    	<< margin << "\"forSale\":" << forSale << ",\n"
+		<< margin << "\"wotMinLevel\":" << wotMinLevel << ",\n"
     	<< margin << "\"receiptTxID\":" << receiptTxID.ToString() << ",\n"
-    	<< margin << "\"ownerPubKey\":" << HexStr(ownerPubKey) << ",\n"
-    	<< margin << "\"ownerBitMsgAddr\":" 
-			<< (ownerBitMsgAddr.IsNull() ? "" : CEDCBitcoinAddress(ownerBitMsgAddr).ToString()) <<",\n"
-    	<< margin << "\"currency\":" << ::ToString(ownerPayCurr) << ",\n"
-    	<< margin << "\"ownerPayAddr\":" 
-			<< (ownerPayAddr.IsNull() ? "" : CEDCBitcoinAddress(ownerPayAddr).ToString()) << ",\n"
+    	<< margin << "\"payCurr\":" << ::ToString(payCurr) << ",\n"
     	<< margin << "\"issuerPubKey\":" << HexStr(issuerPubKey) << ",\n"
-    	<< margin << "\"issuerBitMsgAddr\":"
-			<< (issuerBitMsgAddr.IsNull() ? "" : CEDCBitcoinAddress(issuerBitMsgAddr).ToString()) << ",\n"
-    	<< margin << "\"issuerPayCurr\":" << ::ToString(issuerPayCurr) << ",\n"
-    	<< margin << "\"issuerPayAddr\":" 
-			<< (issuerPayAddr.IsNull() ? "" : CEDCBitcoinAddress(issuerPayAddr).ToString()) << ",\n"
-    	<< margin << "\"proxyPubKey\":" << HexStr(proxyPubKey) << ",\n"
-    	<< margin << "\"proxyBitMsgAddr\":" 
-			<< (proxyBitMsgAddr.IsNull() ? "" : CEDCBitcoinAddress(proxyBitMsgAddr).ToString()) << ",\n"
+    	<< margin << "\"issuerAddr\":" 
+			<< (issuerAddr.IsNull() ? "" : CEDCBitcoinAddress(issuerAddr).ToString()) << ",\n"
     	<< margin << "\"scriptPubKey\":" << HexStr(scriptPubKey) << ",\n"
 		<< margin << "}";
 

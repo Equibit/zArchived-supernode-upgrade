@@ -212,25 +212,27 @@ UniValue authorizeEquibit( const UniValue & params, bool fHelp )
 	if (!edcEnsureWalletIsAvailable(fHelp))
 	    return NullUniValue;
 
-	if( fHelp || params.size() < 3)
+	if( fHelp || params.size() != 4)
 		throw std::runtime_error(
-			"eb_authorizeequibit \"issuer\" \"transaction-id\" transaction-offset\n"
+			"eb_authorizeequibit \"issuer\" \"transaction-id\" transaction-off wot-min-lvl\n"
 			"\nAuthorizes (or labels) an eqibit.\n"
 			"\nArguments:\n"
-			"1. \"Issuer\"                (string,required) The issuer that will be authorizing the Equibit.\n"
-			"2. \"transaction-id\"        (string,required) The address of the transaction that contains the output transaction.\n"
-			"3. \"transaction-off\"       (numeric,required) The offset of the TxOut within that stores the Equibit to be authorized.\n"
+			"1. \"Issuer\"          (string,required) The issuer that will be authorizing the Equibit.\n"
+			"2. \"transaction-id\"  (string,required) The address of the transaction that contains the output transaction.\n"
+			"3. transaction-off     (numeric,required) The offset of the TxOut within that stores the Equibit to be authorized.\n"
+			"4. wot-min-lvl         (numeric,required) The minimum WoT level used when TXN is moved.\n"
 	        "\nResult:\n"
-	        "\"transactionid\"            (string) The transaction id.\n"
+	        "\"transactionid\"        (string) The transaction id.\n"
 
 			+ HelpExampleCli( "eb_authorizeequibit", "\"ABC Comp\" \"a3b65445c098654c4cb09736fed9232157098743ecdfa2fd403509876524edfe\" 2" )
 			+ HelpExampleRpc( "eb_authorizeequibit", "\"ABC Comp\" \"a3b65445c098654c4cb09736fed9232157098743ecdfa2fd403509876524edfe\" 2" )
 		);
 	LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-	std::string iName = edcIssuerFromValue(params[0]);
-	std::string txID  = params[1].get_str();
-	unsigned	txOff = params[2].get_int();
+	std::string iName  = edcIssuerFromValue(params[0]);
+	std::string txID   = params[1].get_str();
+	unsigned	txOff  = params[2].get_int();
+	unsigned	minWoT = params[3].get_int();
 
 	edcEnsureWalletIsUnlocked();
 
@@ -264,7 +266,7 @@ UniValue authorizeEquibit( const UniValue & params, bool fHelp )
 
 	CEDCWalletTx wtxNew;
 
-    if (!theApp.walletMain()->CreateAuthorizingTransaction( issuer, wtx, txOff, wtxNew, reservekey, strError))
+    if (!theApp.walletMain()->CreateAuthorizingTransaction( issuer, minWoT, wtx, txOff, wtxNew, reservekey, strError))
     {
 #if HANDLE_FEE
         if (nValue > theApp.walletMain()->GetBalance())

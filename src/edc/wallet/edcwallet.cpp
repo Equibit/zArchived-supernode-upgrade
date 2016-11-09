@@ -2190,6 +2190,76 @@ void CEDCWallet::AvailableCoins(
     }
 }
 
+void CEDCWallet::AvailableCoins(
+	vector<CEDCOutput> & vCoins, 			// OUT: Coins available for input to TXN
+    CEDCBitcoinAddress & issuer,			// IN:  authorizing issuer
+				unsigned wotlvl,			// IN:  WoT level
+					bool fOnlyConfirmed, 	// IN:  If true, then only trusted/confirmed coins ret'd
+	const CCoinControl * coinControl, 		// IN:  Controls coins selected
+					bool fIncludeZeroValue	// IN:  If true, then zero value coins included
+	) const
+{
+	CKeyID issuerID;
+	// If the address is not valid, no coins will match it.
+	if(!issuer.GetKeyID(issuerID ))
+		return;
+
+    vCoins.clear();
+    {
+        LOCK2(EDC_cs_main, cs_wallet);
+        for (map<uint256, CEDCWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
+        {
+            const uint256& wtxid = it->first;
+            const CEDCWalletTx* pcoin = &(*it).second;
+
+            if (!CheckFinalTx(*pcoin))
+                continue;
+
+            if (fOnlyConfirmed && !pcoin->IsTrusted())
+                continue;
+
+            if (pcoin->IsCoinBase() && pcoin->GetBlocksToMaturity() > 0)
+                continue;
+
+            int nDepth = pcoin->GetDepthInMainChain();
+            if (nDepth < 0)
+                continue;
+
+            // We should not consider coins which aren't at least in our mempool
+            // It's possible for these to be conflicted via ancestors which we may never be able to detect
+            if (nDepth == 0 && !pcoin->InMempool())
+                continue;
+
+            for (unsigned int i = 0; i < pcoin->vout.size(); i++) 
+			{
+            	const CEDCTxOut & vout = pcoin->vout[i];
+
+				// Skip coins not authorized by the issuer
+				if( vout.issuerAddr == issuerID )
+					continue;
+
+				// Skip coins whose WoT level is below the minimum level
+				if( vout.wotMinLevel > wotlvl )
+					continue;
+
+                isminetype mine = IsMine(vout);
+                if (!(IsSpent(wtxid, i)) && 
+					mine != ISMINE_NO &&
+                    !IsLockedCoin((*it).first, i) && 
+					(vout.nValue > 0 || fIncludeZeroValue) &&
+                    (!coinControl || !coinControl->HasSelected() || 
+						coinControl->fAllowOtherInputs || 
+						coinControl->IsSelected(COutPoint((*it).first, i))))
+                    vCoins.push_back(CEDCOutput(pcoin, i, nDepth,
+                                ((mine & ISMINE_SPENDABLE) != ISMINE_NO) ||
+                                (coinControl && coinControl->fAllowWatchOnly && 
+									(mine & ISMINE_WATCH_SOLVABLE) != ISMINE_NO),
+                                (mine & (ISMINE_SPENDABLE | ISMINE_WATCH_SOLVABLE)) != ISMINE_NO));
+            }
+        }
+    }
+}
+
 static void ApproximateBestSubset(
 	vector<pair<CAmount, pair<const CEDCWalletTx*,unsigned int> > > vValue, 
 	const CAmount & nTotalLower, 
@@ -2242,12 +2312,12 @@ static void ApproximateBestSubset(
 }
 
 bool CEDCWallet::SelectCoinsMinConf(
-							   const CAmount & nTargetValue, 
-										   int nConfMine, 
-										   int nConfTheirs, 
-						    vector<CEDCOutput> vCoins,
-set<pair<const CEDCWalletTx*,unsigned int> > & setCoinsRet, 
-									 CAmount & nValueRet) const
+	   const CAmount & nTargetValue, 
+				   int nConfMine, 
+				   int nConfTheirs, 
+	vector<CEDCOutput> vCoins,
+			 CoinSet & setCoinsRet, 
+		 	 CAmount & nValueRet) const
 {
     setCoinsRet.clear();
     nValueRet = 0;
@@ -2350,11 +2420,12 @@ set<pair<const CEDCWalletTx*,unsigned int> > & setCoinsRet,
 }
 
 bool CEDCWallet::SelectCoins(
-					const vector<CEDCOutput> & vAvailableCoins, 
-			   				   const CAmount & nTargetValue, 
-set<pair<const CEDCWalletTx*,unsigned int> > & setCoinsRet, 
-									 CAmount & nValueRet, 
-						  const CCoinControl * coinControl) const
+const vector<CEDCOutput> & vAvailableCoins, // IN: Coins to select from
+		   const CAmount & nTargetValue,	// IN: Target value to select
+				 CoinSet & setCoinsRet,		// OUT:Set of coins selected
+				 CAmount & nValueRet,		// OUT:Value of coins selected
+	  const CCoinControl * coinControl		// IN: Controls coins selected
+	) const
 {
     vector<CEDCOutput> vCoins(vAvailableCoins);
 
@@ -2372,7 +2443,7 @@ set<pair<const CEDCWalletTx*,unsigned int> > & setCoinsRet,
     }
 
     // calculate value from preset inputs and store them
-    set<pair<const CEDCWalletTx*, uint32_t> > setPresetCoins;
+    CoinSet setPresetCoins;
     CAmount nValueFromPresetInputs = 0;
 
     std::vector<COutPoint> vPresetInputs;
@@ -2600,7 +2671,7 @@ bool CEDCWallet::CreateTransaction(
                 }
 
                 // Choose coins to use
-                set<pair<const CEDCWalletTx*,unsigned int> > setCoins;
+                CoinSet setCoins;
                 CAmount nValueIn = 0;
                 if (!SelectCoins(vAvailableCoins, nValueToSelect, setCoins, nValueIn, coinControl))
                 {
@@ -2809,7 +2880,263 @@ bool CEDCWallet::CreateTransaction(
     return true;
 }
 
+bool CEDCWallet::AddFee(
+				EDCapp & theApp,			// IN 
+			 EDCparams & params,			// IN
+        		double dPriorityIn,			// IN: Priority from authorized coins
+			   CoinSet & authCoins,			// IN: Authorized coins
+CEDCMutableTransaction & txIn,				// IN: TXN computed from authorized coins
+          CEDCWalletTx & wtxNew, 			// OUT: Created wallet TXN
+	    CEDCReserveKey & reservekey,		// IN/OUT: Key from pool to be destination of change
+				   int & nChangePosInOut,	// IN/OUT: Position in txn for change
+			   CAmount & nFeeRet,			// OUT:	The computed fee
+		   std::string & strFailReason,		// OUT: Reason for failure
+	const CCoinControl * coinControl,		// IN: Control coins selected
+				    bool sign				// IN: Sign the transaction
+	) const
+{
+	CAmount feeInCost = 0;
+
+	bool reservekeyUsed;
+
+	// Loop until the fee is calculated
+	//
+	while(true)
+	{
+		reservekeyUsed = false;
+
+		CEDCMutableTransaction	txNew = txIn;
+        unsigned int nBytes = edcGetVirtualTransactionSize(txNew);
+
+		// Fee needed before fee records are added
+        CAmount feeNeededBefore = GetMinimumFee(nBytes, params.txconfirmtarget, theApp.mempool());
+
+		// Get the available coins blank (not authorized) coins
+        CEDCBitcoinAddress blank;
+		std::vector<CEDCOutput> vAvailableCoins;
+
+        AvailableCoins(vAvailableCoins, blank, true, coinControl);
+
+        CAmount nValueToSelect = feeNeededBefore + feeInCost;
+
+        // Choose coins to use
+        CoinSet setCoins;
+        CAmount nValueIn = 0;
+
+        if (!SelectCoins(vAvailableCoins, nValueToSelect, setCoins, nValueIn, coinControl))
+        {
+            strFailReason = _("Insufficient funds");
+            return false;
+        }
+
+  		double dPriority = dPriorityIn;
+
+        BOOST_FOREACH(PAIRTYPE(const CEDCWalletTx*, unsigned int) pcoin, setCoins)
+        {
+            CAmount nCredit = pcoin.first->vout[pcoin.second].nValue;
+            //The coin age after the next block (depth+1) is used instead of the current,
+            //reflecting an assumption the user would accept a bit more delay for
+            //a chance at a free transaction.
+            //But mempool inputs might still be in the mempool, so their age stays 0
+            int age = pcoin.first->GetDepthInMainChain();
+            assert(age >= 0);
+            if (age != 0)
+                age += 1;
+            dPriority += (double)nCredit * age;
+        }
+
+        const CAmount nChange = nValueIn - nValueToSelect;
+
+		// If blank coins selected is greater than the fee, assign it back
+        if (nChange > 0)
+        {
+            // Fill a vout to ourself
+            // TODO: pass in scriptChange instead of reservekey so
+            // change transaction isn't always pay-to-equibit-address
+            CScript scriptChange;
+
+            // coin control: send change to custom address
+            if (coinControl && !boost::get<CNoDestination>(&coinControl->destChange))
+                scriptChange = GetScriptForDestination(coinControl->destChange);
+
+            // no coin control: send change to newly generated address
+            else
+            {
+                // Note: We use a new key here to keep it from being obvious which side is the change.
+                //  The drawback is that by not reusing a previous key, the change may be lost if a
+                //  backup is restored, if the backup doesn't have the new private key for the change.
+                //  If we reused the old key, it would be possible to add code to look for and
+                //  rediscover unknown transactions that were written with keys of ours to recover
+                //  post-backup change.
+
+                // Reserve a new key pair from key pool
+                CPubKey vchPubKey;
+                bool ret;
+                ret = reservekey.GetReservedKey(vchPubKey);
+				reservekeyUsed = true;
+                assert(ret); // should never fail, as we just unlocked
+
+                scriptChange = GetScriptForDestination(vchPubKey.GetID());
+            }
+
+            CEDCTxOut newTxOut(nChange, scriptChange);
+
+            // Never create dust outputs; if we would, just
+            // add the dust to the fee.
+            if (newTxOut.IsDust(theApp.minRelayTxFee()))
+            {
+                nChangePosInOut = -1;
+                nFeeRet += nChange;
+            }
+            else
+            {
+                if (nChangePosInOut == -1)
+                {
+                    // Insert change txn at random position:
+                    nChangePosInOut = GetRandInt(txNew.vout.size()+1);
+                }
+				else if ((unsigned int)nChangePosInOut > txNew.vout.size())
+                {
+                    strFailReason = _("Change index out of range");
+                    return false;
+                }
+
+                vector<CEDCTxOut>::iterator position = txNew.vout.begin()+nChangePosInOut;
+                txNew.vout.insert(position, newTxOut);
+            }
+        }
+
+        // Fill vin
+        //
+        // Note how the sequence number is set to non-maxint so that
+        // the nLockTime set above actually works.
+        //
+        // BIP125 defines opt-in RBF as any nSequence < maxint-1, so
+        // we use the highest possible value in that range (maxint-2)
+        // to avoid conflicting with other possible uses of nSequence,
+        // and in the spirit of "smallest posible change from prior
+        // behavior."
+        BOOST_FOREACH(const PAIRTYPE(const CEDCWalletTx*,unsigned int)& coin, setCoins)
+            txNew.vin.push_back(CEDCTxIn(coin.first->GetHash(),coin.second,CScript(),
+				std::numeric_limits<unsigned int>::max() - (params.walletrbf ? 2:1)));
+
+        // Sign
+        int nIn = 0;
+        CEDCTransaction txNewConst(txNew);
+        BOOST_FOREACH(const PAIRTYPE(const CEDCWalletTx*,unsigned int)& coin, authCoins)
+        {
+            bool signSuccess;
+            const CScript& scriptPubKey = coin.first->vout[coin.second].scriptPubKey;
+			SignatureData sigdata;
+
+            if (sign)
+				signSuccess = edcProduceSignature(EDCTransactionSignatureCreator(this, &txNewConst, nIn, coin.first->vout[coin.second].nValue, SIGHASH_ALL), scriptPubKey, sigdata);
+            else
+				signSuccess = edcProduceSignature(DummySignatureCreator(this), scriptPubKey, sigdata);
+
+            if (!signSuccess)
+            {
+                strFailReason = _("Signing transaction failed");
+                return false;
+            } 
+			else 
+			{
+                edcUpdateTransaction(txNew, nIn, sigdata);
+            }
+            nIn++;
+        }
+        BOOST_FOREACH(const PAIRTYPE(const CEDCWalletTx*,unsigned int)& coin, setCoins)
+        {
+            bool signSuccess;
+            const CScript& scriptPubKey = coin.first->vout[coin.second].scriptPubKey;
+			SignatureData sigdata;
+
+            if (sign)
+				signSuccess = edcProduceSignature(EDCTransactionSignatureCreator(this, &txNewConst, nIn, coin.first->vout[coin.second].nValue, SIGHASH_ALL), scriptPubKey, sigdata);
+            else
+				signSuccess = edcProduceSignature(DummySignatureCreator(this), scriptPubKey, sigdata);
+
+            if (!signSuccess)
+            {
+                strFailReason = _("Signing transaction failed");
+                return false;
+            } 
+			else 
+			{
+                edcUpdateTransaction(txNew, nIn, sigdata);
+            }
+            nIn++;
+        }
+
+        nBytes = edcGetVirtualTransactionSize(txNew);
+
+        // Remove scriptSigs if we used dummy signatures for fee calculation
+        if (!sign) 
+		{
+            BOOST_FOREACH (CEDCTxIn& vin, txNew.vin)
+                vin.scriptSig = CScript();
+			txNew.wit.SetNull();
+        }
+
+        // Limit size
+		if (edcGetTransactionWeight(txNew) >= EDC_MAX_STANDARD_TX_WEIGHT)
+        {
+            strFailReason = _("Transaction too large");
+            return false;
+        }
+
+        // Embed the constructed transaction data in wtxNew.
+        *static_cast<CEDCTransaction*>(&wtxNew) = CEDCTransaction(txNew);
+
+        dPriority = wtxNew.ComputePriority(dPriority, nBytes);
+
+        // Can we complete this as a free transaction?
+        if (params.sendfreetransactions && nBytes <= MAX_FREE_TRANSACTION_CREATE_SIZE)
+        {
+            // Not enough fee: enough priority?
+            double dPriorityNeeded = theApp.mempool().estimateSmartPriority(params.txconfirmtarget);
+
+            // Require at least hard-coded AllowFree.
+            if (dPriority >= dPriorityNeeded && AllowFree(dPriority))
+                break;
+        }
+
+        CAmount nFeeNeeded = GetMinimumFee(nBytes, params.txconfirmtarget, theApp.mempool());
+        if (coinControl && nFeeNeeded > 0 && coinControl->nMinimumTotalFee > nFeeNeeded) 
+		{
+            nFeeNeeded = coinControl->nMinimumTotalFee;
+        }
+		if (coinControl && coinControl->fOverrideFeeRate)
+            nFeeNeeded = coinControl->nFeeRate.GetFee(nBytes);
+
+        // If we made it here and we aren't even able to meet the relay
+		// fee on the next pass, give up because we must be at the 
+		// maximum allowed fee.
+        if (nFeeNeeded < theApp.minRelayTxFee().GetFee(nBytes))
+        {
+            strFailReason = _("Transaction too large for fee policy");
+            return false;
+        }
+
+		// If the computed fee is bigger then the required fee, then we are done.
+        if (nFeeRet >= nFeeNeeded)
+		{
+			break;
+		}
+
+        // Include more fee and try again.
+        feeInCost = nFeeNeeded - feeNeededBefore;
+	}
+
+	if(!reservekeyUsed)
+		reservekey.ReturnKey();
+
+	return true;
+}
+
 bool CEDCWallet::CreateTrustedTransaction(
+          CEDCBitcoinAddress & issuer,			// IN: address of issuer whose coins will be moved
+					  unsigned wotLevel,		// IN: WoT level
 	const vector<CRecipient> & vecSend, 		// IN: Recipients of TXOUT
 				CEDCWalletTx & wtxNew, 			// IN/OUT: Created TXN
 			  CEDCReserveKey & reservekey, 		// IN: Key from pool to be destination of change
@@ -2822,9 +3149,11 @@ bool CEDCWallet::CreateTrustedTransaction(
 	EDCapp & theApp = EDCapp::singleton();
 	EDCparams & params = EDCparams::singleton();
 
+	///////////////////////////////////////////////////////////////
+	// Compute the value to be moved
+	//
     CAmount nValue = 0;
     int nChangePosRequest = nChangePosInOut;
-    unsigned int nSubtractFeeFromAmount = 0;
     BOOST_FOREACH (const CRecipient& recipient, vecSend)
     {
         if (nValue < 0 || recipient.nAmount < 0)
@@ -2835,7 +3164,10 @@ bool CEDCWallet::CreateTrustedTransaction(
         nValue += recipient.nAmount;
 
         if (recipient.fSubtractFeeFromAmount)
-            nSubtractFeeFromAmount++;
+		{
+            strFailReason = _("Trusted transaction fees cannot come from authorized equibits");
+            return false;
+		}
     }
     if (vecSend.empty() || nValue < 0)
     {
@@ -2882,262 +3214,149 @@ bool CEDCWallet::CreateTrustedTransaction(
     {
         LOCK2(EDC_cs_main, cs_wallet);
         {
-			EDCapp & theApp = EDCapp::singleton();
+			// Get the coins available for input to the TXN
+			//
             std::vector<CEDCOutput> vAvailableCoins;
-            AvailableCoins(vAvailableCoins, true, coinControl);
+            AvailableCoins(vAvailableCoins, issuer, wotLevel, true, coinControl );
 
-            nFeeRet = 0;
-            // Start with no fee and loop until there is enough fee
-            while (true)
+            nChangePosInOut = nChangePosRequest;
+            txNew.vin.clear();
+            txNew.vout.clear();
+			txNew.wit.SetNull();
+            wtxNew.fFromMe = true;
+
+            CAmount nValueToSelect = nValue;
+            double dPriority = 0;
+
+            // vouts to the payees
+            BOOST_FOREACH (const CRecipient& recipient, vecSend)
             {
-                nChangePosInOut = nChangePosRequest;
-                txNew.vin.clear();
-                txNew.vout.clear();
-				txNew.wit.SetNull();
-                wtxNew.fFromMe = true;
-                bool fFirst = true;
+                CEDCTxOut txout(recipient.nAmount, recipient.scriptPubKey);
 
-                CAmount nValueToSelect = nValue;
-                if (nSubtractFeeFromAmount == 0)
-                    nValueToSelect += nFeeRet;
-                double dPriority = 0;
-
-                // vouts to the payees
-                BOOST_FOREACH (const CRecipient& recipient, vecSend)
+                if (txout.IsDust(theApp.minRelayTxFee()))
                 {
-                    CEDCTxOut txout(recipient.nAmount, recipient.scriptPubKey);
-
-                    if (recipient.fSubtractFeeFromAmount)
-                    {
-                        txout.nValue -= nFeeRet / nSubtractFeeFromAmount; // Subtract fee equally from each selected recipient
-
-                        if (fFirst) // first receiver pays the remainder not divisible by output count
-                        {
-                            fFirst = false;
-                            txout.nValue -= nFeeRet % nSubtractFeeFromAmount;
-                        }
-                    }
-
-                    if (txout.IsDust(theApp.minRelayTxFee()))
-                    {
-                        if (recipient.fSubtractFeeFromAmount && nFeeRet > 0)
-                        {
-                            if (txout.nValue < 0)
-                                strFailReason = _("The transaction amount is too small to pay the fee");
-                            else
-                                strFailReason = _("The transaction amount is too small to send after the fee has been deducted");
-                        }
-                        else
-                            strFailReason = _("Transaction amount too small");
-                        return false;
-                    }
-                    txNew.vout.push_back(txout);
-                }
-
-                // Choose coins to use
-                set<pair<const CEDCWalletTx*,unsigned int> > setCoins;
-                CAmount nValueIn = 0;
-                if (!SelectCoins(vAvailableCoins, nValueToSelect, setCoins, nValueIn, coinControl))
-                {
-                    strFailReason = _("Insufficient funds");
+                    strFailReason = _("Transaction amount too small");
                     return false;
                 }
-                BOOST_FOREACH(PAIRTYPE(const CEDCWalletTx*, unsigned int) pcoin, setCoins)
-                {
-                    CAmount nCredit = pcoin.first->vout[pcoin.second].nValue;
-                    //The coin age after the next block (depth+1) is used instead of the current,
-                    //reflecting an assumption the user would accept a bit more delay for
-                    //a chance at a free transaction.
-                    //But mempool inputs might still be in the mempool, so their age stays 0
-                    int age = pcoin.first->GetDepthInMainChain();
-                    assert(age >= 0);
-                    if (age != 0)
-                        age += 1;
-                    dPriority += (double)nCredit * age;
-                }
-
-                const CAmount nChange = nValueIn - nValueToSelect;
-                if (nChange > 0)
-                {
-                    // Fill a vout to ourself
-                    // TODO: pass in scriptChange instead of reservekey so
-                    // change transaction isn't always pay-to-equibit-address
-                    CScript scriptChange;
-
-                    // coin control: send change to custom address
-                    if (coinControl && !boost::get<CNoDestination>(&coinControl->destChange))
-                        scriptChange = GetScriptForDestination(coinControl->destChange);
-
-                    // no coin control: send change to newly generated address
-                    else
-                    {
-                        // Note: We use a new key here to keep it from being obvious which side is the change.
-                        //  The drawback is that by not reusing a previous key, the change may be lost if a
-                        //  backup is restored, if the backup doesn't have the new private key for the change.
-                        //  If we reused the old key, it would be possible to add code to look for and
-                        //  rediscover unknown transactions that were written with keys of ours to recover
-                        //  post-backup change.
-
-                        // Reserve a new key pair from key pool
-                        CPubKey vchPubKey;
-                        bool ret;
-                        ret = reservekey.GetReservedKey(vchPubKey);
-                        assert(ret); // should never fail, as we just unlocked
-
-                        scriptChange = GetScriptForDestination(vchPubKey.GetID());
-                    }
-
-                    CEDCTxOut newTxOut(nChange, scriptChange);
-
-                    // We do not move dust-change to fees, because the sender would end up paying more than requested.
-                    // This would be against the purpose of the all-inclusive feature.
-                    // So instead we raise the change and deduct from the recipient.
-                    if (nSubtractFeeFromAmount > 0 && newTxOut.IsDust(theApp.minRelayTxFee()))
-                    {
-                        CAmount nDust = newTxOut.GetDustThreshold(theApp.minRelayTxFee()) - newTxOut.nValue;
-                        newTxOut.nValue += nDust; // raise change until no more dust
-                        for (unsigned int i = 0; i < vecSend.size(); i++) // subtract from first recipient
-                        {
-                            if (vecSend[i].fSubtractFeeFromAmount)
-                            {
-                                txNew.vout[i].nValue -= nDust;
-                                if (txNew.vout[i].IsDust(theApp.minRelayTxFee()))
-                                {
-                                    strFailReason = _("The transaction amount is too small to send after the fee has been deducted");
-                                    return false;
-                                }
-                                break;
-                            }
-                        }
-                    }
-
-                    // Never create dust outputs; if we would, just
-                    // add the dust to the fee.
-                    if (newTxOut.IsDust(theApp.minRelayTxFee()))
-                    {
-                        nChangePosInOut = -1;
-                        nFeeRet += nChange;
-                        reservekey.ReturnKey();
-                    }
-                    else
-                    {
-                        if (nChangePosInOut == -1)
-                        {
-                            // Insert change txn at random position:
-                            nChangePosInOut = GetRandInt(txNew.vout.size()+1);
-                        }
-						else if ((unsigned int)nChangePosInOut > txNew.vout.size())
-                        {
-                            strFailReason = _("Change index out of range");
-                            return false;
-                        }
-
-                        vector<CEDCTxOut>::iterator position = txNew.vout.begin()+nChangePosInOut;
-                        txNew.vout.insert(position, newTxOut);
-                    }
-                }
-                else
-                    reservekey.ReturnKey();
-
-                // Fill vin
-                //
-                // Note how the sequence number is set to non-maxint so that
-                // the nLockTime set above actually works.
-                //
-                // BIP125 defines opt-in RBF as any nSequence < maxint-1, so
-                // we use the highest possible value in that range (maxint-2)
-                // to avoid conflicting with other possible uses of nSequence,
-                // and in the spirit of "smallest posible change from prior
-                // behavior."
-                BOOST_FOREACH(const PAIRTYPE(const CEDCWalletTx*,unsigned int)& coin, setCoins)
-                    txNew.vin.push_back(CEDCTxIn(coin.first->GetHash(),coin.second,CScript(),
-						std::numeric_limits<unsigned int>::max() - (params.walletrbf ? 2:1)));
-
-                // Sign
-                int nIn = 0;
-                CEDCTransaction txNewConst(txNew);
-                BOOST_FOREACH(const PAIRTYPE(const CEDCWalletTx*,unsigned int)& coin, setCoins)
-                {
-                    bool signSuccess;
-                    const CScript& scriptPubKey = coin.first->vout[coin.second].scriptPubKey;
-					SignatureData sigdata;
-
-                    if (sign)
-						signSuccess = edcProduceSignature(EDCTransactionSignatureCreator(this, &txNewConst, nIn, coin.first->vout[coin.second].nValue, SIGHASH_ALL), scriptPubKey, sigdata);
-                    else
-						signSuccess = edcProduceSignature(DummySignatureCreator(this), scriptPubKey, sigdata);
-
-                    if (!signSuccess)
-                    {
-                        strFailReason = _("Signing transaction failed");
-                        return false;
-                    } 
-					else 
-					{
-                        edcUpdateTransaction(txNew, nIn, sigdata);
-                    }
-                    nIn++;
-                }
-
-                unsigned int nBytes = edcGetVirtualTransactionSize(txNew);
-
-                // Remove scriptSigs if we used dummy signatures for fee calculation
-                if (!sign) 
-				{
-                    BOOST_FOREACH (CEDCTxIn& vin, txNew.vin)
-                        vin.scriptSig = CScript();
-					txNew.wit.SetNull();
-                }
-
-                // Embed the constructed transaction data in wtxNew.
-                *static_cast<CEDCTransaction*>(&wtxNew) = CEDCTransaction(txNew);
-
-                // Limit size
-				if (edcGetTransactionWeight(txNew) >= EDC_MAX_STANDARD_TX_WEIGHT)
-                {
-                    strFailReason = _("Transaction too large");
-                    return false;
-                }
-
-                dPriority = wtxNew.ComputePriority(dPriority, nBytes);
-
-				EDCapp & theApp = EDCapp::singleton();
-				EDCparams & params = EDCparams::singleton();
-
-                // Can we complete this as a free transaction?
-                if (params.sendfreetransactions && nBytes <= MAX_FREE_TRANSACTION_CREATE_SIZE)
-                {
-                    // Not enough fee: enough priority?
-                    double dPriorityNeeded = theApp.mempool().estimateSmartPriority(params.txconfirmtarget);
-                    // Require at least hard-coded AllowFree.
-                    if (dPriority >= dPriorityNeeded && AllowFree(dPriority))
-                        break;
-                }
-
-                CAmount nFeeNeeded = GetMinimumFee(nBytes, params.txconfirmtarget, theApp.mempool());
-                if (coinControl && nFeeNeeded > 0 && coinControl->nMinimumTotalFee > nFeeNeeded) 
-				{
-                    nFeeNeeded = coinControl->nMinimumTotalFee;
-                }
-				if (coinControl && coinControl->fOverrideFeeRate)
-                    nFeeNeeded = coinControl->nFeeRate.GetFee(nBytes);
-
-                // If we made it here and we aren't even able to meet the relay
-				// fee on the next pass, give up because we must be at the 
-				// maximum allowed fee.
-                if (nFeeNeeded < theApp.minRelayTxFee().GetFee(nBytes))
-                {
-                    strFailReason = _("Transaction too large for fee policy");
-                    return false;
-                }
-
-                if (nFeeRet >= nFeeNeeded)
-                    break; // Done, enough fee included.
-
-                // Include more fee and try again.
-                nFeeRet = nFeeNeeded;
-                continue;
+                txNew.vout.push_back(txout);
             }
+
+            // Choose coins to use
+            CoinSet setCoins;
+            CAmount nValueIn = 0;
+            if (!SelectCoins(vAvailableCoins, nValueToSelect, setCoins, nValueIn, coinControl))
+            {
+                strFailReason = _("Insufficient funds");
+                return false;
+            }
+
+			// Get the minimum WoT level and issuer pubkey of the input coins 
+			auto tx = setCoins.begin()->first;
+			auto offset = setCoins.begin()->second;
+			const auto & sampleCoin = tx->vout[offset];
+
+			unsigned wot = sampleCoin.wotMinLevel;
+			const CPubKey & issuerPubKey = sampleCoin.issuerPubKey;
+			CKeyID issuerAddr;
+			issuer.GetKeyID( issuerAddr );
+
+
+			for( CEDCTxOut & vout : txNew.vout )
+			{
+				vout.wotMinLevel = wot;
+				vout.issuerAddr  = issuerAddr;
+				vout.issuerPubKey= issuerPubKey;
+			}
+
+			// nValueIn assigned value of coins selected
+			// setCoins is the set of coins selected
+
+            BOOST_FOREACH(PAIRTYPE(const CEDCWalletTx*, unsigned int) pcoin, setCoins)
+            {
+                CAmount nCredit = pcoin.first->vout[pcoin.second].nValue;
+                //The coin age after the next block (depth+1) is used instead of the current,
+                //reflecting an assumption the user would accept a bit more delay for
+                //a chance at a free transaction.
+                //But mempool inputs might still be in the mempool, so their age stays 0
+                int age = pcoin.first->GetDepthInMainChain();
+                assert(age >= 0);
+                if (age != 0)
+                    age += 1;
+                dPriority += (double)nCredit * age;
+            }
+
+            const CAmount nChange = nValueIn - nValueToSelect;
+            if (nChange > 0)
+            {
+                // Fill a vout to ourself
+                // TODO: pass in scriptChange instead of reservekey so
+                // change transaction isn't always pay-to-equibit-address
+                CScript scriptChange;
+
+                // coin control: send change to custom address
+                if (coinControl && !boost::get<CNoDestination>(&coinControl->destChange))
+                    scriptChange = GetScriptForDestination(coinControl->destChange);
+
+                // no coin control: send change to newly generated address
+                else
+                {
+                    // Note: We use a new key here to keep it from being obvious which side is the change.
+                    //  The drawback is that by not reusing a previous key, the change may be lost if a
+                    //  backup is restored, if the backup doesn't have the new private key for the change.
+                    //  If we reused the old key, it would be possible to add code to look for and
+                    //  rediscover unknown transactions that were written with keys of ours to recover
+                    //  post-backup change.
+
+                    // Reserve a new key pair from key pool
+                    CPubKey vchPubKey;
+                    bool ret;
+                    ret = reservekey.GetReservedKey(vchPubKey);
+                    assert(ret); // should never fail, as we just unlocked
+
+                    scriptChange = GetScriptForDestination(vchPubKey.GetID());
+                }
+
+                CEDCTxOut newTxOut(nChange, wot, issuerPubKey, issuerAddr, scriptChange);
+
+                // We do not move dust-change to fees, because the sender would end up paying more than requested.
+                // This would be against the purpose of the all-inclusive feature.
+                // So instead we raise the change and deduct from the recipient.
+
+                if (nChangePosInOut == -1)
+                {
+                    // Insert change txn at random position:
+                    nChangePosInOut = GetRandInt(txNew.vout.size()+1);
+                }
+				else if ((unsigned int)nChangePosInOut > txNew.vout.size())
+                {
+                    strFailReason = _("Change index out of range");
+                    return false;
+                }
+
+                vector<CEDCTxOut>::iterator position = txNew.vout.begin()+nChangePosInOut;
+                txNew.vout.insert(position, newTxOut);
+            }
+
+            // Fill vin
+            //
+            // Note how the sequence number is set to non-maxint so that
+            // the nLockTime set above actually works.
+            //
+            // BIP125 defines opt-in RBF as any nSequence < maxint-1, so
+            // we use the highest possible value in that range (maxint-2)
+            // to avoid conflicting with other possible uses of nSequence,
+            // and in the spirit of "smallest posible change from prior
+            // behavior."
+            BOOST_FOREACH(const PAIRTYPE(const CEDCWalletTx*,unsigned int)& coin, setCoins)
+                txNew.vin.push_back(CEDCTxIn(coin.first->GetHash(),coin.second,CScript(),
+					std::numeric_limits<unsigned int>::max() - (params.walletrbf ? 2:1)));
+
+			// Add the CEDCTxIn for the fee. If it fails, we are done
+			//
+            nFeeRet = 0;
+			if( !AddFee(theApp, params, dPriority,	setCoins, txNew, wtxNew, reservekey,		
+						nChangePosInOut, nFeeRet, strFailReason, coinControl, sign ))
+				return false;
         }
     }
 
@@ -4800,6 +5019,7 @@ std::string CEDCMerkleTx::toJSON( const char * margin ) const
 
 bool CEDCWallet::CreateAuthorizingTransaction(
                const CIssuer & issuer,
+					  unsigned wotMinLevel,
           const CEDCWalletTx & wtx,
                         size_t outId,
 				CEDCWalletTx & wtxNew, 
@@ -4833,7 +5053,8 @@ bool CEDCWallet::CreateAuthorizingTransaction(
 
 			// Mark the output transaction authorized
 			const_cast<CPubKey &>(txout.issuerPubKey) = issuer.pubKey_;
-			const_cast<CKeyID &>(txout.issuerPayAddr)= *boost::get<CKeyID>(&address);
+			const_cast<CKeyID &>(txout.issuerAddr)    = *boost::get<CKeyID>(&address);
+			const_cast<unsigned &>(txout.wotMinLevel) = wotMinLevel;
 
             txNew.vout.push_back(txout);
 
@@ -5084,6 +5305,48 @@ bool CEDCWallet::wotChainExists(
 bool CEDCWallet::WoTchainExists( 
 		const CPubKey & epk, 		// Last key in chain
 		const CPubKey & spk, 		// First key in chain
+			   uint64_t maxlen )
+{
+	return wotChainExists( spk, epk, 1, maxlen );
+}
+
+bool CEDCWallet::wotChainExists( 
+	 const CPubKey & spk, 
+	 const CPubKey & epk, 
+	 const CPubKey & expk,
+			uint64_t currlen, 
+			uint64_t maxlen )
+{
+	auto itPair = wotCertificates.equal_range( spk );
+
+	// No pairs found
+	if( itPair.first == itPair.second )
+		return false;
+
+	auto it = itPair.first;
+	auto end= itPair.second;
+
+	// Iterate over all pubkeys that have authorized the pubkey
+	while( it != end )
+	{
+		if( it->second.pubkey == epk )
+			return !it->second.revoked;	// return false if revoked
+		else if( it->second.pubkey != expk && currlen < maxlen )
+		{
+			if(wotChainExists( it->second.pubkey, epk, currlen+1, maxlen ))
+				return true;
+		}
+
+		++it;
+	}
+
+	return false;
+}
+
+bool CEDCWallet::WoTchainExists( 
+		const CPubKey & epk, 		// Last key in chain
+		const CPubKey & spk, 		// First key in chain
+		const CPubKey & expk,		// Exceptional key. It cannot appear in the chain
 			   uint64_t maxlen )
 {
 	return wotChainExists( spk, epk, 1, maxlen );
