@@ -4,7 +4,7 @@
 # a tool that unilaterally re-orders the linker command line, preventing a good link from occurring? 
 #
 echo ">>>>>>>>>>>>>>> MAKE"
-make $*
+make -j 8 $*
 
 echo ">>>>>>>>>>>>>>> LINK"
 export BDB_PREFIX=/home/equibituser/bitcoin/db4

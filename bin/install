@@ -4,7 +4,7 @@
 
 echo "Build Equibit binaries"
 
-cd ../src;build
+cd ../src;./build
 cd -
 
 echo "Copy Equibit binaries"

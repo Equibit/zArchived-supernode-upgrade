@@ -12,5 +12,5 @@ the terminal, then do the following first:
 4) bg <bitcoind-job#>
 	For example, bg 1.
 
-5) disown -h
+5) disown -h %1
 	Prevents process from being killed when terminal is closed.
