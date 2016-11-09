@@ -2235,7 +2235,7 @@ void CEDCWallet::AvailableCoins(
             	const CEDCTxOut & vout = pcoin->vout[i];
 
 				// Skip coins not authorized by the issuer
-				if( vout.issuerPayAddr == issuerID )
+				if( vout.issuerAddr == issuerID )
 					continue;
 
 				// Skip coins whose WoT level is below the minimum level
@@ -3250,6 +3250,24 @@ bool CEDCWallet::CreateTrustedTransaction(
                 return false;
             }
 
+			// Get the minimum WoT level and issuer pubkey of the input coins 
+			auto tx = setCoins.begin()->first;
+			auto offset = setCoins.begin()->second;
+			const auto & sampleCoin = tx->vout[offset];
+
+			unsigned wot = sampleCoin.wotMinLevel;
+			const CPubKey & issuerPubKey = sampleCoin.issuerPubKey;
+			CKeyID issuerAddr;
+			issuer.GetKeyID( issuerAddr );
+
+
+			for( CEDCTxOut & vout : txNew.vout )
+			{
+				vout.wotMinLevel = wot;
+				vout.issuerAddr  = issuerAddr;
+				vout.issuerPubKey= issuerPubKey;
+			}
+
 			// nValueIn assigned value of coins selected
 			// setCoins is the set of coins selected
 
@@ -3298,7 +3316,7 @@ bool CEDCWallet::CreateTrustedTransaction(
                     scriptChange = GetScriptForDestination(vchPubKey.GetID());
                 }
 
-                CEDCTxOut newTxOut(nChange, scriptChange);
+                CEDCTxOut newTxOut(nChange, wot, issuerPubKey, issuerAddr, scriptChange);
 
                 // We do not move dust-change to fees, because the sender would end up paying more than requested.
                 // This would be against the purpose of the all-inclusive feature.
@@ -5035,7 +5053,7 @@ bool CEDCWallet::CreateAuthorizingTransaction(
 
 			// Mark the output transaction authorized
 			const_cast<CPubKey &>(txout.issuerPubKey) = issuer.pubKey_;
-			const_cast<CKeyID &>(txout.issuerPayAddr) = *boost::get<CKeyID>(&address);
+			const_cast<CKeyID &>(txout.issuerAddr)    = *boost::get<CKeyID>(&address);
 			const_cast<unsigned &>(txout.wotMinLevel) = wotMinLevel;
 
             txNew.vout.push_back(txout);

@@ -158,8 +158,8 @@ public:
 
         genesis = edcCreateGenesisBlock(1231006505, 2083236893, 0x1d00ffff, 1, 50 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0xcac15d6fa8eaf28d063d86fc2320694dec5daa1b4a32081a8e04263e3cca755c"));
-        assert(genesis.hashMerkleRoot == uint256S("0x10e20e8d5624a851b1e0f33275bfb965ee7a61c99fc7a0f0c822374c11b906a4"));
+        assert(consensus.hashGenesisBlock == uint256S("0x3e0ed5e556868b13becebe01502f78862261760bbba955e55091e7374587964d"));
+        assert(genesis.hashMerkleRoot == uint256S("0x86fc4663bb6a3144088fe7c6b9d4dfcb81787769d95c132c6aaa1747136928ca"));
 
 
 // TODO: Equibit DNS seed addresses?
@@ -329,8 +329,9 @@ fclose(fh);
   	    genesis = edcCreateGenesisBlock(1296688602, 414098458, 0x1d00ffff, 1, 50 * COIN);
       	consensus.hashGenesisBlock = genesis.GetHash();
 
-        assert(consensus.hashGenesisBlock == uint256S("0xfa15678b6ed580bcc131de1fa1a962d4bc006d2f00275c37daeaa96a7558af03"));
-        assert(genesis.hashMerkleRoot == uint256S("0x10e20e8d5624a851b1e0f33275bfb965ee7a61c99fc7a0f0c822374c11b906a4"));
+        assert(consensus.hashGenesisBlock == uint256S("0xa12bf0e41bc22f4a56be54c7f26339efb490ba81c70cd47012f8f246d9854db5"));
+        assert(genesis.hashMerkleRoot == uint256S("0x86fc4663bb6a3144088fe7c6b9d4dfcb81787769d95c132c6aaa1747136928ca"));
+
 
         vFixedSeeds.clear();
         vSeeds.clear();
@@ -441,8 +442,8 @@ public:
         genesis = edcCreateGenesisBlock(1296688602, 2, 0x207fffff, 1, 50 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
 
-        assert(consensus.hashGenesisBlock == uint256S("0x1a2cbf8b5ae81e828a6c1c2473fe854b647ef1637de1529b19b443e65dd21dbc" ));
-        assert(genesis.hashMerkleRoot == uint256S("0x10e20e8d5624a851b1e0f33275bfb965ee7a61c99fc7a0f0c822374c11b906a4" ));
+        assert(consensus.hashGenesisBlock == uint256S("0x3261607423e90efcfca1f8a070be44f35fb0409153e278af240dc7d4ef050968"));
+        assert(genesis.hashMerkleRoot == uint256S("0x86fc4663bb6a3144088fe7c6b9d4dfcb81787769d95c132c6aaa1747136928ca"));
 
         vFixedSeeds.clear(); //!< Regtest mode doesn't have any fixed seeds.
         vSeeds.clear();      //!< Regtest mode doesn't have any DNS seeds.
