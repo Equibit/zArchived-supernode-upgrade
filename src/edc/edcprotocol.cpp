@@ -79,10 +79,10 @@ const std::string edcallNetMessageTypes[] =
 							// "inv".
     NetMsgType::FEEFILTER,	// Tells the receiving peer not to inv us any txs 
 							// which do not meet the specified min fee rate.
-    NetMsgType::SENDCMPCT,
-    NetMsgType::CMPCTBLOCK,
-    NetMsgType::GETBLOCKTXN,
-    NetMsgType::BLOCKTXN,
+    NetMsgType::SENDCMPCT,  // Requests a Compact block
+    NetMsgType::CMPCTBLOCK, // Compact block of data
+    NetMsgType::GETBLOCKTXN,// Get txns corresponding to a block
+    NetMsgType::BLOCKTXN,   // Txns for a specific block
 	NetMsgType::USER		// User-to-user message
 };
 

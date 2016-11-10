@@ -492,6 +492,8 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
 	edcEnsureWalletIsUnlocked();
 	theApp.walletMain()->AddWoTCertificate( pubkey, sPubkey, cert );
 
+	// TODO: Broadcast certificate to the network
+
     return NullUniValue;
 }
 
@@ -502,7 +504,7 @@ eb_revokewotcertificate
 
     Parameters:
 
-    1) Public key to be revoked
+    1) Public key on certificate to be revoked
     2) Public key of signer
     3) Reason for revocation
 
@@ -547,6 +549,58 @@ UniValue edcrevokewotcertificate(const UniValue& params, bool fHelp)
 	addressToPubKey( saddr, spubkey, theParams.usehsm, theApp );
 
 	bool rc = theApp.walletMain()->RevokeWoTCertificate( pubkey, spubkey, reason );
+
+	// TODO: Broadcast certificate revocation to the network
+
+    UniValue result(rc);
+    return result;
+}
+
+/******************************************************************************
+eb_deletewotcertificate
+
+    Deletes a WOT certificate
+
+    Parameters:
+
+    1) Public key on certificate to be deleted
+    2) Public key of signer
+
+    Return: True if successful
+
+    Side Effects
+	Removes certificate from DB
+******************************************************************************/
+
+UniValue edcdeletewotcertificate(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() != 2 )
+        throw std::runtime_error(
+            "eb_deletewotcertificate \"address\" \"sign-address\"\n"
+    		"\nDeletes a WOT certificate.\n"
+            "\nArguments:\n"
+			"1. \"address\"      (string, required) Address of public key to be revoked\n"
+			"2. \"sign-address\" (string, required) Address of public key of signer\n"
+            "\nResult: true or false\n"
+            "\nExamples:\n"
+            + HelpExampleCli("eb_deletewotcertificate", "\"1234d20sdmDScedc2edscad\" \"0cmscadc9dcadsadvadvava\"")
+            + HelpExampleRpc("eb_deletewotcertificate", "\"1234d20sdmDScedc2edscad\" \"0cmscadc9dcadsadvadvava\"")
+        );
+
+	std::string addr  = params[0].get_str();
+	std::string saddr = params[1].get_str();
+
+	EDCapp & theApp = EDCapp::singleton();
+	EDCparams & theParams = EDCparams::singleton();
+
+	CPubKey	pubkey;
+	addressToPubKey( addr, pubkey, theParams.usehsm, theApp );
+
+	CPubKey	spubkey;
+	addressToPubKey( saddr, spubkey, theParams.usehsm, theApp );
+
+//	bool rc = theApp.walletMain()->RevokeWoTCertificate( pubkey, spubkey, reason );
+	bool rc = false; // TODO
 
     UniValue result(rc);
     return result;
@@ -631,6 +685,7 @@ const CRPCCommand edcCommands[] =
   //  --------------- --------------------------- -----------------------    ----------
     { "equibit",      "eb_requestwotcertificate", &edcrequestwotcertificate, true },
     { "equibit",      "eb_getwotcertificate",     &edcgetwotcertificate,     true },
+	{ "equibit",      "eb_deletewotcertificate",  &edcdeletewotcertificate,  true },
     { "equibit",      "eb_revokewotcertificate",  &edcrevokewotcertificate,  true },
     { "equibit",      "eb_wotchainexits",         &edcwotchainexists,        true },
 };

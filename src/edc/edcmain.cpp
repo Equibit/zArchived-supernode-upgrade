@@ -6476,7 +6476,9 @@ bool ProcessMessage(
         }
         FlushStateToDisk(state, FLUSH_STATE_PERIODIC);
     }
-    else if (strCommand == NetMsgType::CMPCTBLOCK && !theApp.importing() && !theApp.reindex()) // Ignore blocks received while importing
+    else if (strCommand == NetMsgType::CMPCTBLOCK && 
+			!theApp.importing() && 
+			!theApp.reindex()) // Ignore blocks received while importing
     {
         CEDCBlockHeaderAndShortTxIDs cmpctblock;
         vRecv >> cmpctblock;
