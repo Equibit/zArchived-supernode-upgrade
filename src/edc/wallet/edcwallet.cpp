@@ -5171,7 +5171,7 @@ bool CEDCWallet::GetHSMPubKey(const CKeyID & id, CPubKey & out ) const
 
 #endif
 
-void CEDCWallet::AddWoTCertificate( 
+bool CEDCWallet::AddWoTCertificate( 
 					   const CPubKey & pk, 	  // Key to be certified
 					   const CPubKey & spk,   // Signing public key
 				const WoTCertificate & cert	) // The certificate
@@ -5221,6 +5221,8 @@ void CEDCWallet::AddWoTCertificate(
 			}
 		}
 	}
+
+	return true;
 }
 
 

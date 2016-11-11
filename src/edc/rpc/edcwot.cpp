@@ -385,7 +385,7 @@ UniValue edcrequestwotcertificate(const UniValue& params, bool fHelp)
 	std::string data = buildJSON( pubkey, name, gaddr, phone, email, http, expirBlocks );
 
 	// Send message
-    CPeerToPeer * msg = CPeerToPeer::create( "WoT-certificate-request", pk.GetID(), signerID, data);
+    CPeerToPeer * msg = CPeerToPeer::create( "RequestWoTcertificate", pk.GetID(), signerID, data);
 
 	theApp.connman()->RelayUserMessage( msg, true );
 
@@ -467,6 +467,11 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
 
 	EDCapp & theApp = EDCapp::singleton();
 
+	CEDCBitcoinAddress   sender(saddr);
+	CKeyID senderID;
+	if(!sender.GetKeyID(senderID))
+       	throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
+
 	WoTCertificate	cert(
 		pkAddrs,
 		saddr,
@@ -490,9 +495,64 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
 	LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
 	edcEnsureWalletIsUnlocked();
-	theApp.walletMain()->AddWoTCertificate( pubkey, sPubkey, cert );
+	bool rc = theApp.walletMain()->AddWoTCertificate( pubkey, sPubkey, cert );
 
-	// TODO: Broadcast certificate to the network
+	uint16_t pkLen = static_cast<uint16_t>(pubkey.size());
+	uint16_t spkLen= static_cast<uint16_t>(sPubkey.size());
+
+	uint16_t cLen  = static_cast<uint16_t>(cert.GetSerializeSize(SER_NETWORK, PROTOCOL_VERSION));
+
+	std::vector<unsigned char> data;
+	data.resize(pkLen + spkLen + cLen + sizeof(uint16_t)*3 );
+
+	*reinterpret_cast<uint16_t *>(data.data()) 					  = pkLen;
+	*reinterpret_cast<uint16_t *>(data.data()+sizeof(uint16_t))   = spkLen;
+	*reinterpret_cast<uint16_t *>(data.data()+sizeof(uint16_t)*2) = cLen;
+
+	auto i = data.begin() + 3 * sizeof(uint16_t);
+	auto e = data.end();
+		
+	auto pi = pubkey.begin();
+	auto pe = pubkey.end();
+	while( pi != pe )
+	{
+		*i = *pi;
+
+		++i;
+		++pi;
+	}
+
+	auto si = sPubkey.begin();
+	auto se = sPubkey.end();
+	while( si != se )
+	{
+		*i = *si;
+
+		++i;
+		++si;
+	}
+
+	std::stringstream ss;
+	cert.Serialize( ss, SER_NETWORK, PROTOCOL_VERSION );
+
+	auto ci = ss.str().begin();
+	auto ce = ss.str().end();
+	while( ci != ce )
+	{
+		*i = *ci;
+
+		++i;
+		++ci;
+	}
+
+	if(rc)
+	{
+		// Broadcast certificate to the network
+		std::string assetId;
+	    CBroadcast * msg = CBroadcast::create( "CreateWoTcertificate", senderID, assetId, data);
+
+		theApp.connman()->RelayUserMessage( msg, true );
+	}
 
     return NullUniValue;
 }
@@ -548,9 +608,65 @@ UniValue edcrevokewotcertificate(const UniValue& params, bool fHelp)
 	CPubKey	spubkey;
 	addressToPubKey( saddr, spubkey, theParams.usehsm, theApp );
 
+	CEDCBitcoinAddress   sender(saddr);
+	CKeyID senderID;
+	if(!sender.GetKeyID(senderID))
+       	throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
+
 	bool rc = theApp.walletMain()->RevokeWoTCertificate( pubkey, spubkey, reason );
 
-	// TODO: Broadcast certificate revocation to the network
+	uint16_t pkLen = static_cast<uint16_t>(pubkey.size());
+	uint16_t saLen = static_cast<uint16_t>(saddr.size());
+	uint16_t rLen  = static_cast<uint16_t>(reason.size());
+
+	std::vector<unsigned char> data;
+	data.resize(pkLen + saLen + rLen + sizeof(uint16_t)*3 );
+
+	*reinterpret_cast<uint16_t *>(data.data()) 					 = pkLen;
+	*reinterpret_cast<uint16_t *>(data.data()+sizeof(uint16_t))   = saLen;
+	*reinterpret_cast<uint16_t *>(data.data()+sizeof(uint16_t)*2) = rLen;
+
+	auto i = data.begin() + 3 * sizeof(uint16_t);
+	auto e = data.end();
+		
+	auto pi = pubkey.begin();
+	auto pe = pubkey.end();
+	while( pi != pe )
+	{
+		*i = *pi;
+
+		++i;
+		++pi;
+	}
+
+	auto si = saddr.begin();
+	auto se = saddr.end();
+	while( si != se )
+	{
+		*i = *si;
+
+		++i;
+		++si;
+	}
+
+	auto ri = reason.begin();
+	auto re = reason.end();
+	while( ri != re )
+	{
+		*i = *ri;
+
+		++i;
+		++ri;
+	}
+
+	if(rc)
+	{
+		// Broadcast certificate revocation to the network
+		std::string assetId;
+		CBroadcast * msg = CBroadcast::create( "RevokeWoTcertificate", senderID, assetId, data);
+
+		theApp.connman()->RelayUserMessage( msg, true );
+	}
 
     UniValue result(rc);
     return result;

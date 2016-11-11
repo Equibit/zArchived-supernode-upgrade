@@ -40,6 +40,7 @@
 #include "edcapp.h"
 #include "edc/message/edcmessage.h"
 #include "edc/wallet/edcwallet.h"
+#include "edc/rpc/edcwot.h"
 
 #include <atomic>
 #include <sstream>
@@ -7136,7 +7137,28 @@ bool ProcessMessage(
 
 		if( isGood )
 		{
-			theApp.walletMain()->AddMessage( type, msg->GetHash(), msg );
+			if( CCreateWoTcertificate * cc = dynamic_cast<CCreateWoTcertificate *>(msg))
+			{
+				CPubKey pubkey;
+				CPubKey	sPubkey;
+				WoTCertificate cert;
+
+				cc->extract( pubkey, sPubkey, cert );
+
+				theApp.walletMain()->AddWoTCertificate( pubkey, sPubkey, cert );
+			}
+			else if( CRevokeWoTcertificate * rc = dynamic_cast<CRevokeWoTcertificate *>(msg))
+			{
+				CPubKey pubkey;
+				CPubKey	sPubkey;
+				std::string	reason;
+
+				rc->extract( pubkey, sPubkey, reason );
+
+				theApp.walletMain()->RevokeWoTCertificate( pubkey, sPubkey, reason );
+			}
+			else
+				theApp.walletMain()->AddMessage( type, msg->GetHash(), msg );
 		}
 		else
 		{

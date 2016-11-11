@@ -79,9 +79,9 @@ public:
 
 protected:
 		   struct timespec timestamp_;
-			   std::string data_;
 					CKeyID senderAddr_;
 				  uint64_t nonce_;
+std::vector<unsigned char> data_;
 std::vector<unsigned char> signature_;
 };
 
@@ -187,6 +187,11 @@ public:
 								     const CKeyID & sender, 
 								const std::string & assetId, 
 							    const std::string & data );
+
+	static CBroadcast * create( const std::string & type, 
+								     const CKeyID & sender, 
+								const std::string & assetId, 
+				 const std::vector<unsigned char> & data );
 
 private:
 	std::string assetId_;
@@ -544,6 +549,13 @@ public:
 	virtual std::string desc() const;
 };
 
+class CRequestWoTcertificate: public CPeerToPeer
+{
+public:
+	virtual std::string tag() const;
+	virtual std::string desc() const;
+};
+
 class CWarrantExercise : public CBroadcast
 {
 public:
@@ -563,4 +575,24 @@ class CWarrantIssue : public CBroadcast
 public:
 	virtual std::string tag() const;
 	virtual std::string desc() const;
+};
+
+class WoTCertificate;
+
+class CCreateWoTcertificate: public CBroadcast
+{
+public:
+	virtual std::string tag() const;
+	virtual std::string desc() const;
+
+	void extract( CPubKey &, CPubKey &, WoTCertificate & ) const;
+};
+
+class CRevokeWoTcertificate: public CBroadcast
+{
+public:
+	virtual std::string tag() const;
+	virtual std::string desc() const;
+
+	void extract( CPubKey &, CPubKey &, std::string & ) const;
 };

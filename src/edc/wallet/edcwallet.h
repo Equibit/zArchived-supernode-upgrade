@@ -967,7 +967,7 @@ public:
     /* Set the current HD master key (will reset the chain child index counters) */
     bool SetHDMasterKey(const CPubKey& key);
 
-	void AddWoTCertificate( const CPubKey & pk1, const CPubKey & pk2, const WoTCertificate & cert );
+	bool AddWoTCertificate( const CPubKey & pk1, const CPubKey & pk2, const WoTCertificate & cert );
 	bool RevokeWoTCertificate(const CPubKey & pk1, const CPubKey & pk2, 
 							  const std::string & reason );
 	bool DeleteWoTCertificate(const CPubKey & pk1, const CPubKey & pk2 );

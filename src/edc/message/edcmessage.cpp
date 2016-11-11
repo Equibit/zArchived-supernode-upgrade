@@ -16,6 +16,7 @@
 #include "Thales/interface.h"
 #include <secp256k1.h>
 #include "edc/edcparams.h"
+#include "edc/rpc/edcwot.h"
 
 namespace
 {
@@ -59,6 +60,7 @@ std::string CCashStockOption::tag() const			{ return "CashStockOption"; }
 std::string CClassAction::tag() const 				{ return "ClassAction"; }
 std::string CConversionOfConvertibleBonds::tag() const { return "ConversionOfConvertibleBonds"; }
 std::string CCouponPayment::tag() const				{ return "CouponPayment"; }
+std::string CCreateWoTcertificate::tag() const		{ return "CreateWoTcertificate"; }
 
 std::string CDelisting::tag() const					{ return "Delisting"; }
 std::string CDeMerger::tag() const					{ return "DeMerger"; }
@@ -91,8 +93,10 @@ std::string CParValueChange::tag() const			{ return "ParValueChange"; }
 std::string CPoll::tag() const						{ return "Poll"; }
 std::string CPrivate::tag() const					{ return "Private"; }
 
+std::string CRequestWoTcertificate::tag() const		{ return "RequestWoTcertificate"; }
 std::string CReturnOfCapital::tag() const			{ return "ReturnOfCapital"; } 
 std::string CReverseStockSplit::tag() const			{ return "ReverseStockSplit"; }
+std::string CRevokeWoTcertificate::tag() const		{ return "RevokeWoTcertificate"; }
 std::string CRightsAuction::tag() const				{ return "RightsAuction"; }
 std::string CRightsIssue::tag() const				{ return "RightsIssue"; }
 
@@ -343,6 +347,21 @@ std::string CWarrantIssue::desc() const
 	return "Per share an amount of warrants is issued according to a specific ratio. The warrant can entitle to sell or buy the underlying security at a given price within a given timeframe.";
 }
 
+std::string CRequestWoTcertificate::desc() const
+{
+	return "Request a peer to create a WoT certificate";
+}
+
+std::string CRevokeWoTcertificate::desc() const
+{
+	return "Notify peer that a WoT certificate was revoked";
+}
+
+std::string CCreateWoTcertificate::desc() const
+{
+	return "Notify peer that a WoT certificate was created";
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 namespace
@@ -370,6 +389,7 @@ CBroadcast * broadcastObj( const std::string & tag )
 		else if( tag == "ClassAction" ) 		return new CClassAction();
 		else if( tag == "ConversionOfConvertibleBonds" )	return new CConversionOfConvertibleBonds();
 		else if( tag == "CouponPayment" )		return new CCouponPayment();
+		else if( tag == "CreateWoTcertificate" )return new CCreateWoTcertificate();
 	}
 	else if( tag[0] == 'D' )
 	{
@@ -426,6 +446,7 @@ CBroadcast * broadcastObj( const std::string & tag )
 		else if( tag == "ReverseStockSplit" )	return new CReverseStockSplit();
 		else if( tag == "RightsAuction" )		return new CRightsAuction();
 		else if( tag == "RightsIssue" )			return new CRightsIssue();
+		else if( tag == "RevokeWoTcertificate" )return new CRevokeWoTcertificate();
 	}
 	else if( tag[0] == 'S' )
 	{
@@ -462,7 +483,7 @@ void signMessage(
 					uint64_t nonce,	   // IN
 		 const std::string & type,     // IN
 		 const std::string & assetId,  // IN
-		 const std::string & message,  // IN
+std::vector<unsigned char> & message,  // IN
 std::vector<unsigned char> & vchSig    // OUT
     )
 {
@@ -526,7 +547,7 @@ bool verifyMessage(
 						  uint64_t nonce,	 // IN
 			   const std::string & type,     // IN
 			   const std::string & assetId,  // IN
-			   const std::string & message,  // IN
+const std::vector<unsigned char> & message,  // IN
 const std::vector<unsigned char> & signature // IN
     )
 {
@@ -572,6 +593,8 @@ CUserMessage * CUserMessage::create( const std::string & tag, CDataStream & str 
 		result = new CVote();
 	else if( tag == "Private" )
 		result = new CPrivate();
+	else if( tag == "RequestWoTcertificate" )
+		result = new CRequestWoTcertificate();
 
 	if(result)
 	{
@@ -677,14 +700,25 @@ CPeerToPeer * CPeerToPeer::create(
 
 	ans->senderAddr_ = sender;
 	ans->receiverAddr_ = receiver;
-	ans->data_ = data;
+	ans->data_.resize(data.size() );
+
+	auto i = data.begin();
+	auto ui= ans->data_.begin();
+	auto ue= ans->data_.end();
+
+	while( ui != ue )
+	{
+		*ui = *i;
+		++i;
+		++ui;
+	}
 
 	signMessage(sender,
 				ans->timestamp_,
 				ans->nonce_,
 		 		type,
 		 		receiver.ToString(),
-		 		data,
+		 		ans->data_,
 				ans->signature_ );
 
 	return ans;
@@ -713,14 +747,25 @@ CMulticast * CMulticast::create(
 
 	ans->senderAddr_ = sender;
 	ans->assetId_ = assetId;
-	ans->data_ = data;
+	ans->data_.resize(data.size() );
+	
+	auto i = data.begin();
+	auto ui= ans->data_.begin();
+	auto ue= ans->data_.end();
+
+	while( ui != ue )
+	{
+		*ui = *i;
+		++i;
+		++ui;
+	}
 
 	signMessage(sender,
 				ans->timestamp_,
 				ans->nonce_,
 		 		type,
 		 		assetId,
-		 		data,
+		 		ans->data_,
 				ans->signature_ );
 	return ans;
 }
@@ -744,19 +789,91 @@ CBroadcast * CBroadcast::create(
 
 	ans->senderAddr_ = sender;
 	ans->assetId_ = assetId;
-	ans->data_ = data;
+	ans->data_.resize(data.size() );
+
+	auto i = data.begin();
+	auto ui= ans->data_.begin();
+	auto ue= ans->data_.end();
+
+	while( ui != ue )
+	{
+		*ui = *i;
+		++i;
+		++ui;
+	}
 
 	signMessage(sender,
 				ans->timestamp_,
 				ans->nonce_,
 		 		type,
 		 		assetId,
-		 		data,
+		 		ans->data_,
+				ans->signature_ );
+	return ans;
+}
+
+CBroadcast * CBroadcast::create(
+			   const std::string & type, 
+	     	        const CKeyID & sender, 
+			   const std::string & assetId, 
+const std::vector<unsigned char> & data )
+{
+	CBroadcast * ans = broadcastObj( type );
+
+	if(!ans)
+	{
+		std::string msg = "Invalid broadcast message type:";
+		msg += type;
+		throw std::runtime_error( msg );
+	}
+
+	ans->proofOfWork();
+
+	ans->senderAddr_ = sender;
+	ans->assetId_ = assetId;
+	ans->data_.resize(data.size());
+	std::copy( data.begin(), data.end(), ans->data_.begin() );
+
+	signMessage(sender,
+				ans->timestamp_,
+				ans->nonce_,
+		 		type,
+		 		assetId,
+		 		ans->data_,
 				ans->signature_ );
 	return ans;
 }
 
 ///////////////////////////////////////////////////////////////////////////
+
+namespace
+{
+
+std::string toString( const std::vector<unsigned char> & in )
+{
+	std::string ans;
+
+	auto i = in.begin();
+	auto e = in.end();
+
+	while( i != e )
+	{
+		if(std::isprint(*i))
+			ans += static_cast<char>(*i);
+		else
+		{
+			char buff[3];
+			sprintf( buff, "%%%2.2d", *i );
+			ans += buff;	
+		}
+			
+		++i;
+	}
+
+	return ans;
+}
+
+}
 
 std::string	CUserMessage::ToString() const
 {
@@ -765,7 +882,7 @@ std::string	CUserMessage::ToString() const
 	out << "sender=" << senderAddr_.ToString()
 		<< " timestamp=" << timestamp_.tv_sec << ":" << timestamp_.tv_nsec
 		<< " nonce=" << nonce_
-		<< " data=[" << data_ << "]"
+		<< " data=[" << toString(data_) << "]"
 		<< " signature=" << HexStr(signature_);
 
 	return out.str();
@@ -827,7 +944,7 @@ std::string	CUserMessage::ToJSON() const
 		<< ", \"sender\":\"" << senderAddr_.ToString() << "\""
 		<< ", \"timestamp\":\"" << buf << "\""
 		<< ", \"nonce\":" << nonce_
-		<< ", \"data\":\"" << data_ << "\""
+		<< ", \"data\":\"" << toString(data_) << "\""
 		<< ", \"signature\":\"" << HexStr(signature_) << "\"";
 
 	return out.str();
@@ -951,3 +1068,69 @@ uint256 CPeerToPeer::GetHash() const
 	return SerializeHash(*this);
 }
 
+///////////////////////////////////////////////////////////////////////////
+
+namespace
+{
+struct CertStream
+{
+	CertStream( const unsigned char * p ):p_(p), off_(0) {}
+
+	void	read( char * buff, size_t len )
+	{
+		memcpy( buff, p_ + off_, len );
+		off_ += len;
+	}
+
+	const unsigned char * p_;
+	size_t	off_;
+};
+
+}
+
+void CCreateWoTcertificate::extract(
+	CPubKey & pubkey,
+	CPubKey & sPubkey,
+	WoTCertificate & cert ) const
+{
+	uint16_t	pLen  = *reinterpret_cast<const uint16_t *>(data_.data());
+	uint16_t	spLen = *reinterpret_cast<const uint16_t *>(data_.data()+sizeof(uint16_t));
+	uint16_t	cLen  = *reinterpret_cast<const uint16_t *>(data_.data()+sizeof(uint16_t)*2);
+
+	const unsigned char * p = data_.data() + sizeof(uint16_t)*3;
+
+	pubkey.Set( p, p + pLen );
+	p += pLen;
+
+	pubkey.Set( p, p + spLen );
+	p += spLen;
+
+	CertStream	ss(p);
+	cert.Unserialize( ss, SER_NETWORK, PROTOCOL_VERSION );
+}
+
+void CRevokeWoTcertificate::extract(
+	CPubKey & pubkey,
+	CPubKey & sPubkey,
+	std::string & reason ) const
+{
+	uint16_t	pLen  = *reinterpret_cast<const uint16_t *>(data_.data());
+	uint16_t	spLen = *reinterpret_cast<const uint16_t *>(data_.data()+sizeof(uint16_t));
+	uint16_t	rLen  = *reinterpret_cast<const uint16_t *>(data_.data()+sizeof(uint16_t)*2);
+
+	const unsigned char * p = data_.data() + sizeof(uint16_t)*3;
+
+	pubkey.Set( p, p + pLen );
+	p += pLen;
+
+	pubkey.Set( p, p + spLen );
+	p += spLen;
+
+	const unsigned char * end = p + rLen;
+
+	while( p != end )
+	{
+		reason += static_cast<char>(*p);
+		++p;
+	}
+}
