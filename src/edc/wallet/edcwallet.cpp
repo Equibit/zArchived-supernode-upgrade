@@ -5270,6 +5270,42 @@ bool CEDCWallet::RevokeWoTCertificate(
 	return true;
 }
 
+bool CEDCWallet::DeleteWoTCertificate(
+		const CPubKey & pk, 		// Key to be certified
+		const CPubKey & spk )		// Signing public key
+{
+	if(!CEDCWalletDB(strWalletFile).EraseWoTcertificate( pk, spk ))
+		throw runtime_error(std::string(__func__) + 
+			": erasing WoT certificate failed");
+
+	auto itPair = wotCertificates.equal_range( pk );
+
+	if( itPair.first != itPair.second )
+	{
+		auto it = itPair.first;
+		auto end = itPair.second;
+
+		bool found = false;
+
+		while( it != end )
+		{
+			if( it->second.pubkey == spk )
+			{
+				found = true;
+				break;
+			}
+			++it;
+		}
+
+		if(found)
+		{
+			wotCertificates.erase( it );
+		}
+	}
+
+	return true;
+}
+
 bool CEDCWallet::wotChainExists( 
 	 const CPubKey & spk, 
 	 const CPubKey & epk, 

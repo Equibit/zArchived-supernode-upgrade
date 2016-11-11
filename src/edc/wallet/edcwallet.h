@@ -970,6 +970,7 @@ public:
 	void AddWoTCertificate( const CPubKey & pk1, const CPubKey & pk2, const WoTCertificate & cert );
 	bool RevokeWoTCertificate(const CPubKey & pk1, const CPubKey & pk2, 
 							  const std::string & reason );
+	bool DeleteWoTCertificate(const CPubKey & pk1, const CPubKey & pk2 );
 	bool WoTchainExists( const CPubKey &, const CPubKey &, uint64_t );
 	bool WoTchainExists( const CPubKey &, const CPubKey &, const CPubKey &, uint64_t );
 

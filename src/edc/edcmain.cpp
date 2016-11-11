@@ -7835,7 +7835,9 @@ bool edcSendMessages(CEDCNode* pto, CEDCConnman & connman)
         //
         // Message: getdata (non-blocks)
         //
-        while (!pto->fDisconnect && !pto->mapAskFor.empty() && (*pto->mapAskFor.begin()).first <= nNow)
+        while (	!pto->fDisconnect && 
+				!pto->mapAskFor.empty() && 
+			   (*pto->mapAskFor.begin()).first <= nNow)
         {
             const CInv& inv = (*pto->mapAskFor.begin()).second;
             if (!AlreadyHave(inv))

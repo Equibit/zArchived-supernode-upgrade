@@ -599,8 +599,7 @@ UniValue edcdeletewotcertificate(const UniValue& params, bool fHelp)
 	CPubKey	spubkey;
 	addressToPubKey( saddr, spubkey, theParams.usehsm, theApp );
 
-//	bool rc = theApp.walletMain()->RevokeWoTCertificate( pubkey, spubkey, reason );
-	bool rc = false; // TODO
+	bool rc = theApp.walletMain()->DeleteWoTCertificate( pubkey, spubkey );
 
     UniValue result(rc);
     return result;
