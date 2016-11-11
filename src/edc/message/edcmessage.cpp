@@ -1095,7 +1095,6 @@ void CCreateWoTcertificate::extract(
 {
 	uint16_t	pLen  = *reinterpret_cast<const uint16_t *>(data_.data());
 	uint16_t	spLen = *reinterpret_cast<const uint16_t *>(data_.data()+sizeof(uint16_t));
-	uint16_t	cLen  = *reinterpret_cast<const uint16_t *>(data_.data()+sizeof(uint16_t)*2);
 
 	const unsigned char * p = data_.data() + sizeof(uint16_t)*3;
 

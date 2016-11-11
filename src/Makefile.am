@@ -246,6 +246,7 @@ libbitcoin_server_a_SOURCES = \
   edc/edcui_interface.cpp \
   edc/rpc/edcissuer.cpp \
   edc/rpc/edcwot.cpp \
+  edc/rpc/edcproxy.cpp \
   edc/rpc/edcmessaging.cpp \
   edc/edcnetbase.cpp \
   edc/rpc/edcprotocol.cpp \

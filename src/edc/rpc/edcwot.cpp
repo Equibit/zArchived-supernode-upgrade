@@ -510,7 +510,6 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
 	*reinterpret_cast<uint16_t *>(data.data()+sizeof(uint16_t)*2) = cLen;
 
 	auto i = data.begin() + 3 * sizeof(uint16_t);
-	auto e = data.end();
 		
 	auto pi = pubkey.begin();
 	auto pe = pubkey.end();
@@ -627,7 +626,6 @@ UniValue edcrevokewotcertificate(const UniValue& params, bool fHelp)
 	*reinterpret_cast<uint16_t *>(data.data()+sizeof(uint16_t)*2) = rLen;
 
 	auto i = data.begin() + 3 * sizeof(uint16_t);
-	auto e = data.end();
 		
 	auto pi = pubkey.begin();
 	auto pe = pubkey.end();
