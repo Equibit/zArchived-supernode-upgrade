@@ -157,6 +157,41 @@ public:
         const CPubKey & pk,         // Key to be certified
         const CPubKey & spk );      // Signing public key
 
+	bool WriteGeneralProxy( 
+		const std::string & addr, 
+		const std::string & paddr, 
+		const std::string & cert, 
+		const std::vector<unsigned char > & signature );
+	bool WriteGeneralProxyRevoke(  
+		const std::string & addr, 
+		const std::string & paddr, 
+		const std::string & cert, 
+		const std::vector<unsigned char > & signature );
+	bool WriteIssuerProxy(  
+		const std::string & addr, 
+		const std::string & paddr, 
+		const std::string & iaddr, 
+		const std::string & cert, 
+		const std::vector<unsigned char > & signature );
+	bool WriteIssuerProxyRevoke(  
+		const std::string & addr, 
+		const std::string & paddr, 
+		const std::string & iaddr, 
+		const std::string & cert, 
+		const std::vector<unsigned char > & signature );
+	bool WritePollProxy(  
+		const std::string & addr, 
+		const std::string & paddr, 
+		const std::string & pollID, 
+		const std::string & cert, 
+		const std::vector<unsigned char > & signature );
+	bool WritePollProxyRevoke(  
+		const std::string & addr, 
+		const std::string & paddr, 
+		const std::string & pollID, 
+		const std::string & cert, 
+		const std::vector<unsigned char > & signature );
+
 private:
     CEDCWalletDB(const CEDCWalletDB&);
     void operator=(const CEDCWalletDB&);

@@ -5421,3 +5421,92 @@ void CEDCWallet::LoadWoTCertificateRevoke(
 	else
 		wotCertificates.insert( std::make_pair( pk1, WoTdata( pk2, reason ) ) );
 }
+
+bool CEDCWallet::AddGeneralProxy( 
+	const std::string & addr, 
+	const std::string & paddr, 
+	const std::string & cert, 
+	const std::vector<unsigned char > &  signature )
+{
+	if(!CEDCWalletDB(strWalletFile).WriteGeneralProxy( addr, paddr, cert, signature ))
+		throw runtime_error(std::string(__func__) + ":general proxy write failed");
+
+	// TODO: in memory DB update
+
+	return true;
+}
+
+bool CEDCWallet::AddGeneralProxyRevoke(  
+	const std::string & addr, 
+	const std::string & paddr, 
+	const std::string & cert, 
+	const std::vector<unsigned char > & signature )
+{
+	if(!CEDCWalletDB(strWalletFile).WriteGeneralProxyRevoke( addr, paddr, cert, signature ))
+		throw runtime_error(std::string(__func__) + ":general proxy revoke write failed");
+
+	// TODO: in memory DB update
+
+	return true;
+}
+
+bool CEDCWallet::AddIssuerProxy(  
+	const std::string & addr, 
+	const std::string & paddr, 
+	const std::string & iaddr, 
+	const std::string & cert, 
+	const std::vector<unsigned char > & signature )
+{
+	if(!CEDCWalletDB(strWalletFile).WriteIssuerProxy( addr, paddr, iaddr, cert, signature ))
+		throw runtime_error(std::string(__func__) + ":issuer proxy write failed");
+
+	// TODO: in memory DB update
+
+	return true;
+}
+
+bool CEDCWallet::AddIssuerProxyRevoke(  
+	const std::string & addr, 
+	const std::string & paddr, 
+	const std::string & iaddr, 
+	const std::string & cert, 
+	const std::vector<unsigned char > & signature )
+{
+	if(!CEDCWalletDB(strWalletFile).WriteIssuerProxy( addr, paddr, iaddr, cert, signature ))
+		throw runtime_error(std::string(__func__) + ":issuer proxy revoke write failed");
+
+	// TODO: in memory DB update
+
+	return true;
+}
+
+bool CEDCWallet::AddPollProxy(  
+	const std::string & addr, 
+	const std::string & paddr, 
+	const std::string & pollID, 
+	const std::string & cert, 
+	const std::vector<unsigned char > & signature )
+{
+	if(!CEDCWalletDB(strWalletFile).WritePollProxy( addr, paddr, pollID, cert, signature ))
+		throw runtime_error(std::string(__func__) + ":poll proxy write failed");
+
+	// TODO: in memory DB update
+
+	return true;
+}
+
+bool CEDCWallet::AddPollProxyRevoke(  
+	const std::string & addr, 
+	const std::string & paddr, 
+	const std::string & pollID, 
+	const std::string & cert, 
+	const std::vector<unsigned char > & signature )
+{
+	if(!CEDCWalletDB(strWalletFile).WritePollProxyRevoke( addr, paddr, pollID, cert, signature ))
+		throw runtime_error(std::string(__func__) + ":poll proxy revoke write failed");
+
+	// TODO: in memory DB update
+
+	return true;
+}
+

@@ -976,6 +976,13 @@ public:
 
 	void LoadWoTCertificate( const CPubKey & pk1, const CPubKey & pk2, const WoTCertificate & cert );
 	void LoadWoTCertificateRevoke( const CPubKey & pk1, const CPubKey & pk2, const std::string & reason );
+
+	bool AddGeneralProxy( const std::string &, const std::string &, const std::string &, const std::vector<unsigned char > & );
+	bool AddGeneralProxyRevoke(  const std::string &, const std::string &, const std::string &, const std::vector<unsigned char > &);
+	bool AddIssuerProxy(  const std::string &, const std::string &, const std::string &, const std::string &, const std::vector<unsigned char > &);
+	bool AddIssuerProxyRevoke(  const std::string &, const std::string &, const std::string &, const std::string &, const std::vector<unsigned char > &);
+	bool AddPollProxy(  const std::string &, const std::string &, const std::string &, const std::string &, const std::vector<unsigned char > &);
+	bool AddPollProxyRevoke(  const std::string &, const std::string &, const std::string &, const std::string &, const std::vector<unsigned char > &);
 };
 
 /** A key allocated from the key pool. */

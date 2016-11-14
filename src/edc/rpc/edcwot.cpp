@@ -492,60 +492,63 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
 
  	cert.sign( pubkey, sPubkey );
 
-	LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
-
-	edcEnsureWalletIsUnlocked();
-	bool rc = theApp.walletMain()->AddWoTCertificate( pubkey, sPubkey, cert );
-
-	uint16_t pkLen = static_cast<uint16_t>(pubkey.size());
-	uint16_t spkLen= static_cast<uint16_t>(sPubkey.size());
-
-	uint16_t cLen  = static_cast<uint16_t>(cert.GetSerializeSize(SER_NETWORK, PROTOCOL_VERSION));
-
-	std::vector<unsigned char> data;
-	data.resize(pkLen + spkLen + cLen + sizeof(uint16_t)*3 );
-
-	*reinterpret_cast<uint16_t *>(data.data()) 					  = pkLen;
-	*reinterpret_cast<uint16_t *>(data.data()+sizeof(uint16_t))   = spkLen;
-	*reinterpret_cast<uint16_t *>(data.data()+sizeof(uint16_t)*2) = cLen;
-
-	auto i = data.begin() + 3 * sizeof(uint16_t);
-		
-	auto pi = pubkey.begin();
-	auto pe = pubkey.end();
-	while( pi != pe )
+	bool rc;
 	{
-		*i = *pi;
+		LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-		++i;
-		++pi;
-	}
-
-	auto si = sPubkey.begin();
-	auto se = sPubkey.end();
-	while( si != se )
-	{
-		*i = *si;
-
-		++i;
-		++si;
-	}
-
-	std::stringstream ss;
-	cert.Serialize( ss, SER_NETWORK, PROTOCOL_VERSION );
-
-	auto ci = ss.str().begin();
-	auto ce = ss.str().end();
-	while( ci != ce )
-	{
-		*i = *ci;
-
-		++i;
-		++ci;
+		edcEnsureWalletIsUnlocked();
+		rc = theApp.walletMain()->AddWoTCertificate( pubkey, sPubkey, cert );
 	}
 
 	if(rc)
 	{
+		uint16_t pkLen = static_cast<uint16_t>(pubkey.size());
+		uint16_t spkLen= static_cast<uint16_t>(sPubkey.size());
+
+		uint16_t cLen = static_cast<uint16_t>(cert.GetSerializeSize(SER_NETWORK, PROTOCOL_VERSION));
+
+		std::vector<unsigned char> data;
+		data.resize(pkLen + spkLen + cLen + sizeof(uint16_t)*3 );
+
+		*reinterpret_cast<uint16_t *>(data.data()) 					  = pkLen;
+		*reinterpret_cast<uint16_t *>(data.data()+sizeof(uint16_t))   = spkLen;
+		*reinterpret_cast<uint16_t *>(data.data()+sizeof(uint16_t)*2) = cLen;
+
+		auto i = data.begin() + 3 * sizeof(uint16_t);
+		
+		auto pi = pubkey.begin();
+		auto pe = pubkey.end();
+		while( pi != pe )
+		{
+			*i = *pi;
+
+			++i;
+			++pi;
+		}
+
+		auto si = sPubkey.begin();
+		auto se = sPubkey.end();
+		while( si != se )
+		{
+			*i = *si;
+
+			++i;
+			++si;
+		}
+
+		std::stringstream ss;
+		cert.Serialize( ss, SER_NETWORK, PROTOCOL_VERSION );
+
+		auto ci = ss.str().begin();
+		auto ce = ss.str().end();
+		while( ci != ce )
+		{
+			*i = *ci;
+
+			++i;
+			++ci;
+		}
+
 		// Broadcast certificate to the network
 		std::string assetId;
 	    CBroadcast * msg = CBroadcast::create( "CreateWoTcertificate", senderID, assetId, data);

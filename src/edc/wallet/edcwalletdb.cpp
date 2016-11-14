@@ -33,36 +33,43 @@ namespace
 {
 // Wallet DB Keys:
 //
-const std::string ACC               = "acc";               // ACC:account-name/account
-const std::string ACENTRY           = "acentry";           // ACENTRY:(account-name:account-number)/acentry
-const std::string BESTBLOCK         = "bestblock";         // BESTBLOCK/empty-locator
-const std::string BESTBLOCK_NOMERKLE= "bestblock_nomerkle";// BESTBLOCK_NOMERKLE/locator
-const std::string CKEY              = "ckey";              // CKEY:pub-key/privkey-secret
-const std::string CSCRIPT           = "cscript";           // CSCRIPT:hash/script
-const std::string DEFAULTKEY        = "defaultkey";        // DEFAULTKEY/pubkey
-const std::string DESTDATA          = "destdata";          // DESTDATA:(address:key)/value
-const std::string HDCHAIN			= "hdchain";		   // HDCHAIN/value
-const std::string ISSUER            = "issuer";            // ISSUER:issuer-name/issuer
-const std::string KEY               = "key";               // KEY:pubkey/(priv-key:hash(pubkey,privkey))
-const std::string KEYMETA           = "keymeta";           // KEYMETA:pub-key/key-meta
-const std::string MINVERSION        = "minversion";        // MINVERSION/version
-const std::string MKEY              = "mkey";              // MKEY:id/masterkey
-const std::string NAME              = "name";              // NAME:address/name
-const std::string ORDERPOSNEXT      = "orderposnext";      // ORDERPOSNEXT/order-pos-next
-const std::string POOL              = "pool";              // POOL:number/keypool
+const std::string ACC               = "acc";        // ACC:account-name/account
+const std::string ACENTRY           = "acentry";    // ACENTRY:(account-name:account-number)/acentry
+const std::string BESTBLOCK         = "bestblock";  // BESTBLOCK/empty-locator
+const std::string BESTBLOCK_NOMERKLE= "bestblock_nomerkle";  // BESTBLOCK_NOMERKLE/locator
+const std::string CKEY              = "ckey";       // CKEY:pub-key/privkey-secret
+const std::string CSCRIPT           = "cscript";    // CSCRIPT:hash/script
+const std::string DEFAULTKEY        = "defaultkey"; // DEFAULTKEY/pubkey
+const std::string DESTDATA          = "destdata";   // DESTDATA:(address:key)/value
+const std::string HDCHAIN			= "hdchain";	// HDCHAIN/value
+const std::string ISSUER            = "issuer";     // ISSUER:issuer-name/issuer
+const std::string KEY               = "key";        // KEY:pubkey/(priv-key:hash(pubkey,privkey))
+const std::string KEYMETA           = "keymeta";    // KEYMETA:pub-key/key-meta
+const std::string MINVERSION        = "minversion"; // MINVERSION/version
+const std::string MKEY              = "mkey";       // MKEY:id/masterkey
+const std::string NAME              = "name";       // NAME:address/name
+const std::string ORDERPOSNEXT      = "orderposnext";  // ORDERPOSNEXT/order-pos-next
+const std::string POOL              = "pool";       // POOL:number/keypool
 #ifdef USE_HSM
-const std::string HSM_KEY			= "HSM_key";		   // HSM_KEY:pub-key/HSM-ID
-const std::string HSM_POOL          = "HSM_pool";          // HSM_POOL:number/keypool
+const std::string HSM_KEY			= "HSM_key";    // HSM_KEY:pub-key/HSM-ID
+const std::string HSM_POOL          = "HSM_pool";   // HSM_POOL:number/keypool
 #endif
-const std::string PURPOSE           = "purpose";           // PURPOSE:address/purpose
-const std::string TX                = "tx";                // TX:trx-hash/trx
-const std::string USER_MSG          = "user_msg";          // USER_MSG:(tag:hash)/msg
-const std::string VERSION           = "version";           // VERSION/version
-const std::string WATCHS            = "watchs";            // WATCHS/dest
-const std::string WKEY              = "wkey";              // WKEY/pub-key
-const std::string WOTCERT           = "wotcert";           // WOTCERT:(pubkey:spubkey)/(sig,cert)
-const std::string WOTCRTRVK         = "wotcrtrvk";         // WOTCERT:(pubkey:spubkey)/reason
+const std::string PURPOSE           = "purpose";    // PURPOSE:address/purpose
+const std::string TX                = "tx";         // TX:trx-hash/trx
+const std::string USER_MSG          = "user_msg";   // USER_MSG:(tag:hash)/msg
+const std::string VERSION           = "version";    // VERSION/version
+const std::string WATCHS            = "watchs";     // WATCHS/dest
+const std::string WKEY              = "wkey";       // WKEY/pub-key
+const std::string WOTCERT           = "wotcert";    // WOTCERT:(pubkey:spubkey)/(sig,cert)
+const std::string WOTCRTRVK         = "wotcrtrvk";  // WOTCERT:(pubkey:spubkey)/reason
 }
+
+const std::string PROXY             = "proxy";      // PROXY:(addr:paddr)/(cert:sign)
+const std::string PROXY_RVK         = "proxy_rvk";  // PROXY_RVK:(addr:paddr)/(cert:sign)
+const std::string IPROXY            = "iproxy";     // IPROXY:(addr,paddr:iaddr)/(cert:sign)
+const std::string IPROXY_RVK        = "iproxy_rvk"; // IPROXY_RVK:(addr:paddr,iaddr)/(cert:sign)
+const std::string PPROXY            = "pproxy";     // PPROXY:(addr,paddr:pollID)/(cert:sign)
+const std::string PPROXY_RVK        = "pproxy_rvk"; // PPROXY_RVK:(addr:paddr:pollID)/(cert:sign)
 
 bool CEDCWalletDB::WriteName(const string& strAddress, const string& strName)
 {
@@ -798,6 +805,30 @@ ReadKeyValue(
 
 			pwallet->LoadWoTCertificateRevoke( pubkey, spubkey, reason );
 		}
+		else if( strType == PROXY )
+		{
+			// TODO
+		}
+		else if( strType == PROXY_RVK )
+		{
+			// TODO
+		}
+		else if( strType == IPROXY )
+		{
+			// TODO
+		}
+		else if( strType == IPROXY_RVK )
+		{
+			// TODO
+		}
+		else if( strType == PPROXY )
+		{
+			// TODO
+		}
+		else if( strType == PPROXY_RVK )
+		{
+			// TODO
+		}
 #ifdef USE_HSM
 		else if( strType == HSM_POOL )
 		{
@@ -1443,6 +1474,30 @@ bool dumpKey(
 
 			out << ':' << HexStr(pubkey) << ':' << HexStr(spubkey);
 		}
+		else if( strType == PROXY )
+		{
+			// TODO
+		}
+		else if( strType == PROXY_RVK )
+		{
+			// TODO
+		}
+		else if( strType == IPROXY )
+		{
+			// TODO
+		}
+		else if( strType == IPROXY_RVK )
+		{
+			// TODO
+		}
+		else if( strType == PPROXY )
+		{
+			// TODO
+		}
+		else if( strType == PPROXY_RVK )
+		{
+			// TODO
+		}
 #ifdef USE_HSM
 		else if( strType == HSM_POOL )
 		{
@@ -1705,6 +1760,30 @@ dumpValue(
 			ssValue >> reason;
 
 			out << " " << reason;
+		}
+		else if( strType == PROXY )
+		{
+			// TODO
+		}
+		else if( strType == PROXY_RVK )
+		{
+			// TODO
+		}
+		else if( strType == IPROXY )
+		{
+			// TODO
+		}
+		else if( strType == IPROXY_RVK )
+		{
+			// TODO
+		}
+		else if( strType == PPROXY )
+		{
+			// TODO
+		}
+		else if( strType == PPROXY_RVK )
+		{
+			// TODO
 		}
 #ifdef USE_HSM
 		else if( strType == HSM_POOL )
@@ -2332,4 +2411,68 @@ bool CEDCWalletDB::EraseWoTcertificate(CPubKey const & pk, CPubKey const & spk )
 bool CEDCWalletDB::EraseWoTcertificateRevocation(CPubKey const & pk, CPubKey const & spk )
 {
 	return Erase( std::make_pair( WOTCRTRVK, std::make_pair( pk, spk )) );
+}
+
+bool CEDCWalletDB::WriteGeneralProxy( 
+	const std::string & addr, 
+	const std::string & paddr, 
+	const std::string & cert, 
+	const std::vector<unsigned char > & signature )
+{
+	return Write( std::make_pair( PROXY, std::make_pair( addr, paddr )),
+				  std::make_pair( cert,signature) );
+}
+
+bool CEDCWalletDB::WriteGeneralProxyRevoke(  
+	const std::string & addr, 
+	const std::string & paddr, 
+	const std::string & cert, 
+	const std::vector<unsigned char > & signature )
+{
+	return Write( std::make_pair( PROXY_RVK, std::make_pair( addr, paddr )),
+				  std::make_pair( cert,signature) );
+}
+
+bool CEDCWalletDB::WriteIssuerProxy(  
+	const std::string & addr, 
+	const std::string & paddr, 
+	const std::string & iaddr, 
+	const std::string & cert, 
+	const std::vector<unsigned char > & signature )
+{
+	return Write( std::make_pair( IPROXY, std::make_pair( std::make_pair( addr, paddr ), iaddr)),
+				  std::make_pair( cert,signature) );
+}
+
+bool CEDCWalletDB::WriteIssuerProxyRevoke(  
+	const std::string & addr, 
+	const std::string & paddr, 
+	const std::string & iaddr, 
+	const std::string & cert, 
+	const std::vector<unsigned char > & signature )
+{
+	return Write( std::make_pair( IPROXY_RVK, std::make_pair( std::make_pair( addr, paddr ),iaddr)),
+				  std::make_pair( cert,signature) );
+}
+
+bool CEDCWalletDB::WritePollProxy(  
+	const std::string & addr, 
+	const std::string & paddr, 
+	const std::string & pollID, 
+	const std::string & cert, 
+	const std::vector<unsigned char > & signature )
+{
+	return Write( std::make_pair( PPROXY, std::make_pair( std::make_pair( addr, paddr), pollID)),
+				  std::make_pair( cert,signature) );
+}
+
+bool CEDCWalletDB::WritePollProxyRevoke(  
+	const std::string & addr, 
+	const std::string & paddr, 
+	const std::string & pollID, 
+	const std::string & cert, 
+	const std::vector<unsigned char > & signature )
+{
+	return Write( std::make_pair( PPROXY_RVK, std::make_pair( std::make_pair( addr, paddr),pollID)),
+				  std::make_pair( cert,signature) );
 }
