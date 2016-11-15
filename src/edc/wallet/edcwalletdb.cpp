@@ -64,12 +64,12 @@ const std::string WOTCERT           = "wotcert";    // WOTCERT:(pubkey:spubkey)/
 const std::string WOTCRTRVK         = "wotcrtrvk";  // WOTCERT:(pubkey:spubkey)/reason
 }
 
-const std::string PROXY             = "proxy";      // PROXY:(addr:paddr)/(cert:sign)
-const std::string PROXY_RVK         = "proxy_rvk";  // PROXY_RVK:(addr:paddr)/(cert:sign)
-const std::string IPROXY            = "iproxy";     // IPROXY:(addr,paddr:iaddr)/(cert:sign)
-const std::string IPROXY_RVK        = "iproxy_rvk"; // IPROXY_RVK:(addr:paddr,iaddr)/(cert:sign)
-const std::string PPROXY            = "pproxy";     // PPROXY:(addr,paddr:pollID)/(cert:sign)
-const std::string PPROXY_RVK        = "pproxy_rvk"; // PPROXY_RVK:(addr:paddr:pollID)/(cert:sign)
+const std::string PROXY             = "proxy";      // PROXY:(addr:paddr)/(ts:sign)
+const std::string PROXY_RVK         = "proxy_rvk";  // PROXY_RVK:(addr:paddr)/(ts:sign)
+const std::string IPROXY            = "iproxy";     // IPROXY:(addr,paddr:iaddr)/(ts:sign)
+const std::string IPROXY_RVK        = "iproxy_rvk"; // IPROXY_RVK:(addr:paddr,iaddr)/(ts:sign)
+const std::string PPROXY            = "pproxy";     // PPROXY:(addr,paddr:pollID)/(ts:sign)
+const std::string PPROXY_RVK        = "pproxy_rvk"; // PPROXY_RVK:(addr:paddr:pollID)/(ts:sign)
 
 bool CEDCWalletDB::WriteName(const string& strAddress, const string& strName)
 {
@@ -807,27 +807,109 @@ ReadKeyValue(
 		}
 		else if( strType == PROXY )
 		{
-			// TODO
+			std::string addr, paddr;
+			ssKey >> addr;
+			ssKey >> paddr;
+
+			std::string ts;
+			std::vector<unsigned char> signature;
+
+			ssValue >> ts;
+			ssValue >> signature;
+
+			if( pwallet->VerifyProxy( ts, addr, paddr, "", signature, strErr ))
+				return false;
+
+			pwallet->LoadGeneralProxy( ts, addr, paddr );
 		}
 		else if( strType == PROXY_RVK )
 		{
-			// TODO
+			std::string addr, paddr;
+			ssKey >> addr;
+			ssKey >> paddr;
+
+			std::string ts;
+			std::vector<unsigned char> signature;
+
+			ssValue >> ts;
+			ssValue >> signature;
+
+			if( pwallet->VerifyProxy( ts, addr, paddr, "", signature, strErr ))
+				return false;
+
+			pwallet->LoadGeneralProxyRevoke( ts, addr, paddr );
 		}
 		else if( strType == IPROXY )
 		{
-			// TODO
+			std::string addr, paddr, iaddr;
+			ssKey >> addr;
+			ssKey >> paddr;
+			ssKey >> iaddr;
+
+			std::string ts;
+			std::vector<unsigned char> signature;
+
+			ssValue >> ts;
+			ssValue >> signature;
+
+			if( pwallet->VerifyProxy( ts, addr, paddr, iaddr, signature, strErr ))
+				return false;
+
+			pwallet->LoadIssuerProxy( ts, addr, paddr, iaddr );
 		}
 		else if( strType == IPROXY_RVK )
 		{
-			// TODO
+			std::string addr, paddr, iaddr;
+			ssKey >> addr;
+			ssKey >> paddr;
+			ssKey >> iaddr;
+
+			std::string ts;
+			std::vector<unsigned char> signature;
+
+			ssValue >> ts;
+			ssValue >> signature;
+
+			if( pwallet->VerifyProxy( ts, addr, paddr, iaddr, signature, strErr ))
+				return false;
+
+			pwallet->LoadIssuerProxyRevoke( ts, addr, paddr, iaddr );
 		}
 		else if( strType == PPROXY )
 		{
-			// TODO
+			std::string addr, paddr, pollID;
+			ssKey >> addr;
+			ssKey >> paddr;
+			ssKey >> pollID;
+
+			std::string ts;
+			std::vector<unsigned char> signature;
+
+			ssValue >> ts;
+			ssValue >> signature;
+
+			if( pwallet->VerifyProxy( ts, addr, paddr, pollID, signature, strErr ))
+				return false;
+
+			pwallet->LoadPollProxy( ts, addr, paddr, pollID );
 		}
 		else if( strType == PPROXY_RVK )
 		{
-			// TODO
+			std::string addr, paddr, pollID;
+			ssKey >> addr;
+			ssKey >> paddr;
+			ssKey >> pollID;
+
+			std::string ts;
+			std::vector<unsigned char> signature;
+
+			ssValue >> ts;
+			ssValue >> signature;
+
+			if( pwallet->VerifyProxy( ts, addr, paddr, pollID, signature, strErr ))
+				return false;
+
+			pwallet->LoadPollProxyRevoke( ts, addr, paddr, pollID );
 		}
 #ifdef USE_HSM
 		else if( strType == HSM_POOL )
@@ -1474,29 +1556,31 @@ bool dumpKey(
 
 			out << ':' << HexStr(pubkey) << ':' << HexStr(spubkey);
 		}
-		else if( strType == PROXY )
+		else if(( strType == PROXY ) || ( strType == PROXY_RVK ))
 		{
-			// TODO
+			std::string addr, paddr;
+			ssKey >> addr;
+			ssKey >> paddr;
+
+			out << ':' << addr << ':' << paddr;
 		}
-		else if( strType == PROXY_RVK )
+		else if(( strType == IPROXY ) || ( strType == IPROXY_RVK ))
 		{
-			// TODO
+			std::string addr, paddr, iaddr;
+			ssKey >> addr;
+			ssKey >> paddr;
+			ssKey >> iaddr;
+
+			out << ':' << addr << ':' << paddr << ':' << iaddr;
 		}
-		else if( strType == IPROXY )
+		else if(( strType == PPROXY ) || ( strType == PPROXY_RVK ))
 		{
-			// TODO
-		}
-		else if( strType == IPROXY_RVK )
-		{
-			// TODO
-		}
-		else if( strType == PPROXY )
-		{
-			// TODO
-		}
-		else if( strType == PPROXY_RVK )
-		{
-			// TODO
+			std::string addr, paddr, pollID;
+			ssKey >> addr;
+			ssKey >> paddr;
+			ssKey >> pollID;
+
+			out << ':' << addr << ':' << paddr << ':' << pollID;
 		}
 #ifdef USE_HSM
 		else if( strType == HSM_POOL )
@@ -1761,29 +1845,18 @@ dumpValue(
 
 			out << " " << reason;
 		}
-		else if( strType == PROXY )
+		else if(( strType == PROXY ) ||
+				( strType == PROXY_RVK ) ||
+				( strType == IPROXY ) ||
+				( strType == IPROXY_RVK ) ||
+				( strType == PPROXY ) ||
+				( strType == PPROXY_RVK ))
 		{
-			// TODO
-		}
-		else if( strType == PROXY_RVK )
-		{
-			// TODO
-		}
-		else if( strType == IPROXY )
-		{
-			// TODO
-		}
-		else if( strType == IPROXY_RVK )
-		{
-			// TODO
-		}
-		else if( strType == PPROXY )
-		{
-			// TODO
-		}
-		else if( strType == PPROXY_RVK )
-		{
-			// TODO
+			std::string ts;
+			std::vector<unsigned char> signature;
+
+			out << " {\"ts\":" << ts << 
+					",\"signature\":" << HexStr(signature) << "}" << endl;
 		}
 #ifdef USE_HSM
 		else if( strType == HSM_POOL )
@@ -2416,63 +2489,63 @@ bool CEDCWalletDB::EraseWoTcertificateRevocation(CPubKey const & pk, CPubKey con
 bool CEDCWalletDB::WriteGeneralProxy( 
 	const std::string & addr, 
 	const std::string & paddr, 
-	const std::string & cert, 
+	const std::string & ts, 
 	const std::vector<unsigned char > & signature )
 {
 	return Write( std::make_pair( PROXY, std::make_pair( addr, paddr )),
-				  std::make_pair( cert,signature) );
+				  std::make_pair( ts,signature) );
 }
 
 bool CEDCWalletDB::WriteGeneralProxyRevoke(  
 	const std::string & addr, 
 	const std::string & paddr, 
-	const std::string & cert, 
+	const std::string & ts, 
 	const std::vector<unsigned char > & signature )
 {
 	return Write( std::make_pair( PROXY_RVK, std::make_pair( addr, paddr )),
-				  std::make_pair( cert,signature) );
+				  std::make_pair( ts,signature) );
 }
 
 bool CEDCWalletDB::WriteIssuerProxy(  
 	const std::string & addr, 
 	const std::string & paddr, 
 	const std::string & iaddr, 
-	const std::string & cert, 
+	const std::string & ts, 
 	const std::vector<unsigned char > & signature )
 {
 	return Write( std::make_pair( IPROXY, std::make_pair( std::make_pair( addr, paddr ), iaddr)),
-				  std::make_pair( cert,signature) );
+				  std::make_pair( ts, signature) );
 }
 
 bool CEDCWalletDB::WriteIssuerProxyRevoke(  
 	const std::string & addr, 
 	const std::string & paddr, 
 	const std::string & iaddr, 
-	const std::string & cert, 
+	const std::string & ts, 
 	const std::vector<unsigned char > & signature )
 {
 	return Write( std::make_pair( IPROXY_RVK, std::make_pair( std::make_pair( addr, paddr ),iaddr)),
-				  std::make_pair( cert,signature) );
+				  std::make_pair( ts, signature) );
 }
 
 bool CEDCWalletDB::WritePollProxy(  
 	const std::string & addr, 
 	const std::string & paddr, 
 	const std::string & pollID, 
-	const std::string & cert, 
+	const std::string & ts, 
 	const std::vector<unsigned char > & signature )
 {
 	return Write( std::make_pair( PPROXY, std::make_pair( std::make_pair( addr, paddr), pollID)),
-				  std::make_pair( cert,signature) );
+				  std::make_pair( ts, signature) );
 }
 
 bool CEDCWalletDB::WritePollProxyRevoke(  
 	const std::string & addr, 
 	const std::string & paddr, 
 	const std::string & pollID, 
-	const std::string & cert, 
+	const std::string & ts, 
 	const std::vector<unsigned char > & signature )
 {
 	return Write( std::make_pair( PPROXY_RVK, std::make_pair( std::make_pair( addr, paddr),pollID)),
-				  std::make_pair( cert,signature) );
+				  std::make_pair( ts, signature) );
 }

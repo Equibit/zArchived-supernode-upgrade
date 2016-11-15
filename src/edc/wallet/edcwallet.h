@@ -456,6 +456,23 @@ CEDCMutableTransaction & txIn,				// IN: Input Transaction
 						uint64_t currlen, uint64_t maxlen );
 	bool wotChainExists(const CPubKey & spk, const CPubKey & epk, const CPubKey & expk,
 						uint64_t currlen, uint64_t maxlen );
+
+	struct Proxy
+	{
+		// Poll ID: poll ID   proxy addr
+		std::map<std::string, std::string>	pollProxies;
+
+		// Issuer:  Issuer addr proxy addr
+		std::map<std::string,   std::string>	issuerProxies;
+
+		// General: Proxy addr
+		std::set<std::string> generalProxies;
+	};
+
+	//       address
+	std::map<std::string, Proxy >	proxyMap;
+    mutable CCriticalSection 		cs_proxyMap;
+
 public:
     /*
      * Main wallet lock.
@@ -977,12 +994,26 @@ public:
 	void LoadWoTCertificate( const CPubKey & pk1, const CPubKey & pk2, const WoTCertificate & cert );
 	void LoadWoTCertificateRevoke( const CPubKey & pk1, const CPubKey & pk2, const std::string & reason );
 
-	bool AddGeneralProxy( const std::string &, const std::string &, const std::string &, const std::vector<unsigned char > & );
-	bool AddGeneralProxyRevoke(  const std::string &, const std::string &, const std::string &, const std::vector<unsigned char > &);
-	bool AddIssuerProxy(  const std::string &, const std::string &, const std::string &, const std::string &, const std::vector<unsigned char > &);
-	bool AddIssuerProxyRevoke(  const std::string &, const std::string &, const std::string &, const std::string &, const std::vector<unsigned char > &);
-	bool AddPollProxy(  const std::string &, const std::string &, const std::string &, const std::string &, const std::vector<unsigned char > &);
-	bool AddPollProxyRevoke(  const std::string &, const std::string &, const std::string &, const std::string &, const std::vector<unsigned char > &);
+	bool AddGeneralProxy( const std::string &, const std::string &, std::string & );
+	bool AddGeneralProxyRevoke(  const std::string &, const std::string &, std::string & );
+	bool AddIssuerProxy(const std::string &, const std::string &, const std::string &,
+		std::string & );
+	bool AddIssuerProxyRevoke(  const std::string &, const std::string &, const std::string &, 
+		std::string & );
+	bool AddPollProxy(  const std::string &, const std::string &, const std::string &, 
+		std::string & );
+	bool AddPollProxyRevoke( const std::string &, const std::string &, const std::string &, 
+		std::string & );
+
+	bool VerifyProxy( const std::string & ts, const std::string & addr, const std::string & paddr, 
+		const std::string & other, const std::vector<unsigned char > &, std::string & );
+
+	void LoadGeneralProxy( const std::string & ts, const std::string &, const std::string & );
+	void LoadGeneralProxyRevoke( const std::string & ts, const std::string &, const std::string & );
+	void LoadIssuerProxy( const std::string & ts, const std::string &, const std::string &, const std::string & );
+	void LoadIssuerProxyRevoke( const std::string & ts, const std::string &, const std::string &, const std::string & );
+	void LoadPollProxy( const std::string & ts, const std::string &, const std::string &, const std::string & );
+	void LoadPollProxyRevoke( const std::string & ts, const std::string &, const std::string &, const std::string & );
 };
 
 /** A key allocated from the key pool. */

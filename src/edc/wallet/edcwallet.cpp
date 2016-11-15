@@ -32,6 +32,27 @@
 #include "edc/rpc/edcwot.h"
 #ifdef USE_HSM
 #include "Thales/interface.h"
+#include <secp256k1.h>
+
+namespace
+{
+secp256k1_context   * secp256k1_context_verify;
+
+struct Verifier
+{
+    Verifier()
+    {
+        secp256k1_context_verify = secp256k1_context_create(SECP256K1_CONTEXT_VERIFY);
+    }
+    ~Verifier()
+    {
+        secp256k1_context_destroy(secp256k1_context_verify);
+    }
+};
+
+Verifier    verifier;
+
+}
 #endif
 
 #include <assert.h>
@@ -5422,16 +5443,138 @@ void CEDCWallet::LoadWoTCertificateRevoke(
 		wotCertificates.insert( std::make_pair( pk1, WoTdata( pk2, reason ) ) );
 }
 
+namespace
+{
+
+std::string timeStamp( )
+{
+    struct timespec ts;
+    clock_gettime( CLOCK_REALTIME, &ts );
+
+    char buff[32];
+    strftime(buff, 20, "%Y-%m-%d %H:%M:%S", localtime(&ts.tv_sec));
+    sprintf( buff+19, " %ld", ts.tv_nsec );
+
+    return buff;
+}
+
+bool signCertificate(
+			   std::string & errStr,
+std::vector<unsigned char> & signature,
+			   std::string & ts,
+		 const std::string & addrStr,
+		 const std::string & paddrStr,
+		 const std::string & other )
+{
+	EDCapp & theApp = EDCapp::singleton();
+	EDCparams & theParams = EDCparams::singleton();
+
+    CEDCBitcoinAddress addr(addrStr);
+    if (!addr.IsValid())
+	{
+        errStr = "Invalid address";
+		return false;
+	}
+
+    CKeyID keyID;
+    if (!addr.GetKeyID(keyID))
+	{
+		errStr = "Address does not refer to key";
+		return false;
+	}
+
+    CEDCBitcoinAddress paddr(paddrStr);
+    if (!paddr.IsValid())
+	{
+        errStr = "Invalid proxy address";
+		return false;
+	}
+
+	ts = timeStamp();
+
+    CHashWriter ss( SER_GETHASH, 0 );
+
+	ss << ts << addrStr << paddrStr;
+	if(other.size())
+		ss << other;
+
+    CKey key;
+    if(theApp.walletMain()->GetKey( keyID, key))
+    {
+        if (!key.Sign(ss.GetHash(), signature ))
+		{
+			errStr = "Sign failed";
+			return false;
+		}
+    }
+    else // else, attempt to use HSM key
+    {
+#ifdef USE_HSM
+        if( theParams.usehsm )
+        {
+            std::string hsmID;
+            if(theApp.walletMain()->GetHSMKey(keyID, hsmID ))
+            {
+                if (!NFast::sign( *theApp.nfHardServer(), *theApp.nfModule(),
+                hsmID, ss.GetHash().begin(), 256, signature ))
+				{
+					errStr = "Sign failed";
+					return false;
+				}
+
+                secp256k1_ecdsa_signature sig;
+                memcpy( sig.data, signature.data(), sizeof(sig.data));
+
+                secp256k1_ecdsa_signature_normalize( secp256k1_context_verify, &sig, &sig );
+
+                signature.resize(72);
+                size_t nSigLen = 72;
+
+                secp256k1_ecdsa_signature_serialize_der( secp256k1_context_verify,
+                                       (unsigned char*)&signature[0], &nSigLen, &sig );
+                signature.resize(nSigLen);
+                signature.push_back((unsigned char)SIGHASH_ALL);
+            }
+            else
+			{
+				errStr = "Address does not refer to key";
+				return false;
+			}
+        }
+        else
+		{
+			errStr = "HSM processing disabled. Use -eb_usehsm command line option to enable HSM processing";
+			return false;
+		}
+#else
+		errStr = "Address does not refer to key";
+		return false;
+#endif
+    }
+
+	return true;
+}
+
+}
+
 bool CEDCWallet::AddGeneralProxy( 
 	const std::string & addr, 
 	const std::string & paddr, 
-	const std::string & cert, 
-	const std::vector<unsigned char > &  signature )
+		  std::string & errStr )
 {
-	if(!CEDCWalletDB(strWalletFile).WriteGeneralProxy( addr, paddr, cert, signature ))
-		throw runtime_error(std::string(__func__) + ":general proxy write failed");
+	std::string ts;
+	std::vector<unsigned char>	signature;
 
-	// TODO: in memory DB update
+	if(!signCertificate( errStr, signature, ts, addr, paddr, "" ))
+		return false;
+
+	if(!CEDCWalletDB(strWalletFile).WriteGeneralProxy( addr, paddr, ts, signature ))
+	{
+		errStr = std::string(__func__) + ":general proxy write failed";
+		return false;
+	}
+
+	LoadGeneralProxy( ts, addr, paddr );
 
 	return true;
 }
@@ -5439,13 +5582,21 @@ bool CEDCWallet::AddGeneralProxy(
 bool CEDCWallet::AddGeneralProxyRevoke(  
 	const std::string & addr, 
 	const std::string & paddr, 
-	const std::string & cert, 
-	const std::vector<unsigned char > & signature )
+		  std::string & errStr )
 {
-	if(!CEDCWalletDB(strWalletFile).WriteGeneralProxyRevoke( addr, paddr, cert, signature ))
-		throw runtime_error(std::string(__func__) + ":general proxy revoke write failed");
+	std::string ts;
+	std::vector<unsigned char>	signature;
 
-	// TODO: in memory DB update
+	if(!signCertificate( errStr, signature, ts, addr, paddr, "" ))
+		return false;
+
+	if(!CEDCWalletDB(strWalletFile).WriteGeneralProxyRevoke( addr, paddr, ts, signature ))
+	{
+		errStr = std::string(__func__) + ":general proxy revoke write failed";
+		return false;
+	}
+
+	LoadGeneralProxyRevoke( ts, addr, paddr );
 
 	return true;
 }
@@ -5454,13 +5605,21 @@ bool CEDCWallet::AddIssuerProxy(
 	const std::string & addr, 
 	const std::string & paddr, 
 	const std::string & iaddr, 
-	const std::string & cert, 
-	const std::vector<unsigned char > & signature )
+		  std::string & errStr )
 {
-	if(!CEDCWalletDB(strWalletFile).WriteIssuerProxy( addr, paddr, iaddr, cert, signature ))
-		throw runtime_error(std::string(__func__) + ":issuer proxy write failed");
+	std::string ts;
+	std::vector<unsigned char>	signature;
 
-	// TODO: in memory DB update
+	if(!signCertificate( errStr, signature, ts, addr, paddr, iaddr ))
+		return false;
+
+	if(!CEDCWalletDB(strWalletFile).WriteIssuerProxy( addr, paddr, iaddr, ts, signature ))
+	{
+		errStr = std::string(__func__) + ":issuer proxy write failed";
+		return false;
+	}
+
+	LoadIssuerProxy( ts, addr, paddr, iaddr );
 
 	return true;
 }
@@ -5469,13 +5628,21 @@ bool CEDCWallet::AddIssuerProxyRevoke(
 	const std::string & addr, 
 	const std::string & paddr, 
 	const std::string & iaddr, 
-	const std::string & cert, 
-	const std::vector<unsigned char > & signature )
+		  std::string & errStr )
 {
-	if(!CEDCWalletDB(strWalletFile).WriteIssuerProxy( addr, paddr, iaddr, cert, signature ))
-		throw runtime_error(std::string(__func__) + ":issuer proxy revoke write failed");
+	std::string ts;
+	std::vector<unsigned char>	signature;
 
-	// TODO: in memory DB update
+	if(!signCertificate( errStr, signature, ts, addr, paddr, iaddr ))
+		return false;
+
+	if(!CEDCWalletDB(strWalletFile).WriteIssuerProxy( addr, paddr, iaddr, ts, signature ))
+	{
+		errStr = std::string(__func__) + ":issuer proxy revoke write failed";
+		return false;
+	}
+
+	LoadIssuerProxyRevoke( ts, addr, paddr, iaddr );
 
 	return true;
 }
@@ -5484,13 +5651,21 @@ bool CEDCWallet::AddPollProxy(
 	const std::string & addr, 
 	const std::string & paddr, 
 	const std::string & pollID, 
-	const std::string & cert, 
-	const std::vector<unsigned char > & signature )
+		  std::string & errStr )
 {
-	if(!CEDCWalletDB(strWalletFile).WritePollProxy( addr, paddr, pollID, cert, signature ))
-		throw runtime_error(std::string(__func__) + ":poll proxy write failed");
+	std::string ts;
+	std::vector<unsigned char>	signature;
 
-	// TODO: in memory DB update
+	if(!signCertificate( errStr, signature, ts, addr, paddr, pollID ))
+		return false;
+
+	if(!CEDCWalletDB(strWalletFile).WritePollProxy( addr, paddr, pollID, ts, signature ))
+	{
+		errStr = std::string(__func__) + ":poll proxy write failed";
+		return false;
+	}
+
+	LoadPollProxy( ts, addr, paddr, pollID );
 
 	return true;
 }
@@ -5499,14 +5674,107 @@ bool CEDCWallet::AddPollProxyRevoke(
 	const std::string & addr, 
 	const std::string & paddr, 
 	const std::string & pollID, 
-	const std::string & cert, 
-	const std::vector<unsigned char > & signature )
+		  std::string & errStr )
 {
-	if(!CEDCWalletDB(strWalletFile).WritePollProxyRevoke( addr, paddr, pollID, cert, signature ))
-		throw runtime_error(std::string(__func__) + ":poll proxy revoke write failed");
+	std::string ts;
+	std::vector<unsigned char>	signature;
 
-	// TODO: in memory DB update
+	if(!signCertificate( errStr, signature, ts, addr, paddr, pollID ))
+		return false;
+
+	if(!CEDCWalletDB(strWalletFile).WritePollProxyRevoke( addr, paddr, pollID, ts, signature ))
+	{
+		errStr = std::string(__func__) + ":poll proxy revoke write failed";
+		return false;
+	}
+
+	LoadPollProxyRevoke( ts, addr, paddr, pollID );
 
 	return true;
 }
 
+void CEDCWallet::LoadGeneralProxy( 
+	const std::string & ts,
+	const std::string & addr, 
+	const std::string & paddr )
+{
+	LOCK(cs_proxyMap);
+
+	auto it = proxyMap.insert( std::make_pair(addr,Proxy()) );
+	it.first->second.generalProxies.insert(paddr);
+}
+
+void CEDCWallet::LoadGeneralProxyRevoke(  
+	const std::string & ts,
+	const std::string & addr, 
+	const std::string & paddr )
+{
+	LOCK(cs_proxyMap);
+
+	auto it = proxyMap.insert( std::make_pair(addr,Proxy()) );
+	// If insert failed
+	if(!it.second)
+	{
+		it.first->second.generalProxies.erase(paddr);
+	}
+}
+
+void CEDCWallet::LoadIssuerProxy(  
+	const std::string & ts,
+	const std::string & addr, 
+	const std::string & paddr, 
+	const std::string & iaddr )
+{
+	LOCK(cs_proxyMap);
+
+	auto it = proxyMap.insert( std::make_pair(addr,Proxy()) );
+	// TODO
+}
+
+void CEDCWallet::LoadIssuerProxyRevoke(  
+	const std::string & ts,
+	const std::string & addr, 
+	const std::string & paddr, 
+	const std::string & iaddr )
+{
+	LOCK(cs_proxyMap);
+
+	auto it = proxyMap.insert( std::make_pair(addr,Proxy()) );
+	// TODO
+}
+
+void CEDCWallet::LoadPollProxy(  
+	const std::string & ts,
+	const std::string & addr, 
+	const std::string & paddr, 
+	const std::string & pollID )
+{
+	LOCK(cs_proxyMap);
+
+	auto it = proxyMap.insert( std::make_pair(addr,Proxy()) );
+	// TODO
+}
+
+void CEDCWallet::LoadPollProxyRevoke(  
+	const std::string & ts,
+	const std::string & addr, 
+	const std::string & paddr, 
+	const std::string & pollID )
+{
+	LOCK(cs_proxyMap);
+
+	auto it = proxyMap.insert( std::make_pair(addr,Proxy()) );
+	// TODO
+}
+
+bool CEDCWallet::VerifyProxy( 
+			   const std::string & ts, 
+			   const std::string & addr, 
+			   const std::string & paddr, 
+			   const std::string & other,
+const std::vector<unsigned char> & signature, 
+					 std::string & errStr )
+{
+	// TODO
+	return true;
+}
