@@ -459,19 +459,19 @@ CEDCMutableTransaction & txIn,				// IN: Input Transaction
 
 	struct Proxy
 	{
-		// Poll ID: poll ID   proxy addr
-		std::map<std::string, std::string>	pollProxies;
+		// Poll ID: poll ID           proxy addr/time stamp/is_active
+		std::map<std::string, std::tuple<std::string, std::string, bool> >	pollProxies;
 
-		// Issuer:  Issuer addr proxy addr
-		std::map<std::string,   std::string>	issuerProxies;
+		// Issuer:  Issuer addr           proxy addr/time stamp/is_active
+		std::map<std::string, std::tuple<std::string, std::string, bool> >	issuerProxies;
 
-		// General: Proxy addr
-		std::set<std::string> generalProxies;
+		// General: Proxy addr/timestamp/is_active
+		std::tuple<std::string, std::string, bool> generalProxy;
 	};
 
 	//       address
 	std::map<std::string, Proxy >	proxyMap;
-    mutable CCriticalSection 		cs_proxyMap;
+    mutable CCriticalSection 	cs_proxyMap;
 
 public:
     /*

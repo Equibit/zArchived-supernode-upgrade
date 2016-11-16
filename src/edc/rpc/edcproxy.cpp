@@ -46,6 +46,8 @@ UniValue edcassigngeneralproxy(const UniValue& params, bool fHelp)
 	{
 		// TODO: Publish the message
 	}
+	else
+		throw JSONRPCError(RPC_TYPE_ERROR, errStr );
 
     return NullUniValue;
 }
@@ -83,6 +85,8 @@ UniValue edcrevokegeneralproxy(const UniValue& params, bool fHelp)
 	{
 		// TODO: Publish the message
 	}
+	else
+		throw JSONRPCError(RPC_TYPE_ERROR, errStr );
 
     return NullUniValue;
 }
@@ -126,6 +130,8 @@ UniValue edcassignissuerproxy(const UniValue& params, bool fHelp)
 	{
 		// TODO: Publish the message
 	}
+	else
+		throw JSONRPCError(RPC_TYPE_ERROR, errStr );
 
     return NullUniValue;
 }
@@ -174,6 +180,8 @@ UniValue edcrevokeissuerproxy(const UniValue& params, bool fHelp)
 	{
 		// TODO: Publish the message
 	}
+	else
+		throw JSONRPCError(RPC_TYPE_ERROR, errStr );
 
     return NullUniValue;
 }
@@ -213,6 +221,8 @@ UniValue edcassignpollproxy(const UniValue& params, bool fHelp)
 	{
 		// TODO: Publish the message
 	}
+	else
+		throw JSONRPCError(RPC_TYPE_ERROR, errStr );
 
     return NullUniValue;
 }
@@ -253,6 +263,8 @@ UniValue edcrevokepollproxy(const UniValue& params, bool fHelp)
 	{
 		// TODO: Publish the message
 	}
+	else
+		throw JSONRPCError(RPC_TYPE_ERROR, errStr );
 
     return NullUniValue;
 }

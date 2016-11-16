@@ -5693,6 +5693,10 @@ bool CEDCWallet::AddPollProxyRevoke(
 	return true;
 }
 
+#define	PADDR(x)	get<0>(x)
+#define	TS(x)		get<1>(x)
+#define ACTIVE(x)	get<2>(x)
+
 void CEDCWallet::LoadGeneralProxy( 
 	const std::string & ts,
 	const std::string & addr, 
@@ -5701,7 +5705,20 @@ void CEDCWallet::LoadGeneralProxy(
 	LOCK(cs_proxyMap);
 
 	auto it = proxyMap.insert( std::make_pair(addr,Proxy()) );
-	it.first->second.generalProxies.insert(paddr);
+
+	// If the no general proxy has been set, then add one
+	if( PADDR(it.first->second.generalProxy).size() == 0 )
+		it.first->second.generalProxy = std::make_tuple(paddr,ts,true);
+	else
+	{
+		// Only activate it if the date is less than ts
+		if( TS(it.first->second.generalProxy) < ts )
+		{
+			TS(it.first->second.generalProxy)     = ts;
+			PADDR(it.first->second.generalProxy)  = paddr;
+			ACTIVE(it.first->second.generalProxy) = true;
+		}
+	}
 }
 
 void CEDCWallet::LoadGeneralProxyRevoke(  
@@ -5712,10 +5729,19 @@ void CEDCWallet::LoadGeneralProxyRevoke(
 	LOCK(cs_proxyMap);
 
 	auto it = proxyMap.insert( std::make_pair(addr,Proxy()) );
-	// If insert failed
-	if(!it.second)
+
+	// If the no general proxy has been set, then add one
+	if( PADDR(it.first->second.generalProxy).size() == 0 )
+		it.first->second.generalProxy = std::make_tuple(paddr,ts,true);
+	else
 	{
-		it.first->second.generalProxies.erase(paddr);
+		// Only deactivate it if the date is less than ts
+		if( TS(it.first->second.generalProxy) < ts )
+		{
+			TS(it.first->second.generalProxy)     = ts;
+			PADDR(it.first->second.generalProxy)  = paddr;
+			ACTIVE(it.first->second.generalProxy) = false;
+		}
 	}
 }
 
@@ -5728,7 +5754,23 @@ void CEDCWallet::LoadIssuerProxy(
 	LOCK(cs_proxyMap);
 
 	auto it = proxyMap.insert( std::make_pair(addr,Proxy()) );
-	// TODO
+	auto iit= it.first->second.issuerProxies.find( iaddr );
+
+	if( iit != it.first->second.issuerProxies.end())
+	{
+		// Only activate it if the date is less than ts
+		if(TS(iit->second) < ts )
+		{
+			TS(iit->second)     = ts;
+			PADDR(iit->second)  = paddr;
+			ACTIVE(iit->second) = true;
+		}
+	}
+	else
+	{
+		it.first->second.issuerProxies.insert( 
+			std::make_pair( iaddr, std::make_tuple(paddr,ts,true)));
+	}
 }
 
 void CEDCWallet::LoadIssuerProxyRevoke(  
@@ -5740,7 +5782,23 @@ void CEDCWallet::LoadIssuerProxyRevoke(
 	LOCK(cs_proxyMap);
 
 	auto it = proxyMap.insert( std::make_pair(addr,Proxy()) );
-	// TODO
+	auto iit= it.first->second.issuerProxies.find( iaddr );
+
+	if( iit != it.first->second.issuerProxies.end())
+	{
+		// Only deactivate it if the date is less than ts
+		if(TS(iit->second) < ts )
+		{
+			TS(iit->second)     = ts;
+			PADDR(iit->second)  = paddr;
+			ACTIVE(iit->second) = false;
+		}
+	}
+	else
+	{
+		it.first->second.issuerProxies.insert( 
+			std::make_pair( iaddr, std::make_tuple(paddr,ts,false)));
+	}
 }
 
 void CEDCWallet::LoadPollProxy(  
@@ -5752,7 +5810,23 @@ void CEDCWallet::LoadPollProxy(
 	LOCK(cs_proxyMap);
 
 	auto it = proxyMap.insert( std::make_pair(addr,Proxy()) );
-	// TODO
+	auto iit= it.first->second.pollProxies.find( pollID );
+
+	if( iit != it.first->second.pollProxies.end())
+	{
+		// Only activate it if the date is less than ts
+		if(TS(iit->second) < ts )
+		{
+			TS(iit->second)     = ts;
+			PADDR(iit->second)  = paddr;
+			ACTIVE(iit->second) = true;
+		}
+	}
+	else
+	{
+		it.first->second.pollProxies.insert( 
+			std::make_pair( pollID, std::make_tuple(paddr,ts,true)));
+	}
 }
 
 void CEDCWallet::LoadPollProxyRevoke(  
@@ -5764,7 +5838,23 @@ void CEDCWallet::LoadPollProxyRevoke(
 	LOCK(cs_proxyMap);
 
 	auto it = proxyMap.insert( std::make_pair(addr,Proxy()) );
-	// TODO
+	auto iit= it.first->second.pollProxies.find( pollID );
+
+	if( iit != it.first->second.pollProxies.end())
+	{
+		// Only activate it if the date is less than ts
+		if(TS(iit->second) < ts )
+		{
+			TS(iit->second)     = ts;
+			PADDR(iit->second)  = paddr;
+			ACTIVE(iit->second) = false;
+		}
+	}
+	else
+	{
+		it.first->second.pollProxies.insert( 
+			std::make_pair( pollID, std::make_tuple(paddr,ts,false)));
+	}
 }
 
 bool CEDCWallet::VerifyProxy( 
@@ -5775,6 +5865,32 @@ bool CEDCWallet::VerifyProxy(
 const std::vector<unsigned char> & signature, 
 					 std::string & errStr )
 {
-	// TODO
-	return true;
+    CHashWriter ss( SER_GETHASH, 0 );
+
+	ss << ts << addr << paddr;
+	if(other.size())
+		ss << other;
+
+	EDCapp & theApp = EDCapp::singleton();
+
+	CEDCBitcoinAddress address(addr);
+
+	if (theApp.walletMain() && address.IsValid())
+	{
+		CKeyID keyID;
+		if (address.GetKeyID(keyID))
+		{
+			CPubKey	pubKey;	
+#ifndef USE_HSM
+			if (!theApp.walletMain()->GetPubKey(keyID, pubKey))
+#else
+			if (!theApp.walletMain()->GetPubKey(keyID, pubKey) && 
+			!theApp.walletMain()->GetHSMPubKey(keyID, pubKey))
+#endif
+				return pubKey.Verify(ss.GetHash(), signature);
+		}
+	}
+
+	return false;
 }
+
