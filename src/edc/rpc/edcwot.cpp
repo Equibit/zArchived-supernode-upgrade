@@ -385,7 +385,7 @@ UniValue edcrequestwotcertificate(const UniValue& params, bool fHelp)
 	std::string data = buildJSON( pubkey, name, gaddr, phone, email, http, expirBlocks );
 
 	// Send message
-    CPeerToPeer * msg = CPeerToPeer::create( "RequestWoTcertificate", pk.GetID(), signerID, data);
+    CPeerToPeer * msg = CPeerToPeer::create( CRequestWoTcertificate::tag, pk.GetID(), signerID, data);
 
 	theApp.connman()->RelayUserMessage( msg, true );
 
@@ -551,7 +551,7 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
 
 		// Broadcast certificate to the network
 		std::string assetId;
-	    CBroadcast * msg = CBroadcast::create( "CreateWoTcertificate", senderID, assetId, data);
+	    CBroadcast * msg = CBroadcast::create( CCreateWoTcertificate::tag, senderID, assetId, data);
 
 		theApp.connman()->RelayUserMessage( msg, true );
 	}
@@ -664,7 +664,7 @@ UniValue edcrevokewotcertificate(const UniValue& params, bool fHelp)
 	{
 		// Broadcast certificate revocation to the network
 		std::string assetId;
-		CBroadcast * msg = CBroadcast::create( "RevokeWoTcertificate", senderID, assetId, data);
+		CBroadcast * msg = CBroadcast::create( CRevokeWoTcertificate::tag, senderID, assetId, data);
 
 		theApp.connman()->RelayUserMessage( msg, true );
 	}

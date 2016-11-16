@@ -45,79 +45,85 @@ Verifier    verifier;
 // The message tags
 //
 
-std::string CAcquisition::tag() const				{ return "Acquisition"; }
-std::string CAsk::tag() const						{ return "Ask"; }
-std::string CAssimilation::tag() const				{ return "Assimilation"; }
+const std::string CAcquisition::tag					= "Acquisition";
+const std::string CAsk::tag							= "Ask";
+const std::string CAssimilation::tag				= "Assimilation";
 
-std::string CBankruptcy::tag() const				{ return "Bankruptcy"; }
-std::string CBid::tag() const						{ return "Bid"; }
-std::string CBonusIssue::tag() const				{ return "BonusIssue"; }
-std::string CBonusRights::tag() const				{ return "BonusRights"; }
-std::string CBuyBackProgram::tag() const			{ return "BuyBackProgram"; }
+const std::string CBankruptcy::tag					= "Bankruptcy";
+const std::string CBid::tag							= "Bid";
+const std::string CBonusIssue::tag					= "BonusIssue";
+const std::string CBonusRights::tag					= "BonusRights";
+const std::string CBuyBackProgram::tag				= "BuyBackProgram";
 
-std::string CCashDividend::tag() const				{ return "CashDividend"; }
-std::string CCashStockOption::tag() const			{ return "CashStockOption"; }
-std::string CClassAction::tag() const 				{ return "ClassAction"; }
-std::string CConversionOfConvertibleBonds::tag() const { return "ConversionOfConvertibleBonds"; }
-std::string CCouponPayment::tag() const				{ return "CouponPayment"; }
-std::string CCreateWoTcertificate::tag() const		{ return "CreateWoTcertificate"; }
+const std::string CCashDividend::tag				= "CashDividend";
+const std::string CCashStockOption::tag				= "CashStockOption";
+const std::string CClassAction::tag					= "ClassAction";
+const std::string CConversionOfConvertibleBonds::tag= "ConversionOfConvertibleBonds";
+const std::string CCouponPayment::tag				= "CouponPayment";
+const std::string CCreateWoTcertificate::tag		= "CreateWoTcertificate";
 
-std::string CDelisting::tag() const					{ return "Delisting"; }
-std::string CDeMerger::tag() const					{ return "DeMerger"; }
-std::string CDividendReinvestmentPlan::tag() const	{ return "DividendReinvestmentPlan"; }
-std::string CDutchAuction::tag() const				{ return "DutchAuction"; }
+const std::string CDelisting::tag					= "Delisting";
+const std::string CDeMerger::tag					= "DeMerger";
+const std::string CDividendReinvestmentPlan::tag	= "DividendReinvestmentPlan";
+const std::string CDutchAuction::tag				= "DutchAuction";
 
-std::string CEarlyRedemption::tag() const			{ return "EarlyRedemption"; }
+const std::string CEarlyRedemption::tag				= "EarlyRedemption";
 
-std::string CFinalRedemption::tag() const			{ return "FinalRedemption"; }
+const std::string CFinalRedemption::tag				= "FinalRedemption";
 
-std::string CGeneralAnnouncement::tag() const		{ return "GeneralAnnouncement"; }
+const std::string CGeneralAnnouncement::tag			= "GeneralAnnouncement";
+const std::string CGeneralProxy::tag				= "GeneralProxy";
 
-std::string CInitialPublicOffering::tag() const		{ return "InitialPublicOffering"; }
+const std::string CInitialPublicOffering::tag		= "InitialPublicOffering";
+const std::string CIssuerProxy::tag					= "IssuerProxy";
 
-std::string CLiquidation::tag() const				{ return "Liquidation"; }
-std::string CLottery::tag() const					{ return "Lottery"; }
+const std::string CLiquidation::tag					= "Liquidation";
+const std::string CLottery::tag						= "Lottery";
 
-std::string CMandatoryExchange::tag() const			{ return "MandatoryExchange"; }
-std::string CMerger::tag() const					{ return "Merger"; }
-std::string CMergerWithElections::tag() const		{ return "MergerWithElections"; }
+const std::string CMandatoryExchange::tag			= "MandatoryExchange";
+const std::string CMerger::tag						= "Merger";
+const std::string CMergerWithElections::tag			= "MergerWithElections";
 
-std::string CNameChange::tag() const				{ return "NameChange"; }
+const std::string CNameChange::tag					= "NameChange";
 
-std::string COddLotTender::tag() const				{ return "OddLotTender"; }
-std::string COptionalPut::tag() const				{ return "OptionalPut"; }
-std::string COtherEvent::tag() const				{ return "OtherEvent"; }
+const std::string COddLotTender::tag				= "OddLotTender";
+const std::string COptionalPut::tag					= "OptionalPut";
+const std::string COtherEvent::tag					= "OtherEvent";
 
-std::string CPartialRedemption::tag() const			{ return "PartialRedemption"; }
-std::string CParValueChange::tag() const			{ return "ParValueChange"; }
-std::string CPoll::tag() const						{ return "Poll"; }
-std::string CPrivate::tag() const					{ return "Private"; }
+const std::string CPartialRedemption::tag			= "PartialRedemption";
+const std::string CParValueChange::tag				= "ParValueChange";
+const std::string CPoll::tag						= "Poll";
+const std::string CPollProxy::tag					= "PollProxy";
+const std::string CPrivate::tag						= "Private";
 
-std::string CRequestWoTcertificate::tag() const		{ return "RequestWoTcertificate"; }
-std::string CReturnOfCapital::tag() const			{ return "ReturnOfCapital"; } 
-std::string CReverseStockSplit::tag() const			{ return "ReverseStockSplit"; }
-std::string CRevokeWoTcertificate::tag() const		{ return "RevokeWoTcertificate"; }
-std::string CRightsAuction::tag() const				{ return "RightsAuction"; }
-std::string CRightsIssue::tag() const				{ return "RightsIssue"; }
+const std::string CRequestWoTcertificate::tag		= "RequestWoTcertificate";
+const std::string CReturnOfCapital::tag				= "ReturnOfCapital"; 
+const std::string CReverseStockSplit::tag			= "ReverseStockSplit";
+const std::string CRevokeGeneralProxy::tag			= "RevokeGeneralProxy";
+const std::string CRevokeIssuerProxy::tag			= "RevokeIssuerProxy";
+const std::string CRevokePollProxy::tag				= "RevokePollProxy";
+const std::string CRevokeWoTcertificate::tag		= "RevokeWoTcertificate";
+const std::string CRightsAuction::tag				= "RightsAuction";
+const std::string CRightsIssue::tag					= "RightsIssue";
 
-std::string CSchemeofArrangement::tag() const		{ return "SchemeofArrangement"; }
-std::string CScripDividend::tag() const				{ return "ScripDividend"; }
-std::string CScripIssue::tag() const				{ return "ScripIssue"; }
-std::string CSpinoff::tag() const					{ return "Spinoff"; }
-std::string CSpinOffWithElections::tag() const		{ return "SpinOffWithElections"; }
-std::string CStockDividend::tag() const				{ return "StockDividend"; }
-std::string CStockSplit::tag() const				{ return "StockSplit"; }
-std::string CSubscriptionOffer::tag() const			{ return "SubscriptionOffer"; }
+const std::string CSchemeofArrangement::tag			= "SchemeofArrangement";
+const std::string CScripDividend::tag				= "ScripDividend";
+const std::string CScripIssue::tag					= "ScripIssue";
+const std::string CSpinoff::tag						= "Spinoff";
+const std::string CSpinOffWithElections::tag		= "SpinOffWithElections";
+const std::string CStockDividend::tag				= "StockDividend";
+const std::string CStockSplit::tag					= "StockSplit";
+const std::string CSubscriptionOffer::tag			= "SubscriptionOffer";
 
-std::string CTakeover::tag() const					{ return "Takeover"; }
-std::string CTenderOffer::tag() const				{ return "TenderOffer"; }
+const std::string CTakeover::tag					= "Takeover";
+const std::string CTenderOffer::tag					= "TenderOffer";
 
-std::string CVoluntaryExchange::tag() const			{ return "VoluntaryExchange"; }
-std::string CVote::tag() const						{ return "Vote"; }
+const std::string CVoluntaryExchange::tag			= "VoluntaryExchange";
+const std::string CVote::tag						= "Vote";
 
-std::string CWarrantExercise::tag() const			{ return "WarrantExercise"; }
-std::string CWarrantExpiry::tag() const				{ return "WarrantExpiry"; }
-std::string CWarrantIssue::tag() const				{ return "WarrantIssue"; }
+const std::string CWarrantExercise::tag				= "WarrantExercise";
+const std::string CWarrantExpiry::tag				= "WarrantExpiry";
+const std::string CWarrantIssue::tag				= "WarrantIssue";
 
 ////////////////////////////////////////////////////////////////////////////////
 // The message descriptions 
@@ -890,7 +896,7 @@ std::string	CUserMessage::ToString() const
 
 std::string	CPeerToPeer::ToString() const
 {
-	std::string ans = tag();
+	std::string ans = vtag();
 	ans += ":";
 	ans += CUserMessage::ToString();
 
@@ -902,7 +908,7 @@ std::string	CPeerToPeer::ToString() const
 
 std::string	CMulticast::ToString() const
 {
-	std::string ans = tag();
+	std::string ans = vtag();
 	ans += ":";
 	ans += CUserMessage::ToString();
 
@@ -914,7 +920,7 @@ std::string	CMulticast::ToString() const
 
 std::string	CBroadcast::ToString() const
 {
-	std::string ans = tag();
+	std::string ans = vtag();
 	ans += ":";
 	ans += CUserMessage::ToString();
 
@@ -953,7 +959,7 @@ std::string	CUserMessage::ToJSON() const
 std::string	CPeerToPeer::ToJSON() const
 {
 	std::string ans = "{\"type\":\"";
-	ans += tag();
+	ans += vtag();
 	ans += "\"";
 	ans += CUserMessage::ToJSON();
 
@@ -967,7 +973,7 @@ std::string	CPeerToPeer::ToJSON() const
 std::string	CMulticast::ToJSON() const
 {
 	std::string ans = "{\"type\":\"";
-	ans += tag();
+	ans += vtag();
 	ans += "\"";
 	ans += CUserMessage::ToJSON();
 
@@ -981,7 +987,7 @@ std::string	CMulticast::ToJSON() const
 std::string	CBroadcast::ToJSON() const
 {
 	std::string ans = "{\"type\":\"";
-	ans += tag();
+	ans += vtag();
 	ans += "\"";
 	ans += CUserMessage::ToJSON();
 
@@ -1002,7 +1008,7 @@ bool CPeerToPeer::verify() const
 			senderAddr_,
 			timestamp_,
 			nonce_,
-		 	tag(),
+		 	vtag(),
 		 	receiverAddr_.ToString(),
 		 	data_,
 			signature_ );
@@ -1021,7 +1027,7 @@ bool CMulticast::verify() const
 			senderAddr_,
 			timestamp_,
 			nonce_,
-		 	tag(),
+		 	vtag(),
 		 	assetId_,
 		 	data_,
 			signature_ );
@@ -1040,7 +1046,7 @@ bool CBroadcast::verify() const
 			senderAddr_,
 			timestamp_,
 			nonce_,
-		 	tag(),
+		 	vtag(),
 		 	assetId_,
 		 	data_,
 			signature_ );

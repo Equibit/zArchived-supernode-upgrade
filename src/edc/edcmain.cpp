@@ -7923,15 +7923,15 @@ bool edcSendMessages(CEDCNode* pto, CEDCConnman & connman)
 			// Push the message onto the net
 			if( CBroadcast * bm = dynamic_cast<CBroadcast *>(user))
 			{
-				pto->PushMessage( NetMsgType::USER, user->tag(), *bm );
+				pto->PushMessage( NetMsgType::USER, user->vtag(), *bm );
 			}
 			else if( CMulticast * mm = dynamic_cast<CMulticast *>(user) )
 			{
-				pto->PushMessage( NetMsgType::USER, user->tag(), *mm );
+				pto->PushMessage( NetMsgType::USER, user->vtag(), *mm );
 			}
 			else if( CPeerToPeer * ppm = dynamic_cast<CPeerToPeer *>(user) )
 			{
-				pto->PushMessage( NetMsgType::USER, user->tag(), *ppm );
+				pto->PushMessage( NetMsgType::USER, user->vtag(), *ppm );
 			}
         	else
 				throw runtime_error("edcSendMessage(): invalid user message type");

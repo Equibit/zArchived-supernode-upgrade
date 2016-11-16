@@ -1978,15 +1978,15 @@ bool CEDCWalletDB::WriteUserMsg(const CUserMessage * msg )
 {
 	if( const CPeerToPeer * p2pmsg = dynamic_cast<const CPeerToPeer *>(msg))
 		return Write( 
-			make_pair( make_pair( USER_MSG, msg->tag() ), msg->GetHash()), 
+			make_pair( make_pair( USER_MSG, msg->vtag() ), msg->GetHash()), 
 			*p2pmsg );
 	else if( const CBroadcast * bmsg = dynamic_cast<const CBroadcast *>(msg))
 		return Write( 
-			make_pair( make_pair( USER_MSG, msg->tag() ), msg->GetHash()), 
+			make_pair( make_pair( USER_MSG, msg->vtag() ), msg->GetHash()), 
 			*bmsg );
 	else if( const CMulticast * mmsg = dynamic_cast<const CMulticast *>(msg))
 		return Write( 
-			make_pair( make_pair( USER_MSG, msg->tag() ), msg->GetHash()), 
+			make_pair( make_pair( USER_MSG, msg->vtag() ), msg->GetHash()), 
 			*mmsg );
 
 	assert(false);
@@ -1995,7 +1995,7 @@ bool CEDCWalletDB::WriteUserMsg(const CUserMessage * msg )
 
 bool CEDCWalletDB::EraseUserMsg(const CUserMessage * msg )
 {
-	return Erase( make_pair( make_pair( USER_MSG, msg->tag() ), msg->GetHash()));
+	return Erase( make_pair( make_pair( USER_MSG, msg->vtag() ), msg->GetHash()));
 }
 
 namespace
