@@ -10,6 +10,7 @@
 #include "edc/edcnet.h"
 #include "edc/edcbase58.h"
 #include "edc/edcmain.h"
+#include "edc/message/edcmessage.h"
 
 
 UniValue edcassigngeneralproxy(const UniValue& params, bool fHelp)
@@ -44,7 +45,17 @@ UniValue edcassigngeneralproxy(const UniValue& params, bool fHelp)
 
 	if(rc)
 	{
-		// TODO: Publish the message
+		CEDCBitcoinAddress sender(addrStr);
+		CKeyID senderID;
+		sender.GetKeyID(senderID);
+
+		std::string data = "{\"addr\":\"";
+		data += addrStr + "\", \"paddr\":\"" + paddrStr + "\"}";
+
+		std::string assetId;
+		CBroadcast * msg = CBroadcast::create( "GeneralProxy", senderID, assetId, data);
+
+		theApp.connman()->RelayUserMessage( msg, true );
 	}
 	else
 		throw JSONRPCError(RPC_TYPE_ERROR, errStr );
@@ -83,7 +94,17 @@ UniValue edcrevokegeneralproxy(const UniValue& params, bool fHelp)
     }
 	if(rc)
 	{
-		// TODO: Publish the message
+		CEDCBitcoinAddress sender(addrStr);
+		CKeyID senderID;
+		sender.GetKeyID(senderID);
+
+		std::string data = "{\"addr\":\"";
+		data += addrStr + "\", \"paddr\":\"" + paddrStr + "\"}";
+	
+		std::string assetId;
+		CBroadcast * msg = CBroadcast::create( "RevokeGeneralProxy", senderID, assetId, data);
+
+		theApp.connman()->RelayUserMessage( msg, true );
 	}
 	else
 		throw JSONRPCError(RPC_TYPE_ERROR, errStr );
@@ -128,7 +149,17 @@ UniValue edcassignissuerproxy(const UniValue& params, bool fHelp)
     }
 	if(rc)
 	{
-		// TODO: Publish the message
+		CEDCBitcoinAddress sender(addrStr);
+		CKeyID senderID;
+		sender.GetKeyID(senderID);
+
+		std::string data = "{\"addr\":\"";
+		data += addrStr + "\", \"paddr\":\"" + paddrStr + "\", \"iaddr\":" + iaddrStr + "\"}";
+	
+		std::string assetId;
+		CBroadcast * msg = CBroadcast::create( "IssuerProxy", senderID, assetId, data);
+
+		theApp.connman()->RelayUserMessage( msg, true );
 	}
 	else
 		throw JSONRPCError(RPC_TYPE_ERROR, errStr );
@@ -178,7 +209,17 @@ UniValue edcrevokeissuerproxy(const UniValue& params, bool fHelp)
     }
 	if(rc)
 	{
-		// TODO: Publish the message
+		CEDCBitcoinAddress sender(addrStr);
+		CKeyID senderID;
+		sender.GetKeyID(senderID);
+
+		std::string data = "{\"addr\":\"";
+		data += addrStr + "\", \"paddr\":\"" + paddrStr + "\", \"iaddr\":" + iaddrStr + "\"}";
+
+		std::string assetId;
+		CBroadcast * msg = CBroadcast::create( "RevokeIssuerProxy", senderID, assetId, data);
+
+		theApp.connman()->RelayUserMessage( msg, true );
 	}
 	else
 		throw JSONRPCError(RPC_TYPE_ERROR, errStr );
@@ -219,7 +260,17 @@ UniValue edcassignpollproxy(const UniValue& params, bool fHelp)
     }
 	if(rc)
 	{
-		// TODO: Publish the message
+		CEDCBitcoinAddress sender(addrStr);
+		CKeyID senderID;
+		sender.GetKeyID(senderID);
+
+		std::string data = "{\"addr\":\"";
+		data += addrStr + "\", \"paddr\":\"" + paddrStr + "\", \"pollID\":" + pollID + "\"}";
+		
+		std::string assetId;
+		CBroadcast * msg = CBroadcast::create( "PollProxy", senderID, assetId, data);
+
+		theApp.connman()->RelayUserMessage( msg, true );
 	}
 	else
 		throw JSONRPCError(RPC_TYPE_ERROR, errStr );
@@ -261,7 +312,17 @@ UniValue edcrevokepollproxy(const UniValue& params, bool fHelp)
     }
 	if(rc)
 	{
-		// TODO: Publish the message
+		CEDCBitcoinAddress sender(addrStr);
+		CKeyID senderID;
+		sender.GetKeyID(senderID);
+
+		std::string data = "{\"addr\":\"";
+		data += addrStr + "\", \"paddr\":\"" + paddrStr + "\", \"pollID\":" + pollID + "\"}";
+		
+		std::string assetId;
+		CBroadcast * msg = CBroadcast::create( "RevokePollProxy", senderID, assetId, data);
+
+		theApp.connman()->RelayUserMessage( msg, true );
 	}
 	else
 		throw JSONRPCError(RPC_TYPE_ERROR, errStr );
