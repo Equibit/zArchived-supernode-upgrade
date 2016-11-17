@@ -496,6 +496,7 @@ class CPoll: public CMulticast
 public:
 	virtual std::string vtag() const { return tag; }
 	virtual std::string desc() const;
+	virtual void process( CEDCWallet & );
 
 	static const std::string tag;
 };

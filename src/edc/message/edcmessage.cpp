@@ -369,6 +369,36 @@ std::string CCreateWoTcertificate::desc() const
 	return "Notify peer that a WoT certificate was created";
 }
 
+std::string CGeneralProxy::desc() const
+{
+	return "Grant general proxy voting privileges";
+}
+
+std::string CIssuerProxy::desc() const
+{
+	return "Grant proxy voting privileges on polls from a given Issuer";
+}
+
+std::string CPollProxy::desc() const
+{
+	return "Grant proxy voting privileges on a specific poll";
+}
+
+std::string CRevokeGeneralProxy::desc() const
+{
+	return "Revoke general proxy voting privileges";
+}
+
+std::string CRevokeIssuerProxy::desc() const
+{
+	return "Revoke general proxy voting privileges";
+}
+
+std::string CRevokePollProxy::desc() const
+{
+	return "Revoke proxy voting privileges on a specific poll";
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 namespace
@@ -1115,39 +1145,169 @@ void CRevokeWoTcertificate::process( CEDCWallet & wallet )
     wallet.RevokeWoTCertificate( pubkey, sPubkey, reason );
 }
 
+namespace
+{
+
+void extract( 
+	std::vector<unsigned char> & data, 
+	std::string & addr, 
+	std::string & paddr )
+{
+	auto d = data.begin();
+
+	auto alen = *d++;
+	addr.resize(alen);
+
+	auto i = addr.begin();
+	auto e = addr.end();
+	while( i != e )
+		*i++ = *d++;
+
+	auto plen = *d++;
+	paddr.resize(plen);
+
+	i = paddr.begin();
+	e = paddr.end();
+	while( i != e )
+		*i++ = *d++;
+}
+
+void extract( 
+	std::vector<unsigned char> & data, 
+	std::string & addr, 
+	std::string & paddr,
+	std::string & other )
+{
+	auto d = data.begin();
+
+	auto len = *d++;
+	addr.resize(len);
+
+	auto i = addr.begin();
+	auto e = addr.end();
+	while( i != e )
+		*i++ = *d++;
+
+	len = *d++;
+	paddr.resize(len);
+
+	i = paddr.begin();
+	e = paddr.end();
+	while( i != e )
+		*i++ = *d++;
+
+	len = *d++;
+	other.resize(len);
+
+	i = other.begin();
+	e = other.end();
+	while( i != e )
+		*i++ = *d++;
+}
+
+}
+
 void CGeneralProxy::process( CEDCWallet & wallet )
 {
 	LOCK2(EDC_cs_main, wallet.cs_wallet);
 
 	edcEnsureWalletIsUnlocked();
 
-	std::string errStr;
 	std::string addr;
 	std::string paddr;
+	extract( data_, addr, paddr );
+
+	std::string errStr;
     bool rc = wallet.AddGeneralProxy( addr, paddr, errStr );
+	if(!rc)
+		error( errStr.c_str() );
 }
 
 void CIssuerProxy::process( CEDCWallet & wallet )
 {
-    // TODO
+	LOCK2(EDC_cs_main, wallet.cs_wallet);
+
+	edcEnsureWalletIsUnlocked();
+
+	std::string addr;
+	std::string paddr;
+	std::string iaddr;
+	extract( data_, addr, paddr, iaddr );
+
+	std::string errStr;
+    bool rc = wallet.AddIssuerProxy( addr, paddr, iaddr, errStr );
+	if(!rc)
+		error( errStr.c_str() );
 }
 
 void CPollProxy::process( CEDCWallet & wallet )
 {
-    // TODO
+	LOCK2(EDC_cs_main, wallet.cs_wallet);
+
+	edcEnsureWalletIsUnlocked();
+
+	std::string addr;
+	std::string paddr;
+	std::string pollID;
+	extract( data_, addr, paddr, pollID );
+
+	std::string errStr;
+    bool rc = wallet.AddPollProxy( addr, paddr, pollID, errStr );
+	if(!rc)
+		error( errStr.c_str() );
 }
 
 void CRevokeGeneralProxy::process( CEDCWallet & wallet )
 {
-    // TODO
+	LOCK2(EDC_cs_main, wallet.cs_wallet);
+
+	edcEnsureWalletIsUnlocked();
+
+	std::string addr;
+	std::string paddr;
+	extract( data_, addr, paddr );
+
+	std::string errStr;
+    bool rc = wallet.AddGeneralProxyRevoke( addr, paddr, errStr );
+	if(!rc)
+		error( errStr.c_str() );
 }
 
 void CRevokeIssuerProxy::process( CEDCWallet & wallet )
 {
-    // TODO
+	LOCK2(EDC_cs_main, wallet.cs_wallet);
+
+	edcEnsureWalletIsUnlocked();
+
+	std::string addr;
+	std::string paddr;
+	std::string iaddr;
+	extract( data_, addr, paddr, iaddr );
+
+	std::string errStr;
+    bool rc = wallet.AddIssuerProxyRevoke( addr, paddr, iaddr, errStr );
+	if(!rc)
+		error( errStr.c_str() );
 }
 
 void CRevokePollProxy::process( CEDCWallet & wallet )
+{
+	LOCK2(EDC_cs_main, wallet.cs_wallet);
+
+	edcEnsureWalletIsUnlocked();
+
+	std::string addr;
+	std::string paddr;
+	std::string pollID;
+	extract( data_, addr, paddr, pollID );
+
+	std::string errStr;
+    bool rc = wallet.AddPollProxyRevoke( addr, paddr, pollID, errStr );
+	if(!rc)
+		error( errStr.c_str() );
+}
+
+void CPoll::process( CEDCWallet & wallet )
 {
     // TODO
 }
