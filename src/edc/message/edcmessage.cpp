@@ -17,6 +17,7 @@
 #include <secp256k1.h>
 #include "edc/edcparams.h"
 #include "edc/rpc/edcwot.h"
+#include "edc/rpc/edcserver.h"
 
 namespace
 {
@@ -372,114 +373,99 @@ std::string CCreateWoTcertificate::desc() const
 
 namespace
 {
-CBroadcast * broadcastObj( const std::string & tag )
+CUserMessage * strToObj( const std::string & tag )
 {
-	if( tag[0] == 'A' )
+	using T = std::pair<const std::string *, std::function<CUserMessage * ()> >;
+
+	T msgMap [] =
 	{
-		if( tag == "Acquisition" )				return new CAcquisition();
-		else if( tag == "Ask" )					return new CAsk();
-		else if( tag == "Assimilation" )		return new CAssimilation();
-	}
-	else if( tag[0] == 'B' )
-	{
-		if( tag == "Bankruptcy" )				return new CBankruptcy();
-		else if( tag == "Bid" )					return new CBid();
-		else if( tag == "BonusIssue" )			return new CBonusIssue();
-		else if( tag == "BonusRights" )			return new CBonusRights();
-		else if( tag == "BuyBackProgram" )		return new CBuyBackProgram();
-	}
-	else if( tag[0] == 'C' )
-	{
-		if( tag == "CashDividend" )				return new CCashDividend();
-		else if( tag == "CashStockOption" )		return new CCashStockOption();
-		else if( tag == "ClassAction" ) 		return new CClassAction();
-		else if( tag == "ConversionOfConvertibleBonds" )	return new CConversionOfConvertibleBonds();
-		else if( tag == "CouponPayment" )		return new CCouponPayment();
-		else if( tag == "CreateWoTcertificate" )return new CCreateWoTcertificate();
-	}
-	else if( tag[0] == 'D' )
-	{
-		if( tag == "Delisting" )				return new CDelisting();
-		else if( tag == "DeMerger" )			return new CDeMerger();
-		else if( tag == "DividendReinvestmentPlan" )	return new CDividendReinvestmentPlan();
-		else if( tag == "DutchAuction" )		return new CDutchAuction();
-	}
-	else if( tag[0] == 'E' )
-	{
-		if( tag == "EarlyRedemption" )			return new CEarlyRedemption();
-	}
-	else if( tag[0] == 'F' )
-	{
-		if( tag == "FinalRedemption" )			return new CFinalRedemption();
-	}
-	else if( tag[0] == 'G' )
-	{
-		if( tag == "GeneralAnnouncement" )		return new CGeneralAnnouncement();
-	}
-	else if( tag[0] == 'I' )
-	{
-		if( tag == "InitialPublicOffering" )	return new CInitialPublicOffering();
-	}
-	else if( tag[0] == 'L' )
-	{
-		if( tag == "Liquidation" )				return new CLiquidation();
-		else if( tag == "Lottery" )				return new CLottery();
-	}
-	else if( tag[0] == 'M' )
-	{
-		if( tag == "MandatoryExchange" )		return new CMandatoryExchange();
-		else if( tag == "Merger" )				return new CMerger();
-		else if( tag == "MergerWithElections" )	return new CMergerWithElections();
-	}
-	else if( tag[0] == 'N' )
-	{
-		if( tag == "NameChange" )				return new CNameChange();
-	}
-	else if( tag[0] == 'O' )
-	{
-		if( tag == "OddLotTender" )				return new COddLotTender();
-		else if( tag == "OptionalPut" )			return new COptionalPut();
-		else if( tag == "OtherEvent" )			return new COtherEvent();
-	}
-	else if( tag[0] == 'P' )
-	{
-		if( tag == "PartialRedemption" )		return new CPartialRedemption();
-		else if( tag == "ParValueChange" )		return new CParValueChange();
-	}
-	else if( tag[0] == 'R' )
-	{
-		if( tag == "ReturnOfCapital" )			return new CReturnOfCapital();
-		else if( tag == "ReverseStockSplit" )	return new CReverseStockSplit();
-		else if( tag == "RightsAuction" )		return new CRightsAuction();
-		else if( tag == "RightsIssue" )			return new CRightsIssue();
-		else if( tag == "RevokeWoTcertificate" )return new CRevokeWoTcertificate();
-	}
-	else if( tag[0] == 'S' )
-	{
-		if( tag == "SchemeofArrangement" )		return new CSchemeofArrangement();
-		else if( tag == "ScripDividend" )		return new CScripDividend();
-		else if( tag == "ScripIssue" )			return new CScripIssue();
-		else if( tag == "Spinoff" )				return new CSpinoff();
-		else if( tag == "SpinOffWithElections" )return new CSpinOffWithElections();
-		else if( tag == "StockDividend" )		return new CStockDividend();
-		else if( tag == "StockSplit" )			return new CStockSplit();
-		else if( tag == "SubscriptionOffer" )	return new CSubscriptionOffer();
-	}
-	else if( tag[0] == 'T' )
-	{
-		if( tag == "Takeover" )					return new CTakeover();
-		else if( tag == "TenderOffer" )			return new CTenderOffer();
-	}
-	else if( tag[0] == 'V' )
-	{
-		if( tag == "VoluntaryExchange" )		return new CVoluntaryExchange();
-	}
-	else if( tag[0] == 'W' )
-	{
-		if( tag == "WarrantExercise" )			return new CWarrantExercise();
-		else if( tag == "WarrantExpiry" )		return new CWarrantExpiry();
-		else if( tag == "WarrantIssue" )		return new CWarrantIssue();
-	}
+		{&CAcquisition::tag,			[]() { return new CAcquisition(); } },
+		{&CAsk::tag,					[]() { return new CAsk(); } },
+		{&CAssimilation::tag,			[]() { return new CAssimilation(); } },
+
+		{&CBankruptcy::tag,				[]() { return new CBankruptcy(); } },
+		{&CBid::tag,					[]() { return new CBid(); } },
+		{&CBonusIssue::tag,				[]() { return new CBonusIssue(); } },
+		{&CBonusRights::tag,			[]() { return new CBonusRights(); } },
+		{&CBuyBackProgram::tag,			[]() { return new CBuyBackProgram(); } },
+
+		{&CCashDividend::tag,			[]() { return new CCashDividend(); } },
+		{&CCashStockOption::tag,		[]() { return new CCashStockOption(); } },
+		{&CClassAction::tag,			[]() { return new CClassAction(); } },
+		{&CConversionOfConvertibleBonds::tag, []() { return new CConversionOfConvertibleBonds();}},
+		{&CCouponPayment::tag,			[]() { return new CCouponPayment(); } },
+		{&CCreateWoTcertificate::tag,	[]() { return new CCreateWoTcertificate(); } },
+
+		{&CDelisting::tag,				[]() { return new CDelisting(); } },
+		{&CDeMerger::tag,				[]() { return new CDeMerger(); } },
+		{&CDividendReinvestmentPlan::tag, []() { return new CDividendReinvestmentPlan(); } },
+		{&CDutchAuction::tag,			[]() { return new CDutchAuction(); } },
+
+		{&CEarlyRedemption::tag,		[]() { return new CEarlyRedemption(); } },
+
+		{&CFinalRedemption::tag,		[]() { return new CFinalRedemption(); } },
+
+		{&CGeneralAnnouncement::tag,	[]() { return new CGeneralAnnouncement(); } },
+		{&CGeneralProxy::tag,			[]() { return new CGeneralProxy(); } },
+
+		{&CInitialPublicOffering::tag,	[]() { return new CInitialPublicOffering(); } },
+		{&CIssuerProxy::tag,			[]() { return new CIssuerProxy(); } },
+
+		{&CLiquidation::tag,			[]() { return new CLiquidation(); } },
+		{&CLottery::tag,				[]() { return new CLottery(); } },
+
+		{&CMandatoryExchange::tag,		[]() { return new CMandatoryExchange(); } },
+		{&CMerger::tag,					[]() { return new CMerger(); } },
+		{&CMergerWithElections::tag,	[]() { return new CMergerWithElections(); } },
+
+		{&CNameChange::tag,				[]() { return new CNameChange(); } },
+
+		{&COddLotTender::tag,			[]() { return new COddLotTender(); } },
+		{&COptionalPut::tag,			[]() { return new COptionalPut(); } },
+		{&COtherEvent::tag,				[]() { return new COtherEvent(); } },
+
+		{&CPartialRedemption::tag,		[]() { return new CPartialRedemption(); } },
+		{&CParValueChange::tag,			[]() { return new CParValueChange(); } },
+		{&CPoll::tag,					[]() { return new CPoll(); } },
+		{&CPollProxy::tag,				[]() { return new CPollProxy(); } },
+		{&CPrivate::tag,				[]() { return new CPrivate(); } },
+
+		{&CReturnOfCapital::tag,		[]() { return new CReturnOfCapital(); } },
+		{&CReverseStockSplit::tag,		[]() { return new CReverseStockSplit(); } },
+		{&CRightsAuction::tag,			[]() { return new CRightsAuction(); } },
+		{&CRightsIssue::tag,			[]() { return new CRightsIssue(); } },
+		{&CRequestWoTcertificate::tag,	[]() { return new CRequestWoTcertificate(); } },
+		{&CRevokeGeneralProxy::tag,		[]() { return new CRevokeGeneralProxy(); } },
+		{&CRevokeIssuerProxy::tag,		[]() { return new CRevokeIssuerProxy(); } },
+		{&CRevokePollProxy::tag,		[]() { return new CRevokePollProxy(); } },
+		{&CRevokeWoTcertificate::tag,	[]() { return new CRevokeWoTcertificate(); } },
+
+		{&CSchemeofArrangement::tag,	[]() { return new CSchemeofArrangement(); } },
+		{&CScripDividend::tag,			[]() { return new CScripDividend(); } },
+		{&CScripIssue::tag,				[]() { return new CScripIssue(); } },
+		{&CSpinoff::tag,				[]() { return new CSpinoff(); } },
+		{&CSpinOffWithElections::tag,	[]() { return new CSpinOffWithElections(); } },
+		{&CStockDividend::tag,			[]() { return new CStockDividend(); } },
+		{&CStockSplit::tag,				[]() { return new CStockSplit(); } },
+		{&CSubscriptionOffer::tag,		[]() { return new CSubscriptionOffer(); } },
+
+		{&CTakeover::tag,				[]() { return new CTakeover(); } },
+		{&CTenderOffer::tag,			[]() { return new CTenderOffer(); } },
+
+		{&CVoluntaryExchange::tag,		[]() { return new CVoluntaryExchange(); } },
+		{&CVote::tag,					[]() { return new CVote(); } },
+
+		{&CWarrantExercise::tag,		[]() { return new CWarrantExercise(); } },
+		{&CWarrantExpiry::tag,			[]() { return new CWarrantExpiry(); } },
+		{&CWarrantIssue::tag,			[]() { return new CWarrantIssue(); } },
+	};
+
+	auto it = lower_bound( begin(msgMap), end(msgMap), tag,
+		[&]( const T & val, const std::string & tag ) { return *val.first < tag; } );
+
+	if( it != end(msgMap))
+		return it->second();
+
 	return NULL;
 }
 
@@ -579,47 +565,8 @@ CUserMessage::CUserMessage():nonce_(0)
 
 CUserMessage * CUserMessage::create( const std::string & tag, CDataStream & str )
 {
-	if( CBroadcast * result = broadcastObj( tag ))
+	if( CUserMessage * result = strToObj( tag ))
 	{
-		try
-		{
-			str >> *result;
-		}
-		catch( ... )
-		{
-			delete result;
-			throw;
-		}
-
-		return result;
-	}
-
-	CPeerToPeer * result = NULL;
-	if( tag == "Vote" )
-		result = new CVote();
-	else if( tag == "Private" )
-		result = new CPrivate();
-	else if( tag == "RequestWoTcertificate" )
-		result = new CRequestWoTcertificate();
-
-	if(result)
-	{
-		try
-		{
-			str >> *result;
-		}
-		catch( ... )
-		{
-			delete result;
-			throw;
-		}
-
-		return result;
-	}
-	else if( tag == "Poll" )
-	{
-		CMulticast * result = new CPoll();
-
 		try
 		{
 			str >> *result;
@@ -782,7 +729,7 @@ CBroadcast * CBroadcast::create(
 			   const std::string & assetId, 
 			   const std::string & data )
 {
-	CBroadcast * ans = broadcastObj( type );
+	CBroadcast * ans = dynamic_cast<CBroadcast *>(strToObj( type ));
 
 	if(!ans)
 	{
@@ -824,7 +771,7 @@ CBroadcast * CBroadcast::create(
 			   const std::string & assetId, 
 const std::vector<unsigned char> & data )
 {
-	CBroadcast * ans = broadcastObj( type );
+	CBroadcast * ans = dynamic_cast<CBroadcast *>(strToObj( type ));
 
 	if(!ans)
 	{
@@ -1138,4 +1085,74 @@ void CRevokeWoTcertificate::extract(
 		reason += static_cast<char>(*p);
 		++p;
 	}
+}
+
+
+void CUserMessage::process( CEDCWallet & wallet )
+{
+	wallet.AddMessage( vtag(), GetHash(), this );
+}
+
+void CCreateWoTcertificate::process( CEDCWallet & wallet )
+{
+    CPubKey pubkey;
+    CPubKey sPubkey;
+    WoTCertificate cert;
+
+    extract( pubkey, sPubkey, cert );
+
+    wallet.AddWoTCertificate( pubkey, sPubkey, cert );
+}
+
+void CRevokeWoTcertificate::process( CEDCWallet & wallet )
+{
+    CPubKey pubkey;
+    CPubKey sPubkey;
+    std::string reason;
+
+    extract( pubkey, sPubkey, reason );
+
+    wallet.RevokeWoTCertificate( pubkey, sPubkey, reason );
+}
+
+void CGeneralProxy::process( CEDCWallet & wallet )
+{
+	LOCK2(EDC_cs_main, wallet.cs_wallet);
+
+	edcEnsureWalletIsUnlocked();
+
+	std::string errStr;
+	std::string addr;
+	std::string paddr;
+    bool rc = wallet.AddGeneralProxy( addr, paddr, errStr );
+}
+
+void CIssuerProxy::process( CEDCWallet & wallet )
+{
+    // TODO
+}
+
+void CPollProxy::process( CEDCWallet & wallet )
+{
+    // TODO
+}
+
+void CRevokeGeneralProxy::process( CEDCWallet & wallet )
+{
+    // TODO
+}
+
+void CRevokeIssuerProxy::process( CEDCWallet & wallet )
+{
+    // TODO
+}
+
+void CRevokePollProxy::process( CEDCWallet & wallet )
+{
+    // TODO
+}
+
+void CVote::process( CEDCWallet & wallet )
+{
+    // TODO
 }

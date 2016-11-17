@@ -11,6 +11,8 @@
 
 
 class CDataStream;
+class CEDCWallet;
+
 
 // User Messages are messages created by users for the purpose of communicating 
 // with other users
@@ -71,6 +73,8 @@ public:
 
 	virtual std::string	ToString() const;
 	virtual std::string	ToJSON() const;
+
+	virtual void process( CEDCWallet & );
 
 	std::string	senderAddr() const { return senderAddr_.ToString();}
 	time_t second() const	{ return timestamp_.tv_sec; }
@@ -645,6 +649,7 @@ class CVote: public CPeerToPeer
 public:
 	virtual std::string vtag() const { return tag; }
 	virtual std::string desc() const;
+	virtual void process( CEDCWallet & );
 
 	static const std::string tag;
 };
@@ -692,6 +697,7 @@ class CCreateWoTcertificate: public CBroadcast
 public:
 	virtual std::string vtag() const { return tag; }
 	virtual std::string desc() const;
+	virtual void process( CEDCWallet & );
 
 	static const std::string tag;
 
@@ -703,6 +709,7 @@ class CRevokeWoTcertificate: public CBroadcast
 public:
 	virtual std::string vtag() const { return tag; }
 	virtual std::string desc() const;
+	virtual void process( CEDCWallet & );
 
 	static const std::string tag;
 
@@ -714,6 +721,7 @@ class CGeneralProxy : public CBroadcast
 public:
 	virtual std::string vtag() const { return tag; }
 	virtual std::string desc() const;
+	virtual void process( CEDCWallet & );
 
 	static const std::string tag;
 };
@@ -723,6 +731,7 @@ class CRevokeGeneralProxy : public CBroadcast
 public:
 	virtual std::string vtag() const { return tag; }
 	virtual std::string desc() const;
+	virtual void process( CEDCWallet & );
 
 	static const std::string tag;
 };
@@ -732,6 +741,7 @@ class CIssuerProxy : public CBroadcast
 public:
 	virtual std::string vtag() const { return tag; }
 	virtual std::string desc() const;
+	virtual void process( CEDCWallet & );
 
 	static const std::string tag;
 };
@@ -741,6 +751,7 @@ class CRevokeIssuerProxy : public CBroadcast
 public:
 	virtual std::string vtag() const { return tag; }
 	virtual std::string desc() const;
+	virtual void process( CEDCWallet & );
 
 	static const std::string tag;
 };
@@ -750,6 +761,7 @@ class CPollProxy : public CBroadcast
 public:
 	virtual std::string vtag() const { return tag; }
 	virtual std::string desc() const;
+	virtual void process( CEDCWallet & );
 
 	static const std::string tag;
 };
@@ -759,6 +771,7 @@ class CRevokePollProxy : public CBroadcast
 public:
 	virtual std::string vtag() const { return tag; }
 	virtual std::string desc() const;
+	virtual void process( CEDCWallet & );
 
 	static const std::string tag;
 };

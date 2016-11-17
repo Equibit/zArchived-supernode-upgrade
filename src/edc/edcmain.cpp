@@ -7137,28 +7137,7 @@ bool ProcessMessage(
 
 		if( isGood )
 		{
-			if( CCreateWoTcertificate * cc = dynamic_cast<CCreateWoTcertificate *>(msg))
-			{
-				CPubKey pubkey;
-				CPubKey	sPubkey;
-				WoTCertificate cert;
-
-				cc->extract( pubkey, sPubkey, cert );
-
-				theApp.walletMain()->AddWoTCertificate( pubkey, sPubkey, cert );
-			}
-			else if( CRevokeWoTcertificate * rc = dynamic_cast<CRevokeWoTcertificate *>(msg))
-			{
-				CPubKey pubkey;
-				CPubKey	sPubkey;
-				std::string	reason;
-
-				rc->extract( pubkey, sPubkey, reason );
-
-				theApp.walletMain()->RevokeWoTCertificate( pubkey, sPubkey, reason );
-			}
-			else
-				theApp.walletMain()->AddMessage( type, msg->GetHash(), msg );
+			msg->process( *theApp.walletMain() );
 		}
 		else
 		{

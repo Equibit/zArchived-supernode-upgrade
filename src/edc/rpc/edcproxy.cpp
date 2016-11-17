@@ -13,6 +13,76 @@
 #include "edc/message/edcmessage.h"
 
 
+namespace
+{
+
+void packStrs(
+std::vector<unsigned char> & data,
+		 const std::string & addr,
+		 const std::string & paddr )
+{
+	auto alen = addr.size();
+	auto plen = paddr.size();
+
+	data.resize(alen+1+plen+1);
+
+	auto d = data.begin();
+
+	*d++ = alen;
+	
+	auto i = addr.begin();
+	auto e = addr.end();
+
+	while( i != e )
+	{
+		*d = *i;
+		++i;
+		++d;
+	}
+
+	*d++ = plen;
+	
+	i = paddr.begin();
+	e = paddr.end();
+
+	while( i != e )
+	{
+		*d = *i;
+		++i;
+		++d;
+	}
+}
+
+void packStrs( 
+std::vector<unsigned char> & data,
+		 const std::string & addr,
+		 const std::string & paddr,
+		 const std::string & other )
+{
+	packStrs( data, addr, paddr );
+
+	auto olen = other.size();
+
+	auto dsize= data.size();
+	data.resize(dsize+1+olen+1);
+
+	auto d = data.begin() + dsize;
+
+	*d++ = olen;
+	
+	auto i = other.begin();
+	auto e = other.end();
+
+	while( i != e )
+	{
+		*d = *i;
+		++i;
+		++d;
+	}
+}
+
+}
+
 UniValue edcassigngeneralproxy(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 2 )
@@ -49,8 +119,8 @@ UniValue edcassigngeneralproxy(const UniValue& params, bool fHelp)
 		CKeyID senderID;
 		sender.GetKeyID(senderID);
 
-		std::string data = "{\"addr\":\"";
-		data += addrStr + "\", \"paddr\":\"" + paddrStr + "\"}";
+		std::vector<unsigned char> data;
+		packStrs( data, addrStr, paddrStr );
 
 		std::string assetId;
 		CBroadcast * msg = CBroadcast::create( CGeneralProxy::tag, senderID, assetId, data);
@@ -98,9 +168,9 @@ UniValue edcrevokegeneralproxy(const UniValue& params, bool fHelp)
 		CKeyID senderID;
 		sender.GetKeyID(senderID);
 
-		std::string data = "{\"addr\":\"";
-		data += addrStr + "\", \"paddr\":\"" + paddrStr + "\"}";
-	
+		std::vector<unsigned char> data;
+		packStrs( data, addrStr, paddrStr );
+
 		std::string assetId;
 		CBroadcast * msg = CBroadcast::create( CRevokeGeneralProxy::tag, senderID, assetId, data);
 
@@ -153,9 +223,9 @@ UniValue edcassignissuerproxy(const UniValue& params, bool fHelp)
 		CKeyID senderID;
 		sender.GetKeyID(senderID);
 
-		std::string data = "{\"addr\":\"";
-		data += addrStr + "\", \"paddr\":\"" + paddrStr + "\", \"iaddr\":" + iaddrStr + "\"}";
-	
+		std::vector<unsigned char> data;
+		packStrs( data, addrStr, paddrStr, iaddrStr );
+
 		std::string assetId;
 		CBroadcast * msg = CBroadcast::create( CIssuerProxy::tag, senderID, assetId, data);
 
@@ -213,8 +283,8 @@ UniValue edcrevokeissuerproxy(const UniValue& params, bool fHelp)
 		CKeyID senderID;
 		sender.GetKeyID(senderID);
 
-		std::string data = "{\"addr\":\"";
-		data += addrStr + "\", \"paddr\":\"" + paddrStr + "\", \"iaddr\":" + iaddrStr + "\"}";
+		std::vector<unsigned char> data;
+		packStrs( data, addrStr, paddrStr, iaddrStr );
 
 		std::string assetId;
 		CBroadcast * msg = CBroadcast::create( CRevokeIssuerProxy::tag, senderID, assetId, data);
@@ -264,9 +334,9 @@ UniValue edcassignpollproxy(const UniValue& params, bool fHelp)
 		CKeyID senderID;
 		sender.GetKeyID(senderID);
 
-		std::string data = "{\"addr\":\"";
-		data += addrStr + "\", \"paddr\":\"" + paddrStr + "\", \"pollID\":" + pollID + "\"}";
-		
+		std::vector<unsigned char> data;
+		packStrs( data, addrStr, paddrStr, pollID );
+
 		std::string assetId;
 		CBroadcast * msg = CBroadcast::create( CPollProxy::tag, senderID, assetId, data);
 
@@ -316,8 +386,8 @@ UniValue edcrevokepollproxy(const UniValue& params, bool fHelp)
 		CKeyID senderID;
 		sender.GetKeyID(senderID);
 
-		std::string data = "{\"addr\":\"";
-		data += addrStr + "\", \"paddr\":\"" + paddrStr + "\", \"pollID\":" + pollID + "\"}";
+		std::vector<unsigned char> data;
+		packStrs( data, addrStr, paddrStr, pollID );
 		
 		std::string assetId;
 		CBroadcast * msg = CBroadcast::create( CRevokePollProxy::tag, senderID, assetId, data);
