@@ -710,7 +710,7 @@ CPeerToPeer * CPeerToPeer::create(
 CMulticast * CMulticast::create(
 			   const std::string & type, 
 			        const CKeyID & sender, 
-			   const std::string & assetId, 
+			   const std::string & issuer, 
 	   		   const std::string & data )
 {
 	CMulticast * ans;
@@ -729,7 +729,7 @@ CMulticast * CMulticast::create(
 	ans->proofOfWork();
 
 	ans->senderAddr_ = sender;
-	ans->assetId_ = assetId;
+	ans->issuerAddr_ = issuer;
 	ans->data_.resize(data.size() );
 	
 	auto i = data.begin();
@@ -747,7 +747,7 @@ CMulticast * CMulticast::create(
 				ans->timestamp_,
 				ans->nonce_,
 		 		type,
-		 		assetId,
+		 		issuer,
 		 		ans->data_,
 				ans->signature_ );
 	return ans;
@@ -756,7 +756,6 @@ CMulticast * CMulticast::create(
 CBroadcast * CBroadcast::create(
 			   const std::string & type, 
 	     	        const CKeyID & sender, 
-			   const std::string & assetId, 
 			   const std::string & data )
 {
 	CBroadcast * ans = dynamic_cast<CBroadcast *>(strToObj( type ));
@@ -771,7 +770,6 @@ CBroadcast * CBroadcast::create(
 	ans->proofOfWork();
 
 	ans->senderAddr_ = sender;
-	ans->assetId_ = assetId;
 	ans->data_.resize(data.size() );
 
 	auto i = data.begin();
@@ -789,7 +787,7 @@ CBroadcast * CBroadcast::create(
 				ans->timestamp_,
 				ans->nonce_,
 		 		type,
-		 		assetId,
+		 		"",
 		 		ans->data_,
 				ans->signature_ );
 	return ans;
@@ -798,7 +796,6 @@ CBroadcast * CBroadcast::create(
 CBroadcast * CBroadcast::create(
 			   const std::string & type, 
 	     	        const CKeyID & sender, 
-			   const std::string & assetId, 
 const std::vector<unsigned char> & data )
 {
 	CBroadcast * ans = dynamic_cast<CBroadcast *>(strToObj( type ));
@@ -813,7 +810,6 @@ const std::vector<unsigned char> & data )
 	ans->proofOfWork();
 
 	ans->senderAddr_ = sender;
-	ans->assetId_ = assetId;
 	ans->data_.resize(data.size());
 	std::copy( data.begin(), data.end(), ans->data_.begin() );
 
@@ -821,7 +817,7 @@ const std::vector<unsigned char> & data )
 				ans->timestamp_,
 				ans->nonce_,
 		 		type,
-		 		assetId,
+		 		"",
 		 		ans->data_,
 				ans->signature_ );
 	return ans;
@@ -889,8 +885,8 @@ std::string	CMulticast::ToString() const
 	ans += ":";
 	ans += CUserMessage::ToString();
 
-	ans += " asset=";
-	ans += assetId_;
+	ans += " issuer=";
+	ans += issuerAddr_;
 
 	return ans;
 }
@@ -900,9 +896,6 @@ std::string	CBroadcast::ToString() const
 	std::string ans = vtag();
 	ans += ":";
 	ans += CUserMessage::ToString();
-
-	ans += " asset=";
-	ans += assetId_;
 
 	return ans;
 }
@@ -954,8 +947,8 @@ std::string	CMulticast::ToJSON() const
 	ans += "\"";
 	ans += CUserMessage::ToJSON();
 
-	ans += ", \"asset\":\"";
-	ans += assetId_;
+	ans += ", \"issuer\":\"";
+	ans += issuerAddr_;
 	ans += "\"}";
 
 	return ans;
@@ -968,8 +961,6 @@ std::string	CBroadcast::ToJSON() const
 	ans += "\"";
 	ans += CUserMessage::ToJSON();
 
-	ans += ", \"asset\":\"";
-	ans += assetId_;
 	ans += "\"}";
 
 	return ans;
@@ -1005,7 +996,7 @@ bool CMulticast::verify() const
 			timestamp_,
 			nonce_,
 		 	vtag(),
-		 	assetId_,
+		 	issuerAddr_,
 		 	data_,
 			signature_ );
 	}
@@ -1024,7 +1015,7 @@ bool CBroadcast::verify() const
 			timestamp_,
 			nonce_,
 		 	vtag(),
-		 	assetId_,
+		 	"",
 		 	data_,
 			signature_ );
 	}
@@ -1309,10 +1300,10 @@ void CRevokePollProxy::process( CEDCWallet & wallet )
 
 void CPoll::process( CEDCWallet & wallet )
 {
-    // TODO
+    // TODO: CPoll::process()
 }
 
 void CVote::process( CEDCWallet & wallet )
 {
-    // TODO
+    // TODO: CVote::process()
 }

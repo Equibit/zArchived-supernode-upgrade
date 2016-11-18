@@ -2183,13 +2183,12 @@ bool keep(
 	return true;
 }
 
-template <typename T>
 bool keep(
-	T * msg,
+	CMulticast * msg,
 	time_t from,
    	time_t to,
    	const std::set<std::string> & senders,
-   	const std::set<std::string> & assets )
+   	const std::set<std::string> & issuers )
 {
 	if( from && from < msg->second() )
 		return false;
@@ -2201,8 +2200,27 @@ bool keep(
 	( senders.find( msg->senderAddr() ) == senders.end() ) )
 		return false;
 
-	if( assets.size() &&
-	( assets.find( msg->assetId() ) == assets.end() ) )
+	if( issuers.size() &&
+	( issuers.find( msg->issuerAddr() ) == issuers.end() ) )
+		return false;
+
+	return true;
+}
+
+bool keep(
+	CBroadcast * msg,
+	time_t from,
+   	time_t to,
+   	const std::set<std::string> & senders )
+{
+	if( from && from < msg->second() )
+		return false;
+
+	if( to && to > msg->second() )
+		return false;
+
+	if( senders.size() && 
+	( senders.find( msg->senderAddr() ) == senders.end() ) )
 		return false;
 
 	return true;
@@ -2264,7 +2282,7 @@ std::vector<CUserMessage *> & out
 
 		if( CBroadcast * bmsg = dynamic_cast<CBroadcast *>(msg) )
 		{
-			if( keep( bmsg, from, to, senders, assets ))
+			if( keep( bmsg, from, to, senders ))
 				out.push_back(msg);
 			else
 				delete msg;
@@ -2385,7 +2403,7 @@ const std::set<std::string> & receivers
 
 		if( CBroadcast * bmsg = dynamic_cast<CBroadcast *>(msg) )
 		{
-			if( keep( bmsg, from, to, senders, assets ))
+			if( keep( bmsg, from, to, senders ))
 			{
        			pcursor->close();
 				pcursor = NULL;

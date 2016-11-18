@@ -140,10 +140,10 @@ public:
 	inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) 
 	{
 		READWRITE(*static_cast<CUserMessage *>(this));
-		READWRITE(assetId_);
+		READWRITE(issuerAddr_);
 	}
 
-	const std::string & assetId() const	{ return assetId_; }
+	const std::string & issuerAddr() const	{ return issuerAddr_; }
 
 	virtual uint256 GetHash() const;
 
@@ -153,11 +153,11 @@ public:
 
 	static CMulticast * create( const std::string & type, 
 								     const CKeyID & sender, 
-								const std::string & assetId, 
+								const std::string & issuer, 
 							    const std::string & data );
 
 private:
-	std::string assetId_;
+	std::string issuerAddr_;
 };
 
 // Message to all addresses
@@ -176,29 +176,21 @@ public:
 	inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) 
 	{
 		READWRITE(*static_cast<CUserMessage *>(this));
-		READWRITE(assetId_);
 	}
 
 	virtual bool	verify() const;
 	virtual std::string	ToString() const;
 	virtual std::string	ToJSON() const;
 
-	const std::string & assetId() const	{ return assetId_; }
-
 	virtual uint256 GetHash() const;
 
 	static CBroadcast * create( const std::string & type, 
 								     const CKeyID & sender, 
-								const std::string & assetId, 
 							    const std::string & data );
 
 	static CBroadcast * create( const std::string & type, 
 								     const CKeyID & sender, 
-								const std::string & assetId, 
 				 const std::vector<unsigned char> & data );
-
-private:
-	std::string assetId_;
 };
 
 ///////////////////////////////////////////////////////////

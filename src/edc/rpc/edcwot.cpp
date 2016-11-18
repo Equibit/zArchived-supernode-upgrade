@@ -550,8 +550,7 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
 		}
 
 		// Broadcast certificate to the network
-		std::string assetId;
-	    CBroadcast * msg = CBroadcast::create( CCreateWoTcertificate::tag, senderID, assetId, data);
+	    CBroadcast * msg = CBroadcast::create( CCreateWoTcertificate::tag, senderID, data);
 
 		theApp.connman()->RelayUserMessage( msg, true );
 	}
@@ -663,8 +662,7 @@ UniValue edcrevokewotcertificate(const UniValue& params, bool fHelp)
 	if(rc)
 	{
 		// Broadcast certificate revocation to the network
-		std::string assetId;
-		CBroadcast * msg = CBroadcast::create( CRevokeWoTcertificate::tag, senderID, assetId, data);
+		CBroadcast * msg = CBroadcast::create( CRevokeWoTcertificate::tag, senderID, data);
 
 		theApp.connman()->RelayUserMessage( msg, true );
 	}

@@ -122,8 +122,7 @@ UniValue edcassigngeneralproxy(const UniValue& params, bool fHelp)
 		std::vector<unsigned char> data;
 		packStrs( data, addrStr, paddrStr );
 
-		std::string assetId;
-		CBroadcast * msg = CBroadcast::create( CGeneralProxy::tag, senderID, assetId, data);
+		CBroadcast * msg = CBroadcast::create( CGeneralProxy::tag, senderID, data);
 
 		theApp.connman()->RelayUserMessage( msg, true );
 	}
@@ -171,8 +170,7 @@ UniValue edcrevokegeneralproxy(const UniValue& params, bool fHelp)
 		std::vector<unsigned char> data;
 		packStrs( data, addrStr, paddrStr );
 
-		std::string assetId;
-		CBroadcast * msg = CBroadcast::create( CRevokeGeneralProxy::tag, senderID, assetId, data);
+		CBroadcast * msg = CBroadcast::create( CRevokeGeneralProxy::tag, senderID, data);
 
 		theApp.connman()->RelayUserMessage( msg, true );
 	}
@@ -226,8 +224,7 @@ UniValue edcassignissuerproxy(const UniValue& params, bool fHelp)
 		std::vector<unsigned char> data;
 		packStrs( data, addrStr, paddrStr, iaddrStr );
 
-		std::string assetId;
-		CBroadcast * msg = CBroadcast::create( CIssuerProxy::tag, senderID, assetId, data);
+		CBroadcast * msg = CBroadcast::create( CIssuerProxy::tag, senderID, data);
 
 		theApp.connman()->RelayUserMessage( msg, true );
 	}
@@ -286,8 +283,7 @@ UniValue edcrevokeissuerproxy(const UniValue& params, bool fHelp)
 		std::vector<unsigned char> data;
 		packStrs( data, addrStr, paddrStr, iaddrStr );
 
-		std::string assetId;
-		CBroadcast * msg = CBroadcast::create( CRevokeIssuerProxy::tag, senderID, assetId, data);
+		CBroadcast * msg = CBroadcast::create( CRevokeIssuerProxy::tag, senderID, data);
 
 		theApp.connman()->RelayUserMessage( msg, true );
 	}
@@ -337,8 +333,7 @@ UniValue edcassignpollproxy(const UniValue& params, bool fHelp)
 		std::vector<unsigned char> data;
 		packStrs( data, addrStr, paddrStr, pollID );
 
-		std::string assetId;
-		CBroadcast * msg = CBroadcast::create( CPollProxy::tag, senderID, assetId, data);
+		CBroadcast * msg = CBroadcast::create( CPollProxy::tag, senderID, data);
 
 		theApp.connman()->RelayUserMessage( msg, true );
 	}
@@ -389,8 +384,7 @@ UniValue edcrevokepollproxy(const UniValue& params, bool fHelp)
 		std::vector<unsigned char> data;
 		packStrs( data, addrStr, paddrStr, pollID );
 		
-		std::string assetId;
-		CBroadcast * msg = CBroadcast::create( CRevokePollProxy::tag, senderID, assetId, data);
+		CBroadcast * msg = CBroadcast::create( CRevokePollProxy::tag, senderID, data);
 
 		theApp.connman()->RelayUserMessage( msg, true );
 	}
