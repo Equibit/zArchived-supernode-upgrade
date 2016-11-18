@@ -1044,24 +1044,6 @@ uint256 CPeerToPeer::GetHash() const
 
 ///////////////////////////////////////////////////////////////////////////
 
-namespace
-{
-struct CertStream
-{
-	CertStream( const unsigned char * p ):p_(p), off_(0) {}
-
-	void	read( char * buff, size_t len )
-	{
-		memcpy( buff, p_ + off_, len );
-		off_ += len;
-	}
-
-	const unsigned char * p_;
-	size_t	off_;
-};
-
-}
-
 void CCreateWoTcertificate::extract(
 	CPubKey & pubkey,
 	CPubKey & sPubkey,
@@ -1069,6 +1051,7 @@ void CCreateWoTcertificate::extract(
 {
 	uint16_t	pLen  = *reinterpret_cast<const uint16_t *>(data_.data());
 	uint16_t	spLen = *reinterpret_cast<const uint16_t *>(data_.data()+sizeof(uint16_t));
+	uint16_t	cLen  = *reinterpret_cast<const uint16_t *>(data_.data()+sizeof(uint16_t)*2);
 
 	const unsigned char * p = data_.data() + sizeof(uint16_t)*3;
 
@@ -1078,8 +1061,9 @@ void CCreateWoTcertificate::extract(
 	pubkey.Set( p, p + spLen );
 	p += spLen;
 
-	CertStream	ss(p);
-	cert.Unserialize( ss, SER_NETWORK, PROTOCOL_VERSION );
+	CDataStream	ss( reinterpret_cast<const char *>(p), reinterpret_cast<const char *>(p+cLen), 
+		SER_NETWORK, PROTOCOL_VERSION );
+	ss >> cert;
 }
 
 void CRevokeWoTcertificate::extract(

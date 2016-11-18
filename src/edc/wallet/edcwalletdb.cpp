@@ -33,25 +33,25 @@ namespace
 {
 // Wallet DB Keys:
 //
-const std::string ACC               = "acc";        // ACC:account-name/account
+const std::string ACC               = "acc";        // ACC:account-name/pubkey
 const std::string ACENTRY           = "acentry";    // ACENTRY:(account-name:account-number)/acentry
 const std::string BESTBLOCK         = "bestblock";  // BESTBLOCK/empty-locator
 const std::string BESTBLOCK_NOMERKLE= "bestblock_nomerkle";  // BESTBLOCK_NOMERKLE/locator
-const std::string CKEY              = "ckey";       // CKEY:pub-key/privkey-secret
+const std::string CKEY              = "ckey";       // CKEY:pubkey/privkey-secret
 const std::string CSCRIPT           = "cscript";    // CSCRIPT:hash/script
 const std::string DEFAULTKEY        = "defaultkey"; // DEFAULTKEY/pubkey
 const std::string DESTDATA          = "destdata";   // DESTDATA:(address:key)/value
 const std::string HDCHAIN			= "hdchain";	// HDCHAIN/value
 const std::string ISSUER            = "issuer";     // ISSUER:issuer-name/issuer
-const std::string KEY               = "key";        // KEY:pubkey/(priv-key:hash(pubkey,privkey))
-const std::string KEYMETA           = "keymeta";    // KEYMETA:pub-key/key-meta
+const std::string KEY               = "key";        // KEY:pubkey/(privkey:hash(pubkey,privkey))
+const std::string KEYMETA           = "keymeta";    // KEYMETA:pubkey/key-meta
 const std::string MINVERSION        = "minversion"; // MINVERSION/version
 const std::string MKEY              = "mkey";       // MKEY:id/masterkey
 const std::string NAME              = "name";       // NAME:address/name
 const std::string ORDERPOSNEXT      = "orderposnext";  // ORDERPOSNEXT/order-pos-next
 const std::string POOL              = "pool";       // POOL:number/keypool
 #ifdef USE_HSM
-const std::string HSM_KEY			= "HSM_key";    // HSM_KEY:pub-key/HSM-ID
+const std::string HSM_KEY			= "HSM_key";    // HSM_KEY:pubkey/HSM-ID
 const std::string HSM_POOL          = "HSM_pool";   // HSM_POOL:number/keypool
 #endif
 const std::string PURPOSE           = "purpose";    // PURPOSE:address/purpose
@@ -59,7 +59,7 @@ const std::string TX                = "tx";         // TX:trx-hash/trx
 const std::string USER_MSG          = "user_msg";   // USER_MSG:(tag:hash)/msg
 const std::string VERSION           = "version";    // VERSION/version
 const std::string WATCHS            = "watchs";     // WATCHS/dest
-const std::string WKEY              = "wkey";       // WKEY/pub-key
+const std::string WKEY              = "wkey";       // WKEY:pubkey/privkey
 const std::string WOTCERT           = "wotcert";    // WOTCERT:(pubkey:spubkey)/(sig,cert)
 const std::string WOTCRTRVK         = "wotcrtrvk";  // WOTCERT:(pubkey:spubkey)/reason
 }

@@ -536,18 +536,11 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
 			++si;
 		}
 
-		std::stringstream ss;
-		cert.Serialize( ss, SER_NETWORK, PROTOCOL_VERSION );
-
-		auto ci = ss.str().begin();
-		auto ce = ss.str().end();
-		while( ci != ce )
-		{
-			*i = *ci;
-
-			++i;
-			++ci;
-		}
+		CDataStream ss( 
+			reinterpret_cast<const char *>(data.data()+pkLen+spkLen+sizeof(uint16_t)*3),
+			reinterpret_cast<const char *>(data.data() + data.size()), 
+			SER_NETWORK, PROTOCOL_VERSION);
+		ss << cert;
 
 		// Broadcast certificate to the network
 	    CBroadcast * msg = CBroadcast::create( CCreateWoTcertificate::tag, senderID, data);
