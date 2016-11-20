@@ -5894,3 +5894,10 @@ const std::vector<unsigned char> & signature,
 	return false;
 }
 
+bool CEDCWallet::AddPoll(
+	const CKeyID & issuerID,
+	const Poll & poll )
+{
+	// TODO: AddPoll
+	return false;
+}

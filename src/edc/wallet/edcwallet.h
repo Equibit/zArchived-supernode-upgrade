@@ -51,6 +51,7 @@ class CScript;
 class CEDCTxMemPool;
 class CEDCWalletTx;
 class CEDCBlock;
+class Poll;
 class WoTCertificate;
 
 
@@ -1014,6 +1015,8 @@ public:
 	void LoadIssuerProxyRevoke( const std::string & ts, const std::string &, const std::string &, const std::string & );
 	void LoadPollProxy( const std::string & ts, const std::string &, const std::string &, const std::string & );
 	void LoadPollProxyRevoke( const std::string & ts, const std::string &, const std::string &, const std::string & );
+
+	bool AddPoll( const CKeyID &, const Poll & );
 };
 
 /** A key allocated from the key pool. */

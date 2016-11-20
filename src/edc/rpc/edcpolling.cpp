@@ -152,25 +152,34 @@ UniValue edcpoll(const UniValue& params, bool fHelp)
 		startDate = buff;
 	}
 
+	EDCapp & theApp = EDCapp::singleton();
+
 	Poll poll( issuerID, question, ansVec, startDate, endDate );
 
-//	TODO: Save poll to wallet
+	bool rc;
+	{
+		LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
+
+		edcEnsureWalletIsUnlocked();
+		rc = theApp.walletMain()->AddPoll( issuerID, poll );
+	}
 
 	// Broadcast poll to the network
 
-	CDataStream ssPoll(SER_NETWORK, PROTOCOL_VERSION);
-	ssPoll << poll;
+	if( rc )
+	{
+		CDataStream ssPoll(SER_NETWORK, PROTOCOL_VERSION);
+		ssPoll << poll;
 
-	std::vector<unsigned char> data;
-	ssPoll >> data;
+		std::vector<unsigned char> data;
+		ssPoll >> data;
 
-	CBroadcast * msg = CBroadcast::create( CPoll::tag, issuerID, data);
+		CBroadcast * msg = CBroadcast::create( CPoll::tag, issuerID, data);
+	
+		theApp.connman()->RelayUserMessage( msg, true );
+	}
 
-	EDCapp & theApp = EDCapp::singleton();
-
-	theApp.connman()->RelayUserMessage( msg, true );
-
-    return NullUniValue;
+	return NullUniValue;
 }
 
 UniValue edcvote(const UniValue& params, bool fHelp)
