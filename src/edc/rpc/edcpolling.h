@@ -51,12 +51,12 @@ public:
 	template <typename Stream, typename Operation>
 	inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
 	{
-// TODO
+		READWRITE(results_);
 	}
 
-	void addVote();
+	void addVote( );
 
 private:
 	//            Answer  Count
-	std::map<std::string, unsigned>	result;
+	std::map<std::string, unsigned>	results_;
 };

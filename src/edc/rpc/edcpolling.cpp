@@ -243,7 +243,7 @@ const CRPCCommand edcCommands[] =
 
 }
 
-void edcRegisterWoTRPCCommands(CEDCRPCTable & edcTableRPC)
+void edcRegisterPollingRPCCommands(CEDCRPCTable & edcTableRPC)
 {
     for (unsigned int vcidx = 0; vcidx < ARRAYLEN(edcCommands); vcidx++)
         edcTableRPC.appendCommand(edcCommands[vcidx].name, &edcCommands[vcidx]);

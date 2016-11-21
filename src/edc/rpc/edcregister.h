@@ -34,6 +34,12 @@ void edcRegisterMessagingRPCCommands(CEDCRPCTable & edcTableRPC);
 /** Register web-of-trust related RPC commands */
 void edcRegisterWoTRPCCommands(CEDCRPCTable & edcTableRPC);
 
+/** Register polling related RPC commands */
+void edcRegisterPollingRPCCommands(CEDCRPCTable & edcTableRPC);
+
+/** Register proxy related RPC commands */
+void edcRegisterProxyRPCCommands(CEDCRPCTable & edcTableRPC);
+
 inline void edcRegisterAllCoreRPCCommands(CEDCRPCTable & t)
 {
     edcRegisterBlockchainRPCCommands(t);
@@ -44,5 +50,7 @@ inline void edcRegisterAllCoreRPCCommands(CEDCRPCTable & t)
 	edcRegisterIssuerRPCCommands(t);
 	edcRegisterMessagingRPCCommands(t);
 	edcRegisterWoTRPCCommands(t);
+	edcRegisterPollingRPCCommands(t);
+	edcRegisterProxyRPCCommands(t);
 }
 

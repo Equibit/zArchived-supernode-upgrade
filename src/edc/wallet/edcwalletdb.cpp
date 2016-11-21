@@ -2573,24 +2573,20 @@ bool CEDCWalletDB::WritePollProxyRevoke(
 
 bool CEDCWalletDB::WritePoll( const Poll & poll )
 {
-	// TODO: WritePoll
-	return false;
+	return Write( std::make_pair( POLL, poll.id() ), poll );
 }
 
-bool CEDCWalletDB::ErasePoll( const Poll & poll )
+bool CEDCWalletDB::ErasePoll( const uint160 & id )
 {
-	// TODO: WritePoll
-	return false;
+	return Erase( std::make_pair( POLL, id ) );
 }
 
-bool CEDCWalletDB::WritePollResult( const PollResult & pollResult )
+bool CEDCWalletDB::WritePollResult( const uint160 & id, const PollResult & pollResult )
 {
-	// TODO: WritePollResult
-	return false;
+	return Write( std::make_pair( POLL_RESULT, id ), pollResult );
 }
 
-bool CEDCWalletDB::ErasePollResult( const PollResult & pollResult )
+bool CEDCWalletDB::ErasePollResult( const uint160 & id )
 {
-	// TODO: WritePollResult
-	return false;
+	return Erase( std::make_pair( POLL_RESULT, id ) );
 }

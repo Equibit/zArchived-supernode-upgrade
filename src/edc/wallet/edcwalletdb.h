@@ -196,10 +196,10 @@ public:
 		const std::vector<unsigned char > & signature );
 
 	bool WritePoll( const Poll & );
-	bool ErasePoll( const Poll & );
+	bool ErasePoll( const uint160 & );
 
-	bool WritePollResult( const PollResult & );
-	bool ErasePollResult( const PollResult & );
+	bool WritePollResult( const uint160 &, const PollResult & );
+	bool ErasePollResult( const uint160 & );
 
 private:
     CEDCWalletDB(const CEDCWalletDB&);
