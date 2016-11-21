@@ -12,12 +12,12 @@
 #include "edc/edcmain.h"
 #include <stdexcept>
 #include <sstream>
+#include "edc/rpc/edcwot.h"
+#include "edc/rpc/edcserver.h"
 #ifdef USE_HSM
 #include "Thales/interface.h"
 #include <secp256k1.h>
 #include "edc/edcparams.h"
-#include "edc/rpc/edcwot.h"
-#include "edc/rpc/edcserver.h"
 
 namespace
 {
