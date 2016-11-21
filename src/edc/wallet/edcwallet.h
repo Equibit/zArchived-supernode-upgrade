@@ -985,10 +985,11 @@ public:
     /* Set the current HD master key (will reset the chain child index counters) */
     bool SetHDMasterKey(const CPubKey& key);
 
-	bool AddWoTCertificate( const CPubKey & pk1, const CPubKey & pk2, const WoTCertificate & cert );
+	bool AddWoTCertificate( const CPubKey & pk1, const CPubKey & pk2, const WoTCertificate & cert,
+		std::string & );
 	bool RevokeWoTCertificate(const CPubKey & pk1, const CPubKey & pk2, 
-							  const std::string & reason );
-	bool DeleteWoTCertificate(const CPubKey & pk1, const CPubKey & pk2 );
+							  const std::string & reason, std::string & );
+	bool DeleteWoTCertificate(const CPubKey & pk1, const CPubKey & pk2, std::string & );
 	bool WoTchainExists( const CPubKey &, const CPubKey &, uint64_t );
 	bool WoTchainExists( const CPubKey &, const CPubKey &, const CPubKey &, uint64_t );
 
@@ -1016,7 +1017,8 @@ public:
 	void LoadPollProxy( const std::string & ts, const std::string &, const std::string &, const std::string & );
 	void LoadPollProxyRevoke( const std::string & ts, const std::string &, const std::string &, const std::string & );
 
-	bool AddPoll( const CKeyID &, const Poll & );
+	bool AddPoll( const Poll &, std::string & );
+	void LoadPoll( const Poll & );
 };
 
 /** A key allocated from the key pool. */

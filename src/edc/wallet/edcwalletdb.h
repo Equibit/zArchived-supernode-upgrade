@@ -30,7 +30,10 @@ class CEDCWalletTx;
 class CUserMessage;
 class uint160;
 class uint256;
+class Poll;
+class PollResult;
 class WoTCertificate;
+
 
 /** Access to the wallet database */
 class CEDCWalletDB : public CEDCDB
@@ -191,6 +194,12 @@ public:
 		const std::string & pollID, 
 		const std::string & cert, 
 		const std::vector<unsigned char > & signature );
+
+	bool WritePoll( const Poll & );
+	bool ErasePoll( const Poll & );
+
+	bool WritePollResult( const PollResult & );
+	bool ErasePollResult( const PollResult & );
 
 private:
     CEDCWalletDB(const CEDCWalletDB&);

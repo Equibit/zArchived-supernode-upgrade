@@ -5195,11 +5195,14 @@ bool CEDCWallet::GetHSMPubKey(const CKeyID & id, CPubKey & out ) const
 bool CEDCWallet::AddWoTCertificate( 
 					   const CPubKey & pk, 	  // Key to be certified
 					   const CPubKey & spk,   // Signing public key
-				const WoTCertificate & cert	) // The certificate
+				const WoTCertificate & cert,  // The certificate
+						 std::string & errStr )
 {
 	if(!CEDCWalletDB(strWalletFile).WriteWoTcertificate( pk, spk, cert ))
-		throw runtime_error(std::string(__func__) + 
-			": writing WoT certificate failed");
+	{
+		errStr = std::string(__func__) + ": writing WoT certificate failed";
+		return false;
+	}
 
 	auto itPair = wotCertificates.equal_range( pk );
 
@@ -5235,8 +5238,11 @@ bool CEDCWallet::AddWoTCertificate(
 			{
 				// Remove from DB
 				if(!CEDCWalletDB(strWalletFile).EraseWoTcertificateRevocation( pk, spk ))
-					throw runtime_error(std::string(__func__) + 
-						": deleting WoT certificate revocation failed");
+				{
+					errStr = std::string(__func__) + 
+						": deleting WoT certificate revocation failed";
+					return false;
+				}
 
 				it->second.revoked = false;
 			}
@@ -5250,11 +5256,15 @@ bool CEDCWallet::AddWoTCertificate(
 bool CEDCWallet::RevokeWoTCertificate(
 		const CPubKey & pk, 		// Key to be certified
 		const CPubKey & spk, 		// Signing public key
-	const std::string & reason )	// Reason for revocation
+	const std::string & reason,		// Reason for revocation
+		  std::string & errStr )
 {
 	if(!CEDCWalletDB(strWalletFile).WriteWoTcertificateRevocation( pk, spk, reason ))
-		throw runtime_error(std::string(__func__) + 
-			": writing WoT certificate revocation failed");
+	{
+		errStr = std::string(__func__) + 
+			": writing WoT certificate revocation failed";
+		return false;
+	}
 
 	auto itPair = wotCertificates.equal_range( pk );
 
@@ -5295,11 +5305,14 @@ bool CEDCWallet::RevokeWoTCertificate(
 
 bool CEDCWallet::DeleteWoTCertificate(
 		const CPubKey & pk, 		// Key to be certified
-		const CPubKey & spk )		// Signing public key
+		const CPubKey & spk,		// Signing public key
+		  std::string & errStr )
 {
 	if(!CEDCWalletDB(strWalletFile).EraseWoTcertificate( pk, spk ))
-		throw runtime_error(std::string(__func__) + 
-			": erasing WoT certificate failed");
+	{
+		errStr = std::string(__func__) + ": erasing WoT certificate failed";
+		return false;
+	}
 
 	auto itPair = wotCertificates.equal_range( pk );
 
@@ -5894,10 +5907,23 @@ const std::vector<unsigned char> & signature,
 	return false;
 }
 
-bool CEDCWallet::AddPoll(
-	const CKeyID & issuerID,
-	const Poll & poll )
+bool CEDCWallet::AddPoll( 
+	 const Poll & poll,
+	std::string & errStr )
 {
-	// TODO: AddPoll
+	// TODO: Write poll to Wallet DB
+	if(!CEDCWalletDB(strWalletFile).WritePoll( poll ))
+	{
+		errStr = std::string(__func__) + ":poll proxy revoke write failed";
+		return false;
+	}
+
+	LoadPoll( poll );
+
 	return false;
+}
+
+void CEDCWallet::LoadPoll( const Poll & poll )
+{
+// TODO
 }

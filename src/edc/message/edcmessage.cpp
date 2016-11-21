@@ -1106,7 +1106,10 @@ void CCreateWoTcertificate::process( CEDCWallet & wallet )
 
     extract( pubkey, sPubkey, cert );
 
-    wallet.AddWoTCertificate( pubkey, sPubkey, cert );
+	std::string errStr;
+    bool rc = wallet.AddWoTCertificate( pubkey, sPubkey, cert, errStr );
+	if(!rc)
+		error( errStr.c_str() );
 }
 
 void CRevokeWoTcertificate::process( CEDCWallet & wallet )
@@ -1117,7 +1120,10 @@ void CRevokeWoTcertificate::process( CEDCWallet & wallet )
 
     extract( pubkey, sPubkey, reason );
 
-    wallet.RevokeWoTCertificate( pubkey, sPubkey, reason );
+	std::string errStr;
+    bool rc = wallet.RevokeWoTCertificate( pubkey, sPubkey, reason, errStr );
+	if(!rc)
+		error( errStr.c_str() );
 }
 
 namespace

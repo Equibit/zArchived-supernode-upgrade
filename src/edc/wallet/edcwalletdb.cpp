@@ -19,6 +19,7 @@
 #include "edc/edcapp.h"
 #include "edc/message/edcmessage.h"
 #include "edc/rpc/edcwot.h"
+#include "edc/rpc/edcpolling.h"
 
 #include <boost/version.hpp>
 #include <boost/filesystem.hpp>
@@ -49,6 +50,8 @@ const std::string MINVERSION        = "minversion"; // MINVERSION/version
 const std::string MKEY              = "mkey";       // MKEY:id/masterkey
 const std::string NAME              = "name";       // NAME:address/name
 const std::string ORDERPOSNEXT      = "orderposnext";  // ORDERPOSNEXT/order-pos-next
+const std::string POLL				= "poll";		// POLL:id/value
+const std::string POLL_RESULT		= "poll_result";// POLL_RESULT:id/value
 const std::string POOL              = "pool";       // POOL:number/keypool
 #ifdef USE_HSM
 const std::string HSM_KEY			= "HSM_key";    // HSM_KEY:pubkey/HSM-ID
@@ -2566,4 +2569,28 @@ bool CEDCWalletDB::WritePollProxyRevoke(
 {
 	return Write( std::make_pair( PPROXY_RVK, std::make_pair( std::make_pair( addr, paddr),pollID)),
 				  std::make_pair( ts, signature) );
+}
+
+bool CEDCWalletDB::WritePoll( const Poll & poll )
+{
+	// TODO: WritePoll
+	return false;
+}
+
+bool CEDCWalletDB::ErasePoll( const Poll & poll )
+{
+	// TODO: WritePoll
+	return false;
+}
+
+bool CEDCWalletDB::WritePollResult( const PollResult & pollResult )
+{
+	// TODO: WritePollResult
+	return false;
+}
+
+bool CEDCWalletDB::ErasePollResult( const PollResult & pollResult )
+{
+	// TODO: WritePollResult
+	return false;
 }

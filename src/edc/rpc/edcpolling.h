@@ -39,3 +39,24 @@ private:
 	time_t 		start_;
 	time_t 		end_;
 };
+
+
+class PollResult
+{
+public:
+	PollResult( );
+
+	ADD_SERIALIZE_METHODS;
+
+	template <typename Stream, typename Operation>
+	inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+	{
+// TODO
+	}
+
+	void addVote();
+
+private:
+	//            Answer  Count
+	std::map<std::string, unsigned>	result;
+};

@@ -493,60 +493,61 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
  	cert.sign( pubkey, sPubkey );
 
 	bool rc;
+	std::string errStr;
 	{
 		LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
 		edcEnsureWalletIsUnlocked();
-		rc = theApp.walletMain()->AddWoTCertificate( pubkey, sPubkey, cert );
+		rc = theApp.walletMain()->AddWoTCertificate( pubkey, sPubkey, cert, errStr );
 	}
 
-	if(rc)
-	{
-		uint16_t pkLen = static_cast<uint16_t>(pubkey.size());
-		uint16_t spkLen= static_cast<uint16_t>(sPubkey.size());
+	if(!rc)
+		throw JSONRPCError(RPC_TYPE_ERROR, errStr );
 
-		uint16_t cLen = static_cast<uint16_t>(cert.GetSerializeSize(SER_NETWORK, PROTOCOL_VERSION));
+	uint16_t pkLen = static_cast<uint16_t>(pubkey.size());
+	uint16_t spkLen= static_cast<uint16_t>(sPubkey.size());
 
-		std::vector<unsigned char> data;
-		data.resize(pkLen + spkLen + cLen + sizeof(uint16_t)*3 );
+	uint16_t cLen = static_cast<uint16_t>(cert.GetSerializeSize(SER_NETWORK, PROTOCOL_VERSION));
 
-		*reinterpret_cast<uint16_t *>(data.data()) 					  = pkLen;
-		*reinterpret_cast<uint16_t *>(data.data()+sizeof(uint16_t))   = spkLen;
-		*reinterpret_cast<uint16_t *>(data.data()+sizeof(uint16_t)*2) = cLen;
+	std::vector<unsigned char> data;
+	data.resize(pkLen + spkLen + cLen + sizeof(uint16_t)*3 );
 
-		auto i = data.begin() + 3 * sizeof(uint16_t);
+	*reinterpret_cast<uint16_t *>(data.data()) 					  = pkLen;
+	*reinterpret_cast<uint16_t *>(data.data()+sizeof(uint16_t))   = spkLen;
+	*reinterpret_cast<uint16_t *>(data.data()+sizeof(uint16_t)*2) = cLen;
+
+	auto i = data.begin() + 3 * sizeof(uint16_t);
 		
-		auto pi = pubkey.begin();
-		auto pe = pubkey.end();
-		while( pi != pe )
-		{
-			*i = *pi;
+	auto pi = pubkey.begin();
+	auto pe = pubkey.end();
+	while( pi != pe )
+	{
+		*i = *pi;
 
-			++i;
-			++pi;
-		}
-
-		auto si = sPubkey.begin();
-		auto se = sPubkey.end();
-		while( si != se )
-		{
-			*i = *si;
-
-			++i;
-			++si;
-		}
-
-		CDataStream ss( 
-			reinterpret_cast<const char *>(data.data()+pkLen+spkLen+sizeof(uint16_t)*3),
-			reinterpret_cast<const char *>(data.data() + data.size()), 
-			SER_NETWORK, PROTOCOL_VERSION);
-		ss << cert;
-
-		// Broadcast certificate to the network
-	    CBroadcast * msg = CBroadcast::create( CCreateWoTcertificate::tag, senderID, data);
-
-		theApp.connman()->RelayUserMessage( msg, true );
+		++i;
+		++pi;
 	}
+
+	auto si = sPubkey.begin();
+	auto se = sPubkey.end();
+	while( si != se )
+	{
+		*i = *si;
+
+		++i;
+		++si;
+	}
+
+	CDataStream ss( 
+		reinterpret_cast<const char *>(data.data()+pkLen+spkLen+sizeof(uint16_t)*3),
+		reinterpret_cast<const char *>(data.data() + data.size()), 
+		SER_NETWORK, PROTOCOL_VERSION);
+	ss << cert;
+
+	// Broadcast certificate to the network
+    CBroadcast * msg = CBroadcast::create( CCreateWoTcertificate::tag, senderID, data);
+
+	theApp.connman()->RelayUserMessage( msg, true );
 
     return NullUniValue;
 }
@@ -580,7 +581,7 @@ UniValue edcrevokewotcertificate(const UniValue& params, bool fHelp)
 			"1. \"address\"      (string, required) Address of public key to be revoked\n"
 			"2. \"sign-address\" (string, required) Address of public key of signer\n"
 			"3. \"reason\"       (string, optional) Reason for revocation\n"
-            "\nResult: true or false\n"
+            "\nResult: None\n"
             "\nExamples:\n"
             + HelpExampleCli("eb_revokewotcertificate", "\"1234d20sdmDScedc2edscad\" \"0cmscadc9dcadsadvadvava\"")
             + HelpExampleRpc("eb_revokewotcertificate", "\"1234d20sdmDScedc2edscad\" \"0cmscadc9dcadsadvadvava\"")
@@ -607,7 +608,17 @@ UniValue edcrevokewotcertificate(const UniValue& params, bool fHelp)
 	if(!sender.GetKeyID(senderID))
        	throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
 
-	bool rc = theApp.walletMain()->RevokeWoTCertificate( pubkey, spubkey, reason );
+	bool rc;
+	std::string errStr;
+	{
+		LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
+
+		edcEnsureWalletIsUnlocked();
+		rc = theApp.walletMain()->RevokeWoTCertificate( pubkey, spubkey, reason, errStr );
+	}
+
+	if(!rc)
+		throw JSONRPCError(RPC_TYPE_ERROR, errStr );
 
 	uint16_t pkLen = static_cast<uint16_t>(pubkey.size());
 	uint16_t saLen = static_cast<uint16_t>(saddr.size());
@@ -652,16 +663,12 @@ UniValue edcrevokewotcertificate(const UniValue& params, bool fHelp)
 		++ri;
 	}
 
-	if(rc)
-	{
-		// Broadcast certificate revocation to the network
-		CBroadcast * msg = CBroadcast::create( CRevokeWoTcertificate::tag, senderID, data);
+	// Broadcast certificate revocation to the network
+	CBroadcast * msg = CBroadcast::create( CRevokeWoTcertificate::tag, senderID, data);
 
-		theApp.connman()->RelayUserMessage( msg, true );
-	}
+	theApp.connman()->RelayUserMessage( msg, true );
 
-    UniValue result(rc);
-    return result;
+    return NullUniValue;
 }
 
 /******************************************************************************
@@ -707,10 +714,19 @@ UniValue edcdeletewotcertificate(const UniValue& params, bool fHelp)
 	CPubKey	spubkey;
 	addressToPubKey( saddr, spubkey, theParams.usehsm, theApp );
 
-	bool rc = theApp.walletMain()->DeleteWoTCertificate( pubkey, spubkey );
+	bool rc;
+	std::string errStr;
+	{
+		LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-    UniValue result(rc);
-    return result;
+		edcEnsureWalletIsUnlocked();
+		rc = theApp.walletMain()->DeleteWoTCertificate( pubkey, spubkey, errStr );
+	}
+
+	if(!rc)
+		throw JSONRPCError(RPC_TYPE_ERROR, errStr );
+
+    return NullUniValue;
 }
 
 /******************************************************************************

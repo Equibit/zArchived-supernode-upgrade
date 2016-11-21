@@ -157,27 +157,26 @@ UniValue edcpoll(const UniValue& params, bool fHelp)
 	Poll poll( issuerID, question, ansVec, startDate, endDate );
 
 	bool rc;
+	std::string errStr;
 	{
 		LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
 		edcEnsureWalletIsUnlocked();
-		rc = theApp.walletMain()->AddPoll( issuerID, poll );
+		rc = theApp.walletMain()->AddPoll( poll, errStr );
 	}
+	if(!rc)
+       	throw JSONRPCError(RPC_TYPE_ERROR, errStr );
 
 	// Broadcast poll to the network
+	CDataStream ssPoll(SER_NETWORK, PROTOCOL_VERSION);
+	ssPoll << poll;
 
-	if( rc )
-	{
-		CDataStream ssPoll(SER_NETWORK, PROTOCOL_VERSION);
-		ssPoll << poll;
+	std::vector<unsigned char> data;
+	ssPoll >> data;
 
-		std::vector<unsigned char> data;
-		ssPoll >> data;
+	CBroadcast * msg = CBroadcast::create( CPoll::tag, issuerID, data);
 
-		CBroadcast * msg = CBroadcast::create( CPoll::tag, issuerID, data);
-	
-		theApp.connman()->RelayUserMessage( msg, true );
-	}
+	theApp.connman()->RelayUserMessage( msg, true );
 
 	return NullUniValue;
 }
@@ -219,8 +218,8 @@ UniValue edcpollresults(const UniValue& params, bool fHelp)
             "2. \"pollid\"         (string, required) The id of the poll\n"
             "\nResult: None\n"
             "\nExamples:\n"
-            + HelpExampleCli("eb_vote", "\"139...301\" \"1xcc...adfv\" \"John Black\"" )
-            + HelpExampleRpc("eb_vote", "\"139...301\", \"1vj4...adfv\" \"Mary Smyth\"" )
+            + HelpExampleCli("eb_pollresults", "\"139...301\" \"1xcc...adfv\" \"John Black\"" )
+            + HelpExampleRpc("eb_pollresults", "\"139...301\", \"1vj4...adfv\" \"Mary Smyth\"" )
         );
 
 	std::string address = params[0].get_str();
@@ -304,4 +303,7 @@ bool Poll::validDate( time_t d ) const
 
 uint160	Poll::id() const
 {
+	CDataStream	ss(SER_NETWORK, PROTOCOL_VERSION);
+	ss << *this;
+	return Hash160( ss.begin(), ss.end() );
 }
