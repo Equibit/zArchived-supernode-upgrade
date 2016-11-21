@@ -18,6 +18,7 @@
 #include "edc/wallet/edcwalletdb.h"
 #include "wallet/rpcwallet.h"
 #include "edc/primitives/edctransaction.h"
+#include "edc/rpc/edcpolling.h"
 
 #include <algorithm>
 #include <map>
@@ -52,6 +53,7 @@ class CEDCTxMemPool;
 class CEDCWalletTx;
 class CEDCBlock;
 class Poll;
+class PollResult;
 class WoTCertificate;
 
 
@@ -470,9 +472,9 @@ CEDCMutableTransaction & txIn,				// IN: Input Transaction
 		std::tuple<std::string, std::string, bool> generalProxy;
 	};
 
-	//       address
-	std::map<std::string, Proxy >	proxyMap;
-    mutable CCriticalSection 	cs_proxyMap;
+	std::map<std::string, Proxy>	proxyMap;
+	std::map<uint160, Poll>			polls;
+	std::map<uint160, PollResult>	pollResults;
 
 public:
     /*
@@ -940,10 +942,10 @@ public:
 	void LoadMessage( const std::string & tag, const uint256 & hash, CUserMessage * msg );
 	bool AddMessage( const std::string & tag, const uint256 & hash, CUserMessage * msg );
 
-	void	GetMessage( const uint256 &, CUserMessage * & msg );
-	void	DeleteMessage( const uint256 & );
+	void GetMessage( const uint256 &, CUserMessage * & msg );
+	void DeleteMessage( const uint256 & );
 
-	void	GetMessages( 
+	void GetMessages( 
    		time_t from,
     	time_t to,
     	const std::set<std::string> & assets,
@@ -952,7 +954,7 @@ public:
     	const std::set<std::string> & receivers,
 		   std::vector<CUserMessage *> & out
 	);
-	void	DeleteMessages( 
+	void DeleteMessages( 
    		time_t from,
     	time_t to,
     	const std::set<std::string> & assets,

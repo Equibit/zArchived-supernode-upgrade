@@ -57,7 +57,10 @@ Verifier    verifier;
 
 using namespace std;
 
-static CCriticalSection cs_nWalletUnlockTime;
+namespace
+{
+CCriticalSection cs_nWalletUnlockTime;
+};
 
 std::string edcHelpRequiringPassphrase()
 {

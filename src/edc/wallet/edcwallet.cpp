@@ -3958,8 +3958,6 @@ const std::string & hsmID
 
 void CEDCWallet::GetHSMKeys( std::set<CKeyID> & keys ) const
 {
-    LOCK(cs_wallet);
-
 	std::map<CKeyID, std::pair<CPubKey, std::string > >::const_iterator i = hsmKeyMap.begin();
 	std::map<CKeyID, std::pair<CPubKey, std::string > >::const_iterator e = hsmKeyMap.end();
 
@@ -5204,6 +5202,8 @@ bool CEDCWallet::AddWoTCertificate(
 		return false;
 	}
 
+	LOCK(cs_wallet);
+
 	auto itPair = wotCertificates.equal_range( pk );
 
 	if( itPair.first == itPair.second )
@@ -5266,6 +5266,8 @@ bool CEDCWallet::RevokeWoTCertificate(
 		return false;
 	}
 
+	LOCK(cs_wallet);
+
 	auto itPair = wotCertificates.equal_range( pk );
 
 	if( itPair.first == itPair.second )
@@ -5313,6 +5315,8 @@ bool CEDCWallet::DeleteWoTCertificate(
 		errStr = std::string(__func__) + ": erasing WoT certificate failed";
 		return false;
 	}
+
+	LOCK(cs_wallet);
 
 	auto itPair = wotCertificates.equal_range( pk );
 
@@ -5379,6 +5383,7 @@ bool CEDCWallet::WoTchainExists(
 		const CPubKey & spk, 		// First key in chain
 			   uint64_t maxlen )
 {
+	LOCK(cs_wallet);
 	return wotChainExists( spk, epk, 1, maxlen );
 }
 
@@ -5421,6 +5426,7 @@ bool CEDCWallet::WoTchainExists(
 		const CPubKey & expk,		// Exceptional key. It cannot appear in the chain
 			   uint64_t maxlen )
 {
+	LOCK(cs_wallet);
 	return wotChainExists( spk, epk, 1, maxlen );
 }
 
@@ -5429,6 +5435,7 @@ void CEDCWallet::LoadWoTCertificate(
 			const CPubKey & pk2, 
 	 const WoTCertificate & cert )
 {
+	LOCK(cs_wallet);
 	wotCertificates.insert( std::make_pair( pk1, WoTdata( pk2 ) ) );
 }
 
@@ -5437,6 +5444,7 @@ void CEDCWallet::LoadWoTCertificateRevoke(
 		const CPubKey & pk2, 
 	const std::string & reason )
 {
+	LOCK(cs_wallet);
 	auto ip = wotCertificates.equal_range( pk1 );
 	if( ip.first != ip.second )
 	{
@@ -5715,7 +5723,7 @@ void CEDCWallet::LoadGeneralProxy(
 	const std::string & addr, 
 	const std::string & paddr )
 {
-	LOCK(cs_proxyMap);
+	LOCK(cs_wallet);
 
 	auto it = proxyMap.insert( std::make_pair(addr,Proxy()) );
 
@@ -5739,7 +5747,7 @@ void CEDCWallet::LoadGeneralProxyRevoke(
 	const std::string & addr, 
 	const std::string & paddr )
 {
-	LOCK(cs_proxyMap);
+	LOCK(cs_wallet);
 
 	auto it = proxyMap.insert( std::make_pair(addr,Proxy()) );
 
@@ -5764,7 +5772,7 @@ void CEDCWallet::LoadIssuerProxy(
 	const std::string & paddr, 
 	const std::string & iaddr )
 {
-	LOCK(cs_proxyMap);
+	LOCK(cs_wallet);
 
 	auto it = proxyMap.insert( std::make_pair(addr,Proxy()) );
 	auto iit= it.first->second.issuerProxies.find( iaddr );
@@ -5792,7 +5800,7 @@ void CEDCWallet::LoadIssuerProxyRevoke(
 	const std::string & paddr, 
 	const std::string & iaddr )
 {
-	LOCK(cs_proxyMap);
+	LOCK(cs_wallet);
 
 	auto it = proxyMap.insert( std::make_pair(addr,Proxy()) );
 	auto iit= it.first->second.issuerProxies.find( iaddr );
@@ -5820,7 +5828,7 @@ void CEDCWallet::LoadPollProxy(
 	const std::string & paddr, 
 	const std::string & pollID )
 {
-	LOCK(cs_proxyMap);
+	LOCK(cs_wallet);
 
 	auto it = proxyMap.insert( std::make_pair(addr,Proxy()) );
 	auto iit= it.first->second.pollProxies.find( pollID );
@@ -5848,7 +5856,7 @@ void CEDCWallet::LoadPollProxyRevoke(
 	const std::string & paddr, 
 	const std::string & pollID )
 {
-	LOCK(cs_proxyMap);
+	LOCK(cs_wallet);
 
 	auto it = proxyMap.insert( std::make_pair(addr,Proxy()) );
 	auto iit= it.first->second.pollProxies.find( pollID );
@@ -5878,6 +5886,8 @@ bool CEDCWallet::VerifyProxy(
 const std::vector<unsigned char> & signature, 
 					 std::string & errStr )
 {
+	LOCK(cs_wallet);
+
     CHashWriter ss( SER_GETHASH, 0 );
 
 	ss << ts << addr << paddr;
@@ -5911,7 +5921,6 @@ bool CEDCWallet::AddPoll(
 	 const Poll & poll,
 	std::string & errStr )
 {
-	// TODO: Write poll to Wallet DB
 	if(!CEDCWalletDB(strWalletFile).WritePoll( poll ))
 	{
 		errStr = std::string(__func__) + ":poll proxy revoke write failed";
@@ -5925,5 +5934,7 @@ bool CEDCWallet::AddPoll(
 
 void CEDCWallet::LoadPoll( const Poll & poll )
 {
+	LOCK(cs_wallet);
+
 // TODO
 }

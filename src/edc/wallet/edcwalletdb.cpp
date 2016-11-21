@@ -295,8 +295,8 @@ bool CEDCWalletDB::WriteHSMPool(int64_t nPool, const CKeyPool& keypool)
 bool CEDCWalletDB::EraseHSMPool(int64_t nPool)
 {
 	EDCapp & theApp = EDCapp::singleton();
-
     theApp.incWalletDBUpdated();
+
     return Erase(std::make_pair(HSM_POOL, nPool));
 }
 #endif
@@ -325,6 +325,9 @@ bool CEDCWalletDB::ReadIssuer(const string& strIssuer, CIssuer & issuer )
 
 bool CEDCWalletDB::WriteIssuer(const string& strIssuer, const CIssuer & issuer )
 {
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
+
     return Write(make_pair(ISSUER, strIssuer), issuer );
 }
 
@@ -1401,8 +1404,8 @@ bool CEDCWalletDB::WriteDestData(
 bool CEDCWalletDB::EraseDestData(const std::string &address, const std::string &key)
 {
 	EDCapp & theApp = EDCapp::singleton();
-
     theApp.incWalletDBUpdated();
+
     return Erase(std::make_pair(std::string(DESTDATA), std::make_pair(address, key)));
 }
 
@@ -1979,6 +1982,9 @@ void CEDCWalletDB::ListIssuers( vector<pair<string,CIssuer>> & issuers )
 
 bool CEDCWalletDB::WriteUserMsg(const CUserMessage * msg )
 {
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
+
 	if( const CPeerToPeer * p2pmsg = dynamic_cast<const CPeerToPeer *>(msg))
 		return Write( 
 			make_pair( make_pair( USER_MSG, msg->vtag() ), msg->GetHash()), 
@@ -1998,6 +2004,8 @@ bool CEDCWalletDB::WriteUserMsg(const CUserMessage * msg )
 
 bool CEDCWalletDB::EraseUserMsg(const CUserMessage * msg )
 {
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
 	return Erase( make_pair( make_pair( USER_MSG, msg->vtag() ), msg->GetHash()));
 }
 
@@ -2486,6 +2494,8 @@ bool CEDCWalletDB::WriteWoTcertificate(
                    const CPubKey & spk,     // Signing public key
 		   const WoTCertificate  & cert )   // The certificate
 {
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
 	return Write( std::make_pair( WOTCERT, std::make_pair( pk, spk )), cert );
 }
 
@@ -2494,16 +2504,22 @@ bool CEDCWalletDB::WriteWoTcertificateRevocation(
     const CPubKey & spk,        // Signing public key
 const std::string & reason )	// Reason for revocation
 {
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
 	return Write( std::make_pair( WOTCRTRVK, std::make_pair( pk, spk )), reason );
 }
 
 bool CEDCWalletDB::EraseWoTcertificate(CPubKey const & pk, CPubKey const & spk )
 {
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
 	return Erase( std::make_pair( WOTCERT, std::make_pair( pk, spk )) );
 }
 
 bool CEDCWalletDB::EraseWoTcertificateRevocation(CPubKey const & pk, CPubKey const & spk )
 {
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
 	return Erase( std::make_pair( WOTCRTRVK, std::make_pair( pk, spk )) );
 }
 
@@ -2513,6 +2529,8 @@ bool CEDCWalletDB::WriteGeneralProxy(
 	const std::string & ts, 
 	const std::vector<unsigned char > & signature )
 {
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
 	return Write( std::make_pair( PROXY, std::make_pair( addr, paddr )),
 				  std::make_pair( ts,signature) );
 }
@@ -2523,6 +2541,8 @@ bool CEDCWalletDB::WriteGeneralProxyRevoke(
 	const std::string & ts, 
 	const std::vector<unsigned char > & signature )
 {
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
 	return Write( std::make_pair( PROXY_RVK, std::make_pair( addr, paddr )),
 				  std::make_pair( ts,signature) );
 }
@@ -2534,6 +2554,8 @@ bool CEDCWalletDB::WriteIssuerProxy(
 	const std::string & ts, 
 	const std::vector<unsigned char > & signature )
 {
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
 	return Write( std::make_pair( IPROXY, std::make_pair( std::make_pair( addr, paddr ), iaddr)),
 				  std::make_pair( ts, signature) );
 }
@@ -2545,6 +2567,8 @@ bool CEDCWalletDB::WriteIssuerProxyRevoke(
 	const std::string & ts, 
 	const std::vector<unsigned char > & signature )
 {
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
 	return Write( std::make_pair( IPROXY_RVK, std::make_pair( std::make_pair( addr, paddr ),iaddr)),
 				  std::make_pair( ts, signature) );
 }
@@ -2556,6 +2580,8 @@ bool CEDCWalletDB::WritePollProxy(
 	const std::string & ts, 
 	const std::vector<unsigned char > & signature )
 {
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
 	return Write( std::make_pair( PPROXY, std::make_pair( std::make_pair( addr, paddr), pollID)),
 				  std::make_pair( ts, signature) );
 }
@@ -2567,26 +2593,36 @@ bool CEDCWalletDB::WritePollProxyRevoke(
 	const std::string & ts, 
 	const std::vector<unsigned char > & signature )
 {
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
 	return Write( std::make_pair( PPROXY_RVK, std::make_pair( std::make_pair( addr, paddr),pollID)),
 				  std::make_pair( ts, signature) );
 }
 
 bool CEDCWalletDB::WritePoll( const Poll & poll )
 {
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
 	return Write( std::make_pair( POLL, poll.id() ), poll );
 }
 
 bool CEDCWalletDB::ErasePoll( const uint160 & id )
 {
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
 	return Erase( std::make_pair( POLL, id ) );
 }
 
 bool CEDCWalletDB::WritePollResult( const uint160 & id, const PollResult & pollResult )
 {
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
 	return Write( std::make_pair( POLL_RESULT, id ), pollResult );
 }
 
 bool CEDCWalletDB::ErasePollResult( const uint160 & id )
 {
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
 	return Erase( std::make_pair( POLL_RESULT, id ) );
 }
