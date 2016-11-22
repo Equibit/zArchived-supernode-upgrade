@@ -56,7 +56,7 @@ const std::string MINVERSION        = "minversion"; // MINVERSION/version
 const std::string MKEY              = "mkey";       // MKEY:id/masterkey
 const std::string NAME              = "name";       // NAME:address/name
 const std::string ORDERPOSNEXT      = "orderposnext";  // ORDERPOSNEXT/order-pos-next
-const std::string POLL				= "poll";		// POLL:id/value
+const std::string POLL				= "poll";		// POLL:id/poll-value
 const std::string POOL              = "pool";       // POOL:number/keypool
 const std::string PPROXY            = "pproxy";     // PPROXY:(addr,paddr:pollID)/(ts:sign)
 const std::string PPROXY_RVK        = "pproxy_rvk"; // PPROXY_RVK:(addr:paddr:pollID)/(ts:sign)
@@ -773,7 +773,7 @@ ReadKeyValue(
         }
 		else if( strType == ISSUER )
 		{
-// TODO: read ISSUER
+			; // no-op?
 		}
 		else if( strType == USER_MSG )
 		{
@@ -794,11 +794,32 @@ ReadKeyValue(
 		}
 		else if( strType == POLL )
 		{
-// TODO: read POLL
+			// POLL:id/poll-value
+			uint160 id;
+			ssKey >> id;
+
+			Poll poll;
+			ssValue >> poll;
+
+			pwallet->LoadPoll( poll );
 		}
 		else if( strType == VOTE )
 		{
-// TODO: read VOTE
+			// VOTE:(pollid:addr:paddr)/(iaddr:response)
+			CKeyID	addr;
+			std::string pollid;
+			std::string paddr;
+			std::string response;
+			CKeyID	iaddr;
+
+			ssKey >> pollid;
+			ssKey >> addr;
+			ssKey >> paddr;
+
+			ssValue >> iaddr;
+			ssValue >> response;
+
+			pwallet->LoadVote( addr, iaddr, pollid, response, paddr );
 		}
 		else if( strType == WOTCERT )
 		{
@@ -1559,11 +1580,21 @@ bool dumpKey(
 		}
 		else if( strType == POLL )
 		{
-// TODO: dumpkey POLL
+			uint160 id;
+			ssKey >> id;
+			out << ':' << id.ToString();
 		}
 		else if( strType == VOTE )
 		{
-// TODO: dumpkey VOTE
+			std::string pollid;
+			CKeyID addr;
+			std::string pAddr;
+
+			ssKey >> pollid;
+			ssKey >> addr;
+			ssKey >> pAddr;
+
+			out << ':' << pollid << ':' << addr.ToString() << ':' << pAddr;
 		}
 		else if( strType == WOTCERT )
 		{
@@ -1858,11 +1889,21 @@ dumpValue(
 		}
 		else if( strType == POLL )
 		{
-// TODO: dumpvalue POLL
+			// POLL:id/poll-value
+			Poll poll;
+			ssValue >> poll;
+			out << poll.toJSON() << endl;
 		}
 		else if( strType == VOTE )
 		{
-// TODO: dumpvalue VOTE
+			// VOTE:(pollid:addr:paddr)/(iaddr:response)
+			CKeyID issuer;
+			std::string response;
+
+			ssValue >> issuer;
+			ssValue >> response;
+
+			out << "{\"issuer\":\"" << issuer.ToString() << "\",\"response\":\"" << response <<  "\"}" << endl;
 		}
 		else if( strType == WOTCERT )
 		{

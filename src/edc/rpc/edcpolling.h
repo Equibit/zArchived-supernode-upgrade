@@ -33,6 +33,8 @@ public:
 
 	uint160	id() const;
 
+	std::string toJSON() const;
+
 private:
 	CKeyID 		issuerID_;
 	std::string question_;
@@ -45,8 +47,6 @@ private:
 class PollResult
 {
 public:
-	PollResult( );
-
 	ADD_SERIALIZE_METHODS;
 
 	template <typename Stream, typename Operation>
@@ -55,9 +55,18 @@ public:
 		READWRITE(results_);
 	}
 
-	void addVote( );
+	enum Type
+	{
+		GENERAL,// General proxy voted
+		ISSUER,	// Issuer specific proxy voted
+		POLL,	// Poll specific proxy voted
+		OWNER,	// Owner of equibit voted
+		INVALID	// Vote was made by proxy that has not be registered for owner
+	};
+
+	void addVote( const std::string & ans, const CKeyID & id, Type t );
 
 private:
-	//            Answer  Count
-	std::map<std::string, unsigned>	results_;
+
+	std::map<std::string, std::map<CKeyID, int>>	results_;
 };

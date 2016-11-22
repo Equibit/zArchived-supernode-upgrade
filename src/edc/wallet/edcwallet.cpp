@@ -5936,7 +5936,7 @@ void CEDCWallet::LoadPoll( const Poll & poll )
 {
 	LOCK(cs_wallet);
 
-// TODO: LoadPoll
+	polls.insert( std::make_pair( poll.id(), poll ));
 }
 
 bool CEDCWallet::AddVote( 
@@ -5965,5 +5965,54 @@ void CEDCWallet::LoadVote(
 	const std::string & response, 
 	const std::string & pAddr )
 {
+	LOCK(cs_wallet);
+
+	uint160 id;
+	id.SetHex(pollid);
+
+	auto it = pollResults.find( id );
+
+	if( it == pollResults.end() )
+	{
+		auto rc = pollResults.insert( std::make_pair( id, PollResult() ) );
+		it = rc.first;
+	}
+
+	auto pi = polls.find( id );
+	if( pi == polls.end() )
+	{
+		std::string msg = "Vote received on non-existent poll with id ";
+		msg += pollid;
+
+		error( msg.c_str() );
+		return;
+	}
+	else if( !pi->second.validAnswer( response ) )
+	{
+		std::string msg = "The vote of ";
+		msg += response;
+		msg += " is not a valid response to poll with id ";
+		msg += pollid;
+
+		error( msg.c_str() );
+		return;
+	}
+// TODO: Make sure poll is still open
+
+	// If pAddr is empty, then addr contains the address of the voter
+	// It has higher precendence then any proxy, so just assign the answer to the
+	// poll result.
+	//
+	if( pAddr.size() == 0 )
+	{
+		it->second.addVote( response, addr, PollResult::OWNER );
+	}
+	// else, pAddr is the address of the voter and addr is the address of the proxy
+	else
+	{
+		auto pt = proxyMap.find( pAddr );
+
+//		auto t = pt->second.
 // TODO: LoadVote
+	}
 }

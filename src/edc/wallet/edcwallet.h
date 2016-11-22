@@ -472,6 +472,7 @@ CEDCMutableTransaction & txIn,				// IN: Input Transaction
 		std::tuple<std::string, std::string, bool> generalProxy;
 	};
 
+	//			address
 	std::map<std::string, Proxy>	proxyMap;
 	std::map<uint160, Poll>			polls;
 	std::map<uint160, PollResult>	pollResults;

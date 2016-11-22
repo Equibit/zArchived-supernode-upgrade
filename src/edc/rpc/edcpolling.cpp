@@ -178,7 +178,8 @@ UniValue edcpoll(const UniValue& params, bool fHelp)
 
 	theApp.connman()->RelayUserMessage( msg, true );
 
-	return NullUniValue;
+	UniValue result(poll.id().ToString());
+	return result;
 }
 
 UniValue edcvote(const UniValue& params, bool fHelp)
@@ -374,4 +375,54 @@ uint160	Poll::id() const
 	CDataStream	ss(SER_NETWORK, PROTOCOL_VERSION);
 	ss << *this;
 	return Hash160( ss.begin(), ss.end() );
+}
+
+std::string Poll::toJSON() const
+{
+	std::string ans = "{\"issuer\":";
+    CKeyID issuerID_;
+
+	ans += ",\"question\":\"";
+    ans += question_;
+	ans += "\"";
+
+	ans += ",\"answers\": [" ;
+
+	auto i = answers_.begin();
+	auto e = answers_.end();
+	bool first = true;
+
+	while( i != e )
+	{
+		if(!first)
+			ans += ",";
+		else
+			first = false;
+
+		ans += "\"" + *i + "\"";
+		++i;
+	}
+	ans += "]";
+
+	ans += ",\"start\":";
+	char buff[16];
+	strftime(buff, 16, "\"%Y-%m-%d\"", localtime(&start_));
+	ans += buff;
+
+	ans += ",\"end\":";
+	strftime(buff, 16, "\"%Y-%m-%d\"", localtime(&end_));
+	ans += buff;
+
+	ans += "}";
+
+	return ans;
+};
+
+void PollResult::addVote(
+	const std::string & ans,
+	const CKeyID & id,
+	Type ty )
+{
+	auto rc = results_.insert( std::make_pair(ans, std::map<CKeyID, int>()) );
+	rc.first->second.insert( std::make_pair( id, static_cast<int>(ty) ) );
 }
