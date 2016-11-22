@@ -125,7 +125,7 @@ public:
 	virtual std::string	ToString() const;
 	virtual std::string	ToJSON() const;
 
-private:
+protected:
 	CKeyID	receiverAddr_;
 };
 
@@ -648,6 +648,9 @@ public:
 	virtual std::string vtag() const { return tag; }
 	virtual std::string desc() const;
 	virtual void process( CEDCWallet & );
+
+	void extract(std::string & pollid, std::string & response, 
+				 std::string & pAddr ) const;
 
 	static const std::string tag;
 };

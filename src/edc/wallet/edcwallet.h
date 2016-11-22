@@ -1021,6 +1021,11 @@ public:
 
 	bool AddPoll( const Poll &, std::string & );
 	void LoadPoll( const Poll & );
+
+	bool AddVote( const CKeyID & addr, const CKeyID & iaddr, const std::string & pollid,
+			const std::string & response, const std::string & pAddr, std::string & errStr );
+	void LoadVote(const CKeyID & addr, const CKeyID & iaddr, const std::string & pollid,
+			const std::string & response, const std::string & pAddr );
 };
 
 /** A key allocated from the key pool. */

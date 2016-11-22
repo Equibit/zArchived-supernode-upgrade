@@ -1352,5 +1352,55 @@ void CVote::process( CEDCWallet & wallet )
 
 	edcEnsureWalletIsUnlocked();
 
-    // TODO: CVote::process()
+	std::string	pollid;
+	std::string	response;
+	std::string	pAddr;
+
+	extract( pollid, response, pAddr );
+
+	std::string errStr;
+    bool rc = wallet.AddVote( senderAddr_, receiverAddr_, pollid, response, pAddr, errStr );
+	if(!rc)
+		error( errStr.c_str() );
+}
+
+void CVote::extract(
+	std::string & pollid, 
+	std::string & response, 
+	std::string & pAddr ) const
+{
+	const unsigned char * p = data_.data();
+	const unsigned char * end = data_.data() + data_.size();
+
+	auto len = *reinterpret_cast<const uint16_t *>(p);
+	p += sizeof(uint16_t);
+
+	pollid.resize(len);
+	auto i = pollid.begin();
+	auto e = pollid.end();
+	while( i != e )
+		*i++ = *p++;
+
+	len = *reinterpret_cast<const uint16_t *>(p);
+	p += sizeof(uint16_t);
+
+	response.resize(len);
+	i = response.begin();
+	e = response.end();
+
+	while( i != e )
+		*i++ = *p++;
+
+	if( p < end )
+	{
+		len = *reinterpret_cast<const uint16_t *>(p);
+		p += sizeof(uint16_t);
+
+		pAddr.resize(len);
+		i = pAddr.begin();
+		e = pAddr.end();
+
+		while( i != e )
+			*i++ = *p++;
+	}
 }

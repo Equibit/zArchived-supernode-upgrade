@@ -31,7 +31,6 @@ class CUserMessage;
 class uint160;
 class uint256;
 class Poll;
-class PollResult;
 class WoTCertificate;
 
 
@@ -198,8 +197,17 @@ public:
 	bool WritePoll( const Poll & );
 	bool ErasePoll( const uint160 & );
 
-	bool WritePollResult( const uint160 &, const PollResult & );
-	bool ErasePollResult( const uint160 & );
+	bool WriteVote( 
+         const CKeyID & addr,
+         const CKeyID & iaddr,
+    const std::string & pollid,
+    const std::string & response,
+    const std::string & pAddr );
+
+	bool EraseVote( 
+         const CKeyID & addr, 
+    const std::string & pollid,
+    const std::string & pAddr );
 
 private:
     CEDCWalletDB(const CEDCWalletDB&);

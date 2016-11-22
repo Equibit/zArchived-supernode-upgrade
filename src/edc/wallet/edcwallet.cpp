@@ -5938,3 +5938,32 @@ void CEDCWallet::LoadPoll( const Poll & poll )
 
 // TODO: LoadPoll
 }
+
+bool CEDCWallet::AddVote( 
+		 const CKeyID & addr, 
+		 const CKeyID & iaddr, 
+	const std::string & pollid,
+	const std::string & response, 
+	const std::string & pAddr, 
+		  std::string & errStr )
+{
+	if(!CEDCWalletDB(strWalletFile).WriteVote( addr, iaddr, pollid, response, pAddr ))
+	{
+		errStr = std::string(__func__) + ":poll vote write failed";
+		return false;
+	}
+
+	LoadVote( addr, iaddr, pollid, response, pAddr );
+
+	return true;
+}
+
+void CEDCWallet::LoadVote(
+		 const CKeyID & addr, 
+		 const CKeyID & iaddr, 
+	const std::string & pollid,
+	const std::string & response, 
+	const std::string & pAddr )
+{
+// TODO: LoadVote
+}

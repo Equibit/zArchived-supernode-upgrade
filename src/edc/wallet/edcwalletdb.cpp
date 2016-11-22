@@ -43,6 +43,12 @@ const std::string CSCRIPT           = "cscript";    // CSCRIPT:hash/script
 const std::string DEFAULTKEY        = "defaultkey"; // DEFAULTKEY/pubkey
 const std::string DESTDATA          = "destdata";   // DESTDATA:(address:key)/value
 const std::string HDCHAIN			= "hdchain";	// HDCHAIN/value
+#ifdef USE_HSM
+const std::string HSM_KEY			= "HSM_key";    // HSM_KEY:pubkey/HSM-ID
+const std::string HSM_POOL          = "HSM_pool";   // HSM_POOL:number/keypool
+#endif
+const std::string IPROXY            = "iproxy";     // IPROXY:(addr,paddr:iaddr)/(ts:sign)
+const std::string IPROXY_RVK        = "iproxy_rvk"; // IPROXY_RVK:(addr:paddr,iaddr)/(ts:sign)
 const std::string ISSUER            = "issuer";     // ISSUER:issuer-name/issuer
 const std::string KEY               = "key";        // KEY:pubkey/(privkey:hash(pubkey,privkey))
 const std::string KEYMETA           = "keymeta";    // KEYMETA:pubkey/key-meta
@@ -51,28 +57,21 @@ const std::string MKEY              = "mkey";       // MKEY:id/masterkey
 const std::string NAME              = "name";       // NAME:address/name
 const std::string ORDERPOSNEXT      = "orderposnext";  // ORDERPOSNEXT/order-pos-next
 const std::string POLL				= "poll";		// POLL:id/value
-const std::string POLL_RESULT		= "poll_result";// POLL_RESULT:id/value
 const std::string POOL              = "pool";       // POOL:number/keypool
-#ifdef USE_HSM
-const std::string HSM_KEY			= "HSM_key";    // HSM_KEY:pubkey/HSM-ID
-const std::string HSM_POOL          = "HSM_pool";   // HSM_POOL:number/keypool
-#endif
+const std::string PPROXY            = "pproxy";     // PPROXY:(addr,paddr:pollID)/(ts:sign)
+const std::string PPROXY_RVK        = "pproxy_rvk"; // PPROXY_RVK:(addr:paddr:pollID)/(ts:sign)
+const std::string PROXY             = "proxy";      // PROXY:(addr:paddr)/(ts:sign)
+const std::string PROXY_RVK         = "proxy_rvk";  // PROXY_RVK:(addr:paddr)/(ts:sign)
 const std::string PURPOSE           = "purpose";    // PURPOSE:address/purpose
 const std::string TX                = "tx";         // TX:trx-hash/trx
 const std::string USER_MSG          = "user_msg";   // USER_MSG:(tag:hash)/msg
 const std::string VERSION           = "version";    // VERSION/version
 const std::string WATCHS            = "watchs";     // WATCHS/dest
 const std::string WKEY              = "wkey";       // WKEY:pubkey/privkey
-const std::string WOTCERT           = "wotcert";    // WOTCERT:(pubkey:spubkey)/(sig,cert)
+const std::string VOTE              = "vote";       // VOTE:(pollid:addr:paddr)/(iaddr:response)
+const std::string WOTCERT           = "wotcert";    // WOTCERT:(pubkey:spubkey)/(sig:cert)
 const std::string WOTCRTRVK         = "wotcrtrvk";  // WOTCERT:(pubkey:spubkey)/reason
 }
-
-const std::string PROXY             = "proxy";      // PROXY:(addr:paddr)/(ts:sign)
-const std::string PROXY_RVK         = "proxy_rvk";  // PROXY_RVK:(addr:paddr)/(ts:sign)
-const std::string IPROXY            = "iproxy";     // IPROXY:(addr,paddr:iaddr)/(ts:sign)
-const std::string IPROXY_RVK        = "iproxy_rvk"; // IPROXY_RVK:(addr:paddr,iaddr)/(ts:sign)
-const std::string PPROXY            = "pproxy";     // PPROXY:(addr,paddr:pollID)/(ts:sign)
-const std::string PPROXY_RVK        = "pproxy_rvk"; // PPROXY_RVK:(addr:paddr:pollID)/(ts:sign)
 
 bool CEDCWalletDB::WriteName(const string& strAddress, const string& strName)
 {
@@ -762,7 +761,7 @@ ReadKeyValue(
 				return false;
 			}
 		}
-        else if (strType == "hdchain")
+        else if (strType == HDCHAIN )
         {
             CHDChain chain;
             ssValue >> chain;
@@ -772,6 +771,10 @@ ReadKeyValue(
                 return false;
             }
         }
+		else if( strType == ISSUER )
+		{
+// TODO: read ISSUER
+		}
 		else if( strType == USER_MSG )
 		{
 			std::string tag;
@@ -788,6 +791,14 @@ ReadKeyValue(
 				return false;
 			}
 			pwallet->LoadMessage( tag, hash, msg );
+		}
+		else if( strType == POLL )
+		{
+// TODO: read POLL
+		}
+		else if( strType == VOTE )
+		{
+// TODO: read VOTE
 		}
 		else if( strType == WOTCERT )
 		{
@@ -1546,6 +1557,14 @@ bool dumpKey(
 			ssKey >> hash;
 			out << ':' << msgTag << ':' << hash.ToString();
 		}
+		else if( strType == POLL )
+		{
+// TODO: dumpkey POLL
+		}
+		else if( strType == VOTE )
+		{
+// TODO: dumpkey VOTE
+		}
 		else if( strType == WOTCERT )
 		{
             CPubKey pubkey, spubkey;
@@ -1836,6 +1855,14 @@ dumpValue(
 			CUserMessage * msg = CUserMessage::create( msgTag, ssValue );
 			out << msg->ToJSON() << endl;
 			delete msg;
+		}
+		else if( strType == POLL )
+		{
+// TODO: dumpvalue POLL
+		}
+		else if( strType == VOTE )
+		{
+// TODO: dumpvalue VOTE
 		}
 		else if( strType == WOTCERT )
 		{
@@ -2613,16 +2640,29 @@ bool CEDCWalletDB::ErasePoll( const uint160 & id )
 	return Erase( std::make_pair( POLL, id ) );
 }
 
-bool CEDCWalletDB::WritePollResult( const uint160 & id, const PollResult & pollResult )
+bool CEDCWalletDB::WriteVote( 
+         const CKeyID & addr,
+         const CKeyID & iaddr,
+    const std::string & pollid,
+    const std::string & response,
+    const std::string & pAddr )
 {
 	EDCapp & theApp = EDCapp::singleton();
     theApp.incWalletDBUpdated();
-	return Write( std::make_pair( POLL_RESULT, id ), pollResult );
+
+	return Write( std::make_pair( VOTE, 
+		std::make_pair( pollid, std::make_pair( addr, pAddr))), 
+		std::make_pair( iaddr, response ) );
 }
 
-bool CEDCWalletDB::ErasePollResult( const uint160 & id )
+bool CEDCWalletDB::EraseVote( 
+		 const CKeyID & addr, 
+	const std::string & pollid, 
+	const std::string & pAddr )
 {
 	EDCapp & theApp = EDCapp::singleton();
     theApp.incWalletDBUpdated();
-	return Erase( std::make_pair( POLL_RESULT, id ) );
+
+	return Erase( std::make_pair( VOTE, 
+		std::make_pair( pollid, std::make_pair( addr, pAddr)))); 
 }
