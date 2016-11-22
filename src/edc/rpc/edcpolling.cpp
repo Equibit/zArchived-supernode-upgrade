@@ -183,15 +183,16 @@ UniValue edcpoll(const UniValue& params, bool fHelp)
 
 UniValue edcvote(const UniValue& params, bool fHelp)
 {
-    if (fHelp || params.size() != 3 )
+    if (fHelp || params.size() < 4 || params.size() > 5 )
         throw std::runtime_error(
-            "eb_vote \"address\" \"issuer-address\" \"response\"\n"
+            "eb_vote \"address\" \"issuer-address\" \"pollid\" \"response\" ( \"proxied-addr\" )\n"
             "\nRevoke proxy voting privileges from specified address.\n"
             "\nArguments:\n"
             "1. \"addr\"          (string, required) The address of sender\n"
             "2. \"iaddr\"         (string, required) The address of issuer of poll\n"
+			"3. \"pollid\"        (string, required) The id of the poll\n"
             "3. \"response\"      (string, required) The poll response value\n"
-			"4. \"proxied addr\"  (string, optional) The proxied address\n"
+			"4. \"proxied-addr\"  (string, optional) The proxied address\n"
             "\nResult: None\n"
             "\nExamples:\n"
             + HelpExampleCli("eb_vote", "\"139...301\" \"1xcc...adfv\" \"John Black\" \"1zswdc...209sf\"" )
@@ -200,9 +201,76 @@ UniValue edcvote(const UniValue& params, bool fHelp)
 
 	std::string address = params[0].get_str();
 	std::string iAddress= params[1].get_str();
-	std::string response= params[2].get_str();
+	std::string pollid  = params[2].get_str();
+	std::string response= params[3].get_str();
 
-// TODO: If poll is local, add vote else send vote onto network
+    CEDCBitcoinAddress sender(params[0].get_str());
+    CKeyID senderID;
+    if (!sender.IsValid())
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
+
+    if(!sender.GetKeyID(senderID))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
+
+    CEDCBitcoinAddress issuer(params[1].get_str());
+    CKeyID issuerID;
+    if (!issuer.IsValid())
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid issuer address");
+
+    if(!issuer.GetKeyID(issuerID))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid issuer address");
+
+	std::vector<unsigned char> data;
+
+	data.resize( response.size() + sizeof(uint16_t) + pollid.size() + sizeof(uint16_t));
+	unsigned char * p = data.data();
+
+	*reinterpret_cast<uint16_t *>(p) = static_cast<uint16_t>(response.size());
+	p += sizeof(uint16_t);
+
+	auto i = response.begin();
+	auto e = response.end();
+	while( i != e )
+		*p++ = *i++;
+
+	*reinterpret_cast<uint16_t *>(data.data()) = static_cast<uint16_t>(pollid.size());
+	p += sizeof(uint16_t);
+
+	i = pollid.begin();
+	e = pollid.end();
+	while( i != e )
+		*p++ = *i++;
+
+	if( params.size() > 4 )
+	{
+		std::string proxiedAddr = params[4].get_str();
+    	CEDCBitcoinAddress pAddr(proxiedAddr);
+
+	    CKeyID pAddrID;
+		if (!pAddr.IsValid())
+        	throw JSONRPCError(RPC_TYPE_ERROR, "Invalid proxied address");
+
+    	if(!pAddr.GetKeyID(pAddrID))
+        	throw JSONRPCError(RPC_TYPE_ERROR, "Invalid proxied address");
+
+		auto off = data.size();
+		data.resize(off + proxiedAddr.size() + sizeof(uint16_t));
+
+		p = data.data() + off;
+
+		*reinterpret_cast<uint16_t *>(p) = static_cast<uint16_t>(proxiedAddr.size());
+		p += sizeof(uint16_t);
+
+		auto i = proxiedAddr.begin();
+		auto e = proxiedAddr.end();
+		while( i != e )
+			*p++ = *i++;
+	}
+
+    CPeerToPeer * msg = CPeerToPeer::create( CVote::tag, senderID, issuerID, data );
+
+    EDCapp & theApp = EDCapp::singleton();
+    theApp.connman()->RelayUserMessage( msg, true );
 
     return NullUniValue;
 }

@@ -707,6 +707,48 @@ CPeerToPeer * CPeerToPeer::create(
 	return ans;
 }
 
+CPeerToPeer * CPeerToPeer::create(
+			   const std::string & type, 
+         			const CKeyID & sender, 
+		 			const CKeyID & receiver, 
+const std::vector<unsigned char> & data )
+{
+	CPeerToPeer * ans;
+
+	if( type == "Private" )
+	{
+		ans = new CPrivate();
+	}
+	else if( type == "Vote" )
+	{
+		ans = new CVote();
+	}
+	else
+	{
+		std::string msg = "Invalid peer-to-peer message type:";
+		msg += type;
+		throw std::runtime_error( msg );
+	}
+
+	ans->proofOfWork();
+
+	ans->senderAddr_ = sender;
+	ans->receiverAddr_ = receiver;
+	ans->data_.resize(data.size() );
+
+	std::copy( data.begin(), data.end(), ans->data_.begin() );
+
+	signMessage(sender,
+				ans->timestamp_,
+				ans->nonce_,
+		 		type,
+		 		receiver.ToString(),
+		 		ans->data_,
+				ans->signature_ );
+
+	return ans;
+}
+
 CMulticast * CMulticast::create(
 			   const std::string & type, 
 			        const CKeyID & sender, 
@@ -1290,10 +1332,25 @@ void CRevokePollProxy::process( CEDCWallet & wallet )
 
 void CPoll::process( CEDCWallet & wallet )
 {
-    // TODO: CPoll::process()
+	LOCK2(EDC_cs_main, wallet.cs_wallet);
+
+	edcEnsureWalletIsUnlocked();
+
+	Poll poll;
+	CDataStream	ss( data_, SER_NETWORK, PROTOCOL_VERSION );
+	ss >> poll;
+
+	std::string errStr;
+	bool rc = wallet.AddPoll( poll, errStr );
+	if(!rc)
+		error( errStr.c_str() );
 }
 
 void CVote::process( CEDCWallet & wallet )
 {
+	LOCK2(EDC_cs_main, wallet.cs_wallet);
+
+	edcEnsureWalletIsUnlocked();
+
     // TODO: CVote::process()
 }

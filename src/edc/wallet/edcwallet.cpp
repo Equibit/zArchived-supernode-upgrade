@@ -5936,5 +5936,5 @@ void CEDCWallet::LoadPoll( const Poll & poll )
 {
 	LOCK(cs_wallet);
 
-// TODO
+// TODO: LoadPoll
 }

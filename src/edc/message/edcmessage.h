@@ -116,6 +116,11 @@ public:
 								     const CKeyID & receiver, 
 								const std::string & data );
 
+	static CPeerToPeer * create(const std::string & type, 
+								     const CKeyID & sender, 
+								     const CKeyID & receiver, 
+				 const std::vector<unsigned char> & data );
+
 	virtual bool	verify() const;
 	virtual std::string	ToString() const;
 	virtual std::string	ToJSON() const;

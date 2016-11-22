@@ -10,6 +10,7 @@
 class Poll
 {
 public:
+	Poll() {}
 	Poll( const CKeyID & issuerID,
 	 const std::string & question, 
 	 const std::vector<std::string> & answers,
