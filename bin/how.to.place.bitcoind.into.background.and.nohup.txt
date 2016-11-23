@@ -1,15 +1,15 @@
-If the bitcoind is run with -eb_usehsm=true, then it cannot be run as a daemon. It must be connected
+If the equibitd is run with -eb_usehsm=true, then it cannot be run as a daemon. It must be connected
 to the terminal at startup to receive the pass phrase. After startup, if there is a need to close
 the terminal, then do the following first:
 
-1) Start bitcoind using ./run.bitcoind
+1) Start equibitd using ./run.equibitd
 
 2) Ctrl-Z 
 	Stops process.
 
 3) jobs to get job number of task
 
-4) bg <bitcoind-job#>
+4) bg <equibitd-job#>
 	For example, bg 1.
 
 5) disown -h

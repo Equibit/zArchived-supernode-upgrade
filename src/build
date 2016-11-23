@@ -9,6 +9,6 @@ make $*
 echo ">>>>>>>>>>>>>>> LINK"
 export BDB_PREFIX=/home/equibituser/bitcoin/db4
 
-g++ -std=c++11 -Wstack-protector -fstack-protector-all -fPIE -g -O2 -Wall -Wextra -Wformat -Wformat-security -Wno-unused-parameter -pthread -Wl,-z -Wl,relro -Wl,-z -Wl,now -pie -o bitcoind bitcoind-bitcoind.o -L${BDB_PREFIX}/lib/ -L/usr/local/lib libbitcoin_server.a libbitcoin_common.a univalue/.libs/libunivalue.a libbitcoin_util.a libbitcoin_wallet.a libbitcoin_consensus.a crypto/libbitcoin_crypto.a leveldb/libleveldb.a leveldb/libmemenv.a secp256k1/.libs/libsecp256k1.a libbitcoin_wallet.a Thales/libnfast.so -L/usr/lib/x86_64-linux-gnu -lboost_system -lboost_filesystem -lboost_program_options -lboost_thread -lboost_chrono -ldb_cxx -L/usr/local/lib -lssl -lcrypto -levent_pthreads -levent -lanl -pthread
+g++ -std=c++11 -Wstack-protector -fstack-protector-all -fPIE -g -O2 -Wall -Wextra -Wformat -Wformat-security -Wno-unused-parameter -pthread -Wl,-z -Wl,relro -Wl,-z -Wl,now -pie -o equibitd equibitd-bitcoind.o -L${BDB_PREFIX}/lib/ -L/usr/local/lib libbitcoin_server.a libbitcoin_common.a univalue/.libs/libunivalue.a libbitcoin_util.a libbitcoin_wallet.a libbitcoin_consensus.a crypto/libbitcoin_crypto.a leveldb/libleveldb.a leveldb/libmemenv.a secp256k1/.libs/libsecp256k1.a libbitcoin_wallet.a Thales/libnfast.so -L/usr/lib/x86_64-linux-gnu -lboost_system -lboost_filesystem -lboost_program_options -lboost_thread -lboost_chrono -ldb_cxx -L/usr/local/lib -lssl -lcrypto -levent_pthreads -levent -lanl -pthread
 
 

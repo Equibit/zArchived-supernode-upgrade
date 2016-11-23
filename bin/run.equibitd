@@ -46,7 +46,7 @@
 # -eb_usehsm=false
 # -daemon
 
-sudo ./bitcoind \
+sudo ./equibitd \
 -logtimestamps -eb_logtimestamps \
 -logtimemicros -eb_logtimemicros \
 -debug -eb_debug \
