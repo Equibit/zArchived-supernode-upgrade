@@ -16,69 +16,46 @@
 namespace
 {
 
-void packStrs(
+void packIDs(
 std::vector<unsigned char> & data,
-		 const std::string & addr,
-		 const std::string & paddr )
+		 const CKeyID & addr,
+		 const CKeyID & paddr )
 {
-	auto alen = addr.size();
-	auto plen = paddr.size();
-
-	data.resize(alen+1+plen+1);
-
-	auto d = data.begin();
-
-	*d++ = alen;
-	
-	auto i = addr.begin();
-	auto e = addr.end();
-
-	while( i != e )
-	{
-		*d = *i;
-		++i;
-		++d;
-	}
-
-	*d++ = plen;
-	
-	i = paddr.begin();
-	e = paddr.end();
-
-	while( i != e )
-	{
-		*d = *i;
-		++i;
-		++d;
-	}
+	data.resize(addr.size()+paddr.size());
+	std::copy( addr.begin(), addr.end(), data.begin() );
+	std::copy( paddr.begin(), paddr.end(), data.begin()+addr.size() );
 }
 
-void packStrs( 
+void packIDs( 
 std::vector<unsigned char> & data,
-		 const std::string & addr,
-		 const std::string & paddr,
-		 const std::string & other )
+		 	  const CKeyID & addr,
+		 	  const CKeyID & paddr,
+		 	  const CKeyID & iaddr )
 {
-	packStrs( data, addr, paddr );
+	data.resize(addr.size()+paddr.size()+iaddr.size());
+	std::copy( addr.begin(), addr.end(), data.begin() );
+	std::copy( paddr.begin(), paddr.end(), data.begin()+addr.size() );
+	std::copy( iaddr.begin(), iaddr.end(), data.begin()+addr.size()+paddr.size() );
+}
 
-	auto olen = other.size();
+void pack( 
+std::vector<unsigned char> & data,
+		 	  const CKeyID & addr,
+		 	  const CKeyID & paddr,
+		 const std::string & pollid )
+{
+	data.resize(addr.size()+paddr.size()+pollid.size()+1);
+	std::copy( addr.begin(), addr.end(), data.begin() );
+	std::copy( paddr.begin(), paddr.end(), data.begin()+addr.size() );
 
-	auto dsize= data.size();
-	data.resize(dsize+1+olen+1);
+	auto p = data.begin() + addr.size() + paddr.size();
 
-	auto d = data.begin() + dsize;
+	*p++ = static_cast<unsigned char>(pollid.size());
 
-	*d++ = olen;
-	
-	auto i = other.begin();
-	auto e = other.end();
-
+	auto i = pollid.begin();	
+	auto e = pollid.end();	
 	while( i != e )
-	{
-		*d = *i;
-		++i;
-		++d;
-	}
+		*p++ = *i++;
 }
 
 }
@@ -101,6 +78,20 @@ UniValue edcassigngeneralproxy(const UniValue& params, bool fHelp)
     std::string addrStr = params[0].get_str();
     std::string paddrStr= params[1].get_str();
 
+	CEDCBitcoinAddress addr(addrStr);
+    if (!addr.IsValid())
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
+	CKeyID addrID;
+	if(!addr.GetKeyID(addrID))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
+
+	CEDCBitcoinAddress paddr(paddrStr);
+    if (!paddr.IsValid())
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid proxy address");
+	CKeyID paddrID;
+	if(!paddr.GetKeyID(paddrID))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid proxy address");
+
 	EDCapp & theApp = EDCapp::singleton();
 
 	// Save data to wallet
@@ -110,7 +101,7 @@ UniValue edcassigngeneralproxy(const UniValue& params, bool fHelp)
         LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
         edcEnsureWalletIsUnlocked();
-		rc = theApp.walletMain()->AddGeneralProxy( addrStr, paddrStr, errStr );
+		rc = theApp.walletMain()->AddGeneralProxy( addrID, paddrID, errStr );
     }
 
 	if(rc)
@@ -120,7 +111,7 @@ UniValue edcassigngeneralproxy(const UniValue& params, bool fHelp)
 		sender.GetKeyID(senderID);
 
 		std::vector<unsigned char> data;
-		packStrs( data, addrStr, paddrStr );
+		packIDs( data, addrID, paddrID );
 
 		CBroadcast * msg = CBroadcast::create( CGeneralProxy::tag, senderID, data);
 
@@ -150,6 +141,20 @@ UniValue edcrevokegeneralproxy(const UniValue& params, bool fHelp)
     std::string addrStr = params[0].get_str();
     std::string paddrStr= params[1].get_str();
 
+	CEDCBitcoinAddress addr(addrStr);
+    if (!addr.IsValid())
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
+	CKeyID addrID;
+	if(!addr.GetKeyID(addrID))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
+
+	CEDCBitcoinAddress paddr(paddrStr);
+    if (!paddr.IsValid())
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid proxy address");
+	CKeyID paddrID;
+	if(!paddr.GetKeyID(paddrID))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid proxy address");
+
 	EDCapp & theApp = EDCapp::singleton();
 
 	// Save data to wallet
@@ -159,7 +164,7 @@ UniValue edcrevokegeneralproxy(const UniValue& params, bool fHelp)
         LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
         edcEnsureWalletIsUnlocked();
-		rc = theApp.walletMain()->AddGeneralProxyRevoke( addrStr, paddrStr, errStr );
+		rc = theApp.walletMain()->AddGeneralProxyRevoke( addrID, paddrID, errStr );
     }
 	if(rc)
 	{
@@ -168,7 +173,7 @@ UniValue edcrevokegeneralproxy(const UniValue& params, bool fHelp)
 		sender.GetKeyID(senderID);
 
 		std::vector<unsigned char> data;
-		packStrs( data, addrStr, paddrStr );
+		packIDs( data, addrID, paddrID);
 
 		CBroadcast * msg = CBroadcast::create( CRevokeGeneralProxy::tag, senderID, data);
 
@@ -200,8 +205,26 @@ UniValue edcassignissuerproxy(const UniValue& params, bool fHelp)
     std::string paddrStr= params[1].get_str();
     std::string iaddrStr= params[2].get_str();
 
+	CEDCBitcoinAddress addr(addrStr);
+    if (!addr.IsValid())
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
+	CKeyID addrID;
+	if(!addr.GetKeyID(addrID))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
+
+	CEDCBitcoinAddress paddr(paddrStr);
+    if (!paddr.IsValid())
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid proxy address");
+	CKeyID paddrID;
+	if(!paddr.GetKeyID(paddrID))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid proxy address");
+
 	CEDCBitcoinAddress iaddr(iaddrStr);
     if (!iaddr.IsValid())
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid proxy address");
+
+	CKeyID iaddrID;
+	if(!iaddr.GetKeyID(iaddrID))
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid proxy address");
 
 	EDCapp & theApp = EDCapp::singleton();
@@ -213,7 +236,7 @@ UniValue edcassignissuerproxy(const UniValue& params, bool fHelp)
         LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
         edcEnsureWalletIsUnlocked();
-		rc = theApp.walletMain()->AddIssuerProxy( addrStr, paddrStr,iaddrStr, errStr );
+		rc = theApp.walletMain()->AddIssuerProxy( addrID, paddrID, iaddrID, errStr );
     }
 	if(rc)
 	{
@@ -222,7 +245,7 @@ UniValue edcassignissuerproxy(const UniValue& params, bool fHelp)
 		sender.GetKeyID(senderID);
 
 		std::vector<unsigned char> data;
-		packStrs( data, addrStr, paddrStr, iaddrStr );
+		packIDs( data, addrID, paddrID, iaddrID );
 
 		CBroadcast * msg = CBroadcast::create( CIssuerProxy::tag, senderID, data);
 
@@ -258,9 +281,23 @@ UniValue edcrevokeissuerproxy(const UniValue& params, bool fHelp)
 	CEDCBitcoinAddress addr(addrStr);
     if (!addr.IsValid())
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
+	CKeyID addrID;
+	if(!addr.GetKeyID(addrID))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
+
+	CEDCBitcoinAddress paddr(paddrStr);
+    if (!paddr.IsValid())
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid proxy address");
+	CKeyID paddrID;
+	if(!paddr.GetKeyID(paddrID))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid proxy address");
 
 	CEDCBitcoinAddress iaddr(iaddrStr);
     if (!iaddr.IsValid())
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid proxy address");
+
+	CKeyID iaddrID;
+	if(!iaddr.GetKeyID(iaddrID))
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid proxy address");
 
 	EDCapp & theApp = EDCapp::singleton();
@@ -272,7 +309,7 @@ UniValue edcrevokeissuerproxy(const UniValue& params, bool fHelp)
         LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
         edcEnsureWalletIsUnlocked();
-		rc = theApp.walletMain()->AddIssuerProxyRevoke( addrStr, paddrStr, iaddrStr, errStr);
+		rc = theApp.walletMain()->AddIssuerProxyRevoke( addrID, paddrID, iaddrID, errStr);
     }
 	if(rc)
 	{
@@ -281,7 +318,7 @@ UniValue edcrevokeissuerproxy(const UniValue& params, bool fHelp)
 		sender.GetKeyID(senderID);
 
 		std::vector<unsigned char> data;
-		packStrs( data, addrStr, paddrStr, iaddrStr );
+		packIDs( data, addrID, paddrID, iaddrID );
 
 		CBroadcast * msg = CBroadcast::create( CRevokeIssuerProxy::tag, senderID, data);
 
@@ -313,6 +350,20 @@ UniValue edcassignpollproxy(const UniValue& params, bool fHelp)
     std::string paddrStr= params[1].get_str();
     std::string pollID  = params[2].get_str();
 
+	CEDCBitcoinAddress addr(addrStr);
+    if (!addr.IsValid())
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
+	CKeyID addrID;
+	if(!addr.GetKeyID(addrID))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
+
+	CEDCBitcoinAddress paddr(paddrStr);
+    if (!paddr.IsValid())
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid proxy address");
+	CKeyID paddrID;
+	if(!paddr.GetKeyID(paddrID))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid proxy address");
+
 	EDCapp & theApp = EDCapp::singleton();
 
 	// Save data to wallet
@@ -322,7 +373,7 @@ UniValue edcassignpollproxy(const UniValue& params, bool fHelp)
         LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
         edcEnsureWalletIsUnlocked();
-		rc = theApp.walletMain()->AddPollProxy( addrStr, paddrStr, pollID, errStr );
+		rc = theApp.walletMain()->AddPollProxy( addrID, paddrID, pollID, errStr );
     }
 	if(rc)
 	{
@@ -331,7 +382,7 @@ UniValue edcassignpollproxy(const UniValue& params, bool fHelp)
 		sender.GetKeyID(senderID);
 
 		std::vector<unsigned char> data;
-		packStrs( data, addrStr, paddrStr, pollID );
+		pack( data, addrID, paddrID, pollID );
 
 		CBroadcast * msg = CBroadcast::create( CPollProxy::tag, senderID, data);
 
@@ -364,6 +415,20 @@ UniValue edcrevokepollproxy(const UniValue& params, bool fHelp)
     std::string paddrStr= params[1].get_str();
     std::string pollID  = params[2].get_str();
 
+	CEDCBitcoinAddress addr(addrStr);
+    if (!addr.IsValid())
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
+	CKeyID addrID;
+	if(!addr.GetKeyID(addrID))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
+
+	CEDCBitcoinAddress paddr(paddrStr);
+    if (!paddr.IsValid())
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid proxy address");
+	CKeyID paddrID;
+	if(!paddr.GetKeyID(paddrID))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid proxy address");
+
 	EDCapp & theApp = EDCapp::singleton();
 
 	// Save data to wallet
@@ -373,7 +438,7 @@ UniValue edcrevokepollproxy(const UniValue& params, bool fHelp)
         LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
         edcEnsureWalletIsUnlocked();
-		rc = theApp.walletMain()->AddPollProxyRevoke( addrStr, paddrStr, pollID, errStr );
+		rc = theApp.walletMain()->AddPollProxyRevoke( addrID, paddrID, pollID, errStr );
     }
 	if(rc)
 	{
@@ -382,7 +447,7 @@ UniValue edcrevokepollproxy(const UniValue& params, bool fHelp)
 		sender.GetKeyID(senderID);
 
 		std::vector<unsigned char> data;
-		packStrs( data, addrStr, paddrStr, pollID );
+		pack( data, addrID, paddrID, pollID );
 		
 		CBroadcast * msg = CBroadcast::create( CRevokePollProxy::tag, senderID, data);
 

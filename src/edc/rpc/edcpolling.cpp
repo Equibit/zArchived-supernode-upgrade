@@ -223,9 +223,13 @@ UniValue edcvote(const UniValue& params, bool fHelp)
 
 	std::vector<unsigned char> data;
 
-	data.resize( response.size() + sizeof(uint16_t) + pollid.size() + sizeof(uint16_t));
+	data.resize( sizeof(time_t) + response.size() + sizeof(uint16_t) + pollid.size() + sizeof(uint16_t));
 	unsigned char * p = data.data();
 
+	time_t now = time(NULL);
+	*reinterpret_cast<time_t *>(p) = now;
+	p += sizeof(time_t);
+	
 	*reinterpret_cast<uint16_t *>(p) = static_cast<uint16_t>(response.size());
 	p += sizeof(uint16_t);
 
@@ -423,6 +427,28 @@ void PollResult::addVote(
 	const CKeyID & id,
 	Type ty )
 {
-	auto rc = results_.insert( std::make_pair(ans, std::map<CKeyID, int>()) );
-	rc.first->second.insert( std::make_pair( id, static_cast<int>(ty) ) );
+	auto rc = results_.insert( std::make_pair( id, std::pair<std::string, int>()) );
+
+	if( rc.first->second.first.size() == 0 )
+	{
+		rc.first->second.first = ans;
+		rc.first->second.second = ty;
+	}
+	else if( rc.first->second.first == ans )
+	{
+		// If the same vote has already be entered for this address, then
+		// make sure the type is the maximum of the two
+		if( rc.first->second.second < ty )
+			rc.first->second.second = ty;
+	}
+	else
+	{
+		// If a different answer has been entered for this address, then
+		// only do an update if the type is greater then the previous one
+		if( rc.first->second.second < ty )
+		{
+			rc.first->second.first = ans;
+			rc.first->second.second = ty;
+		}
+	}
 }

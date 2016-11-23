@@ -649,8 +649,9 @@ public:
 	virtual std::string desc() const;
 	virtual void process( CEDCWallet & );
 
-	void extract(std::string & pollid, std::string & response, 
-				 std::string & pAddr ) const;
+	void extract( 
+		time_t &, std::string & pollid, 
+		std::string & response, CKeyID & pAddr ) const;
 
 	static const std::string tag;
 };
@@ -724,6 +725,8 @@ public:
 	virtual std::string desc() const;
 	virtual void process( CEDCWallet & );
 
+	void extract( CKeyID &, CKeyID & ) const;
+
 	static const std::string tag;
 };
 
@@ -733,6 +736,8 @@ public:
 	virtual std::string vtag() const { return tag; }
 	virtual std::string desc() const;
 	virtual void process( CEDCWallet & );
+
+	void extract( CKeyID &, CKeyID & ) const;
 
 	static const std::string tag;
 };
@@ -744,6 +749,8 @@ public:
 	virtual std::string desc() const;
 	virtual void process( CEDCWallet & );
 
+	void extract( CKeyID &, CKeyID &, CKeyID & ) const;
+
 	static const std::string tag;
 };
 
@@ -753,6 +760,8 @@ public:
 	virtual std::string vtag() const { return tag; }
 	virtual std::string desc() const;
 	virtual void process( CEDCWallet & );
+
+	void extract( CKeyID &, CKeyID &, CKeyID & ) const;
 
 	static const std::string tag;
 };
@@ -764,6 +773,8 @@ public:
 	virtual std::string desc() const;
 	virtual void process( CEDCWallet & );
 
+	void extract( CKeyID &, CKeyID &, std::string & ) const;
+
 	static const std::string tag;
 };
 
@@ -773,6 +784,8 @@ public:
 	virtual std::string vtag() const { return tag; }
 	virtual std::string desc() const;
 	virtual void process( CEDCWallet & );
+
+	void extract( CKeyID &, CKeyID &, std::string & ) const;
 
 	static const std::string tag;
 };

@@ -1168,77 +1168,15 @@ void CRevokeWoTcertificate::process( CEDCWallet & wallet )
 		error( errStr.c_str() );
 }
 
-namespace
-{
-
-void extract( 
-	std::vector<unsigned char> & data, 
-	std::string & addr, 
-	std::string & paddr )
-{
-	auto d = data.begin();
-
-	auto alen = *d++;
-	addr.resize(alen);
-
-	auto i = addr.begin();
-	auto e = addr.end();
-	while( i != e )
-		*i++ = *d++;
-
-	auto plen = *d++;
-	paddr.resize(plen);
-
-	i = paddr.begin();
-	e = paddr.end();
-	while( i != e )
-		*i++ = *d++;
-}
-
-void extract( 
-	std::vector<unsigned char> & data, 
-	std::string & addr, 
-	std::string & paddr,
-	std::string & other )
-{
-	auto d = data.begin();
-
-	auto len = *d++;
-	addr.resize(len);
-
-	auto i = addr.begin();
-	auto e = addr.end();
-	while( i != e )
-		*i++ = *d++;
-
-	len = *d++;
-	paddr.resize(len);
-
-	i = paddr.begin();
-	e = paddr.end();
-	while( i != e )
-		*i++ = *d++;
-
-	len = *d++;
-	other.resize(len);
-
-	i = other.begin();
-	e = other.end();
-	while( i != e )
-		*i++ = *d++;
-}
-
-}
-
 void CGeneralProxy::process( CEDCWallet & wallet )
 {
 	LOCK2(EDC_cs_main, wallet.cs_wallet);
 
 	edcEnsureWalletIsUnlocked();
 
-	std::string addr;
-	std::string paddr;
-	extract( data_, addr, paddr );
+	CKeyID addr;
+	CKeyID paddr;
+	extract( addr, paddr );
 
 	std::string errStr;
     bool rc = wallet.AddGeneralProxy( addr, paddr, errStr );
@@ -1252,10 +1190,10 @@ void CIssuerProxy::process( CEDCWallet & wallet )
 
 	edcEnsureWalletIsUnlocked();
 
-	std::string addr;
-	std::string paddr;
-	std::string iaddr;
-	extract( data_, addr, paddr, iaddr );
+	CKeyID addr;
+	CKeyID paddr;
+	CKeyID iaddr;
+	extract( addr, paddr, iaddr );
 
 	std::string errStr;
     bool rc = wallet.AddIssuerProxy( addr, paddr, iaddr, errStr );
@@ -1269,10 +1207,10 @@ void CPollProxy::process( CEDCWallet & wallet )
 
 	edcEnsureWalletIsUnlocked();
 
-	std::string addr;
-	std::string paddr;
+	CKeyID addr;
+	CKeyID paddr;
 	std::string pollID;
-	extract( data_, addr, paddr, pollID );
+	extract( addr, paddr, pollID );
 
 	std::string errStr;
     bool rc = wallet.AddPollProxy( addr, paddr, pollID, errStr );
@@ -1286,9 +1224,9 @@ void CRevokeGeneralProxy::process( CEDCWallet & wallet )
 
 	edcEnsureWalletIsUnlocked();
 
-	std::string addr;
-	std::string paddr;
-	extract( data_, addr, paddr );
+	CKeyID addr;
+	CKeyID paddr;
+	extract( addr, paddr );
 
 	std::string errStr;
     bool rc = wallet.AddGeneralProxyRevoke( addr, paddr, errStr );
@@ -1302,10 +1240,10 @@ void CRevokeIssuerProxy::process( CEDCWallet & wallet )
 
 	edcEnsureWalletIsUnlocked();
 
-	std::string addr;
-	std::string paddr;
-	std::string iaddr;
-	extract( data_, addr, paddr, iaddr );
+	CKeyID addr;
+	CKeyID paddr;
+	CKeyID iaddr;
+	extract( addr, paddr, iaddr );
 
 	std::string errStr;
     bool rc = wallet.AddIssuerProxyRevoke( addr, paddr, iaddr, errStr );
@@ -1319,10 +1257,10 @@ void CRevokePollProxy::process( CEDCWallet & wallet )
 
 	edcEnsureWalletIsUnlocked();
 
-	std::string addr;
-	std::string paddr;
+	CKeyID addr;
+	CKeyID paddr;
 	std::string pollID;
-	extract( data_, addr, paddr, pollID );
+	extract( addr, paddr, pollID );
 
 	std::string errStr;
     bool rc = wallet.AddPollProxyRevoke( addr, paddr, pollID, errStr );
@@ -1352,25 +1290,30 @@ void CVote::process( CEDCWallet & wallet )
 
 	edcEnsureWalletIsUnlocked();
 
+	time_t		timestamp;
 	std::string	pollid;
 	std::string	response;
-	std::string	pAddr;
+	CKeyID pAddr;
 
-	extract( pollid, response, pAddr );
+	extract( timestamp, pollid, response, pAddr );
 
 	std::string errStr;
-    bool rc = wallet.AddVote( senderAddr_, receiverAddr_, pollid, response, pAddr, errStr );
+    bool rc = wallet.AddVote( timestamp, senderAddr_, receiverAddr_, pollid, response,pAddr,errStr);
 	if(!rc)
 		error( errStr.c_str() );
 }
 
 void CVote::extract(
+		 time_t & timestamp,
 	std::string & pollid, 
 	std::string & response, 
-	std::string & pAddr ) const
+		 CKeyID & pAddr ) const
 {
 	const unsigned char * p = data_.data();
 	const unsigned char * end = data_.data() + data_.size();
+
+	timestamp = *reinterpret_cast<const time_t *>(p);
+	p += sizeof(time_t);
 
 	auto len = *reinterpret_cast<const uint16_t *>(p);
 	p += sizeof(uint16_t);
@@ -1393,14 +1336,95 @@ void CVote::extract(
 
 	if( p < end )
 	{
-		len = *reinterpret_cast<const uint16_t *>(p);
-		p += sizeof(uint16_t);
-
-		pAddr.resize(len);
-		i = pAddr.begin();
-		e = pAddr.end();
-
-		while( i != e )
-			*i++ = *p++;
+		auto i = pAddr.begin();
+		std::copy( p, p + pAddr.size(), i );
 	}
+}
+
+void CGeneralProxy::extract(CKeyID & addr, CKeyID & paddr ) const
+{
+	auto d = data_.data();
+
+	std::copy( d, d+addr.size(), addr.begin() );
+	d += addr.size();
+
+	std::copy( d, d+paddr.size(), paddr.begin() );
+}
+
+void CIssuerProxy::extract(CKeyID & addr, CKeyID & paddr, CKeyID & iaddr ) const
+{
+	auto d = data_.data();
+
+	std::copy( d, d+addr.size(), addr.begin() );
+	d += addr.size();
+
+	std::copy( d, d+paddr.size(), paddr.begin() );
+	d += paddr.size();
+	
+	std::copy( d, d+iaddr.size(), iaddr.begin() );
+}
+
+void CPollProxy::extract(CKeyID & addr, CKeyID & paddr, std::string & pollid ) const
+{
+	auto d = data_.data();
+
+	std::copy( d, d+addr.size(), addr.begin() );
+	d += addr.size();
+
+	std::copy( d, d+paddr.size(), paddr.begin() );
+	d += paddr.size();
+	
+	auto len = *d++;
+
+	pollid.resize(len);
+
+	auto i = pollid.begin();
+	auto e = pollid.end();
+
+	while( i != e )
+		*i++ = *d++;
+}
+
+void CRevokeGeneralProxy::extract(CKeyID & addr, CKeyID & paddr) const
+{
+	auto d = data_.data();
+
+	std::copy( d, d+addr.size(), addr.begin() );
+	d += addr.size();
+
+	std::copy( d, d+paddr.size(), paddr.begin() );
+}
+
+void CRevokeIssuerProxy::extract(CKeyID & addr, CKeyID & paddr, CKeyID & iaddr ) const
+{
+	auto d = data_.data();
+
+	std::copy( d, d+addr.size(), addr.begin() );
+	d += addr.size();
+
+	std::copy( d, d+paddr.size(), paddr.begin() );
+	d += paddr.size();
+	
+	std::copy( d, d+iaddr.size(), iaddr.begin() );
+}
+
+void CRevokePollProxy::extract(CKeyID & addr, CKeyID & paddr, std::string & pollid ) const
+{
+	auto d = data_.data();
+
+	std::copy( d, d+addr.size(), addr.begin() );
+	d += addr.size();
+
+	std::copy( d, d+paddr.size(), paddr.begin() );
+	d += paddr.size();
+	
+	auto len = *d++;
+
+	pollid.resize(len);
+
+	auto i = pollid.begin();
+	auto e = pollid.end();
+
+	while( i != e )
+		*i++ = *d++;
 }

@@ -160,36 +160,36 @@ public:
         const CPubKey & spk );      // Signing public key
 
 	bool WriteGeneralProxy( 
-		const std::string & addr, 
-		const std::string & paddr, 
+		const CKeyID & addr, 
+		const CKeyID & paddr, 
 		const std::string & cert, 
 		const std::vector<unsigned char > & signature );
 	bool WriteGeneralProxyRevoke(  
-		const std::string & addr, 
-		const std::string & paddr, 
+		const CKeyID & addr, 
+		const CKeyID & paddr, 
 		const std::string & cert, 
 		const std::vector<unsigned char > & signature );
 	bool WriteIssuerProxy(  
-		const std::string & addr, 
-		const std::string & paddr, 
-		const std::string & iaddr, 
+		const CKeyID & addr, 
+		const CKeyID & paddr, 
+			 const CKeyID & iaddr, 
 		const std::string & cert, 
 		const std::vector<unsigned char > & signature );
 	bool WriteIssuerProxyRevoke(  
-		const std::string & addr, 
-		const std::string & paddr, 
-		const std::string & iaddr, 
+		const CKeyID & addr, 
+		const CKeyID & paddr, 
+			 const CKeyID & iaddr, 
 		const std::string & cert, 
 		const std::vector<unsigned char > & signature );
 	bool WritePollProxy(  
-		const std::string & addr, 
-		const std::string & paddr, 
+		const CKeyID & addr, 
+		const CKeyID & paddr, 
 		const std::string & pollID, 
 		const std::string & cert, 
 		const std::vector<unsigned char > & signature );
 	bool WritePollProxyRevoke(  
-		const std::string & addr, 
-		const std::string & paddr, 
+		const CKeyID & addr, 
+		const CKeyID & paddr, 
 		const std::string & pollID, 
 		const std::string & cert, 
 		const std::vector<unsigned char > & signature );
@@ -198,16 +198,17 @@ public:
 	bool ErasePoll( const uint160 & );
 
 	bool WriteVote( 
+				 time_t timestamp,
          const CKeyID & addr,
          const CKeyID & iaddr,
     const std::string & pollid,
     const std::string & response,
-    const std::string & pAddr );
+    	 const CKeyID & pAddr );
 
 	bool EraseVote( 
          const CKeyID & addr, 
     const std::string & pollid,
-    const std::string & pAddr );
+    	 const CKeyID & pAddr );
 
 private:
     CEDCWalletDB(const CEDCWalletDB&);

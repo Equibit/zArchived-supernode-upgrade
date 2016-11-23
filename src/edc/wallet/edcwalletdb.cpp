@@ -68,7 +68,7 @@ const std::string USER_MSG          = "user_msg";   // USER_MSG:(tag:hash)/msg
 const std::string VERSION           = "version";    // VERSION/version
 const std::string WATCHS            = "watchs";     // WATCHS/dest
 const std::string WKEY              = "wkey";       // WKEY:pubkey/privkey
-const std::string VOTE              = "vote";       // VOTE:(pollid:addr:paddr)/(iaddr:response)
+const std::string VOTE              = "vote";       // VOTE:(pollid:addr:paddr)/(timestamp:iaddr:response)
 const std::string WOTCERT           = "wotcert";    // WOTCERT:(pubkey:spubkey)/(sig:cert)
 const std::string WOTCRTRVK         = "wotcrtrvk";  // WOTCERT:(pubkey:spubkey)/reason
 }
@@ -806,20 +806,25 @@ ReadKeyValue(
 		else if( strType == VOTE )
 		{
 			// VOTE:(pollid:addr:paddr)/(iaddr:response)
-			CKeyID	addr;
 			std::string pollid;
-			std::string paddr;
-			std::string response;
-			CKeyID	iaddr;
-
 			ssKey >> pollid;
+
+			CKeyID	addr;
 			ssKey >> addr;
+
+			CKeyID paddr;
 			ssKey >> paddr;
 
+			time_t	timestamp;
+			ssValue >> timestamp;
+
+			CKeyID	iaddr;
 			ssValue >> iaddr;
+
+			std::string response;
 			ssValue >> response;
 
-			pwallet->LoadVote( addr, iaddr, pollid, response, paddr );
+			pwallet->LoadVote( timestamp, addr, iaddr, pollid, response, paddr );
 		}
 		else if( strType == WOTCERT )
 		{
@@ -845,7 +850,7 @@ ReadKeyValue(
 		}
 		else if( strType == PROXY )
 		{
-			std::string addr, paddr;
+			CKeyID addr, paddr;
 			ssKey >> addr;
 			ssKey >> paddr;
 
@@ -855,14 +860,14 @@ ReadKeyValue(
 			ssValue >> ts;
 			ssValue >> signature;
 
-			if( pwallet->VerifyProxy( ts, addr, paddr, "", signature, strErr ))
+			if( pwallet->VerifyProxy( ts, addr.ToString(), paddr.ToString(), "", signature, strErr))
 				return false;
 
 			pwallet->LoadGeneralProxy( ts, addr, paddr );
 		}
 		else if( strType == PROXY_RVK )
 		{
-			std::string addr, paddr;
+			CKeyID addr, paddr;
 			ssKey >> addr;
 			ssKey >> paddr;
 
@@ -872,14 +877,16 @@ ReadKeyValue(
 			ssValue >> ts;
 			ssValue >> signature;
 
-			if( pwallet->VerifyProxy( ts, addr, paddr, "", signature, strErr ))
+			if( pwallet->VerifyProxy( ts, addr.ToString(), paddr.ToString(), "", signature, strErr))
 				return false;
 
 			pwallet->LoadGeneralProxyRevoke( ts, addr, paddr );
 		}
 		else if( strType == IPROXY )
 		{
-			std::string addr, paddr, iaddr;
+			CKeyID addr, paddr;
+			CKeyID iaddr;
+
 			ssKey >> addr;
 			ssKey >> paddr;
 			ssKey >> iaddr;
@@ -890,14 +897,17 @@ ReadKeyValue(
 			ssValue >> ts;
 			ssValue >> signature;
 
-			if( pwallet->VerifyProxy( ts, addr, paddr, iaddr, signature, strErr ))
+			if( pwallet->VerifyProxy( ts, addr.ToString(), paddr.ToString(), iaddr.ToString(), 
+			signature, strErr ))
 				return false;
 
 			pwallet->LoadIssuerProxy( ts, addr, paddr, iaddr );
 		}
 		else if( strType == IPROXY_RVK )
 		{
-			std::string addr, paddr, iaddr;
+			CKeyID addr, paddr;
+			CKeyID iaddr;
+
 			ssKey >> addr;
 			ssKey >> paddr;
 			ssKey >> iaddr;
@@ -908,14 +918,16 @@ ReadKeyValue(
 			ssValue >> ts;
 			ssValue >> signature;
 
-			if( pwallet->VerifyProxy( ts, addr, paddr, iaddr, signature, strErr ))
+			if( pwallet->VerifyProxy( ts, addr.ToString(), paddr.ToString(), iaddr.ToString(), 
+			signature, strErr ))
 				return false;
 
 			pwallet->LoadIssuerProxyRevoke( ts, addr, paddr, iaddr );
 		}
 		else if( strType == PPROXY )
 		{
-			std::string addr, paddr, pollID;
+			CKeyID addr, paddr;
+			std::string pollID;
 			ssKey >> addr;
 			ssKey >> paddr;
 			ssKey >> pollID;
@@ -926,14 +938,16 @@ ReadKeyValue(
 			ssValue >> ts;
 			ssValue >> signature;
 
-			if( pwallet->VerifyProxy( ts, addr, paddr, pollID, signature, strErr ))
+			if( pwallet->VerifyProxy( ts, addr.ToString(), paddr.ToString(), pollID, signature, 
+			strErr ))
 				return false;
 
 			pwallet->LoadPollProxy( ts, addr, paddr, pollID );
 		}
 		else if( strType == PPROXY_RVK )
 		{
-			std::string addr, paddr, pollID;
+			CKeyID addr, paddr;
+			std::string pollID;
 			ssKey >> addr;
 			ssKey >> paddr;
 			ssKey >> pollID;
@@ -944,7 +958,8 @@ ReadKeyValue(
 			ssValue >> ts;
 			ssValue >> signature;
 
-			if( pwallet->VerifyProxy( ts, addr, paddr, pollID, signature, strErr ))
+			if( pwallet->VerifyProxy( ts, addr.ToString(), paddr.ToString(), pollID, signature, 
+			strErr ))
 				return false;
 
 			pwallet->LoadPollProxyRevoke( ts, addr, paddr, pollID );
@@ -1587,11 +1602,12 @@ bool dumpKey(
 		else if( strType == VOTE )
 		{
 			std::string pollid;
-			CKeyID addr;
-			std::string pAddr;
-
 			ssKey >> pollid;
+
+			CKeyID addr;
 			ssKey >> addr;
+
+			std::string pAddr;
 			ssKey >> pAddr;
 
 			out << ':' << pollid << ':' << addr.ToString() << ':' << pAddr;
@@ -1896,14 +1912,26 @@ dumpValue(
 		}
 		else if( strType == VOTE )
 		{
-			// VOTE:(pollid:addr:paddr)/(iaddr:response)
-			CKeyID issuer;
-			std::string response;
+			// VOTE:(pollid:addr:paddr)/(timestamp:iaddr:response)
+			time_t	timestamp;
+			ssValue >> timestamp;
 
+			CKeyID	issuer;
 			ssValue >> issuer;
+
+			std::string response;
 			ssValue >> response;
 
-			out << "{\"issuer\":\"" << issuer.ToString() << "\",\"response\":\"" << response <<  "\"}" << endl;
+			struct tm ptm;
+			localtime_r( &timestamp, &ptm );
+			char tss[32];
+			strftime( tss, 32, "%Y-%m-%d %H:%M:%S", &ptm );  
+
+			out << 
+				"{\"timestamp\":\"" << tss << "\"" <<
+				",\"issuer\":\"" << issuer.ToString() << "\"" <<
+				",\"response\":\"" << response << "\"" << 
+				"}" << endl;
 		}
 		else if( strType == WOTCERT )
 		{
@@ -2592,8 +2620,8 @@ bool CEDCWalletDB::EraseWoTcertificateRevocation(CPubKey const & pk, CPubKey con
 }
 
 bool CEDCWalletDB::WriteGeneralProxy( 
-	const std::string & addr, 
-	const std::string & paddr, 
+		 const CKeyID & addr, 
+		 const CKeyID & paddr, 
 	const std::string & ts, 
 	const std::vector<unsigned char > & signature )
 {
@@ -2604,8 +2632,8 @@ bool CEDCWalletDB::WriteGeneralProxy(
 }
 
 bool CEDCWalletDB::WriteGeneralProxyRevoke(  
-	const std::string & addr, 
-	const std::string & paddr, 
+		 const CKeyID & addr, 
+		 const CKeyID & paddr, 
 	const std::string & ts, 
 	const std::vector<unsigned char > & signature )
 {
@@ -2616,9 +2644,9 @@ bool CEDCWalletDB::WriteGeneralProxyRevoke(
 }
 
 bool CEDCWalletDB::WriteIssuerProxy(  
-	const std::string & addr, 
-	const std::string & paddr, 
-	const std::string & iaddr, 
+		 const CKeyID & addr, 
+		 const CKeyID & paddr, 
+		 const CKeyID & iaddr, 
 	const std::string & ts, 
 	const std::vector<unsigned char > & signature )
 {
@@ -2629,9 +2657,9 @@ bool CEDCWalletDB::WriteIssuerProxy(
 }
 
 bool CEDCWalletDB::WriteIssuerProxyRevoke(  
-	const std::string & addr, 
-	const std::string & paddr, 
-	const std::string & iaddr, 
+		 const CKeyID & addr, 
+		 const CKeyID & paddr, 
+		 const CKeyID & iaddr, 
 	const std::string & ts, 
 	const std::vector<unsigned char > & signature )
 {
@@ -2642,8 +2670,8 @@ bool CEDCWalletDB::WriteIssuerProxyRevoke(
 }
 
 bool CEDCWalletDB::WritePollProxy(  
-	const std::string & addr, 
-	const std::string & paddr, 
+		 const CKeyID & addr, 
+		 const CKeyID & paddr, 
 	const std::string & pollID, 
 	const std::string & ts, 
 	const std::vector<unsigned char > & signature )
@@ -2655,8 +2683,8 @@ bool CEDCWalletDB::WritePollProxy(
 }
 
 bool CEDCWalletDB::WritePollProxyRevoke(  
-	const std::string & addr, 
-	const std::string & paddr, 
+		 const CKeyID & addr, 
+		 const CKeyID & paddr, 
 	const std::string & pollID, 
 	const std::string & ts, 
 	const std::vector<unsigned char > & signature )
@@ -2682,24 +2710,25 @@ bool CEDCWalletDB::ErasePoll( const uint160 & id )
 }
 
 bool CEDCWalletDB::WriteVote( 
+				 time_t timestamp,
          const CKeyID & addr,
          const CKeyID & iaddr,
     const std::string & pollid,
     const std::string & response,
-    const std::string & pAddr )
+    	 const CKeyID & pAddr )
 {
 	EDCapp & theApp = EDCapp::singleton();
     theApp.incWalletDBUpdated();
 
 	return Write( std::make_pair( VOTE, 
 		std::make_pair( pollid, std::make_pair( addr, pAddr))), 
-		std::make_pair( iaddr, response ) );
+		std::make_pair( timestamp, std::make_pair( iaddr, response )) );
 }
 
 bool CEDCWalletDB::EraseVote( 
 		 const CKeyID & addr, 
 	const std::string & pollid, 
-	const std::string & pAddr )
+		 const CKeyID & pAddr )
 {
 	EDCapp & theApp = EDCapp::singleton();
     theApp.incWalletDBUpdated();

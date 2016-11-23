@@ -35,6 +35,9 @@ public:
 
 	std::string toJSON() const;
 
+	const time_t	& start() const	{ return start_; }
+	const time_t	& end() const	{ return end_; }
+
 private:
 	CKeyID 		issuerID_;
 	std::string question_;
@@ -68,5 +71,6 @@ public:
 
 private:
 
-	std::map<std::string, std::map<CKeyID, int>>	results_;
+	// address of voter / value of vote : proxy type of vote
+	std::map<CKeyID, std::pair<std::string, int>> results_;
 };

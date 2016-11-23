@@ -462,18 +462,18 @@ CEDCMutableTransaction & txIn,				// IN: Input Transaction
 
 	struct Proxy
 	{
-		// Poll ID: poll ID           proxy addr/time stamp/is_active
-		std::map<std::string, std::tuple<std::string, std::string, bool> >	pollProxies;
+		//       Poll ID           Proxy addr/time stamp/is_active
+		std::map<std::string, std::tuple<CKeyID, std::string, bool> >	pollProxies;
 
-		// Issuer:  Issuer addr           proxy addr/time stamp/is_active
-		std::map<std::string, std::tuple<std::string, std::string, bool> >	issuerProxies;
+		//       Issuer            Proxy addr/time stamp/is_active
+		std::map<CKeyID, std::tuple<CKeyID, std::string, bool> >	issuerProxies;
 
-		// General: Proxy addr/timestamp/is_active
-		std::tuple<std::string, std::string, bool> generalProxy;
+		//         Proxy addr/timestamp/is_active
+		std::tuple<CKeyID, std::string, bool> generalProxy;
 	};
 
 	//			address
-	std::map<std::string, Proxy>	proxyMap;
+	std::map<CKeyID, Proxy>			proxyMap;
 	std::map<uint160, Poll>			polls;
 	std::map<uint160, PollResult>	pollResults;
 
@@ -999,34 +999,30 @@ public:
 	void LoadWoTCertificate( const CPubKey & pk1, const CPubKey & pk2, const WoTCertificate & cert );
 	void LoadWoTCertificateRevoke( const CPubKey & pk1, const CPubKey & pk2, const std::string & reason );
 
-	bool AddGeneralProxy( const std::string &, const std::string &, std::string & );
-	bool AddGeneralProxyRevoke(  const std::string &, const std::string &, std::string & );
-	bool AddIssuerProxy(const std::string &, const std::string &, const std::string &,
-		std::string & );
-	bool AddIssuerProxyRevoke(  const std::string &, const std::string &, const std::string &, 
-		std::string & );
-	bool AddPollProxy(  const std::string &, const std::string &, const std::string &, 
-		std::string & );
-	bool AddPollProxyRevoke( const std::string &, const std::string &, const std::string &, 
-		std::string & );
+	bool AddGeneralProxy( const CKeyID &, const CKeyID &, std::string & );
+	bool AddGeneralProxyRevoke(  const CKeyID &, const CKeyID &, std::string & );
+	bool AddIssuerProxy(const CKeyID &, const CKeyID &, const CKeyID &, std::string & );
+	bool AddIssuerProxyRevoke(  const CKeyID &, const CKeyID &, const CKeyID &, std::string & );
+	bool AddPollProxy(  const CKeyID &, const CKeyID &, const std::string &, std::string & );
+	bool AddPollProxyRevoke( const CKeyID &, const CKeyID &, const std::string &, std::string & );
 
 	bool VerifyProxy( const std::string & ts, const std::string & addr, const std::string & paddr, 
 		const std::string & other, const std::vector<unsigned char > &, std::string & );
 
-	void LoadGeneralProxy( const std::string & ts, const std::string &, const std::string & );
-	void LoadGeneralProxyRevoke( const std::string & ts, const std::string &, const std::string & );
-	void LoadIssuerProxy( const std::string & ts, const std::string &, const std::string &, const std::string & );
-	void LoadIssuerProxyRevoke( const std::string & ts, const std::string &, const std::string &, const std::string & );
-	void LoadPollProxy( const std::string & ts, const std::string &, const std::string &, const std::string & );
-	void LoadPollProxyRevoke( const std::string & ts, const std::string &, const std::string &, const std::string & );
+	void LoadGeneralProxy( const std::string & ts, const CKeyID &, const CKeyID & );
+	void LoadGeneralProxyRevoke( const std::string & ts, const CKeyID &, const CKeyID & );
+	void LoadIssuerProxy( const std::string & ts, const CKeyID &, const CKeyID &, const CKeyID & );
+	void LoadIssuerProxyRevoke( const std::string & ts, const CKeyID &, const CKeyID &, const CKeyID & );
+	void LoadPollProxy( const std::string & ts, const CKeyID &, const CKeyID &, const std::string & );
+	void LoadPollProxyRevoke( const std::string & ts, const CKeyID &, const CKeyID &, const std::string & );
 
 	bool AddPoll( const Poll &, std::string & );
 	void LoadPoll( const Poll & );
 
-	bool AddVote( const CKeyID & addr, const CKeyID & iaddr, const std::string & pollid,
-			const std::string & response, const std::string & pAddr, std::string & errStr );
-	void LoadVote(const CKeyID & addr, const CKeyID & iaddr, const std::string & pollid,
-			const std::string & response, const std::string & pAddr );
+	bool AddVote( time_t, const CKeyID & addr, const CKeyID & iaddr, const std::string & pollid,
+			const std::string & response, const CKeyID & pAddr, std::string & errStr );
+	void LoadVote(time_t, const CKeyID & addr, const CKeyID & iaddr, const std::string & pollid,
+			const std::string & response, const CKeyID & pAddr );
 };
 
 /** A key allocated from the key pool. */
