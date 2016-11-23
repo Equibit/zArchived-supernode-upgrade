@@ -52,8 +52,6 @@ class CScript;
 class CEDCTxMemPool;
 class CEDCWalletTx;
 class CEDCBlock;
-class Poll;
-class PollResult;
 class WoTCertificate;
 
 
@@ -1018,6 +1016,8 @@ public:
 
 	bool AddPoll( const Poll &, std::string & );
 	void LoadPoll( const Poll & );
+	
+	bool pollResult( const uint160 &, const PollResult * & ) const;
 
 	bool AddVote( time_t, const CKeyID & addr, const CKeyID & iaddr, const std::string & pollid,
 			const std::string & response, const CKeyID & pAddr, std::string & errStr );

@@ -69,6 +69,10 @@ public:
 
 	void addVote( const std::string & ans, const CKeyID & id, Type t );
 
+	void summary( std::string & ) const;
+	void response( std::string & ) const;
+	void all( std::string & ) const;
+
 private:
 
 	// address of voter / value of vote : proxy type of vote

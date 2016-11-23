@@ -6084,3 +6084,16 @@ void CEDCWallet::LoadVote(
 		error( msg.c_str() );
 	}
 }
+
+bool CEDCWallet::pollResult( 
+		 const uint160 & id, 
+	const PollResult * & result ) const
+{
+	auto it = pollResults.find(id);
+	if( it != pollResults.end())
+	{
+		result = &it->second;
+		return true;
+	}
+	return false;
+}

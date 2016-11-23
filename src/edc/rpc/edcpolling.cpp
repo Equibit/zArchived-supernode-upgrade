@@ -282,25 +282,56 @@ UniValue edcvote(const UniValue& params, bool fHelp)
 
 UniValue edcpollresults(const UniValue& params, bool fHelp)
 {
-    if (fHelp || params.size() != 2 )
+    if (fHelp || params.size() < 1 || params.size() > 2 )
         throw std::runtime_error(
-            "eb_pollresults \"address\" \"pollid\"\n"
+            "eb_pollresults \"pollid\" (\"type\")\n"
             "\nReturns the results of the poll.\n"
             "\nArguments:\n"
-            "1. \"address\"        (string, required) The address of poll issuer\n"
-            "2. \"pollid\"         (string, required) The id of the poll\n"
-            "\nResult: None\n"
+            "1. \"pollid\"         (string, required) The id of the poll\n"
+			"2. \"type\"           (string, optional) Type of output. Default: summary\n"
+			"\nThe types are \"summary\", \"response\" or \"all\". If \"summary\" is specified\n"
+			"then only a summary of the results is output. This is the number of votes for each\n"
+			"possible response value. If \"response\" is specified, then for each response, the\n"
+			"list of addresses that voted for the given value are listed. If \"all\" is specified\n"
+			"then all details are returned.\n"
+            "\nResult: JSON encoding of poll results, based on type.\n"
             "\nExamples:\n"
             + HelpExampleCli("eb_pollresults", "\"139...301\" \"1xcc...adfv\" \"John Black\"" )
             + HelpExampleRpc("eb_pollresults", "\"139...301\", \"1vj4...adfv\" \"Mary Smyth\"" )
         );
 
-	std::string address = params[0].get_str();
-	std::string iAddress= params[1].get_str();
+	std::string pollidStr = params[0].get_str();
 
-// TODO: Return poll results from wallet
+	uint160 pollid;
+	pollid.SetHex(pollidStr);
 
-    return NullUniValue;
+	EDCapp & theApp = EDCapp::singleton();
+
+	LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
+
+	const PollResult * result;
+	bool rc = theApp.walletMain()->pollResult( pollid, result );
+	if( !rc )
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid poll ID");
+
+	std::string type = "summary";
+
+	if( params.size() > 1 )
+		type = params[1].get_str();
+
+	std::string ans;
+
+	if(type == "summary" )
+		result->summary( ans );
+	else if(type == "response" )
+		result->response( ans );
+	else if(type == "all" )
+		result->all( ans );
+	else
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid result type");
+
+	UniValue value(ans);
+    return value;
 }
 
 namespace
@@ -452,3 +483,137 @@ void PollResult::addVote(
 		}
 	}
 }
+
+void PollResult::summary( std::string & ans ) const
+{
+	std::map<std::string, unsigned> result;
+
+	auto i = results_.begin();
+	auto e = results_.end();
+	while( i != e )
+	{
+		auto rc = result.insert( std::make_pair( i->second.first, 0 ) );
+
+		++rc.first->second;
+
+		++i;
+	}
+
+	ans = "[";
+	bool first = true;
+
+	auto ri = result.begin();
+	auto re = result.end();
+	while( ri != re )
+	{
+		if(!first)
+			ans += ",";
+		else
+			first = false;
+
+		ans += "{\"response\":\"" + ri->first + "\"";
+
+		ans += ",\"count\":";
+		char buff[10];
+		sprintf( buff, "%u", ri->second );
+		ans += buff;
+
+		ans += "}";
+		++ri;
+	}
+
+	ans += "]";
+}
+
+void PollResult::response( std::string & ans ) const
+{
+	std::map<std::string,std::string> result;
+
+	auto i = results_.begin();
+	auto e = results_.end();
+	while( i != e )
+	{
+		auto rc = result.insert( std::make_pair( i->second.first, std::string() ) );
+
+		if(rc.first->second.size() )
+			rc.first->second += ",\"" + i->first.ToString() + "\"";
+		else
+			rc.first->second = "\"" + i->first.ToString() + "\"";
+
+		++i;
+	}
+
+	ans = "[";
+	bool first = true;
+
+	auto ri = result.begin();
+	auto re = result.end();
+	while( ri != re )
+	{
+		if(!first)
+			ans += ",";
+		else
+			first = false;
+
+		ans += "{\"response\":\"" + ri->first + "\"";
+
+		ans += ",\"addresses\":[" + ri->second + "]";
+
+		ans += "}";
+		++ri;
+	}
+
+	ans += "]";
+}
+
+namespace
+{
+
+const std::string & toString( int t )
+{
+	static const std::string	invalid = "invalid";
+	static const std::string	general = "general";
+	static const std::string	issuer  = "issuer";
+	static const std::string	poll    = "poll";
+	static const std::string	owner   = "owner";
+
+	switch(t)
+	{
+	default:					return invalid;
+	case PollResult::GENERAL:	return general;
+	case PollResult::ISSUER:	return issuer;
+	case PollResult::POLL:		return poll;
+	case PollResult::OWNER:		return owner;
+	}
+}
+
+}
+
+void PollResult::all( std::string & ans ) const
+{
+	ans = "[";
+
+	bool first = true;
+
+	auto i = results_.begin();
+	auto e = results_.end();
+
+	while( i != e )
+	{
+		if(!first)
+			ans += ",";
+		else
+			first = false;
+
+		ans += "{";
+		ans += "\"response\":\"" + i->second.first + "\",";
+		ans +=	"\"address\":\"" + i->first.ToString() + "\",";
+		ans +=	"\"proxy_type\":\"" + toString( i->second.second );
+		ans +=	"\"}";
+
+		++i;
+	}
+
+	ans += "]";
+}
+
