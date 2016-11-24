@@ -2923,7 +2923,7 @@ UniValue edctrustedsend(const UniValue & params, bool fHelp)
 			"The wot-level parameter determines what level of trust is used as follows:\n\n"
 			"1	Trust chain from issuer to buyer of length of up to 2\n"
 			"2	Trust chain from issuer to buyer\n"
-			"3	Issuer and buyer must both sign the transaction\n"
+			"3	Either the buyer or seller must be the issuer\n"
 			"\nArguments:\n"
 			"1. \"seller\"     (string, required)  address of the seller.\n"
             "2. \"buyer\"      (string, required)  address of the buyer.\n"
@@ -2997,6 +2997,10 @@ UniValue edctrustedsend(const UniValue & params, bool fHelp)
 
 		if(theApp.walletMain()->WoTchainExists( epubkey, bpubkey, spubkey, wotlvl ))
 			throw JSONRPCError(RPC_TYPE_ERROR, "No trust chain could be found to buyer" );
+
+		// If the WoT level is 3, then the issuer must be either the buyer or the seller
+		if( wotlvl == 3 && ( epubkey != bpubkey ) && ( epubkey != spubkey ) )
+			throw JSONRPCError(RPC_TYPE_ERROR, "The issuer must be the buyer or seller in WoT level 3 transactions" );
 	}
 
     // Parse Equibit address
