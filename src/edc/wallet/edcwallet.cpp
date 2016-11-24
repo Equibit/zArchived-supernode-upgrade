@@ -5116,7 +5116,6 @@ bool CEDCWallet::CreateAuthorizingTransaction(
 }
 
 bool CEDCWallet::CreateBlankingTransaction(
-        const CTxDestination & address,
           const CEDCWalletTx & wtx,
                         size_t outId,
 				CEDCWalletTx & wtxNew, 

@@ -763,7 +763,6 @@ public:
      * Create a new transaction that is created to blank the EQB of the input TxOut.
      */
     bool CreateBlankingTransaction(
-				 const CTxDestination & addr,
                    const CEDCWalletTx & wtx,
                                  size_t outId, 
 						 CEDCWalletTx & wtxNew, 

@@ -292,14 +292,13 @@ UniValue blankEquibit( const UniValue & params, bool fHelp )
 	if (!edcEnsureWalletIsAvailable(fHelp))
 	    return NullUniValue;
 
-	if( fHelp || params.size() != 3)
+	if( fHelp || params.size() != 2)
 		throw std::runtime_error(
 			"eb_blankquibit \"address\" \"transaction-id\" transaction-off\n"
 			"\nAuthorizes (or labels) an eqibit.\n"
 			"\nArguments:\n"
-			"1. \"address\"         (string,required) The address of the owner.\n"
-			"2. \"transaction-id\"  (string,required) The address of the transaction that contains the output transaction.\n"
-			"3. transaction-off     (numeric,required) The offset of the TxOut within that stores the Equibit to be authorized.\n"
+			"1. \"transaction-id\"  (string,required) The address of the transaction that contains the output transaction.\n"
+			"2. transaction-off     (numeric,required) The offset of the TxOut within that stores the Equibit to be authorized.\n"
 	        "\nResult:\n"
 	        "\"transactionid\"        (string) The id of the generated transaction.\n"
 
@@ -308,15 +307,12 @@ UniValue blankEquibit( const UniValue & params, bool fHelp )
 		);
 	LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-	std::string addr   = params[0].get_str();
-	std::string txID   = params[1].get_str();
-	unsigned	txOff  = params[2].get_int();
+	std::string txID   = params[0].get_str();
+	unsigned	txOff  = params[1].get_int();
 
 	edcEnsureWalletIsUnlocked();
 
 	CEDCWalletDB walletdb(theApp.walletMain()->strWalletFile);
-
-	CTxDestination address = CEDCBitcoinAddress(addr).Get();
 
 	// Get the transaction and txOut from params
     uint256 hash;
@@ -329,16 +325,13 @@ UniValue blankEquibit( const UniValue & params, bool fHelp )
 	if(wtx.vout.size() <= txOff )
         throw JSONRPCError(RPC_WALLET_ERROR, "TxOut offset is out of range" );
 
-	// Parse Equibit address
-    CScript scriptPubKey = GetScriptForDestination(address);
-
     // Create and send the transaction
     CEDCReserveKey reservekey(theApp.walletMain());
     std::string strError;
 
 	CEDCWalletTx wtxNew;
 
-    if (!theApp.walletMain()->CreateBlankingTransaction( address, wtx, txOff, wtxNew, reservekey, 
+    if (!theApp.walletMain()->CreateBlankingTransaction( wtx, txOff, wtxNew, reservekey, 
 	strError))
     {
 #if HANDLE_FEE
