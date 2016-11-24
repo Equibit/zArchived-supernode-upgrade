@@ -5115,6 +5115,81 @@ bool CEDCWallet::CreateAuthorizingTransaction(
     return true;
 }
 
+bool CEDCWallet::CreateBlankingTransaction(
+        const CTxDestination & address,
+          const CEDCWalletTx & wtx,
+                        size_t outId,
+				CEDCWalletTx & wtxNew, 
+			  CEDCReserveKey & reservekey, 
+				 std::string & strFailReason )
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+    CAmount nValue = wtx.vout[outId].nValue;
+
+    wtxNew.fTimeReceivedIsTxTime = true;
+    wtxNew.BindWallet(this);
+
+    CEDCMutableTransaction txNew;
+
+    txNew.nLockTime = theApp.chainActive().Height();
+
+    assert(txNew.nLockTime <= (unsigned int)theApp.chainActive().Height());
+    assert(txNew.nLockTime < LOCKTIME_THRESHOLD);
+    {
+        LOCK2(EDC_cs_main, cs_wallet);
+        {
+            txNew.vin.clear();
+            txNew.vout.clear();
+            wtxNew.fFromMe = true;
+
+            CEDCTxOut txout(nValue, wtx.vout[outId].scriptPubKey);
+
+			// Blank the output transaction
+			const_cast<CPubKey &>(txout.issuerPubKey) = CPubKey();
+			const_cast<CKeyID &>(txout.issuerAddr).SetNull();
+			const_cast<unsigned &>(txout.wotMinLevel) = 0;
+
+            txNew.vout.push_back(txout);
+
+            txNew.vin.push_back(CEDCTxIn(wtx.GetHash(), 0, CScript(), 
+				std::numeric_limits<unsigned int>::max()-1));
+
+            CEDCTransaction txNewConst(txNew);
+
+            bool signSuccess;
+            const CScript& scriptPubKey = wtx.vout[outId].scriptPubKey;
+			SignatureData sigdata;
+
+			bool sign = true;
+			if(sign)
+            	signSuccess = edcProduceSignature(EDCTransactionSignatureCreator(this, 
+					&txNewConst, 0, 0, SIGHASH_ALL), scriptPubKey, sigdata );
+            else
+                signSuccess = edcProduceSignature(DummySignatureCreator(this),scriptPubKey,sigdata);
+
+            if (!signSuccess)
+            {
+                strFailReason = _("Signing transaction failed");
+                return false;
+            }
+			else
+			{
+				edcUpdateTransaction( txNew, 0, sigdata );
+			}
+
+            if (!sign) 
+			{
+                txNew.vin[0].scriptSig = CScript();
+            }
+
+            *static_cast<CEDCTransaction*>(&wtxNew) = CEDCTransaction(txNew);
+        }
+    }
+
+    return true;
+}
+
 void CEDCWallet::LoadMessage( 
 	const std::string & tag, 
 		const uint256 & hash, 

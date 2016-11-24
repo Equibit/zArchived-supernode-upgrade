@@ -222,7 +222,7 @@ UniValue authorizeEquibit( const UniValue & params, bool fHelp )
 			"3. transaction-off     (numeric,required) The offset of the TxOut within that stores the Equibit to be authorized.\n"
 			"4. wot-min-lvl         (numeric,required) The minimum WoT level used when TXN is moved.\n"
 	        "\nResult:\n"
-	        "\"transactionid\"        (string) The transaction id.\n"
+	        "\"transactionid\"        (string) The id of the generated transaction.\n"
 
 			+ HelpExampleCli( "eb_authorizeequibit", "\"ABC Comp\" \"a3b65445c098654c4cb09736fed9232157098743ecdfa2fd403509876524edfe\" 2" )
 			+ HelpExampleRpc( "eb_authorizeequibit", "\"ABC Comp\" \"a3b65445c098654c4cb09736fed9232157098743ecdfa2fd403509876524edfe\" 2" )
@@ -266,7 +266,8 @@ UniValue authorizeEquibit( const UniValue & params, bool fHelp )
 
 	CEDCWalletTx wtxNew;
 
-    if (!theApp.walletMain()->CreateAuthorizingTransaction( issuer, minWoT, wtx, txOff, wtxNew, reservekey, strError))
+    if (!theApp.walletMain()->CreateAuthorizingTransaction( issuer, minWoT, wtx, txOff, 
+	wtxNew, reservekey, strError))
     {
 #if HANDLE_FEE
         if (nValue > theApp.walletMain()->GetBalance())
@@ -276,9 +277,82 @@ UniValue authorizeEquibit( const UniValue & params, bool fHelp )
     }
 
     if (!theApp.walletMain()->CommitTransaction(wtxNew, reservekey, theApp.connman().get()))
-        throw JSONRPCError(RPC_WALLET_ERROR,"Error: The transaction was rejected! This might happen if some of the "
-											"coins in your wallet were already spent, such as if you used a copy of "
-											"the wallet and coins were spent in the copy but not marked as spent here.");
+        throw JSONRPCError(RPC_WALLET_ERROR,
+			"Error: The transaction was rejected! This might happen if some of the "
+			"coins in your wallet were already spent, such as if you used a copy of "
+			"the wallet and coins were spent in the copy but not marked as spent here.");
+
+	return wtxNew.GetHash().GetHex();
+}
+
+UniValue blankEquibit( const UniValue & params, bool fHelp )
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+	if (!edcEnsureWalletIsAvailable(fHelp))
+	    return NullUniValue;
+
+	if( fHelp || params.size() != 3)
+		throw std::runtime_error(
+			"eb_blankquibit \"address\" \"transaction-id\" transaction-off\n"
+			"\nAuthorizes (or labels) an eqibit.\n"
+			"\nArguments:\n"
+			"1. \"address\"         (string,required) The address of the owner.\n"
+			"2. \"transaction-id\"  (string,required) The address of the transaction that contains the output transaction.\n"
+			"3. transaction-off     (numeric,required) The offset of the TxOut within that stores the Equibit to be authorized.\n"
+	        "\nResult:\n"
+	        "\"transactionid\"        (string) The id of the generated transaction.\n"
+
+			+ HelpExampleCli( "eb_blankequibit", "\"ABC Comp\" \"a3b65445c098654c4cb09736fed9232157098743ecdfa2fd403509876524edfe\" 2" )
+			+ HelpExampleRpc( "eb_blankequibit", "\"ABC Comp\", \"a3b65445c098654c4cb09736fed9232157098743ecdfa2fd403509876524edfe\", 2" )
+		);
+	LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
+
+	std::string addr   = params[0].get_str();
+	std::string txID   = params[1].get_str();
+	unsigned	txOff  = params[2].get_int();
+
+	edcEnsureWalletIsUnlocked();
+
+	CEDCWalletDB walletdb(theApp.walletMain()->strWalletFile);
+
+	CTxDestination address = CEDCBitcoinAddress(addr).Get();
+
+	// Get the transaction and txOut from params
+    uint256 hash;
+    hash.SetHex(txID);
+
+    if (!theApp.walletMain()->mapWallet.count(hash))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid or non-wallet transaction id");
+    const CEDCWalletTx& wtx = theApp.walletMain()->mapWallet[hash];
+
+	if(wtx.vout.size() <= txOff )
+        throw JSONRPCError(RPC_WALLET_ERROR, "TxOut offset is out of range" );
+
+	// Parse Equibit address
+    CScript scriptPubKey = GetScriptForDestination(address);
+
+    // Create and send the transaction
+    CEDCReserveKey reservekey(theApp.walletMain());
+    std::string strError;
+
+	CEDCWalletTx wtxNew;
+
+    if (!theApp.walletMain()->CreateBlankingTransaction( address, wtx, txOff, wtxNew, reservekey, 
+	strError))
+    {
+#if HANDLE_FEE
+        if (nValue > theApp.walletMain()->GetBalance())
+            strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(0));
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+#endif
+    }
+
+    if (!theApp.walletMain()->CommitTransaction(wtxNew, reservekey, theApp.connman().get()))
+        throw JSONRPCError(RPC_WALLET_ERROR,
+			"Error: The transaction was rejected! This might happen if some of the "
+			"coins in your wallet were already spent, such as if you used a copy of "
+			"the wallet and coins were spent in the copy but not marked as spent here.");
 
 	return wtxNew.GetHash().GetHex();
 }
@@ -291,6 +365,7 @@ const CRPCCommand commands[] =
 	{ "equibit", "eb_getnewhsmissuer",	 &getNewHSMIssuer,   true },
 	{ "equibit", "eb_getissuers",		 &listIssuers,       true },
 	{ "equibit", "eb_authorizeequibit",  &authorizeEquibit,  true },
+	{ "equibit", "eb_blankequibit",      &blankEquibit,      true },
 };
 
 }

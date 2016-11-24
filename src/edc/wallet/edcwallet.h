@@ -760,6 +760,17 @@ public:
         				  std::string & strFailReason );
 
     /**
+     * Create a new transaction that is created to blank the EQB of the input TxOut.
+     */
+    bool CreateBlankingTransaction(
+				 const CTxDestination & addr,
+                   const CEDCWalletTx & wtx,
+                                 size_t outId, 
+						 CEDCWalletTx & wtxNew, 
+					   CEDCReserveKey & reservekey, 
+        				  std::string & strFailReason );
+
+    /**
      * Create a new trusted transaction paying the recipients with a set of coins
      * selected by SelectCoins(); Also create the change output, when needed
      * @note passing nChangePosInOut as -1 will result in setting a random position
