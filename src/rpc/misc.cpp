@@ -59,6 +59,10 @@ UniValue getinfo(const UniValue& params, bool fHelp)
             "  \"testnet\": true|false,      (boolean) if the server is using testnet or not\n"
             "  \"keypoololdest\": xxxxxx,    (numeric) the timestamp (seconds since GMT epoch) of the oldest pre-generated key in the key pool\n"
             "  \"keypoolsize\": xxxx,        (numeric) how many new keys are pre-generated\n"
+#ifdef USE_HSM
+            "  \"hsmkeypoololdest\": xxxxxx,    (numeric) the timestamp (seconds since GMT epoch) of the oldest pre-generated HSM key in the HSM key pool\n"
+            "  \"hsmkeypoolsize\": xxxx,        (numeric) how many new HSM keys are pre-generated\n"
+#endif
             "  \"unlocked_until\": ttt,      (numeric) the timestamp in seconds since epoch (midnight Jan 1 1970 GMT) that the wallet is unlocked for transfers, or 0 if the wallet is locked\n"
             "  \"paytxfee\": x.xxxx,         (numeric) the transaction fee set in " + CURRENCY_UNIT + "/kB\n"
             "  \"relayfee\": x.xxxx,         (numeric) minimum relay fee for non-free transactions in " + CURRENCY_UNIT + "/kB\n"
@@ -98,6 +102,10 @@ UniValue getinfo(const UniValue& params, bool fHelp)
     if (pwalletMain) {
         obj.push_back(Pair("keypoololdest", pwalletMain->GetOldestKeyPoolTime()));
         obj.push_back(Pair("keypoolsize",   (int)pwalletMain->GetKeyPoolSize()));
+#ifdef USE_HSM
+        obj.push_back(Pair("hsmkeypoololdest", pwalletMain->GetOldestHSMKeyPoolTime()));
+        obj.push_back(Pair("hsmkeypoolsize",   (int)pwalletMain->GetHSMKeyPoolSize()));
+#endif
     }
     if (pwalletMain && pwalletMain->IsCrypted())
         obj.push_back(Pair("unlocked_until", nWalletUnlockTime));
@@ -118,7 +126,12 @@ public:
         UniValue obj(UniValue::VOBJ);
         CPubKey vchPubKey;
         obj.push_back(Pair("isscript", false));
+#ifndef USE_HSM
         if (pwalletMain && pwalletMain->GetPubKey(keyID, vchPubKey)) {
+#else
+        if (pwalletMain && (pwalletMain->GetPubKey(keyID, vchPubKey) ||
+        pwalletMain->GetHSMPubKey(keyID, vchPubKey))) {
+#endif
             obj.push_back(Pair("pubkey", HexStr(vchPubKey)));
             obj.push_back(Pair("iscompressed", vchPubKey.IsCompressed()));
         }
@@ -246,7 +259,12 @@ CScript _createmultisig_redeemScript(const UniValue& params)
                 throw runtime_error(
                     strprintf("%s does not refer to a key",ks));
             CPubKey vchPubKey;
+#ifndef USE_HSM
             if (!pwalletMain->GetPubKey(keyID, vchPubKey))
+#else
+            if (!pwalletMain->GetPubKey(keyID, vchPubKey) &&
+            !pwalletMain->GetHSMPubKey(keyID, vchPubKey))
+#endif
                 throw runtime_error(
                     strprintf("no full public key for address %s",ks));
             if (!vchPubKey.IsFullyValid())

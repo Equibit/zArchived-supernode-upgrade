@@ -10,6 +10,10 @@
 #include "script/script.h"
 #include "script/standard.h"
 #include "script/sign.h"
+#ifdef USE_HSM
+#include "wallet/wallet.h"
+#endif
+
 
 #include <boost/foreach.hpp>
 
@@ -17,13 +21,34 @@ using namespace std;
 
 typedef vector<unsigned char> valtype;
 
+namespace
+{
+
+bool HaveKey(const CKeyStore & keystore, const CKeyID & keyID)
+{
+    if (keystore.HaveKey(keyID))
+        return true;
+#ifdef USE_HSM
+    const CWallet * wallet = dynamic_cast<const CWallet *>(&keystore);
+    if( wallet )
+    {
+        std::string hsmID;
+        if( wallet->GetHSMKey( keyID, hsmID ) )
+            return true;
+    }
+#endif
+    return false;
+}
+
+}
+
 unsigned int HaveKeys(const vector<valtype>& pubkeys, const CKeyStore& keystore)
 {
     unsigned int nResult = 0;
     BOOST_FOREACH(const valtype& pubkey, pubkeys)
     {
         CKeyID keyID = CPubKey(pubkey).GetID();
-        if (keystore.HaveKey(keyID))
+        if (HaveKey(keystore, keyID))
             ++nResult;
     }
     return nResult;

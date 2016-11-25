@@ -1,8 +1,7 @@
 *.tar.gz
 
 *.exe
-src/bitcoin
-src/bitcoind
+src/equibitd
 src/bitcoin-cli
 src/bitcoin-tx
 src/test/test_bitcoin
