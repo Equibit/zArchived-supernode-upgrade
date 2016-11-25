@@ -18,6 +18,7 @@
 #include "edc/wallet/edcwalletdb.h"
 #include "wallet/rpcwallet.h"
 #include "edc/primitives/edctransaction.h"
+#include "edc/rpc/edcpolling.h"
 
 #include <algorithm>
 #include <map>
@@ -456,6 +457,24 @@ CEDCMutableTransaction & txIn,				// IN: Input Transaction
 						uint64_t currlen, uint64_t maxlen );
 	bool wotChainExists(const CPubKey & spk, const CPubKey & epk, const CPubKey & expk,
 						uint64_t currlen, uint64_t maxlen );
+
+	struct Proxy
+	{
+		//       Poll ID           Proxy addr/time stamp/is_active
+		std::map<std::string, std::tuple<CKeyID, std::string, bool> >	pollProxies;
+
+		//       Issuer            Proxy addr/time stamp/is_active
+		std::map<CKeyID, std::tuple<CKeyID, std::string, bool> >	issuerProxies;
+
+		//         Proxy addr/timestamp/is_active
+		std::tuple<CKeyID, std::string, bool> generalProxy;
+	};
+
+	//			address
+	std::map<CKeyID, Proxy>			proxyMap;
+	std::map<uint160, Poll>			polls;
+	std::map<uint160, PollResult>	pollResults;
+
 public:
     /*
      * Main wallet lock.
@@ -741,6 +760,16 @@ public:
         				  std::string & strFailReason );
 
     /**
+     * Create a new transaction that is created to blank the EQB of the input TxOut.
+     */
+    bool CreateBlankingTransaction(
+                   const CEDCWalletTx & wtx,
+                                 size_t outId, 
+						 CEDCWalletTx & wtxNew, 
+					   CEDCReserveKey & reservekey, 
+        				  std::string & strFailReason );
+
+    /**
      * Create a new trusted transaction paying the recipients with a set of coins
      * selected by SelectCoins(); Also create the change output, when needed
      * @note passing nChangePosInOut as -1 will result in setting a random position
@@ -922,10 +951,10 @@ public:
 	void LoadMessage( const std::string & tag, const uint256 & hash, CUserMessage * msg );
 	bool AddMessage( const std::string & tag, const uint256 & hash, CUserMessage * msg );
 
-	void	GetMessage( const uint256 &, CUserMessage * & msg );
-	void	DeleteMessage( const uint256 & );
+	void GetMessage( const uint256 &, CUserMessage * & msg );
+	void DeleteMessage( const uint256 & );
 
-	void	GetMessages( 
+	void GetMessages( 
    		time_t from,
     	time_t to,
     	const std::set<std::string> & assets,
@@ -934,7 +963,7 @@ public:
     	const std::set<std::string> & receivers,
 		   std::vector<CUserMessage *> & out
 	);
-	void	DeleteMessages( 
+	void DeleteMessages( 
    		time_t from,
     	time_t to,
     	const std::set<std::string> & assets,
@@ -967,14 +996,43 @@ public:
     /* Set the current HD master key (will reset the chain child index counters) */
     bool SetHDMasterKey(const CPubKey& key);
 
-	void AddWoTCertificate( const CPubKey & pk1, const CPubKey & pk2, const WoTCertificate & cert );
+	bool AddWoTCertificate( const CPubKey & pk1, const CPubKey & pk2, const WoTCertificate & cert,
+		std::string & );
 	bool RevokeWoTCertificate(const CPubKey & pk1, const CPubKey & pk2, 
-							  const std::string & reason );
+							  const std::string & reason, std::string & );
+	bool DeleteWoTCertificate(const CPubKey & pk1, const CPubKey & pk2, std::string & );
 	bool WoTchainExists( const CPubKey &, const CPubKey &, uint64_t );
 	bool WoTchainExists( const CPubKey &, const CPubKey &, const CPubKey &, uint64_t );
 
 	void LoadWoTCertificate( const CPubKey & pk1, const CPubKey & pk2, const WoTCertificate & cert );
 	void LoadWoTCertificateRevoke( const CPubKey & pk1, const CPubKey & pk2, const std::string & reason );
+
+	bool AddGeneralProxy( const CKeyID &, const CKeyID &, std::string & );
+	bool AddGeneralProxyRevoke(  const CKeyID &, const CKeyID &, std::string & );
+	bool AddIssuerProxy(const CKeyID &, const CKeyID &, const CKeyID &, std::string & );
+	bool AddIssuerProxyRevoke(  const CKeyID &, const CKeyID &, const CKeyID &, std::string & );
+	bool AddPollProxy(  const CKeyID &, const CKeyID &, const std::string &, std::string & );
+	bool AddPollProxyRevoke( const CKeyID &, const CKeyID &, const std::string &, std::string & );
+
+	bool VerifyProxy( const std::string & ts, const std::string & addr, const std::string & paddr, 
+		const std::string & other, const std::vector<unsigned char > &, std::string & );
+
+	void LoadGeneralProxy( const std::string & ts, const CKeyID &, const CKeyID & );
+	void LoadGeneralProxyRevoke( const std::string & ts, const CKeyID &, const CKeyID & );
+	void LoadIssuerProxy( const std::string & ts, const CKeyID &, const CKeyID &, const CKeyID & );
+	void LoadIssuerProxyRevoke( const std::string & ts, const CKeyID &, const CKeyID &, const CKeyID & );
+	void LoadPollProxy( const std::string & ts, const CKeyID &, const CKeyID &, const std::string & );
+	void LoadPollProxyRevoke( const std::string & ts, const CKeyID &, const CKeyID &, const std::string & );
+
+	bool AddPoll( const Poll &, std::string & );
+	void LoadPoll( const Poll & );
+	
+	bool pollResult( const uint160 &, const PollResult * & ) const;
+
+	bool AddVote( time_t, const CKeyID & addr, const CKeyID & iaddr, const std::string & pollid,
+			const std::string & response, const CKeyID & pAddr, std::string & errStr );
+	void LoadVote(time_t, const CKeyID & addr, const CKeyID & iaddr, const std::string & pollid,
+			const std::string & response, const CKeyID & pAddr );
 };
 
 /** A key allocated from the key pool. */

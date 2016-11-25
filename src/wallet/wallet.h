@@ -587,6 +587,13 @@ private:
     bool fFileBacked;
 
     std::set<int64_t> setKeyPool;
+
+#ifdef USE_HSM
+    std::map<CKeyID, std::pair<CPubKey, std::string > > hsmKeyMap;
+
+    void GetHSMKeys( std::set<CKeyID> & ) const;
+#endif
+
 public:
     /*
      * Main wallet lock.
@@ -611,6 +618,9 @@ public:
             mapKeyMetadata[keyid] = CKeyMetadata(keypool.nTime);
     }
 
+#ifdef USE_HSM
+    std::set<int64_t> setHSMKeyPool;
+#endif
     std::map<CKeyID, CKeyMetadata> mapKeyMetadata;
 
     typedef std::map<unsigned int, CMasterKey> MasterKeyMap;
@@ -699,8 +709,24 @@ public:
      * Generate a new key
      */
     CPubKey GenerateNewKey();
+#ifdef USE_HSM
+    CPubKey GenerateNewHSMKey();
+    bool GetHSMPubKey( const CKeyID & address, CPubKey & vchPubKeyOut ) const;
+#endif
+
     //! Adds a key to the store, and saves it to disk.
     bool AddKeyPubKey(const CKey& key, const CPubKey &pubkey);
+#ifdef USE_HSM
+    //! Adds a public key and HSM ID to the map
+    bool AddHSMKey( const CPubKey &, const std::string & hsmID );
+
+    //! Returns HSM ID corresponding to the CKeyID, if it exists
+    //
+    bool GetHSMKey( const CKeyID &, std::string & hsmID ) const;
+
+    bool HaveHSMKey( const CKeyID & address ) const;
+#endif
+
     //! Adds a key to the store, without saving it to disk (used by LoadWallet)
     bool LoadKey(const CKey& key, const CPubKey &pubkey) { return CCryptoKeyStore::AddKeyPubKey(key, pubkey); }
     //! Load metadata (used by LoadWallet)
@@ -735,6 +761,9 @@ public:
     bool EncryptWallet(const SecureString& strWalletPassphrase);
 
     void GetKeyBirthTimes(std::map<CKeyID, int64_t> &mapKeyBirth) const;
+#ifdef USE_HSM
+    void GetHSMKeyBirthTimes(std::map<CKeyID, int64_t> &mapKeyBirth) const;
+#endif
 
     /** 
      * Increment the next transaction order id
@@ -799,6 +828,16 @@ public:
     void KeepKey(int64_t nIndex);
     void ReturnKey(int64_t nIndex);
     bool GetKeyFromPool(CPubKey &key);
+#ifdef USE_HSM
+    bool NewHSMKeyPool();
+    bool TopUpHSMKeyPool(unsigned int kpSize = 0);
+    void ReserveKeyFromHSMKeyPool(int64_t& nIndex, CKeyPool& keypool);
+    void KeepHSMKey(int64_t nIndex);
+    void ReturnHSMKey(int64_t nIndex);
+    bool GetHSMKeyFromPool(CPubKey &key);
+    int64_t GetOldestHSMKeyPoolTime();
+    void GetAllReserveHSMKeys(std::set<CKeyID>& setAddress) const;
+#endif
     int64_t GetOldestKeyPoolTime();
     void GetAllReserveKeys(std::set<CKeyID>& setAddress) const;
 
@@ -855,6 +894,14 @@ public:
         AssertLockHeld(cs_wallet); // setKeyPool
         return setKeyPool.size();
     }
+
+#ifdef USE_HSM
+    unsigned int GetHSMKeyPoolSize()
+    {
+        AssertLockHeld(cs_wallet); // setHSMKeyPool
+        return setHSMKeyPool.size();
+    }
+#endif
 
     bool SetDefaultKey(const CPubKey &vchPubKey);
 

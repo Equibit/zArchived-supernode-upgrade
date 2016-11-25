@@ -40,6 +40,7 @@
 #include "edcapp.h"
 #include "edc/message/edcmessage.h"
 #include "edc/wallet/edcwallet.h"
+#include "edc/rpc/edcwot.h"
 
 #include <atomic>
 #include <sstream>
@@ -6476,7 +6477,9 @@ bool ProcessMessage(
         }
         FlushStateToDisk(state, FLUSH_STATE_PERIODIC);
     }
-    else if (strCommand == NetMsgType::CMPCTBLOCK && !theApp.importing() && !theApp.reindex()) // Ignore blocks received while importing
+    else if (strCommand == NetMsgType::CMPCTBLOCK && 
+			!theApp.importing() && 
+			!theApp.reindex()) // Ignore blocks received while importing
     {
         CEDCBlockHeaderAndShortTxIDs cmpctblock;
         vRecv >> cmpctblock;
@@ -7134,7 +7137,7 @@ bool ProcessMessage(
 
 		if( isGood )
 		{
-			theApp.walletMain()->AddMessage( type, msg->GetHash(), msg );
+			msg->process( *theApp.walletMain() );
 		}
 		else
 		{
@@ -7833,7 +7836,9 @@ bool edcSendMessages(CEDCNode* pto, CEDCConnman & connman)
         //
         // Message: getdata (non-blocks)
         //
-        while (!pto->fDisconnect && !pto->mapAskFor.empty() && (*pto->mapAskFor.begin()).first <= nNow)
+        while (	!pto->fDisconnect && 
+				!pto->mapAskFor.empty() && 
+			   (*pto->mapAskFor.begin()).first <= nNow)
         {
             const CInv& inv = (*pto->mapAskFor.begin()).second;
             if (!AlreadyHave(inv))
@@ -7897,15 +7902,15 @@ bool edcSendMessages(CEDCNode* pto, CEDCConnman & connman)
 			// Push the message onto the net
 			if( CBroadcast * bm = dynamic_cast<CBroadcast *>(user))
 			{
-				pto->PushMessage( NetMsgType::USER, user->tag(), *bm );
+				pto->PushMessage( NetMsgType::USER, user->vtag(), *bm );
 			}
 			else if( CMulticast * mm = dynamic_cast<CMulticast *>(user) )
 			{
-				pto->PushMessage( NetMsgType::USER, user->tag(), *mm );
+				pto->PushMessage( NetMsgType::USER, user->vtag(), *mm );
 			}
 			else if( CPeerToPeer * ppm = dynamic_cast<CPeerToPeer *>(user) )
 			{
-				pto->PushMessage( NetMsgType::USER, user->tag(), *ppm );
+				pto->PushMessage( NetMsgType::USER, user->vtag(), *ppm );
 			}
         	else
 				throw runtime_error("edcSendMessage(): invalid user message type");

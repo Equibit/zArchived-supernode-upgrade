@@ -25,6 +25,33 @@
 #include "util.h"
 #include "ui_interface.h"
 #include "utilmoneystr.h"
+#ifdef USE_HSM
+#include "edc/edcapp.h"
+#include "Thales/interface.h"
+#include <secp256k1.h>
+
+namespace
+{
+secp256k1_context   * secp256k1_context_verify;
+
+struct Verifier
+{
+    Verifier()
+    {
+        secp256k1_context_verify = secp256k1_context_create(SECP256K1_CONTEXT_VERIFY);
+    }
+    ~Verifier()
+    {
+        secp256k1_context_destroy(secp256k1_context_verify);
+    }
+};
+
+Verifier    verifier;
+
+const unsigned int DEFAULT_HSMKEYPOOL_SIZE = 50;
+
+}
+#endif
 
 #include <assert.h>
 
@@ -640,6 +667,10 @@ bool CWallet::EncryptWallet(const SecureString& strWalletPassphrase)
         }
 
         NewKeyPool();
+#ifdef USE_HSM
+		if( GetBoolArg( "-usehsm", true) )
+            NewHSMKeyPool();
+#endif
         Lock();
 
         // Need to completely rewrite the wallet file; if we don't, bdb might keep
@@ -2574,6 +2605,9 @@ DBErrors CWallet::LoadWallet(bool& fFirstRunRet)
         {
             LOCK(cs_wallet);
             setKeyPool.clear();
+#ifdef USE_HSM
+            setHSMKeyPool.clear();
+#endif
             // Note: can't top-up keypool here, because wallet is locked.
             // User will be prompted to unlock wallet the next operation
             // that requires a new key.
@@ -2600,6 +2634,9 @@ DBErrors CWallet::ZapSelectTx(vector<uint256>& vHashIn, vector<uint256>& vHashOu
         {
             LOCK(cs_wallet);
             setKeyPool.clear();
+#ifdef USE_HSM
+            setHSMKeyPool.clear();
+#endif
             // Note: can't top-up keypool here, because wallet is locked.
             // User will be prompted to unlock wallet the next operation
             // that requires a new key.
@@ -2626,6 +2663,9 @@ DBErrors CWallet::ZapWalletTx(std::vector<CWalletTx>& vWtx)
         {
             LOCK(cs_wallet);
             setKeyPool.clear();
+#ifdef USE_HSM
+            setHSMKeyPool.clear();
+#endif
             // Note: can't top-up keypool here, because wallet is locked.
             // User will be prompted to unlock wallet the next operation
             // that requires a new key.
@@ -2820,6 +2860,247 @@ bool CWallet::GetKeyFromPool(CPubKey& result)
     }
     return true;
 }
+
+#ifdef USE_HSM
+
+void CWallet::ReturnHSMKey(int64_t nIndex)
+{
+    // Return to HSM key pool
+    {
+        LOCK(cs_wallet);
+        setHSMKeyPool.insert(nIndex);
+    }
+    LogPrintf("HSM keypool return %d\n", nIndex);
+}
+
+/**
+ * Mark old keypool keys as used,
+ * and generate all new HSM keys
+ */
+bool CWallet::NewHSMKeyPool()
+{
+	if( !GetBoolArg( "-usehsm", true) )
+        return true;
+
+    {
+        LOCK(cs_wallet);
+        CWalletDB walletdb(strWalletFile);
+        BOOST_FOREACH(int64_t nIndex, setHSMKeyPool)
+            walletdb.EraseHSMPool(nIndex);
+        setHSMKeyPool.clear();
+
+        if (IsLocked())
+            return false;
+
+        int64_t nKeys = max( GetArg( "-hsmkeypool", DEFAULT_HSMKEYPOOL_SIZE ), (int64_t)0);
+        for (int i = 0; i < nKeys; i++)
+        {
+            int64_t nIndex = i+1;
+            walletdb.WriteHSMPool(nIndex, CKeyPool(GenerateNewHSMKey()));
+            setHSMKeyPool.insert(nIndex);
+        }
+        LogPrintf("CWallet::NewKeyPool wrote %d new HSM keys\n", nKeys);
+    }
+    return true;
+}
+
+bool CWallet::GetHSMKeyFromPool(CPubKey& result)
+{
+    int64_t nIndex = 0;
+    CKeyPool keypool;
+    {
+        LOCK(cs_wallet);
+        ReserveKeyFromHSMKeyPool(nIndex, keypool);
+        if (nIndex == -1)
+        {
+            if (IsLocked()) return false;
+            result = GenerateNewHSMKey();
+            return true;
+        }
+        KeepHSMKey(nIndex);
+        result = keypool.vchPubKey;
+    }
+    return true;
+}
+
+void CWallet::ReserveKeyFromHSMKeyPool( long & nIndex , CKeyPool& keypool )
+{
+    nIndex = -1;
+    keypool.vchPubKey = CPubKey();
+    {
+        LOCK(cs_wallet);
+
+        if (!IsLocked())
+        {
+            TopUpHSMKeyPool();
+        }
+
+        // Get the oldest key
+        if(setHSMKeyPool.empty())
+        {
+            return;
+        }
+
+        CWalletDB walletdb(strWalletFile);
+
+        nIndex = *(setHSMKeyPool.begin());
+        setHSMKeyPool.erase(setHSMKeyPool.begin());
+        if (!walletdb.ReadHSMPool(nIndex, keypool))
+            throw runtime_error(std::string(__func__) + ": read failed");
+        if (!HaveHSMKey(keypool.vchPubKey.GetID()))
+            throw runtime_error(std::string(__func__) + ": unknown key in key pool");
+
+        assert(keypool.vchPubKey.IsValid());
+        LogPrintf("HSM keypool reserve %d\n", nIndex);
+    }
+}
+
+void CWallet::KeepHSMKey( long nIndex )
+{
+    // Remove from key pool
+    if (fFileBacked)
+    {
+        CWalletDB walletdb(strWalletFile);
+        walletdb.EraseHSMPool(nIndex);
+    }
+    LogPrintf("HSM keypool keep %d\n", nIndex);
+}
+
+CPubKey CWallet::GenerateNewHSMKey()
+{
+    assert( GetBoolArg( "-usehsm", true) );
+
+    AssertLockHeld(cs_wallet); // mapKeyMetadata
+    bool fCompressed = CanSupportFeature(FEATURE_COMPRPUBKEY); // default to compressed public keys
+
+    unsigned char pubkeyData[NFast::PUBKEY_DATA_SIZE];
+    char hsmID[NFast::IDENT_SIZE];
+
+	EDCapp & theApp = EDCapp::singleton();
+    if(! NFast::generateKeyPair( *theApp.nfHardServer(), *theApp.nfModule(), pubkeyData, hsmID ) )
+        throw std::runtime_error(std::string(__func__) + ": Generate Key failed");
+
+    CPubKey pubkey;
+    pubkey.Set( pubkeyData, pubkeyData + 65 );
+
+    // Compressed public keys were introduced in version 0.6.0
+    if (fCompressed)
+        SetMinVersion(FEATURE_COMPRPUBKEY);
+
+    // Create new metadata
+    int64_t nCreationTime = GetTime();
+    mapKeyMetadata[pubkey.GetID()] = CKeyMetadata(nCreationTime);
+
+    if (!nTimeFirstKey || nCreationTime < nTimeFirstKey)
+        nTimeFirstKey = nCreationTime;
+
+    if(!AddHSMKey( pubkey, hsmID ))
+        throw std::runtime_error(std::string(__func__) + ": AddKey failed");
+
+    CWalletDB walletdb(strWalletFile);
+    if(!walletdb.WriteHSMKey( pubkey, hsmID, mapKeyMetadata[pubkey.GetID()] ))
+        throw std::runtime_error( std::string(__func__) + ": Write failed" );
+    return pubkey;
+}
+
+bool CWallet::TopUpHSMKeyPool(unsigned int kpSize)
+{
+    {
+        LOCK(cs_wallet);
+
+        if (IsLocked())
+            return false;
+
+        CWalletDB walletdb(strWalletFile);
+
+        // Top up key pool
+        unsigned int nTargetSize;
+        if (kpSize > 0)
+            nTargetSize = kpSize;
+        else
+            nTargetSize = max( GetArg( "-hsmkeypool", DEFAULT_HSMKEYPOOL_SIZE ), (int64_t) 0);
+
+        while (setHSMKeyPool.size() < (nTargetSize + 1))
+        {
+            int64_t nEnd = 1;
+            if (!setHSMKeyPool.empty())
+                nEnd = *(--setHSMKeyPool.end()) + 1;
+            if (!walletdb.WriteHSMPool(nEnd, CKeyPool(GenerateNewHSMKey())))
+                throw runtime_error(std::string(__func__) + ": writing generated key failed");
+            setHSMKeyPool.insert(nEnd);
+            LogPrintf("HSM keypool added key %d, size=%u\n", nEnd, setHSMKeyPool.size());
+        }
+    }
+    return true;
+}
+
+bool CWallet::AddHSMKey(
+    const CPubKey & pubkey,
+const std::string & hsmID
+)
+{
+    CKeyID keyID = pubkey.GetID();
+
+    LOCK(cs_wallet);
+    hsmKeyMap.insert( std::make_pair( keyID, std::make_pair( pubkey, hsmID ) ) );
+    return true;
+}
+
+void CWallet::GetHSMKeys( std::set<CKeyID> & keys ) const
+{
+    std::map<CKeyID, std::pair<CPubKey, std::string > >::const_iterator i = hsmKeyMap.begin();
+    std::map<CKeyID, std::pair<CPubKey, std::string > >::const_iterator e = hsmKeyMap.end();
+
+    while( i != e )
+    {
+        keys.insert( i->first );
+        ++i;
+    }
+}
+
+bool CWallet::GetHSMKey(
+    const CKeyID & id,
+     std::string & hsmID ) const
+{
+    LOCK(cs_wallet);
+
+    std::map<CKeyID, std::pair<CPubKey, std::string > >::const_iterator i =
+        hsmKeyMap.find( id );
+    if( i == hsmKeyMap.end() )
+        return false;
+
+    hsmID = i->second.second;
+
+    return true;
+}
+
+bool CWallet::HaveHSMKey( const CKeyID & address ) const
+{
+    LOCK(cs_wallet);
+
+    std::string hsmid;
+    return GetHSMKey( address, hsmid );
+}
+
+int64_t CWallet::GetOldestHSMKeyPoolTime()
+{
+    LOCK(cs_wallet);
+
+    // if the keypool is empty, return <NOW>
+    if (setHSMKeyPool.empty())
+        return GetTime();
+
+    // load oldest key from keypool, get time and return
+    CKeyPool keypool;
+    CWalletDB walletdb(strWalletFile);
+    int64_t nIndex = *(setHSMKeyPool.begin());
+    if (!walletdb.ReadHSMPool(nIndex, keypool))
+        throw runtime_error(std::string(__func__) + ": read oldest HSM key in keypool failed");
+    assert(keypool.vchPubKey.IsValid());
+    return keypool.nTime;
+}
+
+#endif  // USE_HSM
 
 int64_t CWallet::GetOldestKeyPoolTime()
 {
@@ -3022,6 +3303,14 @@ bool CReserveKey::GetReservedKey(CPubKey& pubkey)
     if (nIndex == -1)
     {
         CKeyPool keypool;
+#ifdef USE_HSM
+		if( GetBoolArg( "-usehsm", true) )
+            pwallet->ReserveKeyFromHSMKeyPool(nIndex, keypool);
+        else
+            pwallet->ReserveKeyFromKeyPool(nIndex, keypool);
+#else
+        pwallet->ReserveKeyFromKeyPool(nIndex, keypool);
+#endif
         pwallet->ReserveKeyFromKeyPool(nIndex, keypool);
         if (nIndex != -1)
             vchPubKey = keypool.vchPubKey;
@@ -3037,7 +3326,16 @@ bool CReserveKey::GetReservedKey(CPubKey& pubkey)
 void CReserveKey::KeepKey()
 {
     if (nIndex != -1)
+	{
+#ifdef USE_HSM
+		if( GetBoolArg( "-usehsm", true) )
+            pwallet->KeepHSMKey(nIndex);
+        else
+            pwallet->KeepKey(nIndex);
+#else
         pwallet->KeepKey(nIndex);
+#endif
+	}
     nIndex = -1;
     vchPubKey = CPubKey();
 }
@@ -3045,7 +3343,16 @@ void CReserveKey::KeepKey()
 void CReserveKey::ReturnKey()
 {
     if (nIndex != -1)
+	{
+#ifdef USE_HSM
+		if( GetBoolArg( "-usehsm", true) )
+            pwallet->ReturnHSMKey(nIndex);
+        else
+            pwallet->ReturnKey(nIndex);
+#else
         pwallet->ReturnKey(nIndex);
+#endif
+	}
     nIndex = -1;
     vchPubKey = CPubKey();
 }
@@ -3069,6 +3376,28 @@ void CWallet::GetAllReserveKeys(set<CKeyID>& setAddress) const
         setAddress.insert(keyID);
     }
 }
+
+#ifdef USE_HSM
+void CWallet::GetAllReserveHSMKeys(set<CKeyID>& setAddress) const
+{
+    setAddress.clear();
+
+    CWalletDB walletdb(strWalletFile);
+
+    LOCK2(cs_main, cs_wallet);
+    BOOST_FOREACH(const int64_t& id, setHSMKeyPool)
+    {
+        CKeyPool keypool;
+        if (!walletdb.ReadHSMPool(id, keypool))
+            throw runtime_error(std::string(__func__) + ": read failed");
+        assert(keypool.vchPubKey.IsValid());
+        CKeyID keyID = keypool.vchPubKey.GetID();
+        if (!HaveHSMKey(keyID))
+            throw runtime_error(std::string(__func__) + ": unknown HSM key in HSM key pool");
+        setAddress.insert(keyID);
+    }
+}
+#endif
 
 void CWallet::UpdatedTransaction(const uint256 &hashTx)
 {
@@ -3214,6 +3543,71 @@ void CWallet::GetKeyBirthTimes(std::map<CKeyID, int64_t> &mapKeyBirth) const {
         mapKeyBirth[it->first] = it->second->GetBlockTime() - 7200; // block times can be 2h off
 }
 
+#ifdef USE_HSM
+
+void CWallet::GetHSMKeyBirthTimes(std::map<CKeyID, int64_t> &mapKeyBirth) const
+{
+    AssertLockHeld(cs_wallet); // mapKeyMetadata
+    mapKeyBirth.clear();
+
+    // get birth times for keys with metadata
+    for (std::map<CKeyID, CKeyMetadata>::const_iterator it = mapKeyMetadata.begin(); it != mapKeyMetadata.end(); it++)
+        if (it->second.nCreateTime)
+            mapKeyBirth[it->first] = it->second.nCreateTime;
+
+    // map in which we'll infer heights of other keys
+    CBlockIndex *pindexMax = chainActive[std::max(0, chainActive.Height() - 144)]; // the tip can be reorganized; use a 144-block safety margin
+    std::map<CKeyID, CBlockIndex*> mapKeyFirstBlock;
+    std::set<CKeyID> setKeys;
+
+    GetHSMKeys(setKeys);
+    BOOST_FOREACH(const CKeyID &keyid, setKeys)
+    {
+        if (mapKeyBirth.count(keyid) == 0)
+            mapKeyFirstBlock[keyid] = pindexMax;
+    }
+    setKeys.clear();
+
+    // if there are no such keys, we're done
+    if (mapKeyFirstBlock.empty())
+        return;
+
+    // find first block that affects those keys, if there are any left
+    std::vector<CKeyID> vAffected;
+    for (std::map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); it++)
+    {
+        // iterate over all wallet transactions...
+        const CWalletTx &wtx = (*it).second;
+        BlockMap::const_iterator blit = mapBlockIndex.find(wtx.hashBlock);
+
+        if (blit != mapBlockIndex.end() && chainActive.Contains(blit->second))
+        {
+            // ... which are already in a block
+            int nHeight = blit->second->nHeight;
+
+            BOOST_FOREACH(const CTxOut &txout, wtx.vout)
+            {
+                // iterate over all their outputs
+                CAffectedKeysVisitor(*this, vAffected).Process(txout.scriptPubKey);
+                BOOST_FOREACH(const CKeyID &keyid, vAffected)
+                {
+                    // ... and all their affected keys
+                    std::map<CKeyID, CBlockIndex*>::iterator rit = mapKeyFirstBlock.find(keyid);
+                    if (rit != mapKeyFirstBlock.end() && nHeight < rit->second->nHeight)
+                        rit->second = blit->second;
+                }
+                vAffected.clear();
+            }
+        }
+    }
+
+    // Extract block timestamps for those keys
+    for (std::map<CKeyID, CBlockIndex*>::const_iterator it = mapKeyFirstBlock.begin(); it != mapKeyFirstBlock.end(); it++)
+        mapKeyBirth[it->first] = it->second->GetBlockTime() - 7200; // block times can be 2h off
+}
+
+#endif
+
 bool CWallet::AddDestData(const CTxDestination &dest, const std::string &key, const std::string &value)
 {
     if (boost::get<CNoDestination>(&dest))
@@ -3261,6 +3655,9 @@ std::string CWallet::GetWalletHelpString(bool showDebug)
     std::string strUsage = HelpMessageGroup(_("Wallet options:"));
     strUsage += HelpMessageOpt("-disablewallet", _("Do not load the wallet and disable wallet RPC calls"));
     strUsage += HelpMessageOpt("-keypool=<n>", strprintf(_("Set key pool size to <n> (default: %u)"), DEFAULT_KEYPOOL_SIZE));
+#ifdef USE_HSM
+    strUsage += HelpMessageOpt("-hsmkeypool=<n>", strprintf(_("Set HSM key pool size to <n> (default: %u)"), DEFAULT_HSMKEYPOOL_SIZE));
+#endif
     strUsage += HelpMessageOpt("-fallbackfee=<amt>", strprintf(_("A fee rate (in %s/kB) that will be used when fee estimation has insufficient data (default: %s)"),
                                                                CURRENCY_UNIT, FormatMoney(DEFAULT_FALLBACK_FEE)));
     strUsage += HelpMessageOpt("-mintxfee=<amt>", strprintf(_("Fees (in %s/kB) smaller than this are considered zero fee for transaction creation (default: %s)"),
@@ -3460,6 +3857,9 @@ bool CWallet::InitLoadWallet()
     {
         LOCK(walletInstance->cs_wallet);
         LogPrintf("setKeyPool.size() = %u\n",      walletInstance->GetKeyPoolSize());
+#ifdef USE_HSM
+        LogPrintf("setHSMKeyPool.size() = %u\n",   walletInstance->setHSMKeyPool.size());
+#endif
         LogPrintf("mapWallet.size() = %u\n",       walletInstance->mapWallet.size());
         LogPrintf("mapAddressBook.size() = %u\n",  walletInstance->mapAddressBook.size());
     }
@@ -3644,3 +4044,23 @@ bool CMerkleTx::AcceptToMemoryPool(bool fLimitFree, CAmount nAbsurdFee)
     CValidationState state;
     return ::AcceptToMemoryPool(mempool, state, *this, fLimitFree, NULL, false, nAbsurdFee);
 }
+
+#ifdef USE_HSM
+
+bool CWallet::GetHSMPubKey(const CKeyID & id, CPubKey & out ) const
+{
+    LOCK(cs_wallet);
+
+    std::map<CKeyID, std::pair<CPubKey, std::string > >::const_iterator i =
+        hsmKeyMap.find( id );
+
+    if( i == hsmKeyMap.end() )
+        return false;
+
+    out = i->second.first;
+
+    return true;
+}
+
+#endif
+

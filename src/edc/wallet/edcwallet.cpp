@@ -32,6 +32,27 @@
 #include "edc/rpc/edcwot.h"
 #ifdef USE_HSM
 #include "Thales/interface.h"
+#include <secp256k1.h>
+
+namespace
+{
+secp256k1_context   * secp256k1_context_verify;
+
+struct Verifier
+{
+    Verifier()
+    {
+        secp256k1_context_verify = secp256k1_context_create(SECP256K1_CONTEXT_VERIFY);
+    }
+    ~Verifier()
+    {
+        secp256k1_context_destroy(secp256k1_context_verify);
+    }
+};
+
+Verifier    verifier;
+
+}
 #endif
 
 #include <assert.h>
@@ -3937,8 +3958,6 @@ const std::string & hsmID
 
 void CEDCWallet::GetHSMKeys( std::set<CKeyID> & keys ) const
 {
-    LOCK(cs_wallet);
-
 	std::map<CKeyID, std::pair<CPubKey, std::string > >::const_iterator i = hsmKeyMap.begin();
 	std::map<CKeyID, std::pair<CPubKey, std::string > >::const_iterator e = hsmKeyMap.end();
 
@@ -5096,6 +5115,80 @@ bool CEDCWallet::CreateAuthorizingTransaction(
     return true;
 }
 
+bool CEDCWallet::CreateBlankingTransaction(
+          const CEDCWalletTx & wtx,
+                        size_t outId,
+				CEDCWalletTx & wtxNew, 
+			  CEDCReserveKey & reservekey, 
+				 std::string & strFailReason )
+{
+	EDCapp & theApp = EDCapp::singleton();
+
+    CAmount nValue = wtx.vout[outId].nValue;
+
+    wtxNew.fTimeReceivedIsTxTime = true;
+    wtxNew.BindWallet(this);
+
+    CEDCMutableTransaction txNew;
+
+    txNew.nLockTime = theApp.chainActive().Height();
+
+    assert(txNew.nLockTime <= (unsigned int)theApp.chainActive().Height());
+    assert(txNew.nLockTime < LOCKTIME_THRESHOLD);
+    {
+        LOCK2(EDC_cs_main, cs_wallet);
+        {
+            txNew.vin.clear();
+            txNew.vout.clear();
+            wtxNew.fFromMe = true;
+
+            CEDCTxOut txout(nValue, wtx.vout[outId].scriptPubKey);
+
+			// Blank the output transaction
+			const_cast<CPubKey &>(txout.issuerPubKey) = CPubKey();
+			const_cast<CKeyID &>(txout.issuerAddr).SetNull();
+			const_cast<unsigned &>(txout.wotMinLevel) = 0;
+
+            txNew.vout.push_back(txout);
+
+            txNew.vin.push_back(CEDCTxIn(wtx.GetHash(), 0, CScript(), 
+				std::numeric_limits<unsigned int>::max()-1));
+
+            CEDCTransaction txNewConst(txNew);
+
+            bool signSuccess;
+            const CScript& scriptPubKey = wtx.vout[outId].scriptPubKey;
+			SignatureData sigdata;
+
+			bool sign = true;
+			if(sign)
+            	signSuccess = edcProduceSignature(EDCTransactionSignatureCreator(this, 
+					&txNewConst, 0, 0, SIGHASH_ALL), scriptPubKey, sigdata );
+            else
+                signSuccess = edcProduceSignature(DummySignatureCreator(this),scriptPubKey,sigdata);
+
+            if (!signSuccess)
+            {
+                strFailReason = _("Signing transaction failed");
+                return false;
+            }
+			else
+			{
+				edcUpdateTransaction( txNew, 0, sigdata );
+			}
+
+            if (!sign) 
+			{
+                txNew.vin[0].scriptSig = CScript();
+            }
+
+            *static_cast<CEDCTransaction*>(&wtxNew) = CEDCTransaction(txNew);
+        }
+    }
+
+    return true;
+}
+
 void CEDCWallet::LoadMessage( 
 	const std::string & tag, 
 		const uint256 & hash, 
@@ -5171,14 +5264,19 @@ bool CEDCWallet::GetHSMPubKey(const CKeyID & id, CPubKey & out ) const
 
 #endif
 
-void CEDCWallet::AddWoTCertificate( 
+bool CEDCWallet::AddWoTCertificate( 
 					   const CPubKey & pk, 	  // Key to be certified
 					   const CPubKey & spk,   // Signing public key
-				const WoTCertificate & cert	) // The certificate
+				const WoTCertificate & cert,  // The certificate
+						 std::string & errStr )
 {
 	if(!CEDCWalletDB(strWalletFile).WriteWoTcertificate( pk, spk, cert ))
-		throw runtime_error(std::string(__func__) + 
-			": writing WoT certificate failed");
+	{
+		errStr = std::string(__func__) + ": writing WoT certificate failed";
+		return false;
+	}
+
+	LOCK(cs_wallet);
 
 	auto itPair = wotCertificates.equal_range( pk );
 
@@ -5214,24 +5312,35 @@ void CEDCWallet::AddWoTCertificate(
 			{
 				// Remove from DB
 				if(!CEDCWalletDB(strWalletFile).EraseWoTcertificateRevocation( pk, spk ))
-					throw runtime_error(std::string(__func__) + 
-						": deleting WoT certificate revocation failed");
+				{
+					errStr = std::string(__func__) + 
+						": deleting WoT certificate revocation failed";
+					return false;
+				}
 
 				it->second.revoked = false;
 			}
 		}
 	}
+
+	return true;
 }
 
 
 bool CEDCWallet::RevokeWoTCertificate(
 		const CPubKey & pk, 		// Key to be certified
 		const CPubKey & spk, 		// Signing public key
-	const std::string & reason )	// Reason for revocation
+	const std::string & reason,		// Reason for revocation
+		  std::string & errStr )
 {
 	if(!CEDCWalletDB(strWalletFile).WriteWoTcertificateRevocation( pk, spk, reason ))
-		throw runtime_error(std::string(__func__) + 
-			": writing WoT certificate revocation failed");
+	{
+		errStr = std::string(__func__) + 
+			": writing WoT certificate revocation failed";
+		return false;
+	}
+
+	LOCK(cs_wallet);
 
 	auto itPair = wotCertificates.equal_range( pk );
 
@@ -5264,6 +5373,47 @@ bool CEDCWallet::RevokeWoTCertificate(
 		{
 			it->second.revoked = true;
 			it->second.revokeReason = reason;
+		}
+	}
+
+	return true;
+}
+
+bool CEDCWallet::DeleteWoTCertificate(
+		const CPubKey & pk, 		// Key to be certified
+		const CPubKey & spk,		// Signing public key
+		  std::string & errStr )
+{
+	if(!CEDCWalletDB(strWalletFile).EraseWoTcertificate( pk, spk ))
+	{
+		errStr = std::string(__func__) + ": erasing WoT certificate failed";
+		return false;
+	}
+
+	LOCK(cs_wallet);
+
+	auto itPair = wotCertificates.equal_range( pk );
+
+	if( itPair.first != itPair.second )
+	{
+		auto it = itPair.first;
+		auto end = itPair.second;
+
+		bool found = false;
+
+		while( it != end )
+		{
+			if( it->second.pubkey == spk )
+			{
+				found = true;
+				break;
+			}
+			++it;
+		}
+
+		if(found)
+		{
+			wotCertificates.erase( it );
 		}
 	}
 
@@ -5307,6 +5457,7 @@ bool CEDCWallet::WoTchainExists(
 		const CPubKey & spk, 		// First key in chain
 			   uint64_t maxlen )
 {
+	LOCK(cs_wallet);
 	return wotChainExists( spk, epk, 1, maxlen );
 }
 
@@ -5349,6 +5500,7 @@ bool CEDCWallet::WoTchainExists(
 		const CPubKey & expk,		// Exceptional key. It cannot appear in the chain
 			   uint64_t maxlen )
 {
+	LOCK(cs_wallet);
 	return wotChainExists( spk, epk, 1, maxlen );
 }
 
@@ -5357,6 +5509,7 @@ void CEDCWallet::LoadWoTCertificate(
 			const CPubKey & pk2, 
 	 const WoTCertificate & cert )
 {
+	LOCK(cs_wallet);
 	wotCertificates.insert( std::make_pair( pk1, WoTdata( pk2 ) ) );
 }
 
@@ -5365,6 +5518,7 @@ void CEDCWallet::LoadWoTCertificateRevoke(
 		const CPubKey & pk2, 
 	const std::string & reason )
 {
+	LOCK(cs_wallet);
 	auto ip = wotCertificates.equal_range( pk1 );
 	if( ip.first != ip.second )
 	{
@@ -5382,4 +5536,638 @@ void CEDCWallet::LoadWoTCertificateRevoke(
 	}
 	else
 		wotCertificates.insert( std::make_pair( pk1, WoTdata( pk2, reason ) ) );
+}
+
+namespace
+{
+
+std::string timeStamp( )
+{
+    struct timespec ts;
+    clock_gettime( CLOCK_REALTIME, &ts );
+
+    char buff[32];
+    strftime(buff, 20, "%Y-%m-%d %H:%M:%S", localtime(&ts.tv_sec));
+    sprintf( buff+19, " %ld", ts.tv_nsec );
+
+    return buff;
+}
+
+bool signCertificate(
+			   std::string & errStr,
+std::vector<unsigned char> & signature,
+			   std::string & ts,
+		 const std::string & addrStr,
+		 const std::string & paddrStr,
+		 const std::string & other )
+{
+	EDCapp & theApp = EDCapp::singleton();
+	EDCparams & theParams = EDCparams::singleton();
+
+    CEDCBitcoinAddress addr(addrStr);
+    if (!addr.IsValid())
+	{
+        errStr = "Invalid address";
+		return false;
+	}
+
+    CKeyID keyID;
+    if (!addr.GetKeyID(keyID))
+	{
+		errStr = "Address does not refer to key";
+		return false;
+	}
+
+    CEDCBitcoinAddress paddr(paddrStr);
+    if (!paddr.IsValid())
+	{
+        errStr = "Invalid proxy address";
+		return false;
+	}
+
+	ts = timeStamp();
+
+    CHashWriter ss( SER_GETHASH, 0 );
+
+	ss << ts << addrStr << paddrStr;
+	if(other.size())
+		ss << other;
+
+    CKey key;
+    if(theApp.walletMain()->GetKey( keyID, key))
+    {
+        if (!key.Sign(ss.GetHash(), signature ))
+		{
+			errStr = "Sign failed";
+			return false;
+		}
+    }
+    else // else, attempt to use HSM key
+    {
+#ifdef USE_HSM
+        if( theParams.usehsm )
+        {
+            std::string hsmID;
+            if(theApp.walletMain()->GetHSMKey(keyID, hsmID ))
+            {
+                if (!NFast::sign( *theApp.nfHardServer(), *theApp.nfModule(),
+                hsmID, ss.GetHash().begin(), 256, signature ))
+				{
+					errStr = "Sign failed";
+					return false;
+				}
+
+                secp256k1_ecdsa_signature sig;
+                memcpy( sig.data, signature.data(), sizeof(sig.data));
+
+                secp256k1_ecdsa_signature_normalize( secp256k1_context_verify, &sig, &sig );
+
+                signature.resize(72);
+                size_t nSigLen = 72;
+
+                secp256k1_ecdsa_signature_serialize_der( secp256k1_context_verify,
+                                       (unsigned char*)&signature[0], &nSigLen, &sig );
+                signature.resize(nSigLen);
+                signature.push_back((unsigned char)SIGHASH_ALL);
+            }
+            else
+			{
+				errStr = "Address does not refer to key";
+				return false;
+			}
+        }
+        else
+		{
+			errStr = "HSM processing disabled. Use -eb_usehsm command line option to enable HSM processing";
+			return false;
+		}
+#else
+		errStr = "Address does not refer to key";
+		return false;
+#endif
+    }
+
+	return true;
+}
+
+}
+
+bool CEDCWallet::AddGeneralProxy( 
+	const CKeyID & addr, 
+	const CKeyID & paddr, 
+	 std::string & errStr )
+{
+	std::string ts;
+	std::vector<unsigned char>	signature;
+
+	if(!signCertificate( errStr, signature, ts, addr.ToString(), paddr.ToString(), "" ))
+		return false;
+
+	if(!CEDCWalletDB(strWalletFile).WriteGeneralProxy( addr, paddr, ts, signature ))
+	{
+		errStr = std::string(__func__) + ":general proxy write failed";
+		return false;
+	}
+
+	LoadGeneralProxy( ts, addr, paddr );
+
+	return true;
+}
+
+bool CEDCWallet::AddGeneralProxyRevoke(  
+	const CKeyID & addr, 
+	const CKeyID & paddr, 
+	 std::string & errStr )
+{
+	std::string ts;
+	std::vector<unsigned char>	signature;
+
+	if(!signCertificate( errStr, signature, ts, addr.ToString(), paddr.ToString(), "" ))
+		return false;
+
+	if(!CEDCWalletDB(strWalletFile).WriteGeneralProxyRevoke( addr, paddr, ts, signature ))
+	{
+		errStr = std::string(__func__) + ":general proxy revoke write failed";
+		return false;
+	}
+
+	LoadGeneralProxyRevoke( ts, addr, paddr );
+
+	return true;
+}
+
+bool CEDCWallet::AddIssuerProxy(  
+	const CKeyID & addr, 
+	const CKeyID & paddr, 
+	const CKeyID & iaddr, 
+	 std::string & errStr )
+{
+	std::string ts;
+	std::vector<unsigned char>	signature;
+
+	if(!signCertificate( errStr, signature, ts, addr.ToString(), paddr.ToString(),iaddr.ToString()))
+		return false;
+
+	if(!CEDCWalletDB(strWalletFile).WriteIssuerProxy( addr, paddr, iaddr, ts, signature ))
+	{
+		errStr = std::string(__func__) + ":issuer proxy write failed";
+		return false;
+	}
+
+	LoadIssuerProxy( ts, addr, paddr, iaddr );
+
+	return true;
+}
+
+bool CEDCWallet::AddIssuerProxyRevoke(  
+	const CKeyID & addr, 
+	const CKeyID & paddr, 
+	const CKeyID & iaddr, 
+	 std::string & errStr )
+{
+	std::string ts;
+	std::vector<unsigned char>	signature;
+
+	if(!signCertificate( errStr, signature, ts, addr.ToString(), paddr.ToString(),iaddr.ToString()))
+		return false;
+
+	if(!CEDCWalletDB(strWalletFile).WriteIssuerProxy( addr, paddr, iaddr, ts, signature ))
+	{
+		errStr = std::string(__func__) + ":issuer proxy revoke write failed";
+		return false;
+	}
+
+	LoadIssuerProxyRevoke( ts, addr, paddr, iaddr );
+
+	return true;
+}
+
+bool CEDCWallet::AddPollProxy(  
+		 const CKeyID & addr, 
+		 const CKeyID & paddr, 
+	const std::string & pollID, 
+		  std::string & errStr )
+{
+	std::string ts;
+	std::vector<unsigned char>	signature;
+
+	if(!signCertificate( errStr, signature, ts, addr.ToString(), paddr.ToString(), pollID ))
+		return false;
+
+	if(!CEDCWalletDB(strWalletFile).WritePollProxy( addr, paddr, pollID, ts, signature ))
+	{
+		errStr = std::string(__func__) + ":poll proxy write failed";
+		return false;
+	}
+
+	LoadPollProxy( ts, addr, paddr, pollID );
+
+	return true;
+}
+
+bool CEDCWallet::AddPollProxyRevoke(  
+		 const CKeyID & addr, 
+		 const CKeyID & paddr, 
+	const std::string & pollID, 
+		  std::string & errStr )
+{
+	std::string ts;
+	std::vector<unsigned char>	signature;
+
+	if(!signCertificate( errStr, signature, ts, addr.ToString(), paddr.ToString(), pollID ))
+		return false;
+
+	if(!CEDCWalletDB(strWalletFile).WritePollProxyRevoke( addr, paddr, pollID, ts, signature ))
+	{
+		errStr = std::string(__func__) + ":poll proxy revoke write failed";
+		return false;
+	}
+
+	LoadPollProxyRevoke( ts, addr, paddr, pollID );
+
+	return true;
+}
+
+#define	PADDR(x)	get<0>(x)
+#define	TS(x)		get<1>(x)
+#define ACTIVE(x)	get<2>(x)
+
+void CEDCWallet::LoadGeneralProxy( 
+	const std::string & ts,
+		 const CKeyID & addr, 
+		 const CKeyID & paddr )
+{
+	LOCK(cs_wallet);
+
+	auto it = proxyMap.insert( std::make_pair(addr,Proxy()) );
+
+	// If the no general proxy has been set, then add one
+	if( PADDR(it.first->second.generalProxy).size() == 0 )
+		it.first->second.generalProxy = std::make_tuple(paddr,ts,true);
+	else
+	{
+		// Only activate it if the date is less than ts
+		if( TS(it.first->second.generalProxy) < ts )
+		{
+			TS(it.first->second.generalProxy)     = ts;
+			PADDR(it.first->second.generalProxy)  = paddr;
+			ACTIVE(it.first->second.generalProxy) = true;
+		}
+	}
+}
+
+void CEDCWallet::LoadGeneralProxyRevoke(  
+	const std::string & ts,
+		 const CKeyID & addr, 
+		 const CKeyID & paddr )
+{
+	LOCK(cs_wallet);
+
+	auto it = proxyMap.insert( std::make_pair(addr,Proxy()) );
+
+	// If the no general proxy has been set, then add one
+	if( PADDR(it.first->second.generalProxy).size() == 0 )
+		it.first->second.generalProxy = std::make_tuple(paddr,ts,true);
+	else
+	{
+		// Only deactivate it if the date is less than ts
+		if( TS(it.first->second.generalProxy) < ts )
+		{
+			TS(it.first->second.generalProxy)     = ts;
+			PADDR(it.first->second.generalProxy)  = paddr;
+			ACTIVE(it.first->second.generalProxy) = false;
+		}
+	}
+}
+
+void CEDCWallet::LoadIssuerProxy(  
+	const std::string & ts,
+		 const CKeyID & addr, 
+		 const CKeyID & paddr,
+	     const CKeyID & iaddr )
+{
+	LOCK(cs_wallet);
+
+	auto it = proxyMap.insert( std::make_pair(addr,Proxy()) );
+	auto iit= it.first->second.issuerProxies.find( iaddr );
+
+	if( iit != it.first->second.issuerProxies.end())
+	{
+		// Only activate it if the date is less than ts
+		if(TS(iit->second) < ts )
+		{
+			TS(iit->second)     = ts;
+			PADDR(iit->second)  = paddr;
+			ACTIVE(iit->second) = true;
+		}
+	}
+	else
+	{
+		it.first->second.issuerProxies.insert( 
+			std::make_pair( iaddr, std::make_tuple(paddr,ts,true)));
+	}
+}
+
+void CEDCWallet::LoadIssuerProxyRevoke(  
+	const std::string & ts,
+		 const CKeyID & addr, 
+		 const CKeyID & paddr,
+	     const CKeyID & iaddr )
+{
+	LOCK(cs_wallet);
+
+	auto it = proxyMap.insert( std::make_pair(addr,Proxy()) );
+	auto iit= it.first->second.issuerProxies.find( iaddr );
+
+	if( iit != it.first->second.issuerProxies.end())
+	{
+		// Only deactivate it if the date is less than ts
+		if(TS(iit->second) < ts )
+		{
+			TS(iit->second)     = ts;
+			PADDR(iit->second)  = paddr;
+			ACTIVE(iit->second) = false;
+		}
+	}
+	else
+	{
+		it.first->second.issuerProxies.insert( 
+			std::make_pair( iaddr, std::make_tuple(paddr,ts,false)));
+	}
+}
+
+void CEDCWallet::LoadPollProxy(  
+	const std::string & ts,
+		 const CKeyID & addr, 
+		 const CKeyID & paddr,
+	const std::string & pollID )
+{
+	LOCK(cs_wallet);
+
+	auto it = proxyMap.insert( std::make_pair(addr,Proxy()) );
+	auto iit= it.first->second.pollProxies.find( pollID );
+
+	if( iit != it.first->second.pollProxies.end())
+	{
+		// Only activate it if the date is less than ts
+		if(TS(iit->second) < ts )
+		{
+			TS(iit->second)     = ts;
+			PADDR(iit->second)  = paddr;
+			ACTIVE(iit->second) = true;
+		}
+	}
+	else
+	{
+		it.first->second.pollProxies.insert( 
+			std::make_pair( pollID, std::make_tuple(paddr,ts,true)));
+	}
+}
+
+void CEDCWallet::LoadPollProxyRevoke(  
+	const std::string & ts,
+		 const CKeyID & addr, 
+		 const CKeyID & paddr,
+	const std::string & pollID )
+{
+	LOCK(cs_wallet);
+
+	auto it = proxyMap.insert( std::make_pair(addr,Proxy()) );
+	auto iit= it.first->second.pollProxies.find( pollID );
+
+	if( iit != it.first->second.pollProxies.end())
+	{
+		// Only activate it if the date is less than ts
+		if(TS(iit->second) < ts )
+		{
+			TS(iit->second)     = ts;
+			PADDR(iit->second)  = paddr;
+			ACTIVE(iit->second) = false;
+		}
+	}
+	else
+	{
+		it.first->second.pollProxies.insert( 
+			std::make_pair( pollID, std::make_tuple(paddr,ts,false)));
+	}
+}
+
+bool CEDCWallet::VerifyProxy( 
+			   const std::string & ts, 
+			   const std::string & addr, 
+			   const std::string & paddr, 
+			   const std::string & other,
+const std::vector<unsigned char> & signature, 
+					 std::string & errStr )
+{
+	LOCK(cs_wallet);
+
+    CHashWriter ss( SER_GETHASH, 0 );
+
+	ss << ts << addr << paddr;
+	if(other.size())
+		ss << other;
+
+	EDCapp & theApp = EDCapp::singleton();
+
+	CEDCBitcoinAddress address(addr);
+
+	if (theApp.walletMain() && address.IsValid())
+	{
+		CKeyID keyID;
+		if (address.GetKeyID(keyID))
+		{
+			CPubKey	pubKey;	
+#ifndef USE_HSM
+			if (!theApp.walletMain()->GetPubKey(keyID, pubKey))
+#else
+			if (!theApp.walletMain()->GetPubKey(keyID, pubKey) && 
+			!theApp.walletMain()->GetHSMPubKey(keyID, pubKey))
+#endif
+				return pubKey.Verify(ss.GetHash(), signature);
+		}
+	}
+
+	return false;
+}
+
+bool CEDCWallet::AddPoll( 
+	 const Poll & poll,
+	std::string & errStr )
+{
+	if(!CEDCWalletDB(strWalletFile).WritePoll( poll ))
+	{
+		errStr = std::string(__func__) + ":poll proxy revoke write failed";
+		return false;
+	}
+
+	LoadPoll( poll );
+
+	return false;
+}
+
+void CEDCWallet::LoadPoll( const Poll & poll )
+{
+	LOCK(cs_wallet);
+
+	polls.insert( std::make_pair( poll.id(), poll ));
+}
+
+bool CEDCWallet::AddVote( 
+				 time_t timestamp,
+		 const CKeyID & addr, 
+		 const CKeyID & iaddr, 
+	const std::string & pollid,
+	const std::string & response, 
+		 const CKeyID & pAddr, 
+		  std::string & errStr )
+{
+	if(!CEDCWalletDB(strWalletFile).WriteVote( timestamp, addr, iaddr, pollid, response, pAddr ))
+	{
+		errStr = std::string(__func__) + ":poll vote write failed";
+		return false;
+	}
+
+	LoadVote( timestamp, addr, iaddr, pollid, response, pAddr );
+
+	return true;
+}
+
+void CEDCWallet::LoadVote(
+				 time_t timestamp,
+		 const CKeyID & addr, 
+		 const CKeyID & iaddr, 
+	const std::string & pollid,
+	const std::string & response, 
+		 const CKeyID & pAddr )
+{
+	LOCK(cs_wallet);
+
+	uint160 id;
+	id.SetHex(pollid);
+
+	auto it = pollResults.find( id );
+
+	if( it == pollResults.end() )
+	{
+		auto rc = pollResults.insert( std::make_pair( id, PollResult() ) );
+		it = rc.first;
+	}
+
+	auto pi = polls.find( id );
+
+	const unsigned oneDay_1 = 24*60*60 - 1;
+
+	// No corresponding poll check
+	if( pi == polls.end() )
+	{
+		std::string msg = "Vote received on non-existent poll with id ";
+		msg += pollid;
+
+		error( msg.c_str() );
+		return;
+	}
+
+	// Invalid response value check
+	else if( !pi->second.validAnswer( response ) )
+	{
+		std::string msg = "The vote of ";
+		msg += response;
+		msg += " is not a valid response to poll with id ";
+		msg += pollid;
+
+		error( msg.c_str() );
+		return;
+	}
+
+	// Vote did not occur during poll check
+	// Add a days worth of seconds minus 1 to the end date to allow timestamp to fall on
+	// the last day. ie. 2016:10:10 10:10:10 <= 2016:10:10 23:59:59
+	else if( timestamp < pi->second.start() || timestamp > (pi->second.end()+oneDay_1) )
+	{
+		struct tm ptm;
+		localtime_r( &pi->second.start(), &ptm );
+		char sts[16];
+		strftime( sts, 32, "%Y-%m-%d", &ptm );
+		localtime_r( &pi->second.end(), &ptm );
+		char ets[16];
+		strftime( ets, 32, "%Y-%m-%d", &ptm );
+
+		std::string msg = "The vote of ";
+		msg += response;
+		msg += " on poll ";
+		msg += pollid;
+		msg += " was not done during the polling period of ";
+		msg += sts;
+		msg += " to ";
+		msg += ets;
+
+		error( msg.c_str() );
+		return;
+	}
+
+	// If pAddr is empty, then addr contains the address of the voter
+	// It has higher precendence then any proxy, so just assign the answer to the
+	// poll result.
+	//
+	if( pAddr.size() == 0 )
+	{
+		it->second.addVote( response, addr, PollResult::OWNER );
+	}
+	// else, pAddr is the address of the voter and addr is the address of the proxy
+	else
+	{
+		auto pt = proxyMap.find( pAddr );
+		const auto & proxy = pt->second;
+
+		auto pp = proxy.pollProxies.find( pollid );
+		if( pp != proxy.pollProxies.end() )
+		{
+			// If proxy addresses match and the mapping is active
+			if( get<0>(pp->second) == pAddr && get<2>(pp->second) )
+			{
+				it->second.addVote( response, pAddr, PollResult::POLL );
+			}
+		}
+
+		auto ip = proxy.issuerProxies.find( iaddr );
+		if( ip != proxy.issuerProxies.end() )
+		{
+			// If proxy addresses match and the mapping is active
+			if( get<0>(pp->second) == pAddr && get<2>(pp->second) )
+			{
+				it->second.addVote( response, pAddr, PollResult::ISSUER );
+			}
+		}
+
+		// If proxy addresses match and the mapping is active
+		if( get<0>(proxy.generalProxy) == pAddr && get<2>(pp->second) )
+		{
+			it->second.addVote( response, pAddr, PollResult::GENERAL );
+			return;
+		}
+
+		// Proxy is not authorized to vote for principal
+		std::string msg = "The proxy ";
+		msg += pAddr.ToString();
+		msg += " is not authorized to vote for ";
+		msg += addr.ToString();
+		msg += " on poll ";
+		msg += pollid;
+
+		error( msg.c_str() );
+	}
+}
+
+bool CEDCWallet::pollResult( 
+		 const uint160 & id, 
+	const PollResult * & result ) const
+{
+	auto it = pollResults.find(id);
+	if( it != pollResults.end())
+	{
+		result = &it->second;
+		return true;
+	}
+	return false;
 }

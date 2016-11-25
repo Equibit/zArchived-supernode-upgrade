@@ -19,6 +19,7 @@
 #include "edc/edcapp.h"
 #include "edc/message/edcmessage.h"
 #include "edc/rpc/edcwot.h"
+#include "edc/rpc/edcpolling.h"
 
 #include <boost/version.hpp>
 #include <boost/filesystem.hpp>
@@ -33,35 +34,43 @@ namespace
 {
 // Wallet DB Keys:
 //
-const std::string ACC               = "acc";               // ACC:account-name/account
-const std::string ACENTRY           = "acentry";           // ACENTRY:(account-name:account-number)/acentry
-const std::string BESTBLOCK         = "bestblock";         // BESTBLOCK/empty-locator
-const std::string BESTBLOCK_NOMERKLE= "bestblock_nomerkle";// BESTBLOCK_NOMERKLE/locator
-const std::string CKEY              = "ckey";              // CKEY:pub-key/privkey-secret
-const std::string CSCRIPT           = "cscript";           // CSCRIPT:hash/script
-const std::string DEFAULTKEY        = "defaultkey";        // DEFAULTKEY/pubkey
-const std::string DESTDATA          = "destdata";          // DESTDATA:(address:key)/value
-const std::string HDCHAIN			= "hdchain";		   // HDCHAIN/value
-const std::string ISSUER            = "issuer";            // ISSUER:issuer-name/issuer
-const std::string KEY               = "key";               // KEY:pubkey/(priv-key:hash(pubkey,privkey))
-const std::string KEYMETA           = "keymeta";           // KEYMETA:pub-key/key-meta
-const std::string MINVERSION        = "minversion";        // MINVERSION/version
-const std::string MKEY              = "mkey";              // MKEY:id/masterkey
-const std::string NAME              = "name";              // NAME:address/name
-const std::string ORDERPOSNEXT      = "orderposnext";      // ORDERPOSNEXT/order-pos-next
-const std::string POOL              = "pool";              // POOL:number/keypool
+const std::string ACC               = "acc";        // ACC:account-name/pubkey
+const std::string ACENTRY           = "acentry";    // ACENTRY:(account-name:account-number)/acentry
+const std::string BESTBLOCK         = "bestblock";  // BESTBLOCK/empty-locator
+const std::string BESTBLOCK_NOMERKLE= "bestblock_nomerkle";  // BESTBLOCK_NOMERKLE/locator
+const std::string CKEY              = "ckey";       // CKEY:pubkey/privkey-secret
+const std::string CSCRIPT           = "cscript";    // CSCRIPT:hash/script
+const std::string DEFAULTKEY        = "defaultkey"; // DEFAULTKEY/pubkey
+const std::string DESTDATA          = "destdata";   // DESTDATA:(address:key)/value
+const std::string HDCHAIN			= "hdchain";	// HDCHAIN/value
 #ifdef USE_HSM
-const std::string HSM_KEY			= "HSM_key";		   // HSM_KEY:pub-key/HSM-ID
-const std::string HSM_POOL          = "HSM_pool";          // HSM_POOL:number/keypool
+const std::string HSM_KEY			= "HSM_key";    // HSM_KEY:pubkey/HSM-ID
+const std::string HSM_POOL          = "HSM_pool";   // HSM_POOL:number/keypool
 #endif
-const std::string PURPOSE           = "purpose";           // PURPOSE:address/purpose
-const std::string TX                = "tx";                // TX:trx-hash/trx
-const std::string USER_MSG          = "user_msg";          // USER_MSG:(tag:hash)/msg
-const std::string VERSION           = "version";           // VERSION/version
-const std::string WATCHS            = "watchs";            // WATCHS/dest
-const std::string WKEY              = "wkey";              // WKEY/pub-key
-const std::string WOTCERT           = "wotcert";           // WOTCERT:(pubkey:spubkey)/(sig,cert)
-const std::string WOTCRTRVK         = "wotcrtrvk";         // WOTCERT:(pubkey:spubkey)/reason
+const std::string IPROXY            = "iproxy";     // IPROXY:(addr,paddr:iaddr)/(ts:sign)
+const std::string IPROXY_RVK        = "iproxy_rvk"; // IPROXY_RVK:(addr:paddr,iaddr)/(ts:sign)
+const std::string ISSUER            = "issuer";     // ISSUER:issuer-name/issuer
+const std::string KEY               = "key";        // KEY:pubkey/(privkey:hash(pubkey,privkey))
+const std::string KEYMETA           = "keymeta";    // KEYMETA:pubkey/key-meta
+const std::string MINVERSION        = "minversion"; // MINVERSION/version
+const std::string MKEY              = "mkey";       // MKEY:id/masterkey
+const std::string NAME              = "name";       // NAME:address/name
+const std::string ORDERPOSNEXT      = "orderposnext";  // ORDERPOSNEXT/order-pos-next
+const std::string POLL				= "poll";		// POLL:id/poll-value
+const std::string POOL              = "pool";       // POOL:number/keypool
+const std::string PPROXY            = "pproxy";     // PPROXY:(addr,paddr:pollID)/(ts:sign)
+const std::string PPROXY_RVK        = "pproxy_rvk"; // PPROXY_RVK:(addr:paddr:pollID)/(ts:sign)
+const std::string PROXY             = "proxy";      // PROXY:(addr:paddr)/(ts:sign)
+const std::string PROXY_RVK         = "proxy_rvk";  // PROXY_RVK:(addr:paddr)/(ts:sign)
+const std::string PURPOSE           = "purpose";    // PURPOSE:address/purpose
+const std::string TX                = "tx";         // TX:trx-hash/trx
+const std::string USER_MSG          = "user_msg";   // USER_MSG:(tag:hash)/msg
+const std::string VERSION           = "version";    // VERSION/version
+const std::string WATCHS            = "watchs";     // WATCHS/dest
+const std::string WKEY              = "wkey";       // WKEY:pubkey/privkey
+const std::string VOTE              = "vote";       // VOTE:(pollid:addr:paddr)/(timestamp:iaddr:response)
+const std::string WOTCERT           = "wotcert";    // WOTCERT:(pubkey:spubkey)/(sig:cert)
+const std::string WOTCRTRVK         = "wotcrtrvk";  // WOTCERT:(pubkey:spubkey)/reason
 }
 
 bool CEDCWalletDB::WriteName(const string& strAddress, const string& strName)
@@ -285,8 +294,8 @@ bool CEDCWalletDB::WriteHSMPool(int64_t nPool, const CKeyPool& keypool)
 bool CEDCWalletDB::EraseHSMPool(int64_t nPool)
 {
 	EDCapp & theApp = EDCapp::singleton();
-
     theApp.incWalletDBUpdated();
+
     return Erase(std::make_pair(HSM_POOL, nPool));
 }
 #endif
@@ -315,6 +324,9 @@ bool CEDCWalletDB::ReadIssuer(const string& strIssuer, CIssuer & issuer )
 
 bool CEDCWalletDB::WriteIssuer(const string& strIssuer, const CIssuer & issuer )
 {
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
+
     return Write(make_pair(ISSUER, strIssuer), issuer );
 }
 
@@ -749,7 +761,7 @@ ReadKeyValue(
 				return false;
 			}
 		}
-        else if (strType == "hdchain")
+        else if (strType == HDCHAIN )
         {
             CHDChain chain;
             ssValue >> chain;
@@ -759,6 +771,10 @@ ReadKeyValue(
                 return false;
             }
         }
+		else if( strType == ISSUER )
+		{
+			; // no-op?
+		}
 		else if( strType == USER_MSG )
 		{
 			std::string tag;
@@ -775,6 +791,40 @@ ReadKeyValue(
 				return false;
 			}
 			pwallet->LoadMessage( tag, hash, msg );
+		}
+		else if( strType == POLL )
+		{
+			// POLL:id/poll-value
+			uint160 id;
+			ssKey >> id;
+
+			Poll poll;
+			ssValue >> poll;
+
+			pwallet->LoadPoll( poll );
+		}
+		else if( strType == VOTE )
+		{
+			// VOTE:(pollid:addr:paddr)/(iaddr:response)
+			std::string pollid;
+			ssKey >> pollid;
+
+			CKeyID	addr;
+			ssKey >> addr;
+
+			CKeyID paddr;
+			ssKey >> paddr;
+
+			time_t	timestamp;
+			ssValue >> timestamp;
+
+			CKeyID	iaddr;
+			ssValue >> iaddr;
+
+			std::string response;
+			ssValue >> response;
+
+			pwallet->LoadVote( timestamp, addr, iaddr, pollid, response, paddr );
 		}
 		else if( strType == WOTCERT )
 		{
@@ -797,6 +847,122 @@ ReadKeyValue(
 			ssValue >> reason;
 
 			pwallet->LoadWoTCertificateRevoke( pubkey, spubkey, reason );
+		}
+		else if( strType == PROXY )
+		{
+			CKeyID addr, paddr;
+			ssKey >> addr;
+			ssKey >> paddr;
+
+			std::string ts;
+			std::vector<unsigned char> signature;
+
+			ssValue >> ts;
+			ssValue >> signature;
+
+			if( pwallet->VerifyProxy( ts, addr.ToString(), paddr.ToString(), "", signature, strErr))
+				return false;
+
+			pwallet->LoadGeneralProxy( ts, addr, paddr );
+		}
+		else if( strType == PROXY_RVK )
+		{
+			CKeyID addr, paddr;
+			ssKey >> addr;
+			ssKey >> paddr;
+
+			std::string ts;
+			std::vector<unsigned char> signature;
+
+			ssValue >> ts;
+			ssValue >> signature;
+
+			if( pwallet->VerifyProxy( ts, addr.ToString(), paddr.ToString(), "", signature, strErr))
+				return false;
+
+			pwallet->LoadGeneralProxyRevoke( ts, addr, paddr );
+		}
+		else if( strType == IPROXY )
+		{
+			CKeyID addr, paddr;
+			CKeyID iaddr;
+
+			ssKey >> addr;
+			ssKey >> paddr;
+			ssKey >> iaddr;
+
+			std::string ts;
+			std::vector<unsigned char> signature;
+
+			ssValue >> ts;
+			ssValue >> signature;
+
+			if( pwallet->VerifyProxy( ts, addr.ToString(), paddr.ToString(), iaddr.ToString(), 
+			signature, strErr ))
+				return false;
+
+			pwallet->LoadIssuerProxy( ts, addr, paddr, iaddr );
+		}
+		else if( strType == IPROXY_RVK )
+		{
+			CKeyID addr, paddr;
+			CKeyID iaddr;
+
+			ssKey >> addr;
+			ssKey >> paddr;
+			ssKey >> iaddr;
+
+			std::string ts;
+			std::vector<unsigned char> signature;
+
+			ssValue >> ts;
+			ssValue >> signature;
+
+			if( pwallet->VerifyProxy( ts, addr.ToString(), paddr.ToString(), iaddr.ToString(), 
+			signature, strErr ))
+				return false;
+
+			pwallet->LoadIssuerProxyRevoke( ts, addr, paddr, iaddr );
+		}
+		else if( strType == PPROXY )
+		{
+			CKeyID addr, paddr;
+			std::string pollID;
+			ssKey >> addr;
+			ssKey >> paddr;
+			ssKey >> pollID;
+
+			std::string ts;
+			std::vector<unsigned char> signature;
+
+			ssValue >> ts;
+			ssValue >> signature;
+
+			if( pwallet->VerifyProxy( ts, addr.ToString(), paddr.ToString(), pollID, signature, 
+			strErr ))
+				return false;
+
+			pwallet->LoadPollProxy( ts, addr, paddr, pollID );
+		}
+		else if( strType == PPROXY_RVK )
+		{
+			CKeyID addr, paddr;
+			std::string pollID;
+			ssKey >> addr;
+			ssKey >> paddr;
+			ssKey >> pollID;
+
+			std::string ts;
+			std::vector<unsigned char> signature;
+
+			ssValue >> ts;
+			ssValue >> signature;
+
+			if( pwallet->VerifyProxy( ts, addr.ToString(), paddr.ToString(), pollID, signature, 
+			strErr ))
+				return false;
+
+			pwallet->LoadPollProxyRevoke( ts, addr, paddr, pollID );
 		}
 #ifdef USE_HSM
 		else if( strType == HSM_POOL )
@@ -1285,8 +1451,8 @@ bool CEDCWalletDB::WriteDestData(
 bool CEDCWalletDB::EraseDestData(const std::string &address, const std::string &key)
 {
 	EDCapp & theApp = EDCapp::singleton();
-
     theApp.incWalletDBUpdated();
+
     return Erase(std::make_pair(std::string(DESTDATA), std::make_pair(address, key)));
 }
 
@@ -1427,6 +1593,25 @@ bool dumpKey(
 			ssKey >> hash;
 			out << ':' << msgTag << ':' << hash.ToString();
 		}
+		else if( strType == POLL )
+		{
+			uint160 id;
+			ssKey >> id;
+			out << ':' << id.ToString();
+		}
+		else if( strType == VOTE )
+		{
+			std::string pollid;
+			ssKey >> pollid;
+
+			CKeyID addr;
+			ssKey >> addr;
+
+			std::string pAddr;
+			ssKey >> pAddr;
+
+			out << ':' << pollid << ':' << addr.ToString() << ':' << pAddr;
+		}
 		else if( strType == WOTCERT )
 		{
             CPubKey pubkey, spubkey;
@@ -1442,6 +1627,32 @@ bool dumpKey(
             ssKey >> spubkey;
 
 			out << ':' << HexStr(pubkey) << ':' << HexStr(spubkey);
+		}
+		else if(( strType == PROXY ) || ( strType == PROXY_RVK ))
+		{
+			std::string addr, paddr;
+			ssKey >> addr;
+			ssKey >> paddr;
+
+			out << ':' << addr << ':' << paddr;
+		}
+		else if(( strType == IPROXY ) || ( strType == IPROXY_RVK ))
+		{
+			std::string addr, paddr, iaddr;
+			ssKey >> addr;
+			ssKey >> paddr;
+			ssKey >> iaddr;
+
+			out << ':' << addr << ':' << paddr << ':' << iaddr;
+		}
+		else if(( strType == PPROXY ) || ( strType == PPROXY_RVK ))
+		{
+			std::string addr, paddr, pollID;
+			ssKey >> addr;
+			ssKey >> paddr;
+			ssKey >> pollID;
+
+			out << ':' << addr << ':' << paddr << ':' << pollID;
 		}
 #ifdef USE_HSM
 		else if( strType == HSM_POOL )
@@ -1692,6 +1903,36 @@ dumpValue(
 			out << msg->ToJSON() << endl;
 			delete msg;
 		}
+		else if( strType == POLL )
+		{
+			// POLL:id/poll-value
+			Poll poll;
+			ssValue >> poll;
+			out << poll.toJSON() << endl;
+		}
+		else if( strType == VOTE )
+		{
+			// VOTE:(pollid:addr:paddr)/(timestamp:iaddr:response)
+			time_t	timestamp;
+			ssValue >> timestamp;
+
+			CKeyID	issuer;
+			ssValue >> issuer;
+
+			std::string response;
+			ssValue >> response;
+
+			struct tm ptm;
+			localtime_r( &timestamp, &ptm );
+			char tss[32];
+			strftime( tss, 32, "%Y-%m-%d %H:%M:%S", &ptm );  
+
+			out << 
+				"{\"timestamp\":\"" << tss << "\"" <<
+				",\"issuer\":\"" << issuer.ToString() << "\"" <<
+				",\"response\":\"" << response << "\"" << 
+				"}" << endl;
+		}
 		else if( strType == WOTCERT )
 		{
 			WoTCertificate	cert;
@@ -1705,6 +1946,19 @@ dumpValue(
 			ssValue >> reason;
 
 			out << " " << reason;
+		}
+		else if(( strType == PROXY ) ||
+				( strType == PROXY_RVK ) ||
+				( strType == IPROXY ) ||
+				( strType == IPROXY_RVK ) ||
+				( strType == PPROXY ) ||
+				( strType == PPROXY_RVK ))
+		{
+			std::string ts;
+			std::vector<unsigned char> signature;
+
+			out << " {\"ts\":" << ts << 
+					",\"signature\":" << HexStr(signature) << "}" << endl;
 		}
 #ifdef USE_HSM
 		else if( strType == HSM_POOL )
@@ -1824,17 +2078,20 @@ void CEDCWalletDB::ListIssuers( vector<pair<string,CIssuer>> & issuers )
 
 bool CEDCWalletDB::WriteUserMsg(const CUserMessage * msg )
 {
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
+
 	if( const CPeerToPeer * p2pmsg = dynamic_cast<const CPeerToPeer *>(msg))
 		return Write( 
-			make_pair( make_pair( USER_MSG, msg->tag() ), msg->GetHash()), 
+			make_pair( make_pair( USER_MSG, msg->vtag() ), msg->GetHash()), 
 			*p2pmsg );
 	else if( const CBroadcast * bmsg = dynamic_cast<const CBroadcast *>(msg))
 		return Write( 
-			make_pair( make_pair( USER_MSG, msg->tag() ), msg->GetHash()), 
+			make_pair( make_pair( USER_MSG, msg->vtag() ), msg->GetHash()), 
 			*bmsg );
 	else if( const CMulticast * mmsg = dynamic_cast<const CMulticast *>(msg))
 		return Write( 
-			make_pair( make_pair( USER_MSG, msg->tag() ), msg->GetHash()), 
+			make_pair( make_pair( USER_MSG, msg->vtag() ), msg->GetHash()), 
 			*mmsg );
 
 	assert(false);
@@ -1843,7 +2100,9 @@ bool CEDCWalletDB::WriteUserMsg(const CUserMessage * msg )
 
 bool CEDCWalletDB::EraseUserMsg(const CUserMessage * msg )
 {
-	return Erase( make_pair( make_pair( USER_MSG, msg->tag() ), msg->GetHash()));
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
+	return Erase( make_pair( make_pair( USER_MSG, msg->vtag() ), msg->GetHash()));
 }
 
 namespace
@@ -2031,13 +2290,12 @@ bool keep(
 	return true;
 }
 
-template <typename T>
 bool keep(
-	T * msg,
+	CMulticast * msg,
 	time_t from,
    	time_t to,
    	const std::set<std::string> & senders,
-   	const std::set<std::string> & assets )
+   	const std::set<std::string> & issuers )
 {
 	if( from && from < msg->second() )
 		return false;
@@ -2049,8 +2307,27 @@ bool keep(
 	( senders.find( msg->senderAddr() ) == senders.end() ) )
 		return false;
 
-	if( assets.size() &&
-	( assets.find( msg->assetId() ) == assets.end() ) )
+	if( issuers.size() &&
+	( issuers.find( msg->issuerAddr() ) == issuers.end() ) )
+		return false;
+
+	return true;
+}
+
+bool keep(
+	CBroadcast * msg,
+	time_t from,
+   	time_t to,
+   	const std::set<std::string> & senders )
+{
+	if( from && from < msg->second() )
+		return false;
+
+	if( to && to > msg->second() )
+		return false;
+
+	if( senders.size() && 
+	( senders.find( msg->senderAddr() ) == senders.end() ) )
 		return false;
 
 	return true;
@@ -2112,7 +2389,7 @@ std::vector<CUserMessage *> & out
 
 		if( CBroadcast * bmsg = dynamic_cast<CBroadcast *>(msg) )
 		{
-			if( keep( bmsg, from, to, senders, assets ))
+			if( keep( bmsg, from, to, senders ))
 				out.push_back(msg);
 			else
 				delete msg;
@@ -2233,7 +2510,7 @@ const std::set<std::string> & receivers
 
 		if( CBroadcast * bmsg = dynamic_cast<CBroadcast *>(msg) )
 		{
-			if( keep( bmsg, from, to, senders, assets ))
+			if( keep( bmsg, from, to, senders ))
 			{
        			pcursor->close();
 				pcursor = NULL;
@@ -2313,6 +2590,8 @@ bool CEDCWalletDB::WriteWoTcertificate(
                    const CPubKey & spk,     // Signing public key
 		   const WoTCertificate  & cert )   // The certificate
 {
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
 	return Write( std::make_pair( WOTCERT, std::make_pair( pk, spk )), cert );
 }
 
@@ -2321,15 +2600,139 @@ bool CEDCWalletDB::WriteWoTcertificateRevocation(
     const CPubKey & spk,        // Signing public key
 const std::string & reason )	// Reason for revocation
 {
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
 	return Write( std::make_pair( WOTCRTRVK, std::make_pair( pk, spk )), reason );
 }
 
 bool CEDCWalletDB::EraseWoTcertificate(CPubKey const & pk, CPubKey const & spk )
 {
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
 	return Erase( std::make_pair( WOTCERT, std::make_pair( pk, spk )) );
 }
 
 bool CEDCWalletDB::EraseWoTcertificateRevocation(CPubKey const & pk, CPubKey const & spk )
 {
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
 	return Erase( std::make_pair( WOTCRTRVK, std::make_pair( pk, spk )) );
+}
+
+bool CEDCWalletDB::WriteGeneralProxy( 
+		 const CKeyID & addr, 
+		 const CKeyID & paddr, 
+	const std::string & ts, 
+	const std::vector<unsigned char > & signature )
+{
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
+	return Write( std::make_pair( PROXY, std::make_pair( addr, paddr )),
+				  std::make_pair( ts,signature) );
+}
+
+bool CEDCWalletDB::WriteGeneralProxyRevoke(  
+		 const CKeyID & addr, 
+		 const CKeyID & paddr, 
+	const std::string & ts, 
+	const std::vector<unsigned char > & signature )
+{
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
+	return Write( std::make_pair( PROXY_RVK, std::make_pair( addr, paddr )),
+				  std::make_pair( ts,signature) );
+}
+
+bool CEDCWalletDB::WriteIssuerProxy(  
+		 const CKeyID & addr, 
+		 const CKeyID & paddr, 
+		 const CKeyID & iaddr, 
+	const std::string & ts, 
+	const std::vector<unsigned char > & signature )
+{
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
+	return Write( std::make_pair( IPROXY, std::make_pair( std::make_pair( addr, paddr ), iaddr)),
+				  std::make_pair( ts, signature) );
+}
+
+bool CEDCWalletDB::WriteIssuerProxyRevoke(  
+		 const CKeyID & addr, 
+		 const CKeyID & paddr, 
+		 const CKeyID & iaddr, 
+	const std::string & ts, 
+	const std::vector<unsigned char > & signature )
+{
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
+	return Write( std::make_pair( IPROXY_RVK, std::make_pair( std::make_pair( addr, paddr ),iaddr)),
+				  std::make_pair( ts, signature) );
+}
+
+bool CEDCWalletDB::WritePollProxy(  
+		 const CKeyID & addr, 
+		 const CKeyID & paddr, 
+	const std::string & pollID, 
+	const std::string & ts, 
+	const std::vector<unsigned char > & signature )
+{
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
+	return Write( std::make_pair( PPROXY, std::make_pair( std::make_pair( addr, paddr), pollID)),
+				  std::make_pair( ts, signature) );
+}
+
+bool CEDCWalletDB::WritePollProxyRevoke(  
+		 const CKeyID & addr, 
+		 const CKeyID & paddr, 
+	const std::string & pollID, 
+	const std::string & ts, 
+	const std::vector<unsigned char > & signature )
+{
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
+	return Write( std::make_pair( PPROXY_RVK, std::make_pair( std::make_pair( addr, paddr),pollID)),
+				  std::make_pair( ts, signature) );
+}
+
+bool CEDCWalletDB::WritePoll( const Poll & poll )
+{
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
+	return Write( std::make_pair( POLL, poll.id() ), poll );
+}
+
+bool CEDCWalletDB::ErasePoll( const uint160 & id )
+{
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
+	return Erase( std::make_pair( POLL, id ) );
+}
+
+bool CEDCWalletDB::WriteVote( 
+				 time_t timestamp,
+         const CKeyID & addr,
+         const CKeyID & iaddr,
+    const std::string & pollid,
+    const std::string & response,
+    	 const CKeyID & pAddr )
+{
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
+
+	return Write( std::make_pair( VOTE, 
+		std::make_pair( pollid, std::make_pair( addr, pAddr))), 
+		std::make_pair( timestamp, std::make_pair( iaddr, response )) );
+}
+
+bool CEDCWalletDB::EraseVote( 
+		 const CKeyID & addr, 
+	const std::string & pollid, 
+		 const CKeyID & pAddr )
+{
+	EDCapp & theApp = EDCapp::singleton();
+    theApp.incWalletDBUpdated();
+
+	return Erase( std::make_pair( VOTE, 
+		std::make_pair( pollid, std::make_pair( addr, pAddr)))); 
 }

@@ -1,5 +1,6 @@
-./bitcoind \
+./equibitd \
 -daemon \
+-eb_usehsm=false \
 -logtimestamps -eb_logtimestamps \
 -logtimemicros -eb_logtimemicros \
 -regtest -eb_regtest \

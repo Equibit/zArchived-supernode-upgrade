@@ -17,6 +17,32 @@
 #include "utilmoneystr.h"
 #include "wallet.h"
 #include "walletdb.h"
+#ifdef USE_HSM
+#include "edc/edcapp.h"
+#include "Thales/interface.h"
+#include <secp256k1.h>
+
+namespace
+{
+secp256k1_context   * secp256k1_context_verify;
+
+struct Verifier
+{
+    Verifier()
+    {
+        secp256k1_context_verify = secp256k1_context_create(SECP256K1_CONTEXT_VERIFY);
+    }
+    ~Verifier()
+    {
+        secp256k1_context_destroy(secp256k1_context_verify);
+    }
+};
+
+Verifier    verifier;
+
+}
+
+#endif
 
 #include <stdint.h>
 
@@ -521,7 +547,45 @@ UniValue signmessage(const UniValue& params, bool fHelp)
 
     CKey key;
     if (!pwalletMain->GetKey(keyID, key))
+	{
+#ifdef USE_HSM
+   		if( GetBoolArg( "-usehsm", true) )
+        {
+            std::string hsmid;
+            if(pwalletMain->GetHSMKey(keyID, hsmid ))
+            {
+                CHashWriter ss(SER_GETHASH, 0);
+                ss << strMessageMagic;
+                ss << strMessage;
+
+                vector<unsigned char> vchSig;
+
+				EDCapp & theApp = EDCapp::singleton();
+                if (!NFast::sign( *theApp.nfHardServer(), *theApp.nfModule(),
+                hsmid, ss.GetHash().begin(), 256, vchSig))
+                    throw JSONRPCError(RPC_MISC_ERROR, "HSM Sign failed");
+
+                secp256k1_ecdsa_signature sig;
+                memcpy( sig.data, vchSig.data(), sizeof(sig.data));
+
+                secp256k1_ecdsa_signature_normalize( secp256k1_context_verify, &sig, &sig );
+
+                vchSig.resize(65);
+
+                vchSig[0] = 27; // TODO: recid needs to be computed. It is from 0 to 3.
+                memcpy( &vchSig[1], sig.data, sizeof(sig.data));
+
+                return EncodeBase64(&vchSig[0], vchSig.size());
+            }
+            else
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Address does not refer to key");
+        }
+        else
+            throw JSONRPCError(RPC_MISC_ERROR, "Error: HSM processing disabled. "
+                "Use -usehsm command line option to enable HSM processing" );
+#endif
         throw JSONRPCError(RPC_WALLET_ERROR, "Private key not available");
+	}
 
     CHashWriter ss(SER_GETHASH, 0);
     ss << strMessageMagic;
@@ -2293,6 +2357,11 @@ UniValue getwalletinfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("txcount",       (int)pwalletMain->mapWallet.size()));
     obj.push_back(Pair("keypoololdest", pwalletMain->GetOldestKeyPoolTime()));
     obj.push_back(Pair("keypoolsize",   (int)pwalletMain->GetKeyPoolSize()));
+#ifdef USE_HSM
+    obj.push_back(Pair("hsmkeypoololdest", pwalletMain->GetOldestHSMKeyPoolTime()));
+    obj.push_back(Pair("hsmkeypoolsize",   (int)pwalletMain->GetHSMKeyPoolSize()));
+#endif
+
     if (pwalletMain->IsCrypted())
         obj.push_back(Pair("unlocked_until", nWalletUnlockTime));
     obj.push_back(Pair("paytxfee",      ValueFromAmount(payTxFee.GetFeePerK())));
@@ -2568,6 +2637,197 @@ UniValue fundrawtransaction(const UniValue& params, bool fHelp)
     return result;
 }
 
+UniValue getnewhsmaddress(const UniValue& params, bool fHelp)
+{
+    if (!EnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+    if (fHelp || params.size() > 1)
+        throw runtime_error(
+            "getnewhsmaddress ( \"account\" )\n"
+            "\nReturns a new Equibit address, derived from an HSM key pair, that can be used for receiving payments.\n"
+            "If 'account' is specified (DEPRECATED), it is added to the address book \n"
+            "so payments received with the address will be credited to 'account'.\n"
+            "\nArguments:\n"
+            "1. \"account\"        (string, optional) DEPRECATED. The account name for the address to be linked to. If not provided, the default account \"\" is used. It can also be set to the empty string \"\" to represent the default account. The account does not need to exist, it will be created if there is no account by the given name.\n"
+            "\nResult:\n"
+            "\"equibitaddress\"    (string) The new equibit address\n"
+            "\nExamples:\n"
+            + HelpExampleCli("getnewhsmaddress", "")
+            + HelpExampleRpc("getnewhsmaddress", "")
+        );
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    // Parse the account first so we don't generate a key if there's an error
+    string strAccount;
+    if (params.size() > 0)
+        strAccount = AccountFromValue(params[0]);
+
+#ifdef USE_HSM
+    if( GetBoolArg( "-usehsm", true) )
+    {
+        // If keys can be generated
+        if (!pwalletMain->IsLocked())
+            pwalletMain->TopUpHSMKeyPool();
+
+        // Generate a new key that is added to wallet
+        CPubKey newKey;
+        if (!pwalletMain->GetHSMKeyFromPool(newKey))
+            throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call hsmkeypoolrefill first");
+        CKeyID keyID = newKey.GetID();
+
+        pwalletMain->SetAddressBook(keyID, strAccount, "receive");
+
+        return CBitcoinAddress(keyID).ToString();
+    }
+    else
+        throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM processing disabled. "
+            "Use -usehsm command line option to enable HSM processing" );
+#else
+    throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM support is not included in the build");
+#endif
+}
+
+CBitcoinAddress GetHSMAccountAddress(string strAccount, bool bForceNew=false)
+{
+    CWalletDB walletdb(pwalletMain->strWalletFile);
+
+    CAccount account;
+    walletdb.ReadAccount(strAccount, account);
+
+    if (!bForceNew)
+    {
+        if (!account.vchPubKey.IsValid())
+            bForceNew = true;
+        else
+        {
+            // Check if the current key has been used
+            CScript scriptPubKey = GetScriptForDestination(account.vchPubKey.GetID());
+            for (map<uint256, CWalletTx>::iterator it = pwalletMain->mapWallet.begin();
+                 it != pwalletMain->mapWallet.end() && account.vchPubKey.IsValid();
+                 ++it)
+                BOOST_FOREACH(const CTxOut& txout, (*it).second.vout)
+                    if (txout.scriptPubKey == scriptPubKey)
+                    {
+                        bForceNew = true;
+                        break;
+                    }
+        }
+    }
+
+    // Generate a new key
+    if (bForceNew)
+    {
+#ifdef USE_HSM
+    	if( GetBoolArg( "-usehsm", true) )
+        {
+            if (!pwalletMain->GetHSMKeyFromPool(account.vchPubKey))
+                throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM Keypool ran out, please call hsmkeypoolrefill first");
+
+            pwalletMain->SetAddressBook(account.vchPubKey.GetID(), strAccount, "receive");
+            walletdb.WriteAccount(strAccount, account);
+        }
+        else
+            throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM processing disabled. "
+                "Use -usehsm command line option to enable HSM processing" );
+#else
+        throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM support is not included in the build");
+#endif
+    }
+
+    return CBitcoinAddress(account.vchPubKey.GetID());
+}
+
+UniValue gethsmaccountaddress(const UniValue& params, bool fHelp)
+{
+    if (!EnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+            "gethsmaccountaddress \"account\"\n"
+            "\nDEPRECATED. Returns the current Equibit HSM address for receiving payments to this account.\n"
+            "\nArguments:\n"
+            "1. \"account\"       (string, required) The account name for the address. It can also be set to the empty string \"\" to represent the default account. The account does not need to exist, it will be created and a new HSM address created  if there is no account by the given name.\n"
+            "\nResult:\n"
+            "\"equibitaddress\"   (string) The account equibit address\n"
+            "\nExamples:\n"
+            + HelpExampleCli("gethsmaccountaddress", "\"myaccount\"")
+            + HelpExampleCli("gethsmaccountaddress", "\"\"" )
+            + HelpExampleRpc("gethsmaccountaddress", "\"\"" )
+            + HelpExampleRpc("gethsmaccountaddress", "\"myaccount\"")
+        );
+
+#ifdef USE_HSM
+   	if( GetBoolArg( "-usehsm", true) )
+    {
+        LOCK2(cs_main, pwalletMain->cs_wallet);
+
+        // Parse the account first so we don't generate a key if there's an error
+        string strAccount = AccountFromValue(params[0]);
+
+        UniValue ret(UniValue::VSTR);
+
+        ret = GetHSMAccountAddress(strAccount).ToString();
+
+        return ret;
+    }
+    else
+        throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM processing disabled. "
+            "Use -usehsm command line option to enable HSM processing" );
+#else
+    throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM support is not included in the build");
+#endif
+}
+
+UniValue hsmkeypoolrefill(const UniValue& params, bool fHelp)
+{
+    if (!EnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+    if (fHelp || params.size() > 1)
+        throw runtime_error(
+            "hsmkeypoolrefill ( newsize )\n"
+            "\nFills the keypool."
+            + HelpRequiringPassphrase() + "\n"
+            "\nArguments\n"
+            "1. newsize     (numeric, optional, default=50) The new HSM keypool size\n"
+            "\nExamples:\n"
+            + HelpExampleCli("hsmkeypoolrefill", "")
+            + HelpExampleRpc("hsmkeypoolrefill", "")
+        );
+
+#ifdef USE_HSM
+	if( GetBoolArg( "-usehsm", true) )
+    {
+        LOCK2(cs_main, pwalletMain->cs_wallet);
+
+        // 0 is interpreted by TopUpKeyPool() as the default keypool size given by -keypool
+        unsigned int kpSize = 0;
+        if (params.size() > 0)
+        {
+            if (params[0].get_int() < 0)
+                throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, expected valid size.");
+            kpSize = (unsigned int)params[0].get_int();
+        }
+
+        EnsureWalletIsUnlocked();
+        pwalletMain->TopUpHSMKeyPool(kpSize);
+
+        if (pwalletMain->GetHSMKeyPoolSize() < kpSize)
+            throw JSONRPCError(RPC_WALLET_ERROR, "Error refreshing HSM keypool.");
+
+        return NullUniValue;
+    }
+    else
+        throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM processing disabled. "
+            "Use -usehsm command line option to enable HSM processing" );
+#else
+    throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: HSM support is not included in the build");
+#endif
+}
+
 extern UniValue dumpprivkey(const UniValue& params, bool fHelp); // in rpcdump.cpp
 extern UniValue importprivkey(const UniValue& params, bool fHelp);
 extern UniValue importaddress(const UniValue& params, bool fHelp);
@@ -2590,10 +2850,12 @@ static const CRPCCommand commands[] =
     { "wallet",             "dumpwallet",               &dumpwallet,               true  },
     { "wallet",             "encryptwallet",            &encryptwallet,            true  },
     { "wallet",             "getaccountaddress",        &getaccountaddress,        true  },
+    { "wallet",             "gethsmaccountaddress",     &gethsmaccountaddress,     true  },
     { "wallet",             "getaccount",               &getaccount,               true  },
     { "wallet",             "getaddressesbyaccount",    &getaddressesbyaccount,    true  },
     { "wallet",             "getbalance",               &getbalance,               false },
     { "wallet",             "getnewaddress",            &getnewaddress,            true  },
+    { "wallet",             "getnewhsmaddress",         &getnewhsmaddress,         true  },
     { "wallet",             "getrawchangeaddress",      &getrawchangeaddress,      true  },
     { "wallet",             "getreceivedbyaccount",     &getreceivedbyaccount,     false },
     { "wallet",             "getreceivedbyaddress",     &getreceivedbyaddress,     false },
@@ -2606,6 +2868,7 @@ static const CRPCCommand commands[] =
     { "wallet",             "importprunedfunds",        &importprunedfunds,        true  },
     { "wallet",             "importpubkey",             &importpubkey,             true  },
     { "wallet",             "keypoolrefill",            &keypoolrefill,            true  },
+    { "wallet",             "hsmkeypoolrefill",         &hsmkeypoolrefill,         true  },
     { "wallet",             "listaccounts",             &listaccounts,             false },
     { "wallet",             "listaddressgroupings",     &listaddressgroupings,     false },
     { "wallet",             "listlockunspent",          &listlockunspent,          false },

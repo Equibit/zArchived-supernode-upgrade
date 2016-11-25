@@ -17,9 +17,9 @@ namespace
 {
 UniValue broadcastMessage( const UniValue & params, bool fHelp )
 {
-	if( fHelp  || params.size() != 4)
+	if( fHelp  || params.size() != 3)
 		throw std::runtime_error(
-			"eb_broadcastmessage \"type\" \"send-address\" \"asset\" \"message\"\n"
+			"eb_broadcastmessage \"type\" \"send-address\" \"message\"\n"
 			"\nBroadcasts a message to all equibit nodes on the network.\n"
 			"\nArguments:\n"
 			"1. \"type\" (string, required) Type of message. Type must be one of:\n"
@@ -74,8 +74,7 @@ UniValue broadcastMessage( const UniValue & params, bool fHelp )
 			"      WarrantExpiry\n"
 			"      WarrantIssue\n"
 			"2. \"send-address\"   (string, required) The sender address\n"
-			"3. \"asset\" (string, required) Owners of the identified asset will receive the message\n"
-			"4. \"message\"  (string, required) The message to be sent to the all addresses\n"
+			"3. \"message\"  (string, required) The message to be sent to the all addresses\n"
 			+ HelpExampleCli( "eb_broadcastmessage", "ACME StockDividend \"A dividend of 0.032 equibits will be issued on March 15th\"" )
 			+ HelpExampleRpc( "eb_broadcastmessage", "ACME StockDividend \"A dividend of 0.032 equibits will be issued on March 15th\"" )
 		);
@@ -89,10 +88,9 @@ UniValue broadcastMessage( const UniValue & params, bool fHelp )
 	if(!sender.GetKeyID(senderID))
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
 
-	std::string	assetId= params[2].get_str();
-	std::string	data   = params[3].get_str();
+	std::string	data   = params[2].get_str();
 	
-	CBroadcast	* msg = CBroadcast::create( type, senderID, assetId, data );
+	CBroadcast	* msg = CBroadcast::create( type, senderID, data );
 
 	EDCapp & theApp = EDCapp::singleton();
 	theApp.connman()->RelayUserMessage( msg, false );

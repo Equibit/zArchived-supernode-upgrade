@@ -151,6 +151,14 @@ public:
     bool WritePool(int64_t nPool, const CKeyPool& keypool);
     bool ErasePool(int64_t nPool);
 
+#ifdef USE_HSM
+    bool WriteHSMKey( const CPubKey &, const std::string & hsmID, const CKeyMetadata & keyMeta );
+
+    bool ReadHSMPool(int64_t nPool, CKeyPool& keypool);
+    bool WriteHSMPool(int64_t nPool, const CKeyPool& keypool);
+    bool EraseHSMPool(int64_t nPool);
+#endif
+
     bool WriteMinVersion(int nVersion);
 
     /// This writes directly to the database, and will not update the CWallet's cached accounting entries!

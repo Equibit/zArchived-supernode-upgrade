@@ -2732,7 +2732,7 @@ void CEDCConnman::RelayUserMessage( CUserMessage * um, bool secure )
 {
 	EDCapp & theApp = EDCapp::singleton();
 
-	theApp.walletMain()->AddMessage( um->tag(), um->GetHash(), um );
+	theApp.walletMain()->AddMessage( um->vtag(), um->GetHash(), um );
 
 	LOCK(cs_vNodes);
 	if(secure)

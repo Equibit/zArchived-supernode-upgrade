@@ -385,7 +385,7 @@ UniValue edcrequestwotcertificate(const UniValue& params, bool fHelp)
 	std::string data = buildJSON( pubkey, name, gaddr, phone, email, http, expirBlocks );
 
 	// Send message
-    CPeerToPeer * msg = CPeerToPeer::create( "WoT-certificate-request", pk.GetID(), signerID, data);
+    CPeerToPeer * msg = CPeerToPeer::create( CRequestWoTcertificate::tag, pk.GetID(), signerID, data);
 
 	theApp.connman()->RelayUserMessage( msg, true );
 
@@ -467,6 +467,11 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
 
 	EDCapp & theApp = EDCapp::singleton();
 
+	CEDCBitcoinAddress   sender(saddr);
+	CKeyID senderID;
+	if(!sender.GetKeyID(senderID))
+       	throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
+
 	WoTCertificate	cert(
 		pkAddrs,
 		saddr,
@@ -487,10 +492,62 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
 
  	cert.sign( pubkey, sPubkey );
 
-	LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
+	bool rc;
+	std::string errStr;
+	{
+		LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-	edcEnsureWalletIsUnlocked();
-	theApp.walletMain()->AddWoTCertificate( pubkey, sPubkey, cert );
+		edcEnsureWalletIsUnlocked();
+		rc = theApp.walletMain()->AddWoTCertificate( pubkey, sPubkey, cert, errStr );
+	}
+
+	if(!rc)
+		throw JSONRPCError(RPC_TYPE_ERROR, errStr );
+
+	uint16_t pkLen = static_cast<uint16_t>(pubkey.size());
+	uint16_t spkLen= static_cast<uint16_t>(sPubkey.size());
+
+	uint16_t cLen = static_cast<uint16_t>(cert.GetSerializeSize(SER_NETWORK, PROTOCOL_VERSION));
+
+	std::vector<unsigned char> data;
+	data.resize(pkLen + spkLen + cLen + sizeof(uint16_t)*3 );
+
+	*reinterpret_cast<uint16_t *>(data.data()) 					  = pkLen;
+	*reinterpret_cast<uint16_t *>(data.data()+sizeof(uint16_t))   = spkLen;
+	*reinterpret_cast<uint16_t *>(data.data()+sizeof(uint16_t)*2) = cLen;
+
+	auto i = data.begin() + 3 * sizeof(uint16_t);
+		
+	auto pi = pubkey.begin();
+	auto pe = pubkey.end();
+	while( pi != pe )
+	{
+		*i = *pi;
+
+		++i;
+		++pi;
+	}
+
+	auto si = sPubkey.begin();
+	auto se = sPubkey.end();
+	while( si != se )
+	{
+		*i = *si;
+
+		++i;
+		++si;
+	}
+
+	CDataStream ss( 
+		reinterpret_cast<const char *>(data.data()+pkLen+spkLen+sizeof(uint16_t)*3),
+		reinterpret_cast<const char *>(data.data() + data.size()), 
+		SER_NETWORK, PROTOCOL_VERSION);
+	ss << cert;
+
+	// Broadcast certificate to the network
+    CBroadcast * msg = CBroadcast::create( CCreateWoTcertificate::tag, senderID, data);
+
+	theApp.connman()->RelayUserMessage( msg, true );
 
     return NullUniValue;
 }
@@ -502,7 +559,7 @@ eb_revokewotcertificate
 
     Parameters:
 
-    1) Public key to be revoked
+    1) Public key on certificate to be revoked
     2) Public key of signer
     3) Reason for revocation
 
@@ -524,7 +581,7 @@ UniValue edcrevokewotcertificate(const UniValue& params, bool fHelp)
 			"1. \"address\"      (string, required) Address of public key to be revoked\n"
 			"2. \"sign-address\" (string, required) Address of public key of signer\n"
 			"3. \"reason\"       (string, optional) Reason for revocation\n"
-            "\nResult: true or false\n"
+            "\nResult: None\n"
             "\nExamples:\n"
             + HelpExampleCli("eb_revokewotcertificate", "\"1234d20sdmDScedc2edscad\" \"0cmscadc9dcadsadvadvava\"")
             + HelpExampleRpc("eb_revokewotcertificate", "\"1234d20sdmDScedc2edscad\" \"0cmscadc9dcadsadvadvava\"")
@@ -546,10 +603,130 @@ UniValue edcrevokewotcertificate(const UniValue& params, bool fHelp)
 	CPubKey	spubkey;
 	addressToPubKey( saddr, spubkey, theParams.usehsm, theApp );
 
-	bool rc = theApp.walletMain()->RevokeWoTCertificate( pubkey, spubkey, reason );
+	CEDCBitcoinAddress   sender(saddr);
+	CKeyID senderID;
+	if(!sender.GetKeyID(senderID))
+       	throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
 
-    UniValue result(rc);
-    return result;
+	bool rc;
+	std::string errStr;
+	{
+		LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
+
+		edcEnsureWalletIsUnlocked();
+		rc = theApp.walletMain()->RevokeWoTCertificate( pubkey, spubkey, reason, errStr );
+	}
+
+	if(!rc)
+		throw JSONRPCError(RPC_TYPE_ERROR, errStr );
+
+	uint16_t pkLen = static_cast<uint16_t>(pubkey.size());
+	uint16_t saLen = static_cast<uint16_t>(saddr.size());
+	uint16_t rLen  = static_cast<uint16_t>(reason.size());
+
+	std::vector<unsigned char> data;
+	data.resize(pkLen + saLen + rLen + sizeof(uint16_t)*3 );
+
+	*reinterpret_cast<uint16_t *>(data.data()) 					 = pkLen;
+	*reinterpret_cast<uint16_t *>(data.data()+sizeof(uint16_t))   = saLen;
+	*reinterpret_cast<uint16_t *>(data.data()+sizeof(uint16_t)*2) = rLen;
+
+	auto i = data.begin() + 3 * sizeof(uint16_t);
+		
+	auto pi = pubkey.begin();
+	auto pe = pubkey.end();
+	while( pi != pe )
+	{
+		*i = *pi;
+
+		++i;
+		++pi;
+	}
+
+	auto si = saddr.begin();
+	auto se = saddr.end();
+	while( si != se )
+	{
+		*i = *si;
+
+		++i;
+		++si;
+	}
+
+	auto ri = reason.begin();
+	auto re = reason.end();
+	while( ri != re )
+	{
+		*i = *ri;
+
+		++i;
+		++ri;
+	}
+
+	// Broadcast certificate revocation to the network
+	CBroadcast * msg = CBroadcast::create( CRevokeWoTcertificate::tag, senderID, data);
+
+	theApp.connman()->RelayUserMessage( msg, true );
+
+    return NullUniValue;
+}
+
+/******************************************************************************
+eb_deletewotcertificate
+
+    Deletes a WOT certificate
+
+    Parameters:
+
+    1) Public key on certificate to be deleted
+    2) Public key of signer
+
+    Return: True if successful
+
+    Side Effects
+	Removes certificate from DB
+******************************************************************************/
+
+UniValue edcdeletewotcertificate(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() != 2 )
+        throw std::runtime_error(
+            "eb_deletewotcertificate \"address\" \"sign-address\"\n"
+    		"\nDeletes a WOT certificate.\n"
+            "\nArguments:\n"
+			"1. \"address\"      (string, required) Address of public key to be revoked\n"
+			"2. \"sign-address\" (string, required) Address of public key of signer\n"
+            "\nResult: true or false\n"
+            "\nExamples:\n"
+            + HelpExampleCli("eb_deletewotcertificate", "\"1234d20sdmDScedc2edscad\" \"0cmscadc9dcadsadvadvava\"")
+            + HelpExampleRpc("eb_deletewotcertificate", "\"1234d20sdmDScedc2edscad\" \"0cmscadc9dcadsadvadvava\"")
+        );
+
+	std::string addr  = params[0].get_str();
+	std::string saddr = params[1].get_str();
+
+	EDCapp & theApp = EDCapp::singleton();
+	EDCparams & theParams = EDCparams::singleton();
+
+	CPubKey	pubkey;
+	addressToPubKey( addr, pubkey, theParams.usehsm, theApp );
+
+	CPubKey	spubkey;
+	addressToPubKey( saddr, spubkey, theParams.usehsm, theApp );
+
+	bool rc;
+	std::string errStr;
+	{
+		LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
+
+		edcEnsureWalletIsUnlocked();
+		rc = theApp.walletMain()->DeleteWoTCertificate( pubkey, spubkey, errStr );
+	}
+
+	if(!rc)
+		throw JSONRPCError(RPC_TYPE_ERROR, errStr );
+
+    return NullUniValue;
 }
 
 /******************************************************************************
@@ -631,6 +808,7 @@ const CRPCCommand edcCommands[] =
   //  --------------- --------------------------- -----------------------    ----------
     { "equibit",      "eb_requestwotcertificate", &edcrequestwotcertificate, true },
     { "equibit",      "eb_getwotcertificate",     &edcgetwotcertificate,     true },
+	{ "equibit",      "eb_deletewotcertificate",  &edcdeletewotcertificate,  true },
     { "equibit",      "eb_revokewotcertificate",  &edcrevokewotcertificate,  true },
     { "equibit",      "eb_wotchainexits",         &edcwotchainexists,        true },
 };

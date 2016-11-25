@@ -363,9 +363,12 @@ boost::filesystem::path edcGetDefaultDataDir()
 #endif
 }
 
-static boost::filesystem::path pathCached;
-static boost::filesystem::path pathCachedNetSpecific;
-static CCriticalSection csPathCached;
+namespace
+{
+boost::filesystem::path pathCached;
+boost::filesystem::path pathCachedNetSpecific;
+CCriticalSection csPathCached;
+}
 
 void edcClearDatadirCache()
 {

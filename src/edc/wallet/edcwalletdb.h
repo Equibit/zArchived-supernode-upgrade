@@ -30,7 +30,9 @@ class CEDCWalletTx;
 class CUserMessage;
 class uint160;
 class uint256;
+class Poll;
 class WoTCertificate;
+
 
 /** Access to the wallet database */
 class CEDCWalletDB : public CEDCDB
@@ -156,6 +158,57 @@ public:
 	bool EraseWoTcertificateRevocation(
         const CPubKey & pk,         // Key to be certified
         const CPubKey & spk );      // Signing public key
+
+	bool WriteGeneralProxy( 
+		const CKeyID & addr, 
+		const CKeyID & paddr, 
+		const std::string & cert, 
+		const std::vector<unsigned char > & signature );
+	bool WriteGeneralProxyRevoke(  
+		const CKeyID & addr, 
+		const CKeyID & paddr, 
+		const std::string & cert, 
+		const std::vector<unsigned char > & signature );
+	bool WriteIssuerProxy(  
+		const CKeyID & addr, 
+		const CKeyID & paddr, 
+			 const CKeyID & iaddr, 
+		const std::string & cert, 
+		const std::vector<unsigned char > & signature );
+	bool WriteIssuerProxyRevoke(  
+		const CKeyID & addr, 
+		const CKeyID & paddr, 
+			 const CKeyID & iaddr, 
+		const std::string & cert, 
+		const std::vector<unsigned char > & signature );
+	bool WritePollProxy(  
+		const CKeyID & addr, 
+		const CKeyID & paddr, 
+		const std::string & pollID, 
+		const std::string & cert, 
+		const std::vector<unsigned char > & signature );
+	bool WritePollProxyRevoke(  
+		const CKeyID & addr, 
+		const CKeyID & paddr, 
+		const std::string & pollID, 
+		const std::string & cert, 
+		const std::vector<unsigned char > & signature );
+
+	bool WritePoll( const Poll & );
+	bool ErasePoll( const uint160 & );
+
+	bool WriteVote( 
+				 time_t timestamp,
+         const CKeyID & addr,
+         const CKeyID & iaddr,
+    const std::string & pollid,
+    const std::string & response,
+    	 const CKeyID & pAddr );
+
+	bool EraseVote( 
+         const CKeyID & addr, 
+    const std::string & pollid,
+    	 const CKeyID & pAddr );
 
 private:
     CEDCWalletDB(const CEDCWalletDB&);

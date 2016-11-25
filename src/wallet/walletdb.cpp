@@ -24,6 +24,14 @@ using namespace std;
 
 static uint64_t nAccountingEntryNumber = 0;
 
+namespace
+{
+#ifdef USE_HSM
+const std::string HSM_KEY           = "HSM_key";    // HSM_KEY:pubkey/HSM-ID
+const std::string HSM_POOL          = "HSM_pool";   // HSM_POOL:number/keypool
+#endif
+}
+
 //
 // CWalletDB
 //
@@ -82,6 +90,22 @@ bool CWalletDB::WriteKey(const CPubKey& vchPubKey, const CPrivKey& vchPrivKey, c
 
     return Write(std::make_pair(std::string("key"), vchPubKey), std::make_pair(vchPrivKey, Hash(vchKey.begin(), vchKey.end())), false);
 }
+
+#ifdef USE_HSM
+bool CWalletDB::WriteHSMKey(
+     const CPubKey & vchPubKey,
+ const std::string & hsmID,
+const CKeyMetadata & keyMeta
+)
+{
+    nWalletDBUpdated++;
+
+    if (!Write(std::make_pair(std::string("keymeta"), vchPubKey), keyMeta, false))
+        return false;
+
+    return Write(std::make_pair(HSM_KEY, vchPubKey), hsmID, false);
+}
+#endif
 
 bool CWalletDB::WriteCryptedKey(const CPubKey& vchPubKey,
                                 const std::vector<unsigned char>& vchCryptedSecret,
@@ -169,6 +193,25 @@ bool CWalletDB::ErasePool(int64_t nPool)
     nWalletDBUpdated++;
     return Erase(std::make_pair(std::string("pool"), nPool));
 }
+
+#ifdef USE_HSM
+bool CWalletDB::ReadHSMPool(int64_t nPool, CKeyPool& keypool)
+{
+    return Read(std::make_pair(HSM_POOL, nPool), keypool);
+}
+
+bool CWalletDB::WriteHSMPool(int64_t nPool, const CKeyPool& keypool)
+{
+    nWalletDBUpdated++;
+    return Write(std::make_pair(HSM_POOL, nPool), keypool);
+}
+
+bool CWalletDB::EraseHSMPool(int64_t nPool)
+{
+    nWalletDBUpdated++;
+    return Erase(std::make_pair(HSM_POOL, nPool));
+}
+#endif
 
 bool CWalletDB::WriteMinVersion(int nVersion)
 {
@@ -602,6 +645,42 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
                 return false;
             }
         }
+#ifdef USE_HSM
+        else if( strType == HSM_POOL )
+        {
+            int64_t nIndex;
+            ssKey >> nIndex;
+            CKeyPool keypool;
+            ssValue >> keypool;
+            pwallet->setHSMKeyPool.insert(nIndex);
+
+            // If no metadata exists yet, create a default with the pool key's
+            // creation time. Note that this may be overwritten by actually
+            // stored metadata for that key later, which is fine.
+            CKeyID keyid = keypool.vchPubKey.GetID();
+            if (pwallet->mapKeyMetadata.count(keyid) == 0)
+                pwallet->mapKeyMetadata[keyid] = CKeyMetadata(keypool.nTime);
+        }
+        else if( strType == HSM_KEY )
+        {
+            CPubKey pubKey;
+            ssKey >> pubKey;
+            if (!pubKey.IsValid())
+            {
+                strErr = "Error reading wallet database: CPubKey corrupt";
+                return false;
+            }
+
+            std::string hsmID;
+            ssValue >> hsmID;
+
+            if(!pwallet->AddHSMKey( pubKey, hsmID ))
+            {
+                strErr = "Error reading wallet database: Add HSM Key failed";
+                return false;
+            }
+        }
+#endif
     } catch (...)
     {
         return false;
@@ -612,7 +691,11 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
 static bool IsKeyType(string strType)
 {
     return (strType== "key" || strType == "wkey" ||
-            strType == "mkey" || strType == "ckey");
+            strType == "mkey" || strType == "ckey"
+#ifdef USE_HSM
+            || strType == HSM_KEY
+#endif
+);
 }
 
 DBErrors CWalletDB::LoadWallet(CWallet* pwallet)

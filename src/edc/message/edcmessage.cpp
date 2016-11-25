@@ -12,6 +12,8 @@
 #include "edc/edcmain.h"
 #include <stdexcept>
 #include <sstream>
+#include "edc/rpc/edcwot.h"
+#include "edc/rpc/edcserver.h"
 #ifdef USE_HSM
 #include "Thales/interface.h"
 #include <secp256k1.h>
@@ -44,76 +46,85 @@ Verifier    verifier;
 // The message tags
 //
 
-std::string CAcquisition::tag() const				{ return "Acquisition"; }
-std::string CAsk::tag() const						{ return "Ask"; }
-std::string CAssimilation::tag() const				{ return "Assimilation"; }
+const std::string CAcquisition::tag					= "Acquisition";
+const std::string CAsk::tag							= "Ask";
+const std::string CAssimilation::tag				= "Assimilation";
 
-std::string CBankruptcy::tag() const				{ return "Bankruptcy"; }
-std::string CBid::tag() const						{ return "Bid"; }
-std::string CBonusIssue::tag() const				{ return "BonusIssue"; }
-std::string CBonusRights::tag() const				{ return "BonusRights"; }
-std::string CBuyBackProgram::tag() const			{ return "BuyBackProgram"; }
+const std::string CBankruptcy::tag					= "Bankruptcy";
+const std::string CBid::tag							= "Bid";
+const std::string CBonusIssue::tag					= "BonusIssue";
+const std::string CBonusRights::tag					= "BonusRights";
+const std::string CBuyBackProgram::tag				= "BuyBackProgram";
 
-std::string CCashDividend::tag() const				{ return "CashDividend"; }
-std::string CCashStockOption::tag() const			{ return "CashStockOption"; }
-std::string CClassAction::tag() const 				{ return "ClassAction"; }
-std::string CConversionOfConvertibleBonds::tag() const { return "ConversionOfConvertibleBonds"; }
-std::string CCouponPayment::tag() const				{ return "CouponPayment"; }
+const std::string CCashDividend::tag				= "CashDividend";
+const std::string CCashStockOption::tag				= "CashStockOption";
+const std::string CClassAction::tag					= "ClassAction";
+const std::string CConversionOfConvertibleBonds::tag= "ConversionOfConvertibleBonds";
+const std::string CCouponPayment::tag				= "CouponPayment";
+const std::string CCreateWoTcertificate::tag		= "CreateWoTcertificate";
 
-std::string CDelisting::tag() const					{ return "Delisting"; }
-std::string CDeMerger::tag() const					{ return "DeMerger"; }
-std::string CDividendReinvestmentPlan::tag() const	{ return "DividendReinvestmentPlan"; }
-std::string CDutchAuction::tag() const				{ return "DutchAuction"; }
+const std::string CDelisting::tag					= "Delisting";
+const std::string CDeMerger::tag					= "DeMerger";
+const std::string CDividendReinvestmentPlan::tag	= "DividendReinvestmentPlan";
+const std::string CDutchAuction::tag				= "DutchAuction";
 
-std::string CEarlyRedemption::tag() const			{ return "EarlyRedemption"; }
+const std::string CEarlyRedemption::tag				= "EarlyRedemption";
 
-std::string CFinalRedemption::tag() const			{ return "FinalRedemption"; }
+const std::string CFinalRedemption::tag				= "FinalRedemption";
 
-std::string CGeneralAnnouncement::tag() const		{ return "GeneralAnnouncement"; }
+const std::string CGeneralAnnouncement::tag			= "GeneralAnnouncement";
+const std::string CGeneralProxy::tag				= "GeneralProxy";
 
-std::string CInitialPublicOffering::tag() const		{ return "InitialPublicOffering"; }
+const std::string CInitialPublicOffering::tag		= "InitialPublicOffering";
+const std::string CIssuerProxy::tag					= "IssuerProxy";
 
-std::string CLiquidation::tag() const				{ return "Liquidation"; }
-std::string CLottery::tag() const					{ return "Lottery"; }
+const std::string CLiquidation::tag					= "Liquidation";
+const std::string CLottery::tag						= "Lottery";
 
-std::string CMandatoryExchange::tag() const			{ return "MandatoryExchange"; }
-std::string CMerger::tag() const					{ return "Merger"; }
-std::string CMergerWithElections::tag() const		{ return "MergerWithElections"; }
+const std::string CMandatoryExchange::tag			= "MandatoryExchange";
+const std::string CMerger::tag						= "Merger";
+const std::string CMergerWithElections::tag			= "MergerWithElections";
 
-std::string CNameChange::tag() const				{ return "NameChange"; }
+const std::string CNameChange::tag					= "NameChange";
 
-std::string COddLotTender::tag() const				{ return "OddLotTender"; }
-std::string COptionalPut::tag() const				{ return "OptionalPut"; }
-std::string COtherEvent::tag() const				{ return "OtherEvent"; }
+const std::string COddLotTender::tag				= "OddLotTender";
+const std::string COptionalPut::tag					= "OptionalPut";
+const std::string COtherEvent::tag					= "OtherEvent";
 
-std::string CPartialRedemption::tag() const			{ return "PartialRedemption"; }
-std::string CParValueChange::tag() const			{ return "ParValueChange"; }
-std::string CPoll::tag() const						{ return "Poll"; }
-std::string CPrivate::tag() const					{ return "Private"; }
+const std::string CPartialRedemption::tag			= "PartialRedemption";
+const std::string CParValueChange::tag				= "ParValueChange";
+const std::string CPoll::tag						= "Poll";
+const std::string CPollProxy::tag					= "PollProxy";
+const std::string CPrivate::tag						= "Private";
 
-std::string CReturnOfCapital::tag() const			{ return "ReturnOfCapital"; } 
-std::string CReverseStockSplit::tag() const			{ return "ReverseStockSplit"; }
-std::string CRightsAuction::tag() const				{ return "RightsAuction"; }
-std::string CRightsIssue::tag() const				{ return "RightsIssue"; }
+const std::string CRequestWoTcertificate::tag		= "RequestWoTcertificate";
+const std::string CReturnOfCapital::tag				= "ReturnOfCapital"; 
+const std::string CReverseStockSplit::tag			= "ReverseStockSplit";
+const std::string CRevokeGeneralProxy::tag			= "RevokeGeneralProxy";
+const std::string CRevokeIssuerProxy::tag			= "RevokeIssuerProxy";
+const std::string CRevokePollProxy::tag				= "RevokePollProxy";
+const std::string CRevokeWoTcertificate::tag		= "RevokeWoTcertificate";
+const std::string CRightsAuction::tag				= "RightsAuction";
+const std::string CRightsIssue::tag					= "RightsIssue";
 
-std::string CSchemeofArrangement::tag() const		{ return "SchemeofArrangement"; }
-std::string CScripDividend::tag() const				{ return "ScripDividend"; }
-std::string CScripIssue::tag() const				{ return "ScripIssue"; }
-std::string CSpinoff::tag() const					{ return "Spinoff"; }
-std::string CSpinOffWithElections::tag() const		{ return "SpinOffWithElections"; }
-std::string CStockDividend::tag() const				{ return "StockDividend"; }
-std::string CStockSplit::tag() const				{ return "StockSplit"; }
-std::string CSubscriptionOffer::tag() const			{ return "SubscriptionOffer"; }
+const std::string CSchemeofArrangement::tag			= "SchemeofArrangement";
+const std::string CScripDividend::tag				= "ScripDividend";
+const std::string CScripIssue::tag					= "ScripIssue";
+const std::string CSpinoff::tag						= "Spinoff";
+const std::string CSpinOffWithElections::tag		= "SpinOffWithElections";
+const std::string CStockDividend::tag				= "StockDividend";
+const std::string CStockSplit::tag					= "StockSplit";
+const std::string CSubscriptionOffer::tag			= "SubscriptionOffer";
 
-std::string CTakeover::tag() const					{ return "Takeover"; }
-std::string CTenderOffer::tag() const				{ return "TenderOffer"; }
+const std::string CTakeover::tag					= "Takeover";
+const std::string CTenderOffer::tag					= "TenderOffer";
 
-std::string CVoluntaryExchange::tag() const			{ return "VoluntaryExchange"; }
-std::string CVote::tag() const						{ return "Vote"; }
+const std::string CVoluntaryExchange::tag			= "VoluntaryExchange";
+const std::string CVote::tag						= "Vote";
 
-std::string CWarrantExercise::tag() const			{ return "WarrantExercise"; }
-std::string CWarrantExpiry::tag() const				{ return "WarrantExpiry"; }
-std::string CWarrantIssue::tag() const				{ return "WarrantIssue"; }
+const std::string CWarrantExercise::tag				= "WarrantExercise";
+const std::string CWarrantExpiry::tag				= "WarrantExpiry";
+const std::string CWarrantIssue::tag				= "WarrantIssue";
 
 ////////////////////////////////////////////////////////////////////////////////
 // The message descriptions 
@@ -343,116 +354,148 @@ std::string CWarrantIssue::desc() const
 	return "Per share an amount of warrants is issued according to a specific ratio. The warrant can entitle to sell or buy the underlying security at a given price within a given timeframe.";
 }
 
+std::string CRequestWoTcertificate::desc() const
+{
+	return "Request a peer to create a WoT certificate";
+}
+
+std::string CRevokeWoTcertificate::desc() const
+{
+	return "Notify peer that a WoT certificate was revoked";
+}
+
+std::string CCreateWoTcertificate::desc() const
+{
+	return "Notify peer that a WoT certificate was created";
+}
+
+std::string CGeneralProxy::desc() const
+{
+	return "Grant general proxy voting privileges";
+}
+
+std::string CIssuerProxy::desc() const
+{
+	return "Grant proxy voting privileges on polls from a given Issuer";
+}
+
+std::string CPollProxy::desc() const
+{
+	return "Grant proxy voting privileges on a specific poll";
+}
+
+std::string CRevokeGeneralProxy::desc() const
+{
+	return "Revoke general proxy voting privileges";
+}
+
+std::string CRevokeIssuerProxy::desc() const
+{
+	return "Revoke general proxy voting privileges";
+}
+
+std::string CRevokePollProxy::desc() const
+{
+	return "Revoke proxy voting privileges on a specific poll";
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 namespace
 {
-CBroadcast * broadcastObj( const std::string & tag )
+CUserMessage * strToObj( const std::string & tag )
 {
-	if( tag[0] == 'A' )
+	using T = std::pair<const std::string *, std::function<CUserMessage * ()> >;
+
+	T msgMap [] =
 	{
-		if( tag == "Acquisition" )				return new CAcquisition();
-		else if( tag == "Ask" )					return new CAsk();
-		else if( tag == "Assimilation" )		return new CAssimilation();
-	}
-	else if( tag[0] == 'B' )
-	{
-		if( tag == "Bankruptcy" )				return new CBankruptcy();
-		else if( tag == "Bid" )					return new CBid();
-		else if( tag == "BonusIssue" )			return new CBonusIssue();
-		else if( tag == "BonusRights" )			return new CBonusRights();
-		else if( tag == "BuyBackProgram" )		return new CBuyBackProgram();
-	}
-	else if( tag[0] == 'C' )
-	{
-		if( tag == "CashDividend" )				return new CCashDividend();
-		else if( tag == "CashStockOption" )		return new CCashStockOption();
-		else if( tag == "ClassAction" ) 		return new CClassAction();
-		else if( tag == "ConversionOfConvertibleBonds" )	return new CConversionOfConvertibleBonds();
-		else if( tag == "CouponPayment" )		return new CCouponPayment();
-	}
-	else if( tag[0] == 'D' )
-	{
-		if( tag == "Delisting" )				return new CDelisting();
-		else if( tag == "DeMerger" )			return new CDeMerger();
-		else if( tag == "DividendReinvestmentPlan" )	return new CDividendReinvestmentPlan();
-		else if( tag == "DutchAuction" )		return new CDutchAuction();
-	}
-	else if( tag[0] == 'E' )
-	{
-		if( tag == "EarlyRedemption" )			return new CEarlyRedemption();
-	}
-	else if( tag[0] == 'F' )
-	{
-		if( tag == "FinalRedemption" )			return new CFinalRedemption();
-	}
-	else if( tag[0] == 'G' )
-	{
-		if( tag == "GeneralAnnouncement" )		return new CGeneralAnnouncement();
-	}
-	else if( tag[0] == 'I' )
-	{
-		if( tag == "InitialPublicOffering" )	return new CInitialPublicOffering();
-	}
-	else if( tag[0] == 'L' )
-	{
-		if( tag == "Liquidation" )				return new CLiquidation();
-		else if( tag == "Lottery" )				return new CLottery();
-	}
-	else if( tag[0] == 'M' )
-	{
-		if( tag == "MandatoryExchange" )		return new CMandatoryExchange();
-		else if( tag == "Merger" )				return new CMerger();
-		else if( tag == "MergerWithElections" )	return new CMergerWithElections();
-	}
-	else if( tag[0] == 'N' )
-	{
-		if( tag == "NameChange" )				return new CNameChange();
-	}
-	else if( tag[0] == 'O' )
-	{
-		if( tag == "OddLotTender" )				return new COddLotTender();
-		else if( tag == "OptionalPut" )			return new COptionalPut();
-		else if( tag == "OtherEvent" )			return new COtherEvent();
-	}
-	else if( tag[0] == 'P' )
-	{
-		if( tag == "PartialRedemption" )		return new CPartialRedemption();
-		else if( tag == "ParValueChange" )		return new CParValueChange();
-	}
-	else if( tag[0] == 'R' )
-	{
-		if( tag == "ReturnOfCapital" )			return new CReturnOfCapital();
-		else if( tag == "ReverseStockSplit" )	return new CReverseStockSplit();
-		else if( tag == "RightsAuction" )		return new CRightsAuction();
-		else if( tag == "RightsIssue" )			return new CRightsIssue();
-	}
-	else if( tag[0] == 'S' )
-	{
-		if( tag == "SchemeofArrangement" )		return new CSchemeofArrangement();
-		else if( tag == "ScripDividend" )		return new CScripDividend();
-		else if( tag == "ScripIssue" )			return new CScripIssue();
-		else if( tag == "Spinoff" )				return new CSpinoff();
-		else if( tag == "SpinOffWithElections" )return new CSpinOffWithElections();
-		else if( tag == "StockDividend" )		return new CStockDividend();
-		else if( tag == "StockSplit" )			return new CStockSplit();
-		else if( tag == "SubscriptionOffer" )	return new CSubscriptionOffer();
-	}
-	else if( tag[0] == 'T' )
-	{
-		if( tag == "Takeover" )					return new CTakeover();
-		else if( tag == "TenderOffer" )			return new CTenderOffer();
-	}
-	else if( tag[0] == 'V' )
-	{
-		if( tag == "VoluntaryExchange" )		return new CVoluntaryExchange();
-	}
-	else if( tag[0] == 'W' )
-	{
-		if( tag == "WarrantExercise" )			return new CWarrantExercise();
-		else if( tag == "WarrantExpiry" )		return new CWarrantExpiry();
-		else if( tag == "WarrantIssue" )		return new CWarrantIssue();
-	}
+		{&CAcquisition::tag,			[]() { return new CAcquisition(); } },
+		{&CAsk::tag,					[]() { return new CAsk(); } },
+		{&CAssimilation::tag,			[]() { return new CAssimilation(); } },
+
+		{&CBankruptcy::tag,				[]() { return new CBankruptcy(); } },
+		{&CBid::tag,					[]() { return new CBid(); } },
+		{&CBonusIssue::tag,				[]() { return new CBonusIssue(); } },
+		{&CBonusRights::tag,			[]() { return new CBonusRights(); } },
+		{&CBuyBackProgram::tag,			[]() { return new CBuyBackProgram(); } },
+
+		{&CCashDividend::tag,			[]() { return new CCashDividend(); } },
+		{&CCashStockOption::tag,		[]() { return new CCashStockOption(); } },
+		{&CClassAction::tag,			[]() { return new CClassAction(); } },
+		{&CConversionOfConvertibleBonds::tag, []() { return new CConversionOfConvertibleBonds();}},
+		{&CCouponPayment::tag,			[]() { return new CCouponPayment(); } },
+		{&CCreateWoTcertificate::tag,	[]() { return new CCreateWoTcertificate(); } },
+
+		{&CDelisting::tag,				[]() { return new CDelisting(); } },
+		{&CDeMerger::tag,				[]() { return new CDeMerger(); } },
+		{&CDividendReinvestmentPlan::tag, []() { return new CDividendReinvestmentPlan(); } },
+		{&CDutchAuction::tag,			[]() { return new CDutchAuction(); } },
+
+		{&CEarlyRedemption::tag,		[]() { return new CEarlyRedemption(); } },
+
+		{&CFinalRedemption::tag,		[]() { return new CFinalRedemption(); } },
+
+		{&CGeneralAnnouncement::tag,	[]() { return new CGeneralAnnouncement(); } },
+		{&CGeneralProxy::tag,			[]() { return new CGeneralProxy(); } },
+
+		{&CInitialPublicOffering::tag,	[]() { return new CInitialPublicOffering(); } },
+		{&CIssuerProxy::tag,			[]() { return new CIssuerProxy(); } },
+
+		{&CLiquidation::tag,			[]() { return new CLiquidation(); } },
+		{&CLottery::tag,				[]() { return new CLottery(); } },
+
+		{&CMandatoryExchange::tag,		[]() { return new CMandatoryExchange(); } },
+		{&CMerger::tag,					[]() { return new CMerger(); } },
+		{&CMergerWithElections::tag,	[]() { return new CMergerWithElections(); } },
+
+		{&CNameChange::tag,				[]() { return new CNameChange(); } },
+
+		{&COddLotTender::tag,			[]() { return new COddLotTender(); } },
+		{&COptionalPut::tag,			[]() { return new COptionalPut(); } },
+		{&COtherEvent::tag,				[]() { return new COtherEvent(); } },
+
+		{&CPartialRedemption::tag,		[]() { return new CPartialRedemption(); } },
+		{&CParValueChange::tag,			[]() { return new CParValueChange(); } },
+		{&CPoll::tag,					[]() { return new CPoll(); } },
+		{&CPollProxy::tag,				[]() { return new CPollProxy(); } },
+		{&CPrivate::tag,				[]() { return new CPrivate(); } },
+
+		{&CReturnOfCapital::tag,		[]() { return new CReturnOfCapital(); } },
+		{&CReverseStockSplit::tag,		[]() { return new CReverseStockSplit(); } },
+		{&CRightsAuction::tag,			[]() { return new CRightsAuction(); } },
+		{&CRightsIssue::tag,			[]() { return new CRightsIssue(); } },
+		{&CRequestWoTcertificate::tag,	[]() { return new CRequestWoTcertificate(); } },
+		{&CRevokeGeneralProxy::tag,		[]() { return new CRevokeGeneralProxy(); } },
+		{&CRevokeIssuerProxy::tag,		[]() { return new CRevokeIssuerProxy(); } },
+		{&CRevokePollProxy::tag,		[]() { return new CRevokePollProxy(); } },
+		{&CRevokeWoTcertificate::tag,	[]() { return new CRevokeWoTcertificate(); } },
+
+		{&CSchemeofArrangement::tag,	[]() { return new CSchemeofArrangement(); } },
+		{&CScripDividend::tag,			[]() { return new CScripDividend(); } },
+		{&CScripIssue::tag,				[]() { return new CScripIssue(); } },
+		{&CSpinoff::tag,				[]() { return new CSpinoff(); } },
+		{&CSpinOffWithElections::tag,	[]() { return new CSpinOffWithElections(); } },
+		{&CStockDividend::tag,			[]() { return new CStockDividend(); } },
+		{&CStockSplit::tag,				[]() { return new CStockSplit(); } },
+		{&CSubscriptionOffer::tag,		[]() { return new CSubscriptionOffer(); } },
+
+		{&CTakeover::tag,				[]() { return new CTakeover(); } },
+		{&CTenderOffer::tag,			[]() { return new CTenderOffer(); } },
+
+		{&CVoluntaryExchange::tag,		[]() { return new CVoluntaryExchange(); } },
+		{&CVote::tag,					[]() { return new CVote(); } },
+
+		{&CWarrantExercise::tag,		[]() { return new CWarrantExercise(); } },
+		{&CWarrantExpiry::tag,			[]() { return new CWarrantExpiry(); } },
+		{&CWarrantIssue::tag,			[]() { return new CWarrantIssue(); } },
+	};
+
+	auto it = lower_bound( begin(msgMap), end(msgMap), tag,
+		[&]( const T & val, const std::string & tag ) { return *val.first < tag; } );
+
+	if( it != end(msgMap))
+		return it->second();
+
 	return NULL;
 }
 
@@ -462,7 +505,7 @@ void signMessage(
 					uint64_t nonce,	   // IN
 		 const std::string & type,     // IN
 		 const std::string & assetId,  // IN
-		 const std::string & message,  // IN
+std::vector<unsigned char> & message,  // IN
 std::vector<unsigned char> & vchSig    // OUT
     )
 {
@@ -526,7 +569,7 @@ bool verifyMessage(
 						  uint64_t nonce,	 // IN
 			   const std::string & type,     // IN
 			   const std::string & assetId,  // IN
-			   const std::string & message,  // IN
+const std::vector<unsigned char> & message,  // IN
 const std::vector<unsigned char> & signature // IN
     )
 {
@@ -552,45 +595,8 @@ CUserMessage::CUserMessage():nonce_(0)
 
 CUserMessage * CUserMessage::create( const std::string & tag, CDataStream & str )
 {
-	if( CBroadcast * result = broadcastObj( tag ))
+	if( CUserMessage * result = strToObj( tag ))
 	{
-		try
-		{
-			str >> *result;
-		}
-		catch( ... )
-		{
-			delete result;
-			throw;
-		}
-
-		return result;
-	}
-
-	CPeerToPeer * result = NULL;
-	if( tag == "Vote" )
-		result = new CVote();
-	else if( tag == "Private" )
-		result = new CPrivate();
-
-	if(result)
-	{
-		try
-		{
-			str >> *result;
-		}
-		catch( ... )
-		{
-			delete result;
-			throw;
-		}
-
-		return result;
-	}
-	else if( tag == "Poll" )
-	{
-		CMulticast * result = new CPoll();
-
 		try
 		{
 			str >> *result;
@@ -677,14 +683,67 @@ CPeerToPeer * CPeerToPeer::create(
 
 	ans->senderAddr_ = sender;
 	ans->receiverAddr_ = receiver;
-	ans->data_ = data;
+	ans->data_.resize(data.size() );
+
+	auto i = data.begin();
+	auto ui= ans->data_.begin();
+	auto ue= ans->data_.end();
+
+	while( ui != ue )
+	{
+		*ui = *i;
+		++i;
+		++ui;
+	}
 
 	signMessage(sender,
 				ans->timestamp_,
 				ans->nonce_,
 		 		type,
 		 		receiver.ToString(),
-		 		data,
+		 		ans->data_,
+				ans->signature_ );
+
+	return ans;
+}
+
+CPeerToPeer * CPeerToPeer::create(
+			   const std::string & type, 
+         			const CKeyID & sender, 
+		 			const CKeyID & receiver, 
+const std::vector<unsigned char> & data )
+{
+	CPeerToPeer * ans;
+
+	if( type == "Private" )
+	{
+		ans = new CPrivate();
+	}
+	else if( type == "Vote" )
+	{
+		ans = new CVote();
+	}
+	else
+	{
+		std::string msg = "Invalid peer-to-peer message type:";
+		msg += type;
+		throw std::runtime_error( msg );
+	}
+
+	ans->proofOfWork();
+
+	ans->senderAddr_ = sender;
+	ans->receiverAddr_ = receiver;
+	ans->data_.resize(data.size() );
+
+	std::copy( data.begin(), data.end(), ans->data_.begin() );
+
+	signMessage(sender,
+				ans->timestamp_,
+				ans->nonce_,
+		 		type,
+		 		receiver.ToString(),
+		 		ans->data_,
 				ans->signature_ );
 
 	return ans;
@@ -693,7 +752,7 @@ CPeerToPeer * CPeerToPeer::create(
 CMulticast * CMulticast::create(
 			   const std::string & type, 
 			        const CKeyID & sender, 
-			   const std::string & assetId, 
+			   const std::string & issuer, 
 	   		   const std::string & data )
 {
 	CMulticast * ans;
@@ -712,15 +771,26 @@ CMulticast * CMulticast::create(
 	ans->proofOfWork();
 
 	ans->senderAddr_ = sender;
-	ans->assetId_ = assetId;
-	ans->data_ = data;
+	ans->issuerAddr_ = issuer;
+	ans->data_.resize(data.size() );
+	
+	auto i = data.begin();
+	auto ui= ans->data_.begin();
+	auto ue= ans->data_.end();
+
+	while( ui != ue )
+	{
+		*ui = *i;
+		++i;
+		++ui;
+	}
 
 	signMessage(sender,
 				ans->timestamp_,
 				ans->nonce_,
 		 		type,
-		 		assetId,
-		 		data,
+		 		issuer,
+		 		ans->data_,
 				ans->signature_ );
 	return ans;
 }
@@ -728,10 +798,9 @@ CMulticast * CMulticast::create(
 CBroadcast * CBroadcast::create(
 			   const std::string & type, 
 	     	        const CKeyID & sender, 
-			   const std::string & assetId, 
 			   const std::string & data )
 {
-	CBroadcast * ans = broadcastObj( type );
+	CBroadcast * ans = dynamic_cast<CBroadcast *>(strToObj( type ));
 
 	if(!ans)
 	{
@@ -743,20 +812,89 @@ CBroadcast * CBroadcast::create(
 	ans->proofOfWork();
 
 	ans->senderAddr_ = sender;
-	ans->assetId_ = assetId;
-	ans->data_ = data;
+	ans->data_.resize(data.size() );
+
+	auto i = data.begin();
+	auto ui= ans->data_.begin();
+	auto ue= ans->data_.end();
+
+	while( ui != ue )
+	{
+		*ui = *i;
+		++i;
+		++ui;
+	}
 
 	signMessage(sender,
 				ans->timestamp_,
 				ans->nonce_,
 		 		type,
-		 		assetId,
-		 		data,
+		 		"",
+		 		ans->data_,
+				ans->signature_ );
+	return ans;
+}
+
+CBroadcast * CBroadcast::create(
+			   const std::string & type, 
+	     	        const CKeyID & sender, 
+const std::vector<unsigned char> & data )
+{
+	CBroadcast * ans = dynamic_cast<CBroadcast *>(strToObj( type ));
+
+	if(!ans)
+	{
+		std::string msg = "Invalid broadcast message type:";
+		msg += type;
+		throw std::runtime_error( msg );
+	}
+
+	ans->proofOfWork();
+
+	ans->senderAddr_ = sender;
+	ans->data_.resize(data.size());
+	std::copy( data.begin(), data.end(), ans->data_.begin() );
+
+	signMessage(sender,
+				ans->timestamp_,
+				ans->nonce_,
+		 		type,
+		 		"",
+		 		ans->data_,
 				ans->signature_ );
 	return ans;
 }
 
 ///////////////////////////////////////////////////////////////////////////
+
+namespace
+{
+
+std::string toString( const std::vector<unsigned char> & in )
+{
+	std::string ans;
+
+	auto i = in.begin();
+	auto e = in.end();
+
+	while( i != e )
+	{
+		if(std::isprint(*i))
+			ans += static_cast<char>(*i);
+		else
+		{
+			char buff[3];
+			sprintf( buff, "%%%2.2d", *i );
+			ans += buff;	
+		}
+			
+		++i;
+	}
+
+	return ans;
+}
+
+}
 
 std::string	CUserMessage::ToString() const
 {
@@ -765,7 +903,7 @@ std::string	CUserMessage::ToString() const
 	out << "sender=" << senderAddr_.ToString()
 		<< " timestamp=" << timestamp_.tv_sec << ":" << timestamp_.tv_nsec
 		<< " nonce=" << nonce_
-		<< " data=[" << data_ << "]"
+		<< " data=[" << toString(data_) << "]"
 		<< " signature=" << HexStr(signature_);
 
 	return out.str();
@@ -773,7 +911,7 @@ std::string	CUserMessage::ToString() const
 
 std::string	CPeerToPeer::ToString() const
 {
-	std::string ans = tag();
+	std::string ans = vtag();
 	ans += ":";
 	ans += CUserMessage::ToString();
 
@@ -785,24 +923,21 @@ std::string	CPeerToPeer::ToString() const
 
 std::string	CMulticast::ToString() const
 {
-	std::string ans = tag();
+	std::string ans = vtag();
 	ans += ":";
 	ans += CUserMessage::ToString();
 
-	ans += " asset=";
-	ans += assetId_;
+	ans += " issuer=";
+	ans += issuerAddr_;
 
 	return ans;
 }
 
 std::string	CBroadcast::ToString() const
 {
-	std::string ans = tag();
+	std::string ans = vtag();
 	ans += ":";
 	ans += CUserMessage::ToString();
-
-	ans += " asset=";
-	ans += assetId_;
 
 	return ans;
 }
@@ -827,7 +962,7 @@ std::string	CUserMessage::ToJSON() const
 		<< ", \"sender\":\"" << senderAddr_.ToString() << "\""
 		<< ", \"timestamp\":\"" << buf << "\""
 		<< ", \"nonce\":" << nonce_
-		<< ", \"data\":\"" << data_ << "\""
+		<< ", \"data\":\"" << toString(data_) << "\""
 		<< ", \"signature\":\"" << HexStr(signature_) << "\"";
 
 	return out.str();
@@ -836,7 +971,7 @@ std::string	CUserMessage::ToJSON() const
 std::string	CPeerToPeer::ToJSON() const
 {
 	std::string ans = "{\"type\":\"";
-	ans += tag();
+	ans += vtag();
 	ans += "\"";
 	ans += CUserMessage::ToJSON();
 
@@ -850,12 +985,12 @@ std::string	CPeerToPeer::ToJSON() const
 std::string	CMulticast::ToJSON() const
 {
 	std::string ans = "{\"type\":\"";
-	ans += tag();
+	ans += vtag();
 	ans += "\"";
 	ans += CUserMessage::ToJSON();
 
-	ans += ", \"asset\":\"";
-	ans += assetId_;
+	ans += ", \"issuer\":\"";
+	ans += issuerAddr_;
 	ans += "\"}";
 
 	return ans;
@@ -864,12 +999,10 @@ std::string	CMulticast::ToJSON() const
 std::string	CBroadcast::ToJSON() const
 {
 	std::string ans = "{\"type\":\"";
-	ans += tag();
+	ans += vtag();
 	ans += "\"";
 	ans += CUserMessage::ToJSON();
 
-	ans += ", \"asset\":\"";
-	ans += assetId_;
 	ans += "\"}";
 
 	return ans;
@@ -885,7 +1018,7 @@ bool CPeerToPeer::verify() const
 			senderAddr_,
 			timestamp_,
 			nonce_,
-		 	tag(),
+		 	vtag(),
 		 	receiverAddr_.ToString(),
 		 	data_,
 			signature_ );
@@ -904,8 +1037,8 @@ bool CMulticast::verify() const
 			senderAddr_,
 			timestamp_,
 			nonce_,
-		 	tag(),
-		 	assetId_,
+		 	vtag(),
+		 	issuerAddr_,
 		 	data_,
 			signature_ );
 	}
@@ -923,8 +1056,8 @@ bool CBroadcast::verify() const
 			senderAddr_,
 			timestamp_,
 			nonce_,
-		 	tag(),
-		 	assetId_,
+		 	vtag(),
+		 	"",
 		 	data_,
 			signature_ );
 	}
@@ -951,3 +1084,347 @@ uint256 CPeerToPeer::GetHash() const
 	return SerializeHash(*this);
 }
 
+///////////////////////////////////////////////////////////////////////////
+
+void CCreateWoTcertificate::extract(
+	CPubKey & pubkey,
+	CPubKey & sPubkey,
+	WoTCertificate & cert ) const
+{
+	uint16_t	pLen  = *reinterpret_cast<const uint16_t *>(data_.data());
+	uint16_t	spLen = *reinterpret_cast<const uint16_t *>(data_.data()+sizeof(uint16_t));
+	uint16_t	cLen  = *reinterpret_cast<const uint16_t *>(data_.data()+sizeof(uint16_t)*2);
+
+	const unsigned char * p = data_.data() + sizeof(uint16_t)*3;
+
+	pubkey.Set( p, p + pLen );
+	p += pLen;
+
+	pubkey.Set( p, p + spLen );
+	p += spLen;
+
+	CDataStream	ss( reinterpret_cast<const char *>(p), reinterpret_cast<const char *>(p+cLen), 
+		SER_NETWORK, PROTOCOL_VERSION );
+	ss >> cert;
+}
+
+void CRevokeWoTcertificate::extract(
+	CPubKey & pubkey,
+	CPubKey & sPubkey,
+	std::string & reason ) const
+{
+	uint16_t	pLen  = *reinterpret_cast<const uint16_t *>(data_.data());
+	uint16_t	spLen = *reinterpret_cast<const uint16_t *>(data_.data()+sizeof(uint16_t));
+	uint16_t	rLen  = *reinterpret_cast<const uint16_t *>(data_.data()+sizeof(uint16_t)*2);
+
+	const unsigned char * p = data_.data() + sizeof(uint16_t)*3;
+
+	pubkey.Set( p, p + pLen );
+	p += pLen;
+
+	pubkey.Set( p, p + spLen );
+	p += spLen;
+
+	const unsigned char * end = p + rLen;
+
+	while( p != end )
+	{
+		reason += static_cast<char>(*p);
+		++p;
+	}
+}
+
+
+void CUserMessage::process( CEDCWallet & wallet )
+{
+	wallet.AddMessage( vtag(), GetHash(), this );
+}
+
+void CCreateWoTcertificate::process( CEDCWallet & wallet )
+{
+    CPubKey pubkey;
+    CPubKey sPubkey;
+    WoTCertificate cert;
+
+    extract( pubkey, sPubkey, cert );
+
+	std::string errStr;
+    bool rc = wallet.AddWoTCertificate( pubkey, sPubkey, cert, errStr );
+	if(!rc)
+		error( errStr.c_str() );
+}
+
+void CRevokeWoTcertificate::process( CEDCWallet & wallet )
+{
+    CPubKey pubkey;
+    CPubKey sPubkey;
+    std::string reason;
+
+    extract( pubkey, sPubkey, reason );
+
+	std::string errStr;
+    bool rc = wallet.RevokeWoTCertificate( pubkey, sPubkey, reason, errStr );
+	if(!rc)
+		error( errStr.c_str() );
+}
+
+void CGeneralProxy::process( CEDCWallet & wallet )
+{
+	LOCK2(EDC_cs_main, wallet.cs_wallet);
+
+	edcEnsureWalletIsUnlocked();
+
+	CKeyID addr;
+	CKeyID paddr;
+	extract( addr, paddr );
+
+	std::string errStr;
+    bool rc = wallet.AddGeneralProxy( addr, paddr, errStr );
+	if(!rc)
+		error( errStr.c_str() );
+}
+
+void CIssuerProxy::process( CEDCWallet & wallet )
+{
+	LOCK2(EDC_cs_main, wallet.cs_wallet);
+
+	edcEnsureWalletIsUnlocked();
+
+	CKeyID addr;
+	CKeyID paddr;
+	CKeyID iaddr;
+	extract( addr, paddr, iaddr );
+
+	std::string errStr;
+    bool rc = wallet.AddIssuerProxy( addr, paddr, iaddr, errStr );
+	if(!rc)
+		error( errStr.c_str() );
+}
+
+void CPollProxy::process( CEDCWallet & wallet )
+{
+	LOCK2(EDC_cs_main, wallet.cs_wallet);
+
+	edcEnsureWalletIsUnlocked();
+
+	CKeyID addr;
+	CKeyID paddr;
+	std::string pollID;
+	extract( addr, paddr, pollID );
+
+	std::string errStr;
+    bool rc = wallet.AddPollProxy( addr, paddr, pollID, errStr );
+	if(!rc)
+		error( errStr.c_str() );
+}
+
+void CRevokeGeneralProxy::process( CEDCWallet & wallet )
+{
+	LOCK2(EDC_cs_main, wallet.cs_wallet);
+
+	edcEnsureWalletIsUnlocked();
+
+	CKeyID addr;
+	CKeyID paddr;
+	extract( addr, paddr );
+
+	std::string errStr;
+    bool rc = wallet.AddGeneralProxyRevoke( addr, paddr, errStr );
+	if(!rc)
+		error( errStr.c_str() );
+}
+
+void CRevokeIssuerProxy::process( CEDCWallet & wallet )
+{
+	LOCK2(EDC_cs_main, wallet.cs_wallet);
+
+	edcEnsureWalletIsUnlocked();
+
+	CKeyID addr;
+	CKeyID paddr;
+	CKeyID iaddr;
+	extract( addr, paddr, iaddr );
+
+	std::string errStr;
+    bool rc = wallet.AddIssuerProxyRevoke( addr, paddr, iaddr, errStr );
+	if(!rc)
+		error( errStr.c_str() );
+}
+
+void CRevokePollProxy::process( CEDCWallet & wallet )
+{
+	LOCK2(EDC_cs_main, wallet.cs_wallet);
+
+	edcEnsureWalletIsUnlocked();
+
+	CKeyID addr;
+	CKeyID paddr;
+	std::string pollID;
+	extract( addr, paddr, pollID );
+
+	std::string errStr;
+    bool rc = wallet.AddPollProxyRevoke( addr, paddr, pollID, errStr );
+	if(!rc)
+		error( errStr.c_str() );
+}
+
+void CPoll::process( CEDCWallet & wallet )
+{
+	LOCK2(EDC_cs_main, wallet.cs_wallet);
+
+	edcEnsureWalletIsUnlocked();
+
+	Poll poll;
+	CDataStream	ss( data_, SER_NETWORK, PROTOCOL_VERSION );
+	ss >> poll;
+
+	std::string errStr;
+	bool rc = wallet.AddPoll( poll, errStr );
+	if(!rc)
+		error( errStr.c_str() );
+}
+
+void CVote::process( CEDCWallet & wallet )
+{
+	LOCK2(EDC_cs_main, wallet.cs_wallet);
+
+	edcEnsureWalletIsUnlocked();
+
+	time_t		timestamp;
+	std::string	pollid;
+	std::string	response;
+	CKeyID pAddr;
+
+	extract( timestamp, pollid, response, pAddr );
+
+	std::string errStr;
+    bool rc = wallet.AddVote( timestamp, senderAddr_, receiverAddr_, pollid, response,pAddr,errStr);
+	if(!rc)
+		error( errStr.c_str() );
+}
+
+void CVote::extract(
+		 time_t & timestamp,
+	std::string & pollid, 
+	std::string & response, 
+		 CKeyID & pAddr ) const
+{
+	const unsigned char * p = data_.data();
+	const unsigned char * end = data_.data() + data_.size();
+
+	timestamp = *reinterpret_cast<const time_t *>(p);
+	p += sizeof(time_t);
+
+	auto len = *reinterpret_cast<const uint16_t *>(p);
+	p += sizeof(uint16_t);
+
+	pollid.resize(len);
+	auto i = pollid.begin();
+	auto e = pollid.end();
+	while( i != e )
+		*i++ = *p++;
+
+	len = *reinterpret_cast<const uint16_t *>(p);
+	p += sizeof(uint16_t);
+
+	response.resize(len);
+	i = response.begin();
+	e = response.end();
+
+	while( i != e )
+		*i++ = *p++;
+
+	if( p < end )
+	{
+		auto i = pAddr.begin();
+		std::copy( p, p + pAddr.size(), i );
+	}
+}
+
+void CGeneralProxy::extract(CKeyID & addr, CKeyID & paddr ) const
+{
+	auto d = data_.data();
+
+	std::copy( d, d+addr.size(), addr.begin() );
+	d += addr.size();
+
+	std::copy( d, d+paddr.size(), paddr.begin() );
+}
+
+void CIssuerProxy::extract(CKeyID & addr, CKeyID & paddr, CKeyID & iaddr ) const
+{
+	auto d = data_.data();
+
+	std::copy( d, d+addr.size(), addr.begin() );
+	d += addr.size();
+
+	std::copy( d, d+paddr.size(), paddr.begin() );
+	d += paddr.size();
+	
+	std::copy( d, d+iaddr.size(), iaddr.begin() );
+}
+
+void CPollProxy::extract(CKeyID & addr, CKeyID & paddr, std::string & pollid ) const
+{
+	auto d = data_.data();
+
+	std::copy( d, d+addr.size(), addr.begin() );
+	d += addr.size();
+
+	std::copy( d, d+paddr.size(), paddr.begin() );
+	d += paddr.size();
+	
+	auto len = *d++;
+
+	pollid.resize(len);
+
+	auto i = pollid.begin();
+	auto e = pollid.end();
+
+	while( i != e )
+		*i++ = *d++;
+}
+
+void CRevokeGeneralProxy::extract(CKeyID & addr, CKeyID & paddr) const
+{
+	auto d = data_.data();
+
+	std::copy( d, d+addr.size(), addr.begin() );
+	d += addr.size();
+
+	std::copy( d, d+paddr.size(), paddr.begin() );
+}
+
+void CRevokeIssuerProxy::extract(CKeyID & addr, CKeyID & paddr, CKeyID & iaddr ) const
+{
+	auto d = data_.data();
+
+	std::copy( d, d+addr.size(), addr.begin() );
+	d += addr.size();
+
+	std::copy( d, d+paddr.size(), paddr.begin() );
+	d += paddr.size();
+	
+	std::copy( d, d+iaddr.size(), iaddr.begin() );
+}
+
+void CRevokePollProxy::extract(CKeyID & addr, CKeyID & paddr, std::string & pollid ) const
+{
+	auto d = data_.data();
+
+	std::copy( d, d+addr.size(), addr.begin() );
+	d += addr.size();
+
+	std::copy( d, d+paddr.size(), paddr.begin() );
+	d += paddr.size();
+	
+	auto len = *d++;
+
+	pollid.resize(len);
+
+	auto i = pollid.begin();
+	auto e = pollid.end();
+
+	while( i != e )
+		*i++ = *d++;
+}

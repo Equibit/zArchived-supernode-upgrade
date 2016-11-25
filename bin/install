@@ -9,7 +9,7 @@ cd -
 
 echo "Copy Equibit binaries"
 
-cp ../src/bitcoind . 
+cp ../src/equibitd . 
 cp ../src/bitcoin-cli . 
 
 
