@@ -5,12 +5,16 @@ the terminal, then do the following first:
 1) Start equibitd using ./run.equibitd
 
 2) Ctrl-Z 
-	Stops process.
+   Stops the process.
 
-3) jobs to get job number of task
+3) Use the jobs command to get job number of the task.
 
 4) bg <equibitd-job#>
-	For example, bg 1.
+   For example, bg 1.
+   This step may have to be repeated until the process is running in the background.
 
 5) disown -h
-	Prevents process from being killed when terminal is closed.
+   Prevents process from being killed when terminal is closed.
+
+After successfully executing the steps listed above, one can close the terminal without causing the
+server to receive a signal and shut down.

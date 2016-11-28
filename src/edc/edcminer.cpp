@@ -148,10 +148,10 @@ CAmount edcGetBlockSubsidy(
     // approximately every 4 years.
     nSubsidy >>= halvings;
 
-// TODO: Chris wants EDC to get 1,000,000 EQB for its mining prior to opening
-//       the network to customers. This function will need to be modified to
-//       handle this requirement.
-//       For example, if nHeight == 0, nSubsidy = 1000000.
+	// The subsidy for the first mined block is 1,000,000 EDC
+	if( nHeight == 1 )
+		nSubsidy = 1000000 * COIN;
+
     return nSubsidy;
 }
 
