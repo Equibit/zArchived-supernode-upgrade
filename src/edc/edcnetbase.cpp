@@ -360,7 +360,8 @@ bool ConnectSocketDirectly(
 
             if (nRet == 0)
             {
-                edcLogPrint("net", "connection to %s timeout\n", addrConnect.ToString());
+                edcLogPrint("net", "connection to %s timeout (%d)\n", addrConnect.ToString(), 
+					nTimeout );
                 CloseSocket(hSocket);
                 return false;
             }
@@ -545,7 +546,7 @@ bool edcConnectSocketByName(
             addr = addrResolved[GetRand(addrResolved.size())];
 
 
-            return ConnectSocket(addr, hSocketRet, nTimeout);
+            return edcConnectSocket(addr, hSocketRet, nTimeout);
         }
     }
 
