@@ -1070,6 +1070,7 @@ void EDCparams::checkParams() const
 	validparams.insert("-flushwallet");
 	validparams.insert("-forcednsseed");
 	validparams.insert("-fuzzmessagestest");
+	validparams.insert("-hsmkeypool");
 	validparams.insert("-keypool");
 	validparams.insert("-limitancestorcount");
 	validparams.insert("-limitancestorsize");

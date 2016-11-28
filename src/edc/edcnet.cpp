@@ -1050,6 +1050,13 @@ void CEDCConnman::ThreadSocketHandler()
 								pnode), 
 						vNodes.end());
 
+                    // remove from vSSLNodes
+                    vSSLNodes.erase(
+						remove(	vSSLNodes.begin(), 
+								vSSLNodes.end(), 
+								pnode), 
+						vSSLNodes.end());
+
                     // release outbound grant (if any)
                     pnode->grantOutbound.Release();
 
