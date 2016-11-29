@@ -1021,7 +1021,10 @@ void CEDCConnman::AcceptConnection(const ListenSocket& hListenSocket)
 
     {
         LOCK(cs_vNodes);
-        vNodes.push_back(pnode);
+		if(isSecure)
+            vSSLNodes.push_back(static_cast<CEDCSSLNode *>(pnode));
+		else
+	        vNodes.push_back(pnode);
     }
 }
 
