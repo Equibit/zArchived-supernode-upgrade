@@ -833,7 +833,7 @@ private:
 
     bool AttemptToEvictConnection();
 
-	CEDCNode* ConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure);
+	CEDCNode* ConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure, bool secr);
     bool IsWhitelistedRange(const CNetAddr &addr);
 
 	void DeleteNode( CEDCNode * pnode );

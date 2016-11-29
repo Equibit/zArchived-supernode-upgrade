@@ -1598,7 +1598,11 @@ bool CEDCConnman::CheckIncomingNonce(uint64_t nonce)
     return true;
 }
 
-CEDCNode * CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure )
+CEDCNode * CEDCConnman::ConnectNode(
+	CAddress addrConnect, 
+	const char *pszDest, 
+	bool fCountFailure,
+	bool secure )
 {
     if (pszDest == NULL) 
 	{
@@ -1615,7 +1619,8 @@ CEDCNode * CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, b
     }
 
     /// debug print
-    edcLogPrint("net", "trying connection %s lastseen=%.1fhrs\n",
+    edcLogPrint("net", "trying %sconnection %s lastseen=%.1fhrs\n",
+		secure ? "secure ":"",
         pszDest ? pszDest : addrConnect.ToString(),
         pszDest ? 0.0 : (double)(edcGetAdjustedTime() - addrConnect.nTime)/3600.0);
 
@@ -1629,7 +1634,7 @@ CEDCNode * CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, b
 			addrConnect, 
 			hSocket, 
 			pszDest, 
-			fCountFailure ? edcParams().GetDefaultSecurePort() : edcParams().GetDefaultPort(), 
+			secure ? edcParams().GetDefaultSecurePort() : edcParams().GetDefaultPort(), 
 			theApp.connectTimeout(), &proxyConnectionFailed) :
         edcConnectSocket(
 			addrConnect, 
@@ -1671,7 +1676,7 @@ CEDCNode * CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, b
 
 		// If this is a secure connection, then do the SSL handshake first
        	CEDCNode * pnode;
-		if(fCountFailure)
+		if(secure)
 		{
 			if( SSL * ssl = CEDCSSLNode::sslConnect(hSocket))
 			{
@@ -1693,7 +1698,7 @@ CEDCNode * CEDCConnman::ConnectNode(CAddress addrConnect, const char *pszDest, b
 
         {
             LOCK(cs_vNodes);
-			if(fCountFailure)
+			if(secure)
 	            vSSLNodes.push_back(static_cast<CEDCSSLNode *>(pnode));
 			else
 	            vNodes.push_back(pnode);
@@ -1741,7 +1746,7 @@ bool CEDCConnman::OpenNetworkConnection(
 	else if (FindNode(std::string(pszDest), false ))
         return false;
 
-    CEDCNode* pnode = ConnectNode(addrConnect, pszDest, fCountFailure );
+    CEDCNode* pnode = ConnectNode(addrConnect, pszDest, fCountFailure, false );
     boost::this_thread::interruption_point();
 
     if (!pnode)
@@ -1754,7 +1759,8 @@ bool CEDCConnman::OpenNetworkConnection(
     if (fFeeler)
         pnode->fFeeler = true;
 
-    CEDCSSLNode* pSSLnode = static_cast<CEDCSSLNode *>(ConnectNode(addrConnect, pszDest, true ));
+    CEDCSSLNode* pSSLnode = static_cast<CEDCSSLNode *>(
+		ConnectNode(addrConnect, pszDest, fCountFailure, true ));
     boost::this_thread::interruption_point();
 
     if (pSSLnode)
@@ -3381,6 +3387,16 @@ ssize_t CEDCSSLNode::send( const void *buf, size_t len, int )
 	{
 		int err = SSL_get_error( ssl_, rc );
 		edcLogPrintf( "ERROR:SSL write error:%s\n", sslError(err) );
+
+		if( err == SSL_ERROR_SSL )
+		{
+			while(int err = ERR_get_error())
+			{
+				char buf[120];
+				edcLogPrintf( "ERROR:SSL_read failed:%s\n", ERR_error_string( err, buf ) );
+			}
+		}
+
 		return -1;
 	}
 }
@@ -3395,6 +3411,16 @@ ssize_t CEDCSSLNode::recv( void *buf, size_t len, int )
 	{
 		int err = SSL_get_error( ssl_, rc );
 		edcLogPrintf( "ERROR:SSL read error:%s\n", sslError(err) );
+
+		if( err == SSL_ERROR_SSL )
+		{
+			while(int err = ERR_get_error())
+			{
+				char buf[120];
+				edcLogPrintf( "ERROR:SSL_read failed:%s\n", ERR_error_string( err, buf ) );
+			}
+		}
+
 		return -1;
 	}
 }

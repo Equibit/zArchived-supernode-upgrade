@@ -1390,7 +1390,7 @@ UniValue edcaddwitnessaddress(const UniValue& params, bool fHelp)
 
     CBitcoinAddress address(params[0].get_str());
     if (!address.IsValid())
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Equibit address");
 
     Witnessifier w;
     CTxDestination dest = address.Get();
@@ -2495,7 +2495,7 @@ UniValue edcencryptwallet(const UniValue& params, bool fHelp)
     // unencrypted private keys. So:
     StartShutdown();
 
-	return "wallet encrypted; Bitcoin server stopping, restart to run with encrypted wallet. The keypool has been flushed and a new HD seed was generated (if you are using HD). You need to make a new backup.";
+	return "wallet encrypted; Equibit/Bitcoin server stopping, restart to run with encrypted wallet. The keypool has been flushed and a new HD seed was generated (if you are using HD). You need to make a new backup.";
 }
 
 UniValue edclockunspent(const UniValue& params, bool fHelp)
