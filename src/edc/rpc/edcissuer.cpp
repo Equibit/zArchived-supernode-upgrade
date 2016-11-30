@@ -156,10 +156,11 @@ UniValue listIssuers( const UniValue & params, bool fHelp )
 			"[                                 (json object)\n"
 			"  {                               (json object)\n"
 			"    \"name\": name,               (string) name of the issuer\n"
-			"    \"location\": location,       (string) geographic address of the issuer\n"
-			"    \"phone\": phone-number,      (string) phone number of the issuer\n"
-			"    \"e-mail\": e-mail-address,   (string) e-mail address of the issuer\n"
 			"    \"address\": address,         (string) equibit address of the issuer\n"
+			"    \"pubKey\": pubkey,           (string) public key of the issuer\n"
+			"    \"location\": location,       (string) geographic address of the issuer\n"
+			"    \"e-mail\": e-mail-address,   (string) e-mail address of the issuer\n"
+			"    \"phone\": phone-number,      (string) phone number of the issuer\n"
 			"  }, ...\n"
 			"]\n"
 			+ HelpExampleCli( "eb_getissuers", "" )
@@ -188,8 +189,12 @@ UniValue listIssuers( const UniValue & params, bool fHelp )
 		else
 			first = false;
 
+		CKeyID keyID = issuer.pubKey_.GetID();
+		CBitcoinAddress address(keyID);
+
 		out << "  {"
             << "\"name\": \"" << name << "\""
+			<< ", \"address\":\"" << address.ToString() << "\""
 			<< ", \"pubKey\":\"" << HexStr(issuer.pubKey_) << "\""
             << ", \"location\":\"" << issuer.location_ << "\""
             << ", \"email\":\"" << issuer.emailAddress_ << "\""

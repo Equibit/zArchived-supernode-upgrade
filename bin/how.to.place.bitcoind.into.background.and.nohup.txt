@@ -6,12 +6,25 @@ the terminal, then do the following first:
 
 2) Ctrl-Z 
    Stops the process.
+   Note the job number. The terminal typically displays
 
-3) Use the jobs command to get job number of the task.
+   [1]+  Stopped                 ./run.equibitd
 
-4) bg <equibitd-job#>
+   1 is the job number.
+
+3) bg <equibitd-job#>
+
    For example, bg 1.
-   This step may have to be repeated until the process is running in the background.
+
+   After this command is executed press Enter several times. If the line
+
+   [1]+  Stopped                 ./run.equibitd
+
+   is displayed, repeat the bg command. When
+
+   [1]+ ./run.equibitd &
+
+   is displayed, the process is running in the background.
 
 5) disown -h
    Prevents process from being killed when terminal is closed.
