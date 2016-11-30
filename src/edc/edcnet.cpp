@@ -2944,7 +2944,8 @@ CEDCNode::CEDCNode(
 	   const CAddress & addrIn, 
 			   uint64_t nKeyedNetGroupIn, 
 	const std::string & addrNameIn, 
-				   bool fInboundIn) :
+				   bool fInboundIn,
+				   bool secure ) :
     ssSend(SER_NETWORK, INIT_PROTO_VERSION),
     addr(addrIn),
 	nKeyedNetGroup(nKeyedNetGroupIn),
@@ -3015,7 +3016,7 @@ CEDCNode::CEDCNode(
         edcLogPrint("net", "Added connection peer=%d\n", id);
 
     // Be shy and don't send version until we hear
-    if (!invalidSocket() && !fInbound)
+    if (!invalidSocket() && !fInbound && !secure )
         PushVersion();
 }
 
@@ -3177,7 +3178,7 @@ CEDCSSLNode::CEDCSSLNode(
 				   bool fInboundIn,
 				  SSL * ssl ):
 		CEDCNode(id, nLocalServicesIn, nMyStartingHeightIn, hSocketIn, 
-				 addrIn, nKeyedNetGroupIn, addrNameIn, fInboundIn ),
+				 addrIn, nKeyedNetGroupIn, addrNameIn, fInboundIn, true ),
 		ssl_(ssl)
 {
 }

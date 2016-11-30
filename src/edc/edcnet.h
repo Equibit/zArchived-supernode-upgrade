@@ -229,7 +229,8 @@ public:
 		   const CAddress & addrIn, 
 				   uint64_t nKeyedNetGroupIn,
 		const std::string & addrNameIn = "", 
-					   bool fInboundIn = false);
+					   bool fInboundIn = false,
+					   bool secure = false );
     virtual ~CEDCNode();
 
 	SOCKET	socket() const 			{ return hSocket; }
