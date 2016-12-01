@@ -757,9 +757,12 @@ bool EdcAppInit(
 	                    return edcInitError(ResolveErrMsg("bind", strBind));
 	                fBound |= Bind(connman, addrBind, (BF_EXPLICIT | BF_REPORT_ERROR));
 
-	                if (!Lookup(strBind.c_str(), addrBind, edcGetListenSecurePort(), false))
-	                    return edcInitError(ResolveErrMsg("bind", strBind));
-	                fBound |= Bind(connman, addrBind, (BF_EXPLICIT | BF_REPORT_ERROR));
+					if(theApp.sslEnabled() )
+					{
+	                	if (!Lookup(strBind.c_str(), addrBind, edcGetListenSecurePort(), false))
+	                    	return edcInitError(ResolveErrMsg("bind", strBind));
+	                	fBound |= Bind(connman, addrBind, (BF_EXPLICIT | BF_REPORT_ERROR));
+					}
 	            }
 	            BOOST_FOREACH(const std::string& strBind, params.whitebind) 
 				{
@@ -780,8 +783,11 @@ bool EdcAppInit(
 	            fBound |= Bind(connman, CService(in6addr_any, edcGetListenPort()), BF_NONE);
 	            fBound |= Bind(connman, CService(inaddr_any, edcGetListenPort()), !fBound ? BF_REPORT_ERROR : BF_NONE);
 
-	            fBound |= Bind(connman, CService(in6addr_any, edcGetListenSecurePort()), BF_NONE);
-	            fBound |= Bind(connman, CService(inaddr_any, edcGetListenSecurePort()), !fBound ? BF_REPORT_ERROR : BF_NONE);
+				if(theApp.sslEnabled() )
+				{
+		            fBound |= Bind(connman, CService(in6addr_any, edcGetListenSecurePort()), BF_NONE);
+		            fBound |= Bind(connman, CService(inaddr_any, edcGetListenSecurePort()), !fBound ? BF_REPORT_ERROR : BF_NONE);
+				}
 	        }
 	        if (!fBound)
 	            return edcInitError(_("Failed to listen on any port. Use -eb_listen=0 if you want this."));

@@ -21,6 +21,7 @@ const CAmount EDC_DEFAULT_TRANSACTION_FEE = 0;
 
 EDCapp::EDCapp():
 	  debug_(false)
+	, sslEnabled_(false)
 	, coinCacheUsage_(5000*300)
 	, lastBlockWeight_(0)
 	, maxTxFee_(EDC_DEFAULT_TRANSACTION_MAXFEE)
@@ -158,5 +159,6 @@ bool EDCapp::initSSL(
 	/* Set the verification depth */
 	SSL_CTX_set_verify_depth( sslCtx_, verifyDepth );
 
+	sslEnabled_ = true;
 	return true;
 }

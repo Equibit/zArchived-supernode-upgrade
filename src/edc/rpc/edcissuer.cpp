@@ -10,6 +10,7 @@
 #include "edc/edcmain.h"
 #include "../utilstrencodings.h"
 #include "wallet/wallet.h"
+#include "utilmoneystr.h"
 #ifdef	USE_HSM
 #include "edc/edcparams.h"
 #endif
@@ -217,29 +218,57 @@ UniValue authorizeEquibit( const UniValue & params, bool fHelp )
 	if (!edcEnsureWalletIsAvailable(fHelp))
 	    return NullUniValue;
 
-	if( fHelp || params.size() != 4)
+	if( fHelp || params.size() < 3 || params.size() > 5 )
 		throw std::runtime_error(
-			"eb_authorizeequibit \"issuer\" \"transaction-id\" transaction-off wot-min-lvl\n"
+			"eb_authorizeequibit \"issuer\" amount wot-min-lvl ( \"comment\" subtractfeefromamount )\n"
 			"\nAuthorizes (or labels) an eqibit.\n"
 			"\nArguments:\n"
 			"1. \"Issuer\"          (string,required) The issuer that will be authorizing the Equibit.\n"
-			"2. \"transaction-id\"  (string,required) The address of the transaction that contains the output transaction.\n"
-			"3. transaction-off     (numeric,required) The offset of the TxOut within that stores the Equibit to be authorized.\n"
-			"4. wot-min-lvl         (numeric,required) The minimum WoT level used when TXN is moved.\n"
+			"2. amount              (numeric,required) The amount of coins to authorize.\n"
+			"3. wot-min-lvl         (numeric,required) The minimum WoT level used when TXN is moved.\n"
+            "4. \"comment\"         (string, optional) A comment used to store what the transaction is for. \n"
+            "                             This is not part of the transaction, just kept in your wallet.\n"
+            "                             transaction, just kept in your wallet.\n"
+            "5. subtractfeefromamount  (boolean, optional, default=false) The fee will be deducted from the amount being sent.\n"
+            "                             The recipient will receive less equibits than you enter in the amount field.\n"
+
+
+
 	        "\nResult:\n"
 	        "\"transactionid\"        (string) The id of the generated transaction.\n"
 
-			+ HelpExampleCli( "eb_authorizeequibit", "\"ABC Comp\" \"a3b65445c098654c4cb09736fed9232157098743ecdfa2fd403509876524edfe\" 2" )
-			+ HelpExampleRpc( "eb_authorizeequibit", "\"ABC Comp\" \"a3b65445c098654c4cb09736fed9232157098743ecdfa2fd403509876524edfe\" 2" )
+			+ HelpExampleCli( "eb_authorizeequibit", "\"ABC Comp\" 1000 2" )
+			+ HelpExampleRpc( "eb_authorizeequibit", "\"ABC Comp\", 1000, 2" )
 		);
+
 	LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
 	std::string iName  = edcIssuerFromValue(params[0]);
-	std::string txID   = params[1].get_str();
-	unsigned	txOff  = params[2].get_int();
-	unsigned	minWoT = params[3].get_int();
+	CAmount 	amount = AmountFromValue(params[1]);
+	unsigned	WoTlvl = params[2].get_int();
+
+    if (amount <= 0)
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for authorization");
+
+	CEDCWalletTx wtxNew;
+
+    // Wallet comments
+    if (params.size() > 3 && !params[3].isNull() && !params[3].get_str().empty())
+        wtxNew.mapValue["comment"] = params[3].get_str();
+
+    bool fSubtractFeeFromAmount = false;
+    if (params.size() > 4)
+        fSubtractFeeFromAmount = params[4].get_bool();
 
 	edcEnsureWalletIsUnlocked();
+
+   	CAmount curBalance = theApp.walletMain()->GetBalance();
+
+    if (amount > curBalance)
+        throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient funds");
+
+    if (theApp.walletMain()->GetBroadcastTransactions() && !theApp.connman())
+        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
 
 	CEDCWalletDB walletdb(theApp.walletMain()->strWalletFile);
 
@@ -251,34 +280,25 @@ UniValue authorizeEquibit( const UniValue & params, bool fHelp )
 	CKeyID id = issuer.pubKey_.GetID();
 	CTxDestination address = CEDCBitcoinAddress(id).Get();
 
-	// Get the transaction and txOut from params
-    uint256 hash;
-    hash.SetHex(txID);
-
-    if (!theApp.walletMain()->mapWallet.count(hash))
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid or non-wallet transaction id");
-    const CEDCWalletTx& wtx = theApp.walletMain()->mapWallet[hash];
-
-	if(wtx.vout.size() <= txOff )
-        throw JSONRPCError(RPC_WALLET_ERROR, "TxOut offset is out of range" );
-
-	// Parse Equibit address
+    // Parse Equibit address
     CScript scriptPubKey = GetScriptForDestination(address);
 
     // Create and send the transaction
     CEDCReserveKey reservekey(theApp.walletMain());
+    CAmount nFeeRequired;
     std::string strError;
+    std::vector<CRecipient> vecSend;
+    int nChangePosRet = -1;
+    CRecipient recipient = {scriptPubKey, amount, fSubtractFeeFromAmount};
 
-	CEDCWalletTx wtxNew;
+    vecSend.push_back(recipient);
 
-    if (!theApp.walletMain()->CreateAuthorizingTransaction( issuer, minWoT, wtx, txOff, 
-	wtxNew, reservekey, strError))
+    if (!theApp.walletMain()->CreateAuthorizingTransaction( issuer, WoTlvl, 
+	vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError))
     {
-#if HANDLE_FEE
-        if (nValue > theApp.walletMain()->GetBalance())
-            strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(0));
+        if (amount > theApp.walletMain()->GetBalance())
+            strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
-#endif
     }
 
     if (!theApp.walletMain()->CommitTransaction(wtxNew, reservekey, theApp.connman().get()))
@@ -297,53 +317,80 @@ UniValue blankEquibit( const UniValue & params, bool fHelp )
 	if (!edcEnsureWalletIsAvailable(fHelp))
 	    return NullUniValue;
 
-	if( fHelp || params.size() != 2)
+	if( fHelp || params.size() < 2 || params.size() > 4)
 		throw std::runtime_error(
-			"eb_blankquibit \"address\" \"transaction-id\" transaction-off\n"
+			"eb_blankquibit \"issuer\" amount ( \"comment\" subtractfeefromamount )\n"
 			"\nAuthorizes (or labels) an eqibit.\n"
 			"\nArguments:\n"
-			"1. \"transaction-id\"  (string,required) The address of the transaction that contains the output transaction.\n"
-			"2. transaction-off     (numeric,required) The offset of the TxOut within that stores the Equibit to be authorized.\n"
+			"1. \"Issuer\"          (string,required) The issuer that will be authorizing the Equibit.\n"
+			"2. amount              (numeric,required) The amount of coins to authorize.\n"
+            "3. \"comment\"         (string, optional) A comment used to store what the transaction is for. \n"
+            "                             This is not part of the transaction, just kept in your wallet.\n"
+            "                             transaction, just kept in your wallet.\n"
+            "4. subtractfeefromamount  (boolean, optional, default=false) The fee will be deducted from the amount being sent.\n"
 	        "\nResult:\n"
 	        "\"transactionid\"        (string) The id of the generated transaction.\n"
 
-			+ HelpExampleCli( "eb_blankequibit", "\"ABC Comp\" \"a3b65445c098654c4cb09736fed9232157098743ecdfa2fd403509876524edfe\" 2" )
-			+ HelpExampleRpc( "eb_blankequibit", "\"ABC Comp\", \"a3b65445c098654c4cb09736fed9232157098743ecdfa2fd403509876524edfe\", 2" )
+			+ HelpExampleCli( "eb_blankequibit", "\"ABC Comp\" 1000" )
+			+ HelpExampleRpc( "eb_blankequibit", "\"ABC Comp\", 1000" )
 		);
 	LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
-	std::string txID   = params[0].get_str();
-	unsigned	txOff  = params[1].get_int();
+	std::string iName  = edcIssuerFromValue(params[0]);
+	CAmount 	amount = AmountFromValue(params[1]);
 
-	edcEnsureWalletIsUnlocked();
-
-	CEDCWalletDB walletdb(theApp.walletMain()->strWalletFile);
-
-	// Get the transaction and txOut from params
-    uint256 hash;
-    hash.SetHex(txID);
-
-    if (!theApp.walletMain()->mapWallet.count(hash))
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid or non-wallet transaction id");
-    const CEDCWalletTx& wtx = theApp.walletMain()->mapWallet[hash];
-
-	if(wtx.vout.size() <= txOff )
-        throw JSONRPCError(RPC_WALLET_ERROR, "TxOut offset is out of range" );
-
-    // Create and send the transaction
-    CEDCReserveKey reservekey(theApp.walletMain());
-    std::string strError;
+    if (amount <= 0)
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for authorization");
 
 	CEDCWalletTx wtxNew;
 
-    if (!theApp.walletMain()->CreateBlankingTransaction( wtx, txOff, wtxNew, reservekey, 
-	strError))
+    // Wallet comments
+    if (params.size() > 2 && !params[2].isNull() && !params[2].get_str().empty())
+        wtxNew.mapValue["comment"] = params[2].get_str();
+
+    bool fSubtractFeeFromAmount = false;
+    if (params.size() > 3)
+        fSubtractFeeFromAmount = params[3].get_bool();
+
+	edcEnsureWalletIsUnlocked();
+
+   	CAmount curBalance = theApp.walletMain()->GetBalance();
+
+    if (amount > curBalance)
+        throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient funds");
+
+    if (theApp.walletMain()->GetBroadcastTransactions() && !theApp.connman())
+        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
+
+	CEDCWalletDB walletdb(theApp.walletMain()->strWalletFile);
+
+	// Get issuer address
+	CIssuer issuer;
+	if( !walletdb.ReadIssuer( iName, issuer ) )
+        throw JSONRPCError(RPC_WALLET_INVALID_ISSUER_NAME, "Invalid issuer name");
+		
+	CKeyID id = issuer.pubKey_.GetID();
+	CTxDestination address = CEDCBitcoinAddress(id).Get();
+
+    // Parse Equibit address
+    CScript scriptPubKey = GetScriptForDestination(address);
+
+    // Create and send the transaction
+    CEDCReserveKey reservekey(theApp.walletMain());
+    CAmount nFeeRequired;
+    std::string strError;
+    std::vector<CRecipient> vecSend;
+    int nChangePosRet = -1;
+    CRecipient recipient = {scriptPubKey, amount, fSubtractFeeFromAmount};
+
+    vecSend.push_back(recipient);
+
+    if (!theApp.walletMain()->CreateBlankingTransaction( issuer, vecSend, wtxNew, reservekey, 
+	nFeeRequired, nChangePosRet, strError))
     {
-#if HANDLE_FEE
-        if (nValue > theApp.walletMain()->GetBalance())
-            strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(0));
+        if (amount > theApp.walletMain()->GetBalance())
+            strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
-#endif
     }
 
     if (!theApp.walletMain()->CommitTransaction(wtxNew, reservekey, theApp.connman().get()))

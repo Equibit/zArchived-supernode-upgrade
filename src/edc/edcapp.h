@@ -152,6 +152,8 @@ public:
 					const std::string & privKey, const char * passPhrase,
 					int verDepth );
 
+	bool sslEnabled() const { return sslEnabled_; }
+
 	std::unique_ptr<CEDCConnman> & connman()	{ return connman_; }
 	void connman( CEDCConnman * connman)		{ connman_.reset(connman); }
 
@@ -185,6 +187,7 @@ private:
 	bool requireStandard_;
 	bool importing_;
 	bool reindex_;
+	bool sslEnabled_;
 
 	int connectTimeout_;
 

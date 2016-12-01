@@ -753,20 +753,23 @@ public:
     bool CreateAuthorizingTransaction(
                         const CIssuer & issuer,
 							   unsigned wotLvl,
-                   const CEDCWalletTx & wtx,
-                                 size_t outId, 
+		const std::vector<CRecipient> & vecSend, 
 						 CEDCWalletTx & wtxNew, 
 					   CEDCReserveKey & reservekey, 
+							  CAmount & nFeeRet, 
+								  int & nChangePosInOut,
         				  std::string & strFailReason );
 
     /**
      * Create a new transaction that is created to blank the EQB of the input TxOut.
      */
     bool CreateBlankingTransaction(
-                   const CEDCWalletTx & wtx,
-                                 size_t outId, 
+                        const CIssuer & issuer,
+		const std::vector<CRecipient> & vecSend, 
 						 CEDCWalletTx & wtxNew, 
 					   CEDCReserveKey & reservekey, 
+							  CAmount & nFeeRet, 
+								  int & nChangePosInOut,
         				  std::string & strFailReason );
 
     /**

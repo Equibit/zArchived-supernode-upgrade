@@ -959,7 +959,7 @@ void CEDCConnman::AcceptConnection(const ListenSocket& hListenSocket)
         if (!AttemptToEvictConnection()) 
 		{
             // No connection to evict, disconnect the new connection
-            edcLogPrint("net", "failed to find an eviction candidate - connection dropped (full)\n");
+            edcLogPrint("net","failed to find an eviction candidate - connection dropped (full)\n");
             CloseSocket(hSocket);
             return;
         }
@@ -999,11 +999,13 @@ void CEDCConnman::AcceptConnection(const ListenSocket& hListenSocket)
 	{
 		if( SSL * ssl = CEDCSSLNode::sslAccept(hSocket) )
 		{
-			pnode = new CEDCSSLNode( GetNewNodeId(), nLocalServices, GetBestHeight(), hSocket, addr, CalculateKeyedNetGroup(addr), "", true, ssl );
+			pnode = new CEDCSSLNode( GetNewNodeId(), nLocalServices, GetBestHeight(), hSocket, 
+				addr, CalculateKeyedNetGroup(addr), "", true, ssl );
 		}
 		else
 		{
-			edcLogPrint( "net", "SSL accept failed. No connection established to %s\n", addr.ToString());
+			edcLogPrint( "net", "ERROR:SSL accept failed. No connection established to %s\n", 
+				addr.ToString());
 			return;
 		}
 	}
@@ -1762,19 +1764,23 @@ bool CEDCConnman::OpenNetworkConnection(
     if (fFeeler)
         pnode->fFeeler = true;
 
-    CEDCSSLNode* pSSLnode = static_cast<CEDCSSLNode *>(
-		ConnectNode(addrConnect, pszDest, fCountFailure, true ));
-    boost::this_thread::interruption_point();
-
-    if (pSSLnode)
+	EDCapp & theApp = EDCapp::singleton();
+	if( theApp.sslEnabled() )
 	{
-    	if (sgrantOutbound)
-        	sgrantOutbound->MoveTo(pSSLnode->grantOutbound);
-    	pSSLnode->fNetworkNode = true;
-    	if (fOneShot)
-        	pSSLnode->fOneShot = true;
-    	if (fFeeler)
-        	pSSLnode->fFeeler = true;
+    	CEDCSSLNode* pSSLnode = static_cast<CEDCSSLNode *>(
+			ConnectNode(addrConnect, pszDest, fCountFailure, true ));
+	    boost::this_thread::interruption_point();
+
+   		if (pSSLnode)
+		{
+    		if (sgrantOutbound)
+        		sgrantOutbound->MoveTo(pSSLnode->grantOutbound);
+    		pSSLnode->fNetworkNode = true;
+    		if (fOneShot)
+        		pSSLnode->fOneShot = true;
+    		if (fFeeler)
+        		pSSLnode->fFeeler = true;
+		}
 	}
 
     return true;
