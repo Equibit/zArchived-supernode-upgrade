@@ -190,7 +190,7 @@ UniValue listIssuers( const UniValue & params, bool fHelp )
 			first = false;
 
 		CKeyID keyID = issuer.pubKey_.GetID();
-		CBitcoinAddress address(keyID);
+		CEDCBitcoinAddress address(keyID);
 
 		out << "  {"
             << "\"name\": \"" << name << "\""
