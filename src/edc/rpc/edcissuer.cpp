@@ -319,7 +319,7 @@ UniValue blankEquibit( const UniValue & params, bool fHelp )
 
 	if( fHelp || params.size() < 2 || params.size() > 4)
 		throw std::runtime_error(
-			"eb_blankquibit \"issuer\" amount ( \"comment\" subtractfeefromamount )\n"
+			"eb_blankequibit \"issuer\" amount ( \"comment\" subtractfeefromamount )\n"
 			"\nAuthorizes (or labels) an eqibit.\n"
 			"\nArguments:\n"
 			"1. \"Issuer\"          (string,required) The issuer that will be authorizing the Equibit.\n"

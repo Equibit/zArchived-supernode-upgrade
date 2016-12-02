@@ -779,7 +779,7 @@ public:
      */
     bool CreateTrustedTransaction(
 				   CEDCBitcoinAddress & issuer, 
-							   unsigned wotLevel,
+							   unsigned wotLvl,
 		const std::vector<CRecipient> & vecSend, 
 						 CEDCWalletTx & wtxNew, 
 					   CEDCReserveKey & reservekey, 

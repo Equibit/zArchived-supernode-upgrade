@@ -3155,7 +3155,7 @@ CEDCMutableTransaction & txIn,				// IN: TXN computed from authorized coins
 
 bool CEDCWallet::CreateTrustedTransaction(
           CEDCBitcoinAddress & issuer,			// IN: address of issuer whose coins will be moved
-					  unsigned wotLevel,		// IN: WoT level
+					  unsigned wotLvl,			// IN: WoT level
 	const vector<CRecipient> & vecSend, 		// IN: Recipients of TXOUT
 				CEDCWalletTx & wtxNew, 			// IN/OUT: Created TXN
 			  CEDCReserveKey & reservekey, 		// IN: Key from pool to be destination of change
@@ -3236,7 +3236,7 @@ bool CEDCWallet::CreateTrustedTransaction(
 			// Get the coins available for input to the TXN
 			//
             std::vector<CEDCOutput> vAvailableCoins;
-            AvailableCoins(vAvailableCoins, issuer, wotLevel, true, coinControl );
+            AvailableCoins(vAvailableCoins, issuer, wotLvl, true, coinControl );
 
             nChangePosInOut = nChangePosRequest;
             txNew.vin.clear();
