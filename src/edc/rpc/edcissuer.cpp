@@ -317,9 +317,9 @@ UniValue blankEquibit( const UniValue & params, bool fHelp )
 	if (!edcEnsureWalletIsAvailable(fHelp))
 	    return NullUniValue;
 
-	if( fHelp || params.size() < 2 || params.size() > 4)
+	if( fHelp || params.size() < 2 || params.size() > 5)
 		throw std::runtime_error(
-			"eb_blankequibit \"issuer\" amount ( \"comment\" subtractfeefromamount )\n"
+			"eb_blankequibit \"issuer\" amount ( \"comment\" subtractfeefromamt feefromblank )\n"
 			"\nAuthorizes (or labels) an eqibit.\n"
 			"\nArguments:\n"
 			"1. \"Issuer\"          (string,required) The issuer that will be authorizing the Equibit.\n"
@@ -327,9 +327,10 @@ UniValue blankEquibit( const UniValue & params, bool fHelp )
             "3. \"comment\"         (string, optional) A comment used to store what the transaction is for. \n"
             "                             This is not part of the transaction, just kept in your wallet.\n"
             "                             transaction, just kept in your wallet.\n"
-            "4. subtractfeefromamount  (boolean, optional, default=false) The fee will be deducted from the amount being sent.\n"
+            "4. subtractfeefromamt  (boolean, optional, default=false) The fee will be deducted from the amount being sent.\n"
+            "5. feefromblank        (boolean, optional, default=true) The fee is paid from blank equitbits.\n"
 	        "\nResult:\n"
-	        "\"transactionid\"        (string) The id of the generated transaction.\n"
+	        "\"transactionid\"      (string) The id of the generated transaction.\n"
 
 			+ HelpExampleCli( "eb_blankequibit", "\"ABC Comp\" 1000" )
 			+ HelpExampleRpc( "eb_blankequibit", "\"ABC Comp\", 1000" )
@@ -351,6 +352,10 @@ UniValue blankEquibit( const UniValue & params, bool fHelp )
     bool fSubtractFeeFromAmount = false;
     if (params.size() > 3)
         fSubtractFeeFromAmount = params[3].get_bool();
+
+    bool feeFromBlank = true;
+    if (params.size() > 4)
+        feeFromBlank = params[4].get_bool();
 
 	edcEnsureWalletIsUnlocked();
 
@@ -386,7 +391,7 @@ UniValue blankEquibit( const UniValue & params, bool fHelp )
     vecSend.push_back(recipient);
 
     if (!theApp.walletMain()->CreateBlankingTransaction( issuer, vecSend, wtxNew, reservekey, 
-	nFeeRequired, nChangePosRet, strError))
+	feeFromBlank, nFeeRequired, nChangePosRet, strError))
     {
         if (amount > theApp.walletMain()->GetBalance())
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));

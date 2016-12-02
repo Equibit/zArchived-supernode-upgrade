@@ -768,6 +768,7 @@ public:
 		const std::vector<CRecipient> & vecSend, 
 						 CEDCWalletTx & wtxNew, 
 					   CEDCReserveKey & reservekey, 
+                                   bool feeFromBlank,
 							  CAmount & nFeeRet, 
 								  int & nChangePosInOut,
         				  std::string & strFailReason );
