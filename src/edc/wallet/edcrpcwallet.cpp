@@ -2788,7 +2788,11 @@ UniValue edclistunspent(const UniValue& params, bool fHelp)
             "    \"confirmations\" : n       (numeric) The number of confirmations\n"
 			"    \"redeemScript\" : n        (string) The redeemScript if scriptPubKey is P2SH\n"
             "    \"spendable\" : xxx,        (bool) Whether we have the private keys to spend this output\n"
-            "    \"solvable\" : xxx          (bool) Whether we know how to spend this output, ignoring the lack of keys\n"
+            "    \"solvable\" : xxx,         (bool) Whether we know how to spend this output, ignoring the lack of keys\n"
+			"    \"issuer\" : xxx,           (string, optional) Name of issuer\n" 
+			"    \"issuerAddr\" : xxx,       (string, optional) Address of the issuer\n"
+			"    \"issuerPubKey\" : xxx,     (string, optional) Public key of the issuer\n"
+			"    \"wotLevel\" : n            (numeric, optional) Web-of-trust level of the equibit\n"
             "  }\n"
             "  ,...\n"
             "]\n"
@@ -2825,11 +2829,17 @@ UniValue edclistunspent(const UniValue& params, bool fHelp)
         }
     }
 
+	CEDCWalletDB walletdb(theApp.walletMain()->strWalletFile);
+	std::vector<std::pair<std::string,CIssuer>> issuers;
+    walletdb.ListIssuers( issuers );
+	auto e = issuers.end();
+
     UniValue results(UniValue::VARR);
     vector<CEDCOutput> vecOutputs;
     assert(theApp.walletMain() != NULL);
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
     theApp.walletMain()->AvailableCoins(vecOutputs, false, NULL, true);
+
     BOOST_FOREACH(const CEDCOutput& out, vecOutputs) 
 	{
         if (out.nDepth < nMinDepth || out.nDepth > nMaxDepth)
@@ -2867,6 +2877,31 @@ UniValue edclistunspent(const UniValue& params, bool fHelp)
 
         entry.push_back(Pair("spendable", out.fSpendable));
         entry.push_back(Pair("solvable", out.fSolvable));
+
+		if( out.tx->vout[out.i].issuerPubKey.size() > 0 )
+		{
+    		auto i = issuers.begin();
+			while( i != e )
+			{
+				const CIssuer & issuer = i->second;
+
+				if( issuer.pubKey_ == out.tx->vout[out.i].issuerPubKey )
+				{
+					entry.push_back(Pair("issuer", i->first ));
+					break;
+				}
+
+				++i;
+			}
+
+			entry.push_back(Pair("issuerAddr", 
+				CEDCBitcoinAddress(out.tx->vout[out.i].issuerAddr).ToString()));
+
+			entry.push_back(Pair("issuerPubKey",  HexStr(out.tx->vout[out.i].issuerPubKey)));
+			entry.push_back(Pair("wotLevel", 
+				static_cast<uint64_t>(out.tx->vout[out.i].wotMinLevel)));
+		}
+
         results.push_back(entry);
     }
 
