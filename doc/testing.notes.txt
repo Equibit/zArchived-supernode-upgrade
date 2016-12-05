@@ -1,0 +1,356 @@
+Last edit date: 2016/12/05
+
+Introduction
+
+This file contains the notes for running the basic Equibit test cases. See
+the file usage.notes.txt (in this directory) for further information on 
+interacting with the Equibit server via RPCs.
+
+-------------------------------------------------------------------------------
+1)	Node starts & connects to other nodes	
+
+Use the ./bin/run.equibitd script to run the node. Use the -connect/-eb_connect 
+parameter to specify nodes to which this node will connect.
+
+Use ./bin/equibitd -eb_help to get a list of available options.
+
+Use ./bin/run.equibit-cli to send equibit RPCs to the server.
+Use ./bin/run.bitcoin-cli to send bitcoin RPCs to the server.
+
+Use ./bin/run.equibit-cli eb_help to get equibit RPC help.
+Use ./bin/run.bitcoin-cli help to get bitcoin RPC help.
+-------------------------------------------------------------------------------
+2)	Node creates key pairs for Bitcoin and Equibit	
+
+Prerequisites: None
+
+Test Steps:
+
+Use RPC getnewadress to generate a new bitcoin native address. 
+Use RPC getnewhsmaddress to a bitcoin HSM address. 
+Use RPC eb_getnewaddress to generate a new equibit native address. 
+Use RPC eb_getnewhsmaddress to generate a new equibit HSM address.	
+
+In each case, the generated address will be returned.
+
+Examples:
+
+./bin/run.bitcoin-cli getnewaddress
+./bin/run.bitcoin-cli getnewhsmaddress
+./bin/run.equibit-cli eb_getnewaddress
+./bin/run.equibit-cli eb_getnewhsmaddress
+-------------------------------------------------------------------------------
+3)	Node mines a block successfully	
+
+Prerequisites: None
+
+Test Steps:
+
+Use RPC generate to generate a bitcoin block. 
+Use RPC eb_generate to generate a equibit block.	
+
+In each case, the hash of the block is returned.
+-------------------------------------------------------------------------------
+4)	Level 0 equibits		
+-------------------------------------------------------------------------------
+4a)	Authorize a Level 0 equibit	
+
+Prerequisites: 
+
+1) An issuer is required to authorize equibits. Use eb_getnewissuer 
+   (resp. eb_getnewhsmissuer) to create a new issuer using native (resp. HSM) 
+   key pair generation. 
+
+2) Confirmed equibits are required to be authorized. At least 101 blocks must
+   generated in order to have spendable coins.
+
+3) Coins must be assigned to the issuer and confirmed by at least 6 blocks.
+   use eb_sendtoaddress to send mined coins to the issuer. Use eb_generate
+   to generate the blocks after the send.
+
+Test Steps:
+
+Use eb_authorizeequibit (with the WoT level set to 0).	
+
+Notes:
+- After the equibit is authorized, use RPC 'eb_generate 6' to confirm it.
+- Use eb_listunspent to view list of authorized (and un-authorized) equibits.
+-------------------------------------------------------------------------------
+4b)	Transfer to another node	
+
+Prerequisites: 
+
+1) Create an address at another node. See above.
+2) Do 4a) prerequisites and steps to ensure authorized equibits are available 
+   for sending.
+
+Test Steps:
+
+Use eb_trustedsend (with WoT level set to 0) to transfer the equibits.	
+-------------------------------------------------------------------------------
+4c)	Cancel the equibit	
+
+Prerequisites: 
+
+1) Do 4a) prerequisites and steps to ensure authorized equibits are available 
+   for sending.
+
+Test Steps: 
+
+Use eb_blankequibit to remove the authorizing label from the equibit.	
+-------------------------------------------------------------------------------
+5)	Level I equibits		
+-------------------------------------------------------------------------------
+5a)	Authorize a Level I equibit	
+
+Repeat actions in 4a) with WoT level set to 1.
+-------------------------------------------------------------------------------
+5b)	Issuer grants trust to an accreditor address
+
+Prerequisites:
+
+1) Two addresses must exist: The accreditor and the isuer that will be 
+   trusting the accrediator.
+
+Test Steps:
+
+Use eb_getwotcertificate to grant trust.
+-------------------------------------------------------------------------------
+5c)	Accreditor address issues trust to several other addresses	
+
+Prerequisites:
+
+1) Accreditor and to-be-trusted addresses must exist.
+
+Test Steps:
+
+Use eb_getwotcertificate to grant trust.
+-------------------------------------------------------------------------------
+5d)	Transfer equibit between trusted addresses	
+
+Prerequisites:
+
+1) Steps 5a), 5b) and 5c)
+
+Test Steps:
+
+Use eb_trustedsend (with WoT level set to 1) to transfer the between addresses
+trusted in the previous steps.
+-------------------------------------------------------------------------------
+5e)	Transfer to a non-trusted address
+
+Prerequisites: 
+
+1) At least two addresses must exist, with one of them owning authorized 
+   equibits and the other not trusted by the first.
+
+Test Steps:
+
+Use eb_trustedsend (with WoT level set to 1) to transfer the equibits.	
+-------------------------------------------------------------------------------
+5f)	Cancel the equibit	
+
+Repeat steps of 4c).
+-------------------------------------------------------------------------------
+6	Level II equibits		
+-------------------------------------------------------------------------------
+6a)	Authorize a Level II equibit	
+
+Repeat actions in 4a) with WoT level set to 2.
+-------------------------------------------------------------------------------
+6b)	Issue trust to several addresses
+
+Repeat steps from 5c).
+-------------------------------------------------------------------------------
+6c)	Transfer equibit between trusted addresses
+
+Repeat steps from 5d). Issuer must trust buyers.
+-------------------------------------------------------------------------------
+6d)	Transfer to a non-trusted address
+
+Repeat steps from 5e). Issuer should not trust buyers.
+-------------------------------------------------------------------------------
+6e)	Cancel the equibit	
+
+Repeat steps of 4c).
+-------------------------------------------------------------------------------
+7	Level III equibits		
+-------------------------------------------------------------------------------
+7a)	Authorize a Level III equibit	
+
+Repeat actions in 4a) with WoT level set to 3.
+-------------------------------------------------------------------------------
+7b)	Transfer to another address
+
+Prerequisites:
+
+1) Issuer exists. 
+2) Another address exists. 
+3) Issuer trusts other address.
+4) Issuer owns equibits with Wot = 3.
+
+Test Steps:
+
+Use eb_trustedsend (with WoT level set to 3) to transfer the equibits from
+issuer.	
+-------------------------------------------------------------------------------
+7c)	Transfer to yet another address (not the issuer)	
+
+Prerequisites: 
+
+1) Issuer exists
+2) Issuer owns equibits
+3) One or more other addresses exist that have not be trusted by issuer
+4) If a non-issuer is to send authorized equibits, then it must own equibits.
+
+Test Steps:
+
+Use eb_trustedsend (with WoT level set to 3) to transfer the equibits where
+neither address is the issuer or one address is the issuer but the other 
+address is not trusted by the issuer.
+-------------------------------------------------------------------------------
+7d)	Transfer back to issuing address
+
+Prerequisites:
+
+1) Issuer exists. 
+2) Another address exists. 
+3) Issuer trusts other address.
+4) Other address owns equibits with Wot = 3.
+
+Test Steps:
+
+Use eb_trustedsend (with WoT level set to 3) to transfer the equibits from
+other address to the issuer.	
+-------------------------------------------------------------------------------
+7e)	Cancel the equibit	
+
+Repeat steps of 4c).
+-------------------------------------------------------------------------------
+8	Messaging		
+-------------------------------------------------------------------------------
+8a)	Send private message to another address
+
+Prerequisites:
+
+1) Two addresses exist
+
+Test Steps:
+
+Use eb_p2pmessage to send a peer-to-peer message.
+-------------------------------------------------------------------------------
+8b)	Broadcast a bid/ask message	
+
+Prerequisites:
+
+1) An address exists
+
+Test Steps:
+
+Use eb_broadcast to broadcast a message. Set the type to Bid/Ask respectively.	
+-------------------------------------------------------------------------------
+8c)	Issuer sends message to all owners	
+
+Prerequisites:
+
+1) Issuer exists
+2) Issuer authorizes equibits
+3) Issuer sends authorized equibits to one or more addresses
+
+Test Steps:
+
+Use eb_multicast to send a message to the owners of an asset	
+-------------------------------------------------------------------------------
+9	Polls & Proxies		
+-------------------------------------------------------------------------------
+9a)	Issuer creates a poll	
+
+Prerequisites:
+
+1) Issuer exists
+2) Issuer authorizes equibits
+3) Issuer sends authorized equibits to one or more addresses
+
+Test Steps:
+
+Use eb_poll to create a poll.
+-------------------------------------------------------------------------------
+9b)	Owner creates general proxy	
+
+Prerequisites:
+
+1) At least two addresses exist
+
+Test Steps:
+
+Use eb_assigngeneralproxy to assign a general proxy.
+-------------------------------------------------------------------------------
+9c)	Owner creates company proxy	
+
+Prerequisites: 
+
+1) At least two addresses exist
+2) An issuer exists
+
+Test Steps:
+
+Use eb_assignissuerproxy to assign an issuer proxy.
+-------------------------------------------------------------------------------
+9d)	Owner creates poll proxy	
+
+Prerequisites:
+
+1) At least two addresses exist
+2) A poll exists
+
+Test Steps:
+
+Use eb_assignpollproxy to assign a poll proxy.
+-------------------------------------------------------------------------------
+9e)	General proxy submits vote	
+
+Prerequisites: 
+
+1) A general proxy has been created. See 9b).
+
+Test Steps: 
+
+Use eb_vote to submit a vote with the proxies address and proxied address.
+-------------------------------------------------------------------------------
+9f)	Company proxy submits vote (testing for authority)	
+
+Prerequisites: 
+
+1) A company proxy exists. See 9c).
+
+Test Steps:
+
+Use eb_vote to submit a vote with the proxies address and proxied address.
+-------------------------------------------------------------------------------
+9g)	Poll proxy submits vote (testing for authority)	
+
+Prerequisites: 
+
+1) A poll proxy exists. See 9d).
+
+Test Steps: 
+
+Use eb_vote to submit a vote with the proxies address and proxied address.
+-------------------------------------------------------------------------------
+9h)	Owner submits vote (testing for authority)	
+
+Prerequisites: 
+
+1) A poll exists. See 9a).
+
+Test Steps:
+
+Use eb_vote to submit a vote with address of owner.
+-------------------------------------------------------------------------------
+10	Initiate bitcoin dividend payment from issuer to owners		
+-------------------------------------------------------------------------------
+
+Prerequisites: TBD
+
+Test Steps: TBD
+-------------------------------------------------------------------------------

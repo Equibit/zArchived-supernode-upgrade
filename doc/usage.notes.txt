@@ -1,0 +1,423 @@
+Last Edit Date: 2016/12/05
+                                                              
+==============================================================================
+Starting/stopping the server
+------------------------------------------------------------------------------
+Use the 
+
+$EQUIBIT/bin/run.equibitd 
+
+script to start the server. This script can be edited to meet your needs.
+
+If the server is using a Thales HSM then it needs to be started in the 
+foreground in order to allow the user to enter the pass phrase. Once the pass 
+phase (and possibly openssl private key pass phase) has been entered, the 
+process can be placed in the background. The script
+
+$EQUIBIT/bin/how.to.place.bitcoind.into.background.and.nohup.txt
+
+describes how to place the process in the background and prevent the process
+from receiving the HUP signal if the terminal is closed.
+
+Use the stop / eb_stop RPC to stop the server gracefully. ie.
+
+bitcoin:
+
+  $EQUIBIT/bin/run.bitcoin-cli stop
+
+equibit
+
+  $EQUIBIT/bin/run.equibit-cli eb_stop
+
+NOTE: The ~/.bitcoin/bitcoin.conf (resp. ~/.equibit/equibit.conf) should 
+assign rpcpassword (resp. eb_rpcpassword) the same value.
+==============================================================================
+Connecting Equibit Server
+------------------------------------------------------------------------------
+- In order to connect the node to other nodes add the options -connect and 
+  -eb_connect in order to connect to a corresponding bitcoin / equibit node.
+
+  For example, add
+
+  -connect=76.9.199.27 -eb_connect=76.9.199.27
+
+  to connect to the server running at 76.9.199.27.
+
+- Check the log file to ensure that the nodes connected. The log files are
+  located under ~/.bitcoin and ~/.equibit. If the regtest network is used, 
+  the log file is regtest/debug.log. If the testnet network is used, the log
+  file is testnet/debug.log.
+
+==============================================================================
+Using the USB nShield Edge 
+------------------------------------------------------------------------------
+- The USB nShield Edge must be initialized prior to use. Run the script 
+  $EQUBIT_ROOT/bin/recycle.thales.hsm
+
+- If the module was successfully initialized, the line containing 
+  'serial number' will contain a serial number of the form HHHH-HHHH-HHHH
+  where H is a hex digit.
+
+- If a serial number is not displayed, then run the script again. It usually
+  works after the second attempt.
+
+- NOTE: The HSM must have a security card inserted in order to be operational.
+==============================================================================
+Get Help on RPCs
+------------------------------------------------------------------------------
+To get a list of available RPCs, 
+
+bitcoin:
+
+  $EQUIBIT/bin/run.bitcoin-cli help
+
+equibit
+
+  $EQUIBIT/bin/run.equibit-cli eb_help
+
+To get detailed help on a particular RPC use
+
+bitcoin:
+
+  $EQUIBIT/bin/run.bitcoin-cli help <RPC>
+
+equibit
+
+  $EQUIBIT/bin/run.equibit-cli eb_help <eb RPC>
+
+
+For example,
+
+bitcoin:
+
+  $EQUIBIT/bin/run.bitcoin-cli help generate
+
+equibit
+
+  $EQUIBIT/bin/run.equibit-cli eb_help eb_generate
+
+The following RPCs are marked hidden and as a result, are not listed by the 
+help RPC:
+
+resendwallettransactions
+invalidateblock
+reconsiderblock
+waitfornewblock
+waitforblock
+waitforblockheight
+setmocktime
+
+eb_resendwallettransactions
+eb_setmocktime
+eb_invalidateblock
+eb_reconsiderblock
+eb_waitfornewblock
+eb_waitforblock
+eb_waitforblockheight
+
+One can get detailed help on these RPCs. For example
+
+$EQUIBIT/bin/run.bitcoin-cli help waitforblock
+==============================================================================
+Get help on bitcoin-cli options
+------------------------------------------------------------------------------
+
+$EQUIBIT/bin/bitcoin-cli -help
+
+Note that all options can be specified on the command line or in the 
+~/.bitcoin/bitcoin.conf file.
+
+==============================================================================
+Get help on equibitd options
+------------------------------------------------------------------------------
+
+$EQUIBIT/bin/equibit -help
+
+OR
+
+$EQUIBIT/bin/equibit -eb_help
+
+Add -help-debug (resp. -eb_help-debug) to also out bitcoin (resp. equibit)
+debuggin options.
+
+Note that all options can be specified on the command line. Bitcoin options
+can also be specified in the ~/.bitcoin/bitcoin.conf file. Equibit options can
+also be specified in the ~/.equibit/equibit.conf file.
+==============================================================================
+Get wallet data
+------------------------------------------------------------------------------
+Use the following RPCs to dump the contents of the wallet:
+
+bitcoin:
+
+  $EQUIBIT/bin/run.bitcoin-cli getwalletinfo
+  $EQUIBIT/bin/run.bitcoin-cli dumpwallet "wallet.txt"
+
+equibit:
+
+  $EQUIBIT/bin/run.equibit-cli eb_getwalletinfo
+  $EQUIBIT/bin/run.equibit-cli eb_dumpwallet "ewallet.txt"
+  $EQUIBIT/bin/run.equibit-cli eb_dumpwalletdb "ewalletdb.txt"
+
+getwalletinfo (resp. eb_getwalletinfo) provides summary information.
+
+dumpwallet (resp. eb_dumpwallet) dumps the keys stored in the wallet.
+
+eb_dumpwalletdb dumps all of the contents of the equibit wallet.
+==============================================================================
+Generate blocks
+------------------------------------------------------------------------------
+bitcoin:
+
+  $EQUIBIT/bin/run.bitcoin-cli generate N
+
+equibit
+
+  $EQUIBIT/bin/run.equibit-cli eb_generate N
+
+where N is an integer. If N is not specified, then 1 block is generated.
+
+A list of hash values corresponding to the blocks will be returned.
+
+To generate a block and assign the coinbase transaction to a specific address
+use:
+
+bitcoin:
+
+  $EQUIBIT/bin/run.bitcoin-cli generatetoaddress N "address"
+
+equibit
+
+  $EQUIBIT/bin/run.equibit-cli eb_generatetoaddress N "address"
+
+where <N> is the number of blocks and address is the address that will
+receive the coins.
+
+
+Note: Bitcoin and Equibit retricts the spending of coins generated via mining
+until 100 new blocks have been mined. Therefore, a network will not be 
+operational until at least 101 blocks have been mined. Once the 101 block has
+been mined, the coins mined by the first block will be spendable.
+
+Use getblockcount (resp. eb_getblockcount) to discover the number of blocks in
+the chain.
+==============================================================================
+List transactions 
+------------------------------------------------------------------------------
+Use the following RPCs to list the transactions stored to the blocks in the 
+chain:
+
+bitcoin:
+
+  listtransactions 
+
+equibit
+
+  eb_listtransactions 
+
+For example, to specify all transactions in the EDC blockchain, use
+
+  $EQUIBIT/bin/run.equibit-cli eb_listtransactions "*" 999999999
+
+The last parameter is the number of transactions to list. Set it to a big 
+number to ensure all transactions are listed. It defaults to 10.
+
+To view the details of a single transaction, use
+
+bitcoin:
+
+  $EQUIBIT/bin/run.bitcoin-cli gettransaction "txn-id"
+
+equibit
+
+  $EQUIBIT/bin/run.equibit-cli eb_gettransaction "txn-id"
+
+==============================================================================
+Create an address
+------------------------------------------------------------------------------
+Four types of addresses, each of which corresponds to a ECC key pair, can be
+generated:
+
+Address Type
+------------------------------------------------------------------------------
+Bitcoin native address     $EQUIBITROOT/bin/run.bitcoin-cli getnewaddress
+Bitcoin HSM address        $EQUIBITROOT/bin/run.bitcoin-cli getnewhsmaddress
+Equibit native address     $EQUIBITROOT/bin/run.equibit-cli eb_getnewaddress
+Equibit HSM address        $EQUIBITROOT/bin/run.equibit-cli eb_getnewhsmaddress
+
+Native and HSM addresses can be used as input parameters to other RPCs. They
+are used primarily to create digital signatures. If a signature is required 
+and a native address is specified, then native ECC functions will be used. If 
+an HSM address is specified, then the HSM will be used to generate the 
+signature.
+
+If the node is not configured with an HSM, then HSM addresses cannot be 
+generated or used by other RPCs.
+
+To list the amount of spendable coins assigned to each address in the wallet
+use:
+
+bitcoin:
+
+  $EQUIBIT/bin/run.bitcoin-cli listaddressgroupings
+
+equibit
+
+  $EQUIBIT/bin/run.equibit-cli eb_listaddressgroupings
+
+==============================================================================
+Create an Issuer
+------------------------------------------------------------------------------
+Use eb_getnewissuer to generate an issuer using the native key pair generating
+facility. Use eb_getnewhsmissuer to generate an issuer using the configured
+HSM. For example,
+
+./run.equibit-cli eb_getnewissuer "ACME Corp" "100 University Ave, Toronto, Ontario, Canada" "416 595-5433" "acme.com"
+
+use eb_getissuers to get a list of issuers.
+==============================================================================
+Working with accounts
+------------------------------------------------------------------------------
+An account name can be associated with one or more bitcoin/equibit addresses. 
+This can be done when the address is created via getnewaddress / 
+getnewhsmaddress / eb_getnewaddress / eb_getnewhsmaddress by specifying the 
+optional parameter.
+
+The setacccount / eb_setaccount can be used after an address is created to
+associate it with an account.
+
+The accounts in a wallet can be listed with listaccounts / eb_listaccounts.
+
+To get the account name associated with an address use 
+getaccount / eb_getaccount.
+
+To get the address(s) associated with an account use
+getaddressesbyaccount / eb_getaddressesbyaccount
+==============================================================================
+Transactions
+------------------------------------------------------------------------------
+The following RPCs can be used to move coins between addresses/accounts 
+without regard to the Web-of-Trust:
+
+bitcoin
+
+    sendfrom "ACCT" "address" amount 
+    move "ACCT1" "ACCT2" amount
+    sendtoaddress "address" amount
+
+equibit
+
+    eb_sendfrom "ACCT" "address" amount 
+    eb_move "ACCT1" "ACCT2" amount 
+    eb_sendtoaddress"address" amount
+
+Optional parameters can be used to restrict how confirmed the coins need to
+be in order to be spendable and add comments.
+
+In the case of sendtoaddress / eb_sendtoaddress, the source address is any 
+address in the wallet that contains spendable coins.
+
+Use the eb_trustedsend RPC to move coins with the WoT restrictions.
+
+$EQUIBIT/bin/run.equibit-cli eb_trustedsend "seller" "buyer" "issuer" amount wot-level
+
+"seller" The sellers address
+"buyer"  The buyers address
+"issuer" The issuers address
+
+Note that the seller pays for the transaction with blank equibits. Therefore 
+the seller must own coins authorized by the issuer and blank coins.
+
+==============================================================================
+Determine coins associated with an address/account
+------------------------------------------------------------------------------
+Use the following RPCs to determine the coins owned by addresses/accounts:
+
+------------------------------------------------------------------------------
+RPC                         Description
+------------------------------------------------------------------------------
+getreceivedbyaddress        This RPC returns the sum of coins received by
+eb_getreceivedbyaddress     transactions that have been included in at least
+                            one block. This does not include coins earned via 
+                            mining.
+
+listreceivedbyaddress       List the received by values for all addresses.
+eb_listreceivedbyaddress        
+
+getreceivedbyaccount        The all addresses associated with the account, 
+                            this RPC returns the sum of coins received by
+                            transactions that have been included in at least
+                            one block. This does not include coins earned via 
+                            mining.
+eb_getreceivedbyaccount 
+
+listreceivedbyaccount       List the received by values for all accounts.
+eb_listreceivedbyaccount 
+
+getunconfirmedbalance       Returns balance of coins that have not been 
+eb_getunconfirmedbalance    confirmed. A coin is confirmed if its depth is at
+                            least 6.
+
+getbalance                  Returns the balance of coins owned by a specified
+eb_getbalance               account or all accounts. The coins owned are the
+                            sum of coins transaction out values, minus the sum
+                            of transaction in values, minus the sum of fees.
+
+listunspent                 Lists coins available for spending.
+eb_listunspent 
+
+==============================================================================
+Authorize/blank coins
+------------------------------------------------------------------------------
+To authorize equibits, use
+
+    eb_authorizeequibit "issuer" amount wot-min-lvl ( "comment" subtractfeefromamount )
+
+    "issuer"                Name of the issuer. The equibits will be labeled
+                            with this issuers ID.
+    amount                  Amount to authorize
+    wot-min-lvl             Web-of-trust level
+    "comment"               (optional) coment that is written to the wallet
+    subtractfeefromamount   Assume the fee is F. If set to true, then the 
+                            actual equibits authorized is amount - F. If it is
+                            false, then the equibits authorized is amount. In
+                            this case, the actual number of input equibits is
+                            amount + F.
+
+To blank authorized equibits, use
+
+    eb_blankequibit "issuer" amount ( "comment" subtractfeefromamt feefromblank )
+
+    "issuer"                Name of the issuer. Only equibits authorized with
+                            this issuer are blanked.
+    amount                  Amount to blank
+    "comment"               (optional) coment that is written to the wallet
+    subtractfeefromamount   See note that follows.
+    feefromblank            See note that follows.
+
+    Assume the computed fee is f. How the transaction input/outputs are 
+    computed depends on the subtractfeefromamount and feefromblank flags as 
+    follows:
+
+    subtractfee  feefrom  Authorizing       Blank        Blank 
+    fromamount   blank    input equibits  equibits In  equibits Out 
+    ----------------------------------------------------------------
+        F          F        amount+f          0          amount    
+        F          T        amount            f          amount    
+        T          F        amount            0          amount-f   
+        T          T        amount-f          f          amount-f   
+
+    In all cases, the issuer must have enough authorized and blank
+    equibits to match the input requirements list in the table.
+
+Use the RPC eb_listunspent to view the equibits that have been authorized (and are available for
+spending). It will output a list of unspent coins. The authorized coins will contain four extra
+attributes:
+
+    issuer          The name of the issuer that authorized the coins.
+    issuerAddr      The address of the issuer.
+    issuerPubKey    The public key of the issuer.
+    wotLevel        The minimum Web-of-trust level that can be used when sending the coins to
+                    other addresses.
+==============================================================================
+
