@@ -1338,7 +1338,7 @@ void CEDCConnman::ThreadSocketHandler()
             // Inactivity checking
             //
             int64_t nTime = GetTime();
-            if (nTime - pnode->nTimeConnected > 60)
+            if (!pnode->isSecure() && ( nTime - pnode->nTimeConnected > 60) )
             {
                 if (pnode->nLastRecv == 0 || pnode->nLastSend == 0)
                 {
@@ -2956,7 +2956,8 @@ CEDCNode::CEDCNode(
     addr(addrIn),
 	nKeyedNetGroup(nKeyedNetGroupIn),
     addrKnown(5000, 0.001),
-    filterInventoryKnown(50000, 0.000001)
+    filterInventoryKnown(50000, 0.000001),
+	isSecure_(secure)
 {
     nServices = NODE_NONE;
 	nServicesExpected = NODE_NONE;

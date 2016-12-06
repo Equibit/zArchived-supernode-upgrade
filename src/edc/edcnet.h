@@ -240,6 +240,8 @@ public:
 	virtual ssize_t send(const void *buf, size_t len, int flags);
 	virtual ssize_t recv(void *buf, size_t len, int flags);
 
+	bool isSecure() const	{ return isSecure_; }
+
 private:
     CEDCNode(const CEDCNode&);
     void operator=(const CEDCNode&);
@@ -248,6 +250,7 @@ private:
 	// Services offered to this peer
     ServiceFlags nLocalServices;
 	int nMyStartingHeight;
+	bool isSecure_;
 public:
 
     NodeId GetId() const 
