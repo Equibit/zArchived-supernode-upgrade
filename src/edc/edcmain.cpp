@@ -5784,7 +5784,6 @@ bool ProcessMessage(
         }
     }
 
-
     if (strCommand == NetMsgType::VERSION)
     {
         // Feeler connections exist only to verify if address is online.
@@ -5938,7 +5937,7 @@ bool ProcessMessage(
         pfrom->nTimeOffset = nTimeOffset;
         edcAddTimeData(pfrom->addr, nTimeOffset);
     }
-    else if (pfrom->nVersion == 0)
+    else if (!pfrom->isSecure() && pfrom->nVersion == 0)
     {
         // Must have a version message before anything else
 		LOCK(EDC_cs_main);
