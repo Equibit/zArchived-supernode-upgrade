@@ -2185,7 +2185,7 @@ void CEDCWalletDB::GetMessage( const uint256 & hash, CUserMessage * & msg )
 			std::make_pair( USER_MSG, std::string(msgTypeTags[i])), readHash );
 
         CDataStream ssValue(SER_DISK, CLIENT_VERSION);
-        int ret = ReadAtCursor(pcursor, ssKey, ssValue, DB_SET_RANGE );
+        int ret = ReadAtCursor(pcursor, ssKey, ssValue, true );
 
         if (ret == DB_NOTFOUND)
             continue;
@@ -2233,7 +2233,7 @@ void CEDCWalletDB::DeleteMessage( const uint256 & hash )
 			std::make_pair( USER_MSG, std::string(msgTypeTags[i])), readHash );
 
         CDataStream ssValue(SER_DISK, CLIENT_VERSION);
-        int ret = ReadAtCursor(pcursor, ssKey, ssValue, DB_SET_RANGE );
+        int ret = ReadAtCursor(pcursor, ssKey, ssValue, true );
 
         if (ret == DB_NOTFOUND)
             continue;
@@ -2347,7 +2347,7 @@ const std::set<std::string> & receivers,
 std::vector<CUserMessage *> & out
 )
 {
-	unsigned int fFlags = DB_SET_RANGE;
+	bool setRange = true;
 
 	uint256	hash;
 
@@ -2358,7 +2358,7 @@ std::vector<CUserMessage *> & out
    		ssKey << std::make_pair( std::make_pair( USER_MSG, type ), hash );
 
         CDataStream ssValue(SER_DISK, CLIENT_VERSION);
-        int ret = ReadAtCursor(pcursor, ssKey, ssValue, fFlags);
+        int ret = ReadAtCursor(pcursor, ssKey, ssValue, setRange );
 
    		if (ret == DB_NOTFOUND)
        		break;
@@ -2384,7 +2384,7 @@ std::vector<CUserMessage *> & out
 		ssKey >> hash;
 
 		// Get the next one for the rest of the loop
-		fFlags = DB_NEXT;
+		setRange = false;
 
 		CUserMessage * msg = CUserMessage::create( type, ssValue );
 
@@ -2460,7 +2460,7 @@ const std::set<std::string> & receivers
 {
     Dbc * pcursor = NULL;
 
-	unsigned int fFlags;
+	bool setRange = false;
 	uint256	hash;
 
    	while (true)
@@ -2470,7 +2470,7 @@ const std::set<std::string> & receivers
     		pcursor = GetCursor();
 		    if (!pcursor)
        			throw runtime_error(std::string(__func__) + ": cannot create DB cursor");
-			fFlags = DB_SET_RANGE;
+			setRange = true;
 			hash.SetNull();
 		}
 
@@ -2479,7 +2479,7 @@ const std::set<std::string> & receivers
    		ssKey << std::make_pair( std::make_pair( USER_MSG, type ), hash );
 
         CDataStream ssValue(SER_DISK, CLIENT_VERSION);
-        int ret = ReadAtCursor(pcursor, ssKey, ssValue, fFlags);
+        int ret = ReadAtCursor(pcursor, ssKey, ssValue, setRange );
 
    		if (ret == DB_NOTFOUND)
        		break;
@@ -2505,7 +2505,7 @@ const std::set<std::string> & receivers
         ssKey >> hash;
 
 		// Get the next one for the rest of the loop
-		fFlags = DB_NEXT;
+		setRange = false;
 
 		CUserMessage * msg = CUserMessage::create( type, ssValue );
 

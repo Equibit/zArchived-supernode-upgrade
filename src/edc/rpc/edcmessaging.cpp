@@ -21,6 +21,7 @@ UniValue broadcastMessage( const UniValue & params, bool fHelp )
 		throw std::runtime_error(
 			"eb_broadcastmessage \"type\" \"send-address\" \"message\"\n"
 			"\nBroadcasts a message to all equibit nodes on the network.\n"
+			"\nReturns the hash of the message.\n"
 			"\nArguments:\n"
 			"1. \"type\" (string, required) Type of message. Type must be one of:\n"
 			"      Acquisition\n"
@@ -75,6 +76,7 @@ UniValue broadcastMessage( const UniValue & params, bool fHelp )
 			"      WarrantIssue\n"
 			"2. \"send-address\"   (string, required) The sender address\n"
 			"3. \"message\"  (string, required) The message to be sent to the all addresses\n"
+            "\nResult:: fqe43143q....3fsfbs\n"
 			+ HelpExampleCli( "eb_broadcastmessage", "ACME StockDividend \"A dividend of 0.032 equibits will be issued on March 15th\"" )
 			+ HelpExampleRpc( "eb_broadcastmessage", "ACME StockDividend \"A dividend of 0.032 equibits will be issued on March 15th\"" )
 		);
@@ -95,7 +97,8 @@ UniValue broadcastMessage( const UniValue & params, bool fHelp )
 	EDCapp & theApp = EDCapp::singleton();
 	theApp.connman()->RelayUserMessage( msg, false );
 
-	return NullUniValue;
+	UniValue hash(msg->GetHash().ToString());
+	return hash;
 }
 
 UniValue multicastMessage( const UniValue & params, bool fHelp )
@@ -104,12 +107,14 @@ UniValue multicastMessage( const UniValue & params, bool fHelp )
 		throw std::runtime_error(
 			"eb_multicastmessage \"type\" \"send-address\" \"asset\" \"message\"\n"
 			"\nMulti-casts a message to all owners of an equibit asset.\n"
+			"\nReturns the hash of the message.\n"
 			"\nArguments:\n"
 			"1. \"type\" (string,required) Type of message. Type must be one of:\n"
 			"        AssetPrivate\n"
 			"2. \"send-address\"   (string,required) The sender address\n"
 			"3. \"asset\" (string,required) The message applies to the identified asset\n"
 			"4. \"message\"  (string,required) The message to be sent to the multiple addresses\n"
+            "\nResult:: fqe43143q....3fsfbs\n"
 			+ HelpExampleCli( "eb_multicastmessage", "ACME Poll \"Board of directors Vote. Choose 1 for John Smith, 2 for Doug Brown\"" )
 			+ HelpExampleRpc( "eb_multicastmessage", "ACME Poll \"Board of directors Vote. Choose 1 for John Smith, 2 for Doug Brown\"" )
 		);
@@ -135,21 +140,24 @@ UniValue multicastMessage( const UniValue & params, bool fHelp )
 	EDCapp & theApp = EDCapp::singleton();
 	theApp.connman()->RelayUserMessage( msg, true );
 
-	return NullUniValue;
+	UniValue hash(msg->GetHash().ToString());
+	return hash;
 }
 
-UniValue message( const UniValue & params, bool fHelp )
+UniValue p2pmessage( const UniValue & params, bool fHelp )
 {
 	if( fHelp  || params.size() != 4)
 		throw std::runtime_error(
 			"eb_p2pmessage \"type\" \"send-address\" \"recv-address\" \"message\"\n"
 			"\nSends a peer-to-peer message.\n"
+			"\nReturns the hash of the message.\n"
 			"\nArguments:\n"
 			"1. \"type\" (string,required) Type of message. Type must be one of:\n"
 			"        Private\n"
 			"2. \"send-address\"   (string,required) The sender address\n"
 			"3. \"recv-address\"   (string,required) The receiver address\n"
 			"4. \"message\"   (string,required) The message to be sent to the specified address\n"
+            "\nResult:: fqe43143q....3fsfbs\n"
 			+ HelpExampleCli( "eb_p2pmessage", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\" Private "
 				"\"What is your position WRT the upcomming merger?\""  )
 			+ HelpExampleRpc( "eb_p2pmessage", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XZ\" Vote 1" )
@@ -183,7 +191,8 @@ UniValue message( const UniValue & params, bool fHelp )
 	EDCapp & theApp = EDCapp::singleton();
 	theApp.connman()->RelayUserMessage( msg, true );
 
-	return NullUniValue;
+	UniValue hash(msg->GetHash().ToString());
+	return hash;
 }
 
 inline int D(char c)	{ return c-'0'; }
@@ -555,7 +564,7 @@ UniValue deleteMessages( const UniValue & params, bool fHelp )
 const CRPCCommand commands[] =
 {   // category   name                  actor (function)  okSafeMode
     // ---------- --------------------- ----------------- ----------
-	{ "equibit", "eb_p2pmessage", 	 	&message,         true },
+	{ "equibit", "eb_p2pmessage", 	 	&p2pmessage,      true },
 	{ "equibit", "eb_multicastmessage",	&multicastMessage,true },
 	{ "equibit", "eb_broadcastmessage", &broadcastMessage,true },
 	{ "equibit", "eb_getmessage",       &getMessage,      true },
