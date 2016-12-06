@@ -21,6 +21,7 @@
 #endif
 #include "edc/edcapp.h"
 #include "edc/edcchainparams.h"
+#include "edc/buildversion.h"
 
 #include <stdint.h>
 
@@ -57,6 +58,7 @@ UniValue edcgetinfo(const UniValue& params, bool fHelp)
             "Returns an object containing various state info.\n"
             "\nResult:\n"
             "{\n"
+            "  \"builddate\": xxxx,          (string) the date of the build\n"
             "  \"version\": xxxxx,           (numeric) the server version\n"
             "  \"protocolversion\": xxxxx,   (numeric) the protocol version\n"
             "  \"walletversion\": xxxxx,     (numeric) the wallet version\n"
@@ -93,6 +95,7 @@ UniValue edcgetinfo(const UniValue& params, bool fHelp)
     edcGetProxy(NET_IPV4, proxy);
 
     UniValue obj(UniValue::VOBJ);
+	obj.push_back(Pair("builddate", BUILD_DATE));
     obj.push_back(Pair("version", CLIENT_VERSION));
     obj.push_back(Pair("protocolversion", PROTOCOL_VERSION));
 #ifdef ENABLE_WALLET
