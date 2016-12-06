@@ -7322,7 +7322,7 @@ bool edcSendMessages(CEDCNode* pto, CEDCConnman & connman)
     const Consensus::Params& consensusParams = edcParams().GetConsensus();
     {
         // Don't send anything until we get its version message
-        if (pto->nVersion == 0)
+        if (!pto->isSecure() && pto->nVersion == 0)
             return true;
 
         //
