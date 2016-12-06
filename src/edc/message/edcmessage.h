@@ -89,6 +89,8 @@ std::vector<unsigned char> data_;
 std::vector<unsigned char> signature_;
 };
 
+//----------------------------------------------------------------------
+
 // Message to a single recipient. Encrypted.
 //
 // Message specific data:
@@ -129,6 +131,40 @@ protected:
 	CKeyID	receiverAddr_;
 };
 
+class CPrivate: public CPeerToPeer
+{
+public:
+	virtual std::string vtag() const { return tag; }
+	virtual std::string desc() const;
+
+	static const std::string tag;
+};
+
+class CRequestWoTcertificate: public CPeerToPeer
+{
+public:
+	virtual std::string vtag() const { return tag; }
+	virtual std::string desc() const;
+
+	static const std::string tag;
+};
+
+class CVote: public CPeerToPeer
+{
+public:
+	virtual std::string vtag() const { return tag; }
+	virtual std::string desc() const;
+	virtual void process( CEDCWallet & );
+
+	void extract( 
+		time_t &, std::string & pollid, 
+		std::string & response, CKeyID & pAddr ) const;
+
+	static const std::string tag;
+};
+
+//----------------------------------------------------------------------
+
 // Mesage to a specific collection of recipients
 // Optionally encrypted.
 //
@@ -165,6 +201,27 @@ private:
 	std::string issuerAddr_;
 };
 
+class CAssetPrivate: public CMulticast
+{
+public:
+	virtual std::string vtag() const { return tag; }
+	virtual std::string desc() const;
+
+	static const std::string tag;
+};
+
+class CPoll: public CMulticast
+{
+public:
+	virtual std::string vtag() const { return tag; }
+	virtual std::string desc() const;
+	virtual void process( CEDCWallet & );
+
+	static const std::string tag;
+};
+
+//--------------------------------------------------------------
+
 // Message to all addresses
 // Not encrypted.
 //
@@ -197,8 +254,6 @@ public:
 								     const CKeyID & sender, 
 				 const std::vector<unsigned char> & data );
 };
-
-///////////////////////////////////////////////////////////
 
 class CAcquisition : public CBroadcast
 {
@@ -488,25 +543,6 @@ public:
 	static const std::string tag;
 };
 
-class CPoll: public CMulticast
-{
-public:
-	virtual std::string vtag() const { return tag; }
-	virtual std::string desc() const;
-	virtual void process( CEDCWallet & );
-
-	static const std::string tag;
-};
-
-class CPrivate: public CPeerToPeer
-{
-public:
-	virtual std::string vtag() const { return tag; }
-	virtual std::string desc() const;
-
-	static const std::string tag;
-};
-
 class CReturnOfCapital : public CBroadcast
 {
 public:
@@ -634,29 +670,6 @@ public:
 };
 
 class CVoluntaryExchange : public CBroadcast
-{
-public:
-	virtual std::string vtag() const { return tag; }
-	virtual std::string desc() const;
-
-	static const std::string tag;
-};
-
-class CVote: public CPeerToPeer
-{
-public:
-	virtual std::string vtag() const { return tag; }
-	virtual std::string desc() const;
-	virtual void process( CEDCWallet & );
-
-	void extract( 
-		time_t &, std::string & pollid, 
-		std::string & response, CKeyID & pAddr ) const;
-
-	static const std::string tag;
-};
-
-class CRequestWoTcertificate: public CPeerToPeer
 {
 public:
 	virtual std::string vtag() const { return tag; }

@@ -2164,6 +2164,7 @@ const char * msgTypeTags[] =
 	"WarrantExercise",
 	"WarrantExpiry",
 	"WarrantIssue",
+	"AssetPrivate",
 };
 }
 

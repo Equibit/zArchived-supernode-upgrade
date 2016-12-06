@@ -48,6 +48,7 @@ Verifier    verifier;
 
 const std::string CAcquisition::tag					= "Acquisition";
 const std::string CAsk::tag							= "Ask";
+const std::string CAssetPrivate::tag				= "AssetPrivate";
 const std::string CAssimilation::tag				= "Assimilation";
 
 const std::string CBankruptcy::tag					= "Bankruptcy";
@@ -137,6 +138,10 @@ std::string CAcquisition ::desc() const
 std::string CAsk::desc() const
 {
 	return "The price at which the owner of Equibit(s} is willing to sell the specified number of Equibits.";
+}
+std::string CAssetPrivate::desc() const
+{
+	return "A private message sent to owners of an asset";
 }
 std::string CAssimilation::desc() const
 {
@@ -760,6 +765,10 @@ CMulticast * CMulticast::create(
 	if( type == "Poll" )
 	{
 		ans = new CPoll();
+	}
+	else if( type == "AssetPrivate" )
+	{
+		ans = new CAssetPrivate();
 	}
 	else
 	{

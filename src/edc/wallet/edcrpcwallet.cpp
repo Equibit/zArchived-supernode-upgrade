@@ -2947,6 +2947,7 @@ UniValue edctrustedsend(const UniValue & params, bool fHelp)
 
 	// eb_trustedsend seller buyer issuer amount wot-level (min-confirm comment )
 	//
+	// level 0		No trust checking is done
 	// level 1		trust chain from issuer to buyer of length of up to 2
 	// level 2		trust chain from issuer to buyer
 	// level 3		Issuer and buyer must both sign the transaction
@@ -2974,9 +2975,7 @@ UniValue edctrustedsend(const UniValue & params, bool fHelp)
             "\nAs a json rpc call\n"
             + HelpExampleRpc("eb_trustedsend", "\"1cd90s..decf0de0\", \"1459d..fea0397c\", \"129dce865ce..987cdef\" 80.50, 1, \"happy birthday!\"")
 		);
-	
     LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
-
     CEDCBitcoinAddress seller(params[0].get_str());
     if (!seller.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Equibit seller address");
@@ -2994,9 +2993,9 @@ UniValue edctrustedsend(const UniValue & params, bool fHelp)
     if (nAmount <= 0)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
 
-    int wotlvl = params[4].get_int();
-	if( wotlvl < 0 || wotlvl > 2 )
-        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid WoT level value. It must be between 0 and 2");
+    int wotlvl = static_cast<int>(AmountFromValue(params[4]));
+	if( wotlvl < 0 || wotlvl > 3 )
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid WoT level value. It must be between 0 and 3");
 
     int mincnf = ( params.size() > 5 ) ? params[5].get_int() : 1;
 	if( mincnf < 1 )
@@ -3035,7 +3034,8 @@ UniValue edctrustedsend(const UniValue & params, bool fHelp)
 
 		// If the WoT level is 3, then the issuer must be either the buyer or the seller
 		if( wotlvl == 3 && ( epubkey != bpubkey ) && ( epubkey != spubkey ) )
-			throw JSONRPCError(RPC_TYPE_ERROR, "The issuer must be the buyer or seller in WoT level 3 transactions" );
+			throw JSONRPCError(RPC_TYPE_ERROR, 
+				"The issuer must be the buyer or seller in WoT level 3 transactions" );
 	}
 
     // Parse Equibit address

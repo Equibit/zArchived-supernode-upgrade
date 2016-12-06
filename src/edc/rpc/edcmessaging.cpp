@@ -106,7 +106,7 @@ UniValue multicastMessage( const UniValue & params, bool fHelp )
 			"\nMulti-casts a message to all owners of an equibit asset.\n"
 			"\nArguments:\n"
 			"1. \"type\" (string,required) Type of message. Type must be one of:\n"
-			"        Poll\n"
+			"        AssetPrivate\n"
 			"2. \"send-address\"   (string,required) The sender address\n"
 			"3. \"asset\" (string,required) The message applies to the identified asset\n"
 			"4. \"message\"  (string,required) The message to be sent to the multiple addresses\n"
@@ -115,6 +115,10 @@ UniValue multicastMessage( const UniValue & params, bool fHelp )
 		);
 
 	std::string	type   = params[0].get_str();
+
+	if( type != "AssetPrivate" )
+		throw JSONRPCError(RPC_TYPE_ERROR, "Invalid message type specified");
+
 	CEDCBitcoinAddress	 sender(params[1].get_str());
 	CKeyID				 senderID;
     if (!sender.IsValid())
@@ -143,7 +147,6 @@ UniValue message( const UniValue & params, bool fHelp )
 			"\nArguments:\n"
 			"1. \"type\" (string,required) Type of message. Type must be one of:\n"
 			"        Private\n"
-			"        Vote\n"
 			"2. \"send-address\"   (string,required) The sender address\n"
 			"3. \"recv-address\"   (string,required) The receiver address\n"
 			"4. \"message\"   (string,required) The message to be sent to the specified address\n"
@@ -153,8 +156,12 @@ UniValue message( const UniValue & params, bool fHelp )
 		);
 
 	std::string	type    = params[0].get_str();
+
+	if( type != "Private" )
+		throw JSONRPCError(RPC_TYPE_ERROR, "Invalid message type specified");
+
 	CEDCBitcoinAddress	 sender(params[1].get_str());
-	CKeyID				 senderID;
+	CKeyID senderID;
     if (!sender.IsValid())
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
 

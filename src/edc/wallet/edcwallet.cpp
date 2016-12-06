@@ -2923,7 +2923,7 @@ CEDCMutableTransaction & txIn,				// IN: TXN computed from authorized coins
 				    bool sign				// IN: Sign the transaction
 	) const
 {
-	CAmount feeInCost = 0;
+	nFeeRet = 0;
 
 	bool reservekeyUsed;
 
@@ -2945,7 +2945,7 @@ CEDCMutableTransaction & txIn,				// IN: TXN computed from authorized coins
 
         AvailableCoins(vAvailableCoins, blank, true, coinControl);
 
-        CAmount nValueToSelect = feeNeededBefore + feeInCost;
+        CAmount nValueToSelect = feeNeededBefore + nFeeRet;
 
         // Choose coins to use
         CoinSet setCoins;
@@ -3152,8 +3152,7 @@ CEDCMutableTransaction & txIn,				// IN: TXN computed from authorized coins
 			break;
 		}
 
-        // Include more fee and try again.
-        feeInCost = nFeeNeeded - feeNeededBefore;
+        nFeeRet = nFeeNeeded;
 	}
 
 	if(!reservekeyUsed)
@@ -3176,7 +3175,6 @@ bool CEDCWallet::CreateTrustedTransaction(
 {
 	EDCapp & theApp = EDCapp::singleton();
 	EDCparams & params = EDCparams::singleton();
-
 	///////////////////////////////////////////////////////////////
 	// Compute the value to be moved
 	//
