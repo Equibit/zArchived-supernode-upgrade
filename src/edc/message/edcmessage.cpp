@@ -19,6 +19,7 @@
 #include <secp256k1.h>
 #include "edc/edcparams.h"
 
+
 namespace
 {
 secp256k1_context   * secp256k1_context_verify;
@@ -416,6 +417,7 @@ CUserMessage * strToObj( const std::string & tag )
 	{
 		{&CAcquisition::tag,			[]() { return new CAcquisition(); } },
 		{&CAsk::tag,					[]() { return new CAsk(); } },
+		{&CAssetPrivate::tag,           []() { return new CAssetPrivate(); } },
 		{&CAssimilation::tag,			[]() { return new CAssimilation(); } },
 
 		{&CBankruptcy::tag,				[]() { return new CBankruptcy(); } },
@@ -511,6 +513,7 @@ void signMessage(
 		 const std::string & type,     // IN
 		 const std::string & assetId,  // IN
 std::vector<unsigned char> & message,  // IN
+                   CPubKey & pubkey,   // OUT
 std::vector<unsigned char> & vchSig    // OUT
     )
 {
@@ -523,7 +526,8 @@ std::vector<unsigned char> & vchSig    // OUT
 		EDCparams & params = EDCparams::singleton();
 
 		std::string hsmID;
-		if( params.usehsm && theApp.walletMain()->GetHSMKey( keyID, hsmID ))
+		if( params.usehsm && theApp.walletMain()->GetHSMKey( keyID, hsmID ) &&
+		theApp.walletMain()->GetHSMPubKey( keyID, pubkey))
 		{
     		CHashWriter ss(SER_GETHASH, 0);
 		    ss	<< edcstrMessageMagic
@@ -552,8 +556,10 @@ std::vector<unsigned char> & vchSig    // OUT
 			return;
 		}
 #endif
-        throw std::runtime_error("Private key not available");
+        throw std::runtime_error("Message sender key pair was not found");
 	}
+
+	pubkey = key.GetPubKey();
 
     CHashWriter ss(SER_GETHASH, 0);
     ss << edcstrMessageMagic
@@ -564,12 +570,14 @@ std::vector<unsigned char> & vchSig    // OUT
        << assetId
        << message;
 
-    if (!key.Sign(ss.GetHash(), vchSig ))
+	uint256 hash = ss.GetHash();
+
+    if (!key.Sign(hash, vchSig ))
         throw std::runtime_error("Sign failed");
 }
 
 bool verifyMessage(
-					const CKeyID & keyID,    // IN
+				   const CPubKey & pubkey,   // IN
 				  const timespec & ts, 	   	 // IN
 						  uint64_t nonce,	 // IN
 			   const std::string & type,     // IN
@@ -587,8 +595,7 @@ const std::vector<unsigned char> & signature // IN
        << assetId
        << message;
 
-	CPubKey	pubkey;
-    return pubkey.RecoverCompact(ss.GetHash(), signature );
+    return pubkey.Verify(ss.GetHash(), signature );
 }
 
 }
@@ -604,7 +611,22 @@ CUserMessage * CUserMessage::create( const std::string & tag, CDataStream & str 
 	{
 		try
 		{
-			str >> *result;
+			if( CPeerToPeer * p2p = dynamic_cast<CPeerToPeer *>(result))
+			{
+				str >> *p2p;
+			}
+			else if( CBroadcast * bc = dynamic_cast<CBroadcast *>(result))
+			{
+				str >> *bc;
+			}
+			else if( CMulticast * mc = dynamic_cast<CMulticast *>(result))
+			{
+				str >> *mc;
+			}
+			else
+			{
+// TODO: throw invalid message type
+			}
 		}
 		catch( ... )
 		{
@@ -663,7 +685,7 @@ printf( "message POW: %lu:value=%s target=%s\n", nonce_, v256.ToString().c_str()
 
 CPeerToPeer * CPeerToPeer::create(
 			   const std::string & type, 
-         			const CKeyID & sender, 
+         		    const CKeyID & sender, 
 		 			const CKeyID & receiver, 
 			   const std::string & data )
 {
@@ -684,8 +706,6 @@ CPeerToPeer * CPeerToPeer::create(
 		throw std::runtime_error( msg );
 	}
 
-	ans->proofOfWork();
-
 	ans->senderAddr_ = sender;
 	ans->receiverAddr_ = receiver;
 	ans->data_.resize(data.size() );
@@ -701,12 +721,15 @@ CPeerToPeer * CPeerToPeer::create(
 		++ui;
 	}
 
+	ans->proofOfWork();
+
 	signMessage(sender,
 				ans->timestamp_,
 				ans->nonce_,
 		 		type,
-		 		receiver.ToString(),
+		 		ans->receiverAddr_.ToString(),
 		 		ans->data_,
+				ans->senderPK_,
 				ans->signature_ );
 
 	return ans;
@@ -749,6 +772,7 @@ const std::vector<unsigned char> & data )
 		 		type,
 		 		receiver.ToString(),
 		 		ans->data_,
+				ans->senderPK_,
 				ans->signature_ );
 
 	return ans;
@@ -800,6 +824,7 @@ CMulticast * CMulticast::create(
 		 		type,
 		 		issuer,
 		 		ans->data_,
+				ans->senderPK_,
 				ans->signature_ );
 	return ans;
 }
@@ -840,6 +865,7 @@ CBroadcast * CBroadcast::create(
 		 		type,
 		 		"",
 		 		ans->data_,
+				ans->senderPK_,
 				ans->signature_ );
 	return ans;
 }
@@ -870,6 +896,7 @@ const std::vector<unsigned char> & data )
 		 		type,
 		 		"",
 		 		ans->data_,
+				ans->senderPK_,
 				ans->signature_ );
 	return ans;
 }
@@ -1024,7 +1051,7 @@ bool CPeerToPeer::verify() const
 	try
 	{
 		return verifyMessage(
-			senderAddr_,
+			senderPK_,
 			timestamp_,
 			nonce_,
 		 	vtag(),
@@ -1043,7 +1070,7 @@ bool CMulticast::verify() const
 	try
 	{
 		return verifyMessage(
-			senderAddr_,
+			senderPK_,
 			timestamp_,
 			nonce_,
 		 	vtag(),
@@ -1062,7 +1089,7 @@ bool CBroadcast::verify() const
 	try
 	{
 		return verifyMessage(
-			senderAddr_,
+			senderPK_,
 			timestamp_,
 			nonce_,
 		 	vtag(),

@@ -58,7 +58,7 @@ public:
 			READWRITE(nsec);
 		}
    
-		READWRITE(senderAddr_);
+		READWRITE(senderPK_);
     	READWRITE(nonce_);
 		READWRITE(data_);
 		READWRITE(signature_);
@@ -84,6 +84,7 @@ public:
 protected:
 		   struct timespec timestamp_;
 					CKeyID senderAddr_;
+				   CPubKey senderPK_;
 				  uint64_t nonce_;
 std::vector<unsigned char> data_;
 std::vector<unsigned char> signature_;
