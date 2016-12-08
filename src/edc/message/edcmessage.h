@@ -167,7 +167,6 @@ public:
 //----------------------------------------------------------------------
 
 // Mesage to a specific collection of recipients
-// Optionally encrypted.
 //
 // Message specific data:
 //
@@ -182,10 +181,7 @@ public:
 	inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) 
 	{
 		READWRITE(*static_cast<CUserMessage *>(this));
-		READWRITE(issuerAddr_);
 	}
-
-	const std::string & issuerAddr() const	{ return issuerAddr_; }
 
 	virtual uint256 GetHash() const;
 
@@ -194,12 +190,8 @@ public:
 	virtual std::string	ToJSON() const;
 
 	static CMulticast * create( const std::string & type, 
-								     const CKeyID & sender, 
-								const std::string & issuer, 
+								     const CKeyID & issuer, 
 							    const std::string & data );
-
-private:
-	std::string issuerAddr_;
 };
 
 class CAssetPrivate: public CMulticast
@@ -214,6 +206,9 @@ public:
 class CPoll: public CMulticast
 {
 public:
+	CPoll( ) {}
+	CPoll( const CKeyID & issuer, const std::vector<unsigned char> & data );
+
 	virtual std::string vtag() const { return tag; }
 	virtual std::string desc() const;
 	virtual void process( CEDCWallet & );

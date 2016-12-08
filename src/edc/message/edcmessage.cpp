@@ -758,13 +758,13 @@ const std::vector<unsigned char> & data )
 		throw std::runtime_error( msg );
 	}
 
-	ans->proofOfWork();
-
 	ans->senderAddr_ = sender;
 	ans->receiverAddr_ = receiver;
 	ans->data_.resize(data.size() );
 
 	std::copy( data.begin(), data.end(), ans->data_.begin() );
+
+	ans->proofOfWork();
 
 	signMessage(sender,
 				ans->timestamp_,
@@ -781,16 +781,11 @@ const std::vector<unsigned char> & data )
 CMulticast * CMulticast::create(
 			   const std::string & type, 
 			        const CKeyID & sender, 
-			   const std::string & issuer, 
 	   		   const std::string & data )
 {
 	CMulticast * ans;
 
-	if( type == "Poll" )
-	{
-		ans = new CPoll();
-	}
-	else if( type == "AssetPrivate" )
+	if( type == "AssetPrivate" )
 	{
 		ans = new CAssetPrivate();
 	}
@@ -801,10 +796,7 @@ CMulticast * CMulticast::create(
 		throw std::runtime_error( msg );
 	}
 
-	ans->proofOfWork();
-
 	ans->senderAddr_ = sender;
-	ans->issuerAddr_ = issuer;
 	ans->data_.resize(data.size() );
 	
 	auto i = data.begin();
@@ -818,14 +810,17 @@ CMulticast * CMulticast::create(
 		++ui;
 	}
 
+	ans->proofOfWork();
+
 	signMessage(sender,
 				ans->timestamp_,
 				ans->nonce_,
 		 		type,
-		 		issuer,
+		 		ans->senderAddr_.ToString(),
 		 		ans->data_,
 				ans->senderPK_,
 				ans->signature_ );
+
 	return ans;
 }
 
@@ -843,8 +838,6 @@ CBroadcast * CBroadcast::create(
 		throw std::runtime_error( msg );
 	}
 
-	ans->proofOfWork();
-
 	ans->senderAddr_ = sender;
 	ans->data_.resize(data.size() );
 
@@ -858,6 +851,8 @@ CBroadcast * CBroadcast::create(
 		++i;
 		++ui;
 	}
+
+	ans->proofOfWork();
 
 	signMessage(sender,
 				ans->timestamp_,
@@ -884,11 +879,11 @@ const std::vector<unsigned char> & data )
 		throw std::runtime_error( msg );
 	}
 
-	ans->proofOfWork();
-
 	ans->senderAddr_ = sender;
 	ans->data_.resize(data.size());
 	std::copy( data.begin(), data.end(), ans->data_.begin() );
+
+	ans->proofOfWork();
 
 	signMessage(sender,
 				ans->timestamp_,
@@ -899,6 +894,25 @@ const std::vector<unsigned char> & data )
 				ans->senderPK_,
 				ans->signature_ );
 	return ans;
+}
+
+CPoll::CPoll( const CKeyID & sender, const std::vector<unsigned char> & data )
+{
+	senderAddr_ = sender;
+	data_.resize(data.size() );
+
+	std::copy( data.begin(), data.end(), data_.begin() );
+
+	proofOfWork();
+
+	signMessage(sender,
+				timestamp_,
+				nonce_,
+		 		tag,
+		 		senderAddr_.ToString(),
+		 		data_,
+				senderPK_,
+				signature_ );
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -963,9 +977,6 @@ std::string	CMulticast::ToString() const
 	ans += ":";
 	ans += CUserMessage::ToString();
 
-	ans += " issuer=";
-	ans += issuerAddr_;
-
 	return ans;
 }
 
@@ -1025,8 +1036,6 @@ std::string	CMulticast::ToJSON() const
 	ans += "\"";
 	ans += CUserMessage::ToJSON();
 
-	ans += ", \"issuer\":\"";
-	ans += issuerAddr_;
 	ans += "\"}";
 
 	return ans;
@@ -1074,7 +1083,7 @@ bool CMulticast::verify() const
 			timestamp_,
 			nonce_,
 		 	vtag(),
-		 	issuerAddr_,
+		 	senderAddr_.ToString(),
 		 	data_,
 			signature_ );
 	}

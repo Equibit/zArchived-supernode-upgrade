@@ -97,7 +97,7 @@ UniValue edcpoll(const UniValue& params, bool fHelp)
             "\nAssign proxy voting privileges to specified address.\n"
             "\nArguments:\n"
             "1. \"addr\"               (string, required) The address of issuer creating the poll\n"
-            "2. \"polling question\"   (string, required) The address of the proxy\n"
+            "2. \"polling question\"   (string, required) The poll question\n"
             "3. \"list-of-responses\"  (string, required) Comma separated list of valid responses\n"
 			"4. \"end-date\"           (string, required) Date on which the poll ends\n"
 			"5. \"start-date\"         (string, optional) Date on which the poll starts\n"
@@ -112,7 +112,6 @@ UniValue edcpoll(const UniValue& params, bool fHelp)
 	std::string answers  = params[2].get_str();
 	std::string endDate  = params[3].get_str();
 	std::string startDate;
-
 	if(params.size() > 4)
 	{
 		startDate = params[4].get_str();
@@ -174,7 +173,7 @@ UniValue edcpoll(const UniValue& params, bool fHelp)
 	std::vector<unsigned char> data;
 	ssPoll >> data;
 
-	CBroadcast * msg = CBroadcast::create( CPoll::tag, issuerID, data);
+	auto * msg = new CPoll(issuerID, data);
 
 	theApp.connman()->RelayUserMessage( msg, true );
 

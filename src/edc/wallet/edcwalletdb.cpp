@@ -2295,8 +2295,7 @@ bool keep(
 	CMulticast * msg,
 	time_t from,
    	time_t to,
-   	const std::set<std::string> & senders,
-   	const std::set<std::string> & issuers )
+   	const std::set<std::string> & senders )
 {
 	if( from && from < msg->second() )
 		return false;
@@ -2306,10 +2305,6 @@ bool keep(
 
 	if( senders.size() && 
 	( senders.find( msg->senderAddr() ) == senders.end() ) )
-		return false;
-
-	if( issuers.size() &&
-	( issuers.find( msg->issuerAddr() ) == issuers.end() ) )
 		return false;
 
 	return true;
@@ -2397,7 +2392,7 @@ std::vector<CUserMessage *> & out
 		}
 		else if( CMulticast * mmsg = dynamic_cast<CMulticast *>(msg) )
 		{
-			if( keep( mmsg, from, to, senders, assets ))
+			if( keep( mmsg, from, to, senders ))
 				out.push_back(msg);
 			else
 				delete msg;
@@ -2522,7 +2517,7 @@ const std::set<std::string> & receivers
 		}
 		else if( CMulticast * mmsg = dynamic_cast<CMulticast *>(msg) )
 		{
-			if( keep( mmsg, from, to, senders, assets ))
+			if( keep( mmsg, from, to, senders ))
 			{
        			pcursor->close();
 				pcursor = NULL;

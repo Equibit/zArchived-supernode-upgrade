@@ -6636,7 +6636,7 @@ bool CEDCWallet::AddPoll(
 
 	LoadPoll( poll );
 
-	return false;
+	return true;
 }
 
 void CEDCWallet::LoadPoll( const Poll & poll )

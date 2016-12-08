@@ -103,7 +103,7 @@ UniValue broadcastMessage( const UniValue & params, bool fHelp )
 
 UniValue multicastMessage( const UniValue & params, bool fHelp )
 {
-	if( fHelp || params.size() != 4 )
+	if( fHelp || params.size() != 3 )
 		throw std::runtime_error(
 			"eb_multicastmessage \"type\" \"send-address\" \"asset\" \"message\"\n"
 			"\nMulti-casts a message to all owners of an equibit asset.\n"
@@ -111,9 +111,8 @@ UniValue multicastMessage( const UniValue & params, bool fHelp )
 			"\nArguments:\n"
 			"1. \"type\" (string,required) Type of message. Type must be one of:\n"
 			"        AssetPrivate\n"
-			"2. \"send-address\"   (string,required) The sender address\n"
-			"3. \"asset\" (string,required) The message applies to the identified asset\n"
-			"4. \"message\"  (string,required) The message to be sent to the multiple addresses\n"
+			"2. \"issuer-address\"   (string,required) The issuer address\n"
+			"3. \"message\"  (string,required) The message to be sent to the multiple addresses\n"
             "\nResult:: fqe43143q....3fsfbs\n"
 			+ HelpExampleCli( "eb_multicastmessage", "ACME Poll \"Board of directors Vote. Choose 1 for John Smith, 2 for Doug Brown\"" )
 			+ HelpExampleRpc( "eb_multicastmessage", "ACME Poll \"Board of directors Vote. Choose 1 for John Smith, 2 for Doug Brown\"" )
@@ -132,10 +131,9 @@ UniValue multicastMessage( const UniValue & params, bool fHelp )
 	if(!sender.GetKeyID(senderID))
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
 
-	std::string	assetID= params[2].get_str();
-	std::string	data   = params[3].get_str();
+	std::string	data   = params[2].get_str();
 
-	CMulticast	* msg = CMulticast::create( type, senderID, assetID, data );
+	CMulticast	* msg = CMulticast::create( type, senderID, data );
 
 	EDCapp & theApp = EDCapp::singleton();
 	theApp.connman()->RelayUserMessage( msg, true );
