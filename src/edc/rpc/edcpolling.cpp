@@ -101,7 +101,7 @@ UniValue edcpoll(const UniValue& params, bool fHelp)
             "3. \"list-of-responses\"  (string, required) Comma separated list of valid responses\n"
 			"4. \"end-date\"           (string, required) Date on which the poll ends\n"
 			"5. \"start-date\"         (string, optional) Date on which the poll starts\n"
-            "\nResult: Unique poll ID\n"
+            "\nResult: ID of the poll\n"
             "\nExamples:\n"
             + HelpExampleCli("eb_poll", "\"139...301\" \"Please vote for the new board member\" \"Mary Smith,John Black\" \"2017-02-28\"" )
             + HelpExampleRpc("eb_poll", "\"139...301\", \"Please vote for the new board member\", \"Mary Smyth,John Black\" \"2017-02-28\"" )
@@ -187,7 +187,7 @@ UniValue edcvote(const UniValue& params, bool fHelp)
 			"3. \"pollid\"        (string, required) The id of the poll\n"
             "3. \"response\"      (string, required) The poll response value\n"
 			"4. \"proxied-addr\"  (string, optional) The proxied address\n"
-            "\nResult: None\n"
+            "\nResult: ID of the vote\n"
             "\nExamples:\n"
             + HelpExampleCli("eb_vote", "\"139...301\" \"1xcc...adfv\" \"John Black\" \"1zswdc...209sf\"" )
             + HelpExampleRpc("eb_vote", "\"139...301\", \"1vj4...adfv\" \"Mary Smyth\"" )
@@ -214,63 +214,32 @@ UniValue edcvote(const UniValue& params, bool fHelp)
     if(!issuer.GetKeyID(issuerID))
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid issuer address");
 
-	std::vector<unsigned char> data;
+	uint256 pollID;
+	pollID.SetHex( pollid );
 
-	data.resize( sizeof(time_t) + response.size() + sizeof(uint16_t) + pollid.size() + sizeof(uint16_t));
-	unsigned char * p = data.data();
-
-	time_t now = time(NULL);
-	*reinterpret_cast<time_t *>(p) = now;
-	p += sizeof(time_t);
-	
-	*reinterpret_cast<uint16_t *>(p) = static_cast<uint16_t>(response.size());
-	p += sizeof(uint16_t);
-
-	auto i = response.begin();
-	auto e = response.end();
-	while( i != e )
-		*p++ = *i++;
-
-	*reinterpret_cast<uint16_t *>(data.data()) = static_cast<uint16_t>(pollid.size());
-	p += sizeof(uint16_t);
-
-	i = pollid.begin();
-	e = pollid.end();
-	while( i != e )
-		*p++ = *i++;
-
+    CKeyID pAddrID;
 	if( params.size() > 4 )
 	{
 		std::string proxiedAddr = params[4].get_str();
     	CEDCBitcoinAddress pAddr(proxiedAddr);
 
-	    CKeyID pAddrID;
 		if (!pAddr.IsValid())
         	throw JSONRPCError(RPC_TYPE_ERROR, "Invalid proxied address");
 
     	if(!pAddr.GetKeyID(pAddrID))
         	throw JSONRPCError(RPC_TYPE_ERROR, "Invalid proxied address");
-
-		auto off = data.size();
-		data.resize(off + proxiedAddr.size() + sizeof(uint16_t));
-
-		p = data.data() + off;
-
-		*reinterpret_cast<uint16_t *>(p) = static_cast<uint16_t>(proxiedAddr.size());
-		p += sizeof(uint16_t);
-
-		auto i = proxiedAddr.begin();
-		auto e = proxiedAddr.end();
-		while( i != e )
-			*p++ = *i++;
 	}
 
-    CPeerToPeer * msg = CPeerToPeer::create( CVote::tag, senderID, issuerID, data );
+	Vote vote( pollID, response, pAddrID );
+
+    CPeerToPeer * msg = CPeerToPeer::create( CVote::tag, senderID, issuerID, vote.toJSON() );
+	auto hash = msg->GetHash();
 
     EDCapp & theApp = EDCapp::singleton();
     theApp.connman()->RelayUserMessage( msg, true );
 
-    return NullUniValue;
+	UniValue result(hash.ToString());
+	return result;
 }
 
 UniValue edcpollresults(const UniValue& params, bool fHelp)
@@ -438,7 +407,29 @@ std::string Poll::toJSON() const
 	ans += "}";
 
 	return ans;
-};
+}
+
+std::string Vote::toJSON() const
+{
+	std::string ans = "{\"pollid\":\"";
+	ans += pollID_.ToString();
+	ans += "\"";
+
+	ans += ",\"response\":\"";
+	ans += response_;
+	ans += "\"";
+
+	if( !proxiedAddr_.IsNull())
+	{
+		ans += ",\"proxiedaddr\":";
+	    ans += CEDCBitcoinAddress(proxiedAddr_).ToString();
+		ans += "\"";
+	}
+
+	ans += "}";
+
+	return ans;
+}
 
 void PollResult::addVote(
 	const std::string & ans,

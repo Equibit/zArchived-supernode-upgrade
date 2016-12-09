@@ -389,7 +389,8 @@ UniValue edcrequestwotcertificate(const UniValue& params, bool fHelp)
 
 	theApp.connman()->RelayUserMessage( msg, true );
 
-    return NullUniValue;
+	UniValue result( msg->GetHash().ToString() );
+    return result;
 }
 
 /******************************************************************************
@@ -549,7 +550,8 @@ UniValue edcgetwotcertificate(const UniValue& params, bool fHelp)
 
 	theApp.connman()->RelayUserMessage( msg, true );
 
-    return NullUniValue;
+	UniValue result( msg->GetHash().ToString() );
+    return result;
 }
 
 /******************************************************************************
@@ -668,7 +670,8 @@ UniValue edcrevokewotcertificate(const UniValue& params, bool fHelp)
 
 	theApp.connman()->RelayUserMessage( msg, true );
 
-    return NullUniValue;
+	UniValue result( msg->GetHash().ToString() );
+    return result;
 }
 
 /******************************************************************************
@@ -726,7 +729,8 @@ UniValue edcdeletewotcertificate(const UniValue& params, bool fHelp)
 	if(!rc)
 		throw JSONRPCError(RPC_TYPE_ERROR, errStr );
 
-    return NullUniValue;
+	UniValue result( rc );
+    return result;
 }
 
 /******************************************************************************

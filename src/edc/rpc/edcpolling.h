@@ -46,6 +46,21 @@ private:
 	time_t 		end_;
 };
 
+class Vote
+{
+public:
+	Vote( const uint256 & pollID, const std::string & response, const CKeyID & proxiedAddr ):
+	pollID_(pollID), response_(response), proxiedAddr_(proxiedAddr)
+	{}
+
+	std::string toJSON() const;
+	
+private:
+
+	uint256		pollID_;
+	std::string	response_;
+	CKeyID		proxiedAddr_;
+};
 
 class PollResult
 {

@@ -69,7 +69,7 @@ UniValue edcassigngeneralproxy(const UniValue& params, bool fHelp)
             "\nArguments:\n"
             "1. \"addr\"           (string, required) The address of user\n"
             "2. \"proxy-address\"  (string, required) The address of the proxy\n"
-            "\nResult: None\n"
+            "\nResult: ID of the general proxy\n"
             "\nExamples:\n"
             + HelpExampleCli("eb_assigngeneralproxy", "\"139...301\" \"1xcc...adfv\"" )
             + HelpExampleRpc("eb_assigngeneralproxy", "\"139...301\", \"1vj4...adfv\"" )
@@ -116,11 +116,12 @@ UniValue edcassigngeneralproxy(const UniValue& params, bool fHelp)
 		CBroadcast * msg = CBroadcast::create( CGeneralProxy::tag, senderID, data);
 
 		theApp.connman()->RelayUserMessage( msg, true );
+
+	    UniValue result( msg->GetHash().ToString() );
+	    return result;
 	}
 	else
 		throw JSONRPCError(RPC_TYPE_ERROR, errStr );
-
-    return NullUniValue;
 }
 
 UniValue edcrevokegeneralproxy(const UniValue& params, bool fHelp)
@@ -132,7 +133,7 @@ UniValue edcrevokegeneralproxy(const UniValue& params, bool fHelp)
             "\nArguments:\n"
             "1. \"addr\"           (string, required) The address of user\n"
             "2. \"proxy-address\"  (string, required) The address of the proxy\n"
-            "\nResult: None\n"
+            "\nResult: ID of the revoke\n"
             "\nExamples:\n"
             + HelpExampleCli("eb_revokegeneralproxy", "\"139...301\" \"1xcc...adfv\"" )
             + HelpExampleRpc("eb_revokegeneralproxy", "\"139...301\", \"1vj4...adfv\"" )
@@ -178,11 +179,12 @@ UniValue edcrevokegeneralproxy(const UniValue& params, bool fHelp)
 		CBroadcast * msg = CBroadcast::create( CRevokeGeneralProxy::tag, senderID, data);
 
 		theApp.connman()->RelayUserMessage( msg, true );
+
+	    UniValue result( msg->GetHash().ToString() );
+	    return result;
 	}
 	else
 		throw JSONRPCError(RPC_TYPE_ERROR, errStr );
-
-    return NullUniValue;
 }
 
 UniValue edcassignissuerproxy(const UniValue& params, bool fHelp)
@@ -195,7 +197,7 @@ UniValue edcassignissuerproxy(const UniValue& params, bool fHelp)
             "1. \"addr\"           (string, required) The address of user\n"
             "2. \"proxy-address\"  (string, required) The address of the proxy\n"
             "3. \"issuer-address\" (string, required) The address of the issuer\n"
-            "\nResult: None\n"
+            "\nResult: ID of the proxy\n"
             "\nExamples:\n"
             + HelpExampleCli("eb_assignissuerproxy", "\"139...301\" \"1xcc...adfv\"" )
             + HelpExampleRpc("eb_assignissuerproxy", "\"139...301\", \"1vj4...adfv\"" )
@@ -250,11 +252,12 @@ UniValue edcassignissuerproxy(const UniValue& params, bool fHelp)
 		CBroadcast * msg = CBroadcast::create( CIssuerProxy::tag, senderID, data);
 
 		theApp.connman()->RelayUserMessage( msg, true );
+
+	    UniValue result( msg->GetHash().ToString() );
+	    return result;
 	}
 	else
 		throw JSONRPCError(RPC_TYPE_ERROR, errStr );
-
-    return NullUniValue;
 }
 
 UniValue edcrevokeissuerproxy(const UniValue& params, bool fHelp)
@@ -267,7 +270,7 @@ UniValue edcrevokeissuerproxy(const UniValue& params, bool fHelp)
             "1. \"addr\"           (string, required) The address of user\n"
             "2. \"proxy-address\"  (string, required) The address of the proxy\n"
             "3. \"issuer-address\" (string, required) The address of the issuer\n"
-            "\nResult: None\n"
+            "\nResult: ID of the revoke\n"
             "\nExamples:\n"
             + HelpExampleCli("eb_revokeissuerproxy", "\"139...301\" \"1xcc...adfv\"" )
             + HelpExampleRpc("eb_revokeissuerproxy", "\"139...301\", \"1vj4...adfv\"" )
@@ -323,11 +326,12 @@ UniValue edcrevokeissuerproxy(const UniValue& params, bool fHelp)
 		CBroadcast * msg = CBroadcast::create( CRevokeIssuerProxy::tag, senderID, data);
 
 		theApp.connman()->RelayUserMessage( msg, true );
+
+	    UniValue result( msg->GetHash().ToString() );
+	    return result;
 	}
 	else
 		throw JSONRPCError(RPC_TYPE_ERROR, errStr );
-
-    return NullUniValue;
 }
 
 UniValue edcassignpollproxy(const UniValue& params, bool fHelp)
@@ -340,7 +344,7 @@ UniValue edcassignpollproxy(const UniValue& params, bool fHelp)
             "1. \"addr\"           (string, required) The address of user\n"
             "2. \"proxy-address\"  (string, required) The address of the proxy\n"
 			"3. \"poll-ID\"        (string, required) ID of the poll\n"
-            "\nResult: None\n"
+            "\nResult: ID of the proxy\n"
             "\nExamples:\n"
             + HelpExampleCli("eb_assignpollproxy", "\"139...301\" \"1xcc...adfv\"" )
             + HelpExampleRpc("eb_assignpollproxy", "\"139...301\", \"1vj4...adfv\"" )
@@ -387,11 +391,12 @@ UniValue edcassignpollproxy(const UniValue& params, bool fHelp)
 		CBroadcast * msg = CBroadcast::create( CPollProxy::tag, senderID, data);
 
 		theApp.connman()->RelayUserMessage( msg, true );
+
+	    UniValue result( msg->GetHash().ToString() );
+	    return result;
 	}
 	else
 		throw JSONRPCError(RPC_TYPE_ERROR, errStr );
-
-    return NullUniValue;
 }
 
 UniValue edcrevokepollproxy(const UniValue& params, bool fHelp)
@@ -404,7 +409,7 @@ UniValue edcrevokepollproxy(const UniValue& params, bool fHelp)
             "1. \"addr\"           (string, required) The address of user\n"
             "2. \"proxy-address\"  (string, required) The address of the proxy\n"
 			"3. \"poll-ID\"        (string, required) ID of the poll\n"
-            "\nResult: None\n"
+            "\nResult: ID of the revoke\n"
             "\nExamples:\n"
             + HelpExampleCli("eb_revokepollproxy", "\"139...301\" \"1xcc...adfv\"" )
             + HelpExampleRpc("eb_revokepollproxy", "\"139...301\", \"1vj4...adfv\"" )
@@ -452,11 +457,12 @@ UniValue edcrevokepollproxy(const UniValue& params, bool fHelp)
 		CBroadcast * msg = CBroadcast::create( CRevokePollProxy::tag, senderID, data);
 
 		theApp.connman()->RelayUserMessage( msg, true );
+
+	    UniValue result( msg->GetHash().ToString() );
+	    return result;
 	}
 	else
 		throw JSONRPCError(RPC_TYPE_ERROR, errStr );
-
-    return NullUniValue;
 }
 
 

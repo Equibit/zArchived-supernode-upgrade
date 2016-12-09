@@ -1010,7 +1010,7 @@ std::string	CUserMessage::ToJSON() const
 		<< ", \"sender\":\"" << CEDCBitcoinAddress(senderAddr_).ToString() << "\""
 		<< ", \"timestamp\":\"" << buf << "\""
 		<< ", \"nonce\":" << nonce_
-		<< ", \"data\":\"" << toString(data_) << "\""
+		<< ", \"data\":" << toString(data_)
 		<< ", \"signature\":\"" << HexStr(signature_) << "\"";
 
 	return out.str();
