@@ -18,6 +18,7 @@
 #include "Thales/interface.h"
 #include <secp256k1.h>
 #include "edc/edcparams.h"
+#include "edc/edcbase58.h"
 
 
 namespace
@@ -896,7 +897,7 @@ const std::vector<unsigned char> & data )
 	return ans;
 }
 
-CPoll::CPoll( const CKeyID & sender, const std::vector<unsigned char> & data )
+CPoll::CPoll( const CKeyID & sender, const std::string & data )
 {
 	senderAddr_ = sender;
 	data_.resize(data.size() );
@@ -933,8 +934,8 @@ std::string toString( const std::vector<unsigned char> & in )
 			ans += static_cast<char>(*i);
 		else
 		{
-			char buff[3];
-			sprintf( buff, "%%%2.2d", *i );
+			char buff[4];
+			sprintf( buff, "%%%2.2x", 0xff & *i );
 			ans += buff;	
 		}
 			
@@ -1006,7 +1007,7 @@ std::string	CUserMessage::ToJSON() const
 	snprintf( buf, BUF_SIZE, "%s.%06ld", tbuf, timestamp_.tv_nsec );
 
 	out << ", \"hash\":\"" << GetHash().ToString() << "\""
-		<< ", \"sender\":\"" << senderAddr_.ToString() << "\""
+		<< ", \"sender\":\"" << CEDCBitcoinAddress(senderAddr_).ToString() << "\""
 		<< ", \"timestamp\":\"" << buf << "\""
 		<< ", \"nonce\":" << nonce_
 		<< ", \"data\":\"" << toString(data_) << "\""
@@ -1023,7 +1024,7 @@ std::string	CPeerToPeer::ToJSON() const
 	ans += CUserMessage::ToJSON();
 
 	ans += ", \"receiver\":\"";
-	ans += receiverAddr_.ToString();
+	ans += CEDCBitcoinAddress(receiverAddr_).ToString();
 	ans += "\"}";
 
 	return ans;
@@ -1324,7 +1325,7 @@ void CPoll::process( CEDCWallet & wallet )
 	ss >> poll;
 
 	std::string errStr;
-	bool rc = wallet.AddPoll( poll, errStr );
+	bool rc = wallet.AddPoll( poll, GetHash(), errStr );
 	if(!rc)
 		error( errStr.c_str() );
 }

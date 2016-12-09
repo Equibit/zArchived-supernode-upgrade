@@ -5903,12 +5903,6 @@ bool CEDCWallet::AddWoTCertificate(
 				const WoTCertificate & cert,  // The certificate
 						 std::string & errStr )
 {
-	if(!CEDCWalletDB(strWalletFile).WriteWoTcertificate( pk, spk, cert ))
-	{
-		errStr = std::string(__func__) + ": writing WoT certificate failed";
-		return false;
-	}
-
 	LOCK(cs_wallet);
 
 	auto itPair = wotCertificates.equal_range( pk );
@@ -5943,14 +5937,6 @@ bool CEDCWallet::AddWoTCertificate(
 			// If the certificate was revoked, then un-revoke it
 			if( it->second.revoked )
 			{
-				// Remove from DB
-				if(!CEDCWalletDB(strWalletFile).EraseWoTcertificateRevocation( pk, spk ))
-				{
-					errStr = std::string(__func__) + 
-						": deleting WoT certificate revocation failed";
-					return false;
-				}
-
 				it->second.revoked = false;
 			}
 		}
@@ -5966,13 +5952,6 @@ bool CEDCWallet::RevokeWoTCertificate(
 	const std::string & reason,		// Reason for revocation
 		  std::string & errStr )
 {
-	if(!CEDCWalletDB(strWalletFile).WriteWoTcertificateRevocation( pk, spk, reason ))
-	{
-		errStr = std::string(__func__) + 
-			": writing WoT certificate revocation failed";
-		return false;
-	}
-
 	LOCK(cs_wallet);
 
 	auto itPair = wotCertificates.equal_range( pk );
@@ -6017,12 +5996,6 @@ bool CEDCWallet::DeleteWoTCertificate(
 		const CPubKey & spk,		// Signing public key
 		  std::string & errStr )
 {
-	if(!CEDCWalletDB(strWalletFile).EraseWoTcertificate( pk, spk ))
-	{
-		errStr = std::string(__func__) + ": erasing WoT certificate failed";
-		return false;
-	}
-
 	LOCK(cs_wallet);
 
 	auto itPair = wotCertificates.equal_range( pk );
@@ -6296,12 +6269,6 @@ bool CEDCWallet::AddGeneralProxy(
 	if(!signCertificate( errStr, signature, ts, addr.ToString(), paddr.ToString(), "" ))
 		return false;
 
-	if(!CEDCWalletDB(strWalletFile).WriteGeneralProxy( addr, paddr, ts, signature ))
-	{
-		errStr = std::string(__func__) + ":general proxy write failed";
-		return false;
-	}
-
 	LoadGeneralProxy( ts, addr, paddr );
 
 	return true;
@@ -6317,12 +6284,6 @@ bool CEDCWallet::AddGeneralProxyRevoke(
 
 	if(!signCertificate( errStr, signature, ts, addr.ToString(), paddr.ToString(), "" ))
 		return false;
-
-	if(!CEDCWalletDB(strWalletFile).WriteGeneralProxyRevoke( addr, paddr, ts, signature ))
-	{
-		errStr = std::string(__func__) + ":general proxy revoke write failed";
-		return false;
-	}
 
 	LoadGeneralProxyRevoke( ts, addr, paddr );
 
@@ -6341,12 +6302,6 @@ bool CEDCWallet::AddIssuerProxy(
 	if(!signCertificate( errStr, signature, ts, addr.ToString(), paddr.ToString(),iaddr.ToString()))
 		return false;
 
-	if(!CEDCWalletDB(strWalletFile).WriteIssuerProxy( addr, paddr, iaddr, ts, signature ))
-	{
-		errStr = std::string(__func__) + ":issuer proxy write failed";
-		return false;
-	}
-
 	LoadIssuerProxy( ts, addr, paddr, iaddr );
 
 	return true;
@@ -6363,12 +6318,6 @@ bool CEDCWallet::AddIssuerProxyRevoke(
 
 	if(!signCertificate( errStr, signature, ts, addr.ToString(), paddr.ToString(),iaddr.ToString()))
 		return false;
-
-	if(!CEDCWalletDB(strWalletFile).WriteIssuerProxy( addr, paddr, iaddr, ts, signature ))
-	{
-		errStr = std::string(__func__) + ":issuer proxy revoke write failed";
-		return false;
-	}
 
 	LoadIssuerProxyRevoke( ts, addr, paddr, iaddr );
 
@@ -6387,12 +6336,6 @@ bool CEDCWallet::AddPollProxy(
 	if(!signCertificate( errStr, signature, ts, addr.ToString(), paddr.ToString(), pollID ))
 		return false;
 
-	if(!CEDCWalletDB(strWalletFile).WritePollProxy( addr, paddr, pollID, ts, signature ))
-	{
-		errStr = std::string(__func__) + ":poll proxy write failed";
-		return false;
-	}
-
 	LoadPollProxy( ts, addr, paddr, pollID );
 
 	return true;
@@ -6409,12 +6352,6 @@ bool CEDCWallet::AddPollProxyRevoke(
 
 	if(!signCertificate( errStr, signature, ts, addr.ToString(), paddr.ToString(), pollID ))
 		return false;
-
-	if(!CEDCWalletDB(strWalletFile).WritePollProxyRevoke( addr, paddr, pollID, ts, signature ))
-	{
-		errStr = std::string(__func__) + ":poll proxy revoke write failed";
-		return false;
-	}
 
 	LoadPollProxyRevoke( ts, addr, paddr, pollID );
 
@@ -6625,25 +6562,14 @@ const std::vector<unsigned char> & signature,
 }
 
 bool CEDCWallet::AddPoll( 
-	 const Poll & poll,
-	std::string & errStr )
-{
-	if(!CEDCWalletDB(strWalletFile).WritePoll( poll ))
-	{
-		errStr = std::string(__func__) + ":poll proxy revoke write failed";
-		return false;
-	}
-
-	LoadPoll( poll );
-
-	return true;
-}
-
-void CEDCWallet::LoadPoll( const Poll & poll )
+	   const Poll & poll,
+	const uint256 & hash,
+	  std::string & errStr )
 {
 	LOCK(cs_wallet);
 
-	polls.insert( std::make_pair( poll.id(), poll ));
+	polls.insert( std::make_pair( hash, poll ));
+	return true;
 }
 
 bool CEDCWallet::AddVote( 
@@ -6655,39 +6581,20 @@ bool CEDCWallet::AddVote(
 		 const CKeyID & pAddr, 
 		  std::string & errStr )
 {
-	if(!CEDCWalletDB(strWalletFile).WriteVote( timestamp, addr, iaddr, pollid, response, pAddr ))
-	{
-		errStr = std::string(__func__) + ":poll vote write failed";
-		return false;
-	}
-
-	LoadVote( timestamp, addr, iaddr, pollid, response, pAddr );
-
-	return true;
-}
-
-void CEDCWallet::LoadVote(
-				 time_t timestamp,
-		 const CKeyID & addr, 
-		 const CKeyID & iaddr, 
-	const std::string & pollid,
-	const std::string & response, 
-		 const CKeyID & pAddr )
-{
 	LOCK(cs_wallet);
 
-	uint160 id;
-	id.SetHex(pollid);
+	uint256 hash;
+	hash.SetHex(pollid);
 
-	auto it = pollResults.find( id );
+	auto it = pollResults.find( hash );
 
 	if( it == pollResults.end() )
 	{
-		auto rc = pollResults.insert( std::make_pair( id, PollResult() ) );
+		auto rc = pollResults.insert( std::make_pair( hash, PollResult() ) );
 		it = rc.first;
 	}
 
-	auto pi = polls.find( id );
+	auto pi = polls.find( hash );
 
 	const unsigned oneDay_1 = 24*60*60 - 1;
 
@@ -6698,7 +6605,7 @@ void CEDCWallet::LoadVote(
 		msg += pollid;
 
 		error( msg.c_str() );
-		return;
+		return false;
 	}
 
 	// Invalid response value check
@@ -6710,7 +6617,7 @@ void CEDCWallet::LoadVote(
 		msg += pollid;
 
 		error( msg.c_str() );
-		return;
+		return false;
 	}
 
 	// Vote did not occur during poll check
@@ -6736,7 +6643,7 @@ void CEDCWallet::LoadVote(
 		msg += ets;
 
 		error( msg.c_str() );
-		return;
+		return false;
 	}
 
 	// If pAddr is empty, then addr contains the address of the voter
@@ -6777,7 +6684,7 @@ void CEDCWallet::LoadVote(
 		if( get<0>(proxy.generalProxy) == pAddr && get<2>(pp->second) )
 		{
 			it->second.addVote( response, pAddr, PollResult::GENERAL );
-			return;
+			return true;
 		}
 
 		// Proxy is not authorized to vote for principal
@@ -6789,11 +6696,14 @@ void CEDCWallet::LoadVote(
 		msg += pollid;
 
 		error( msg.c_str() );
+		return false;
 	}
+
+	return true;
 }
 
 bool CEDCWallet::pollResult( 
-		 const uint160 & id, 
+		 const uint256 & id, 
 	const PollResult * & result ) const
 {
 	auto it = pollResults.find(id);

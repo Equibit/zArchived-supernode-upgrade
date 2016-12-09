@@ -12,10 +12,10 @@ class Poll
 public:
 	Poll() {}
 	Poll( const CKeyID & issuerID,
-	 const std::string & question, 
-	 const std::vector<std::string> & answers,
-	 const std::string & start,
-	 const std::string & end);
+	const std::string & question, 
+	const std::vector<std::string> & answers,
+	const std::string & start,
+	const std::string & end);
 
 	ADD_SERIALIZE_METHODS;
 
@@ -31,12 +31,12 @@ public:
 	bool validAnswer( const std::string & ans ) const;
 	bool validDate( time_t d ) const;
 
-	uint160	id() const;
-
 	std::string toJSON() const;
 
 	const time_t	& start() const	{ return start_; }
 	const time_t	& end() const	{ return end_; }
+
+	const std::vector<std::string> & answers() const { return answers_; }
 
 private:
 	CKeyID 		issuerID_;

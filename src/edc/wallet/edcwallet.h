@@ -472,8 +472,8 @@ CEDCMutableTransaction & txIn,				// IN: Input Transaction
 
 	//			address
 	std::map<CKeyID, Proxy>			proxyMap;
-	std::map<uint160, Poll>			polls;
-	std::map<uint160, PollResult>	pollResults;
+	std::map<uint256, Poll>			polls;
+	std::map<uint256, PollResult>	pollResults;
 
 public:
     /*
@@ -1028,15 +1028,12 @@ public:
 	void LoadPollProxy( const std::string & ts, const CKeyID &, const CKeyID &, const std::string & );
 	void LoadPollProxyRevoke( const std::string & ts, const CKeyID &, const CKeyID &, const std::string & );
 
-	bool AddPoll( const Poll &, std::string & );
-	void LoadPoll( const Poll & );
+	bool AddPoll( const Poll &, const uint256 &, std::string & );
 	
-	bool pollResult( const uint160 &, const PollResult * & ) const;
+	bool pollResult( const uint256 &, const PollResult * & ) const;
 
 	bool AddVote( time_t, const CKeyID & addr, const CKeyID & iaddr, const std::string & pollid,
 			const std::string & response, const CKeyID & pAddr, std::string & errStr );
-	void LoadVote(time_t, const CKeyID & addr, const CKeyID & iaddr, const std::string & pollid,
-			const std::string & response, const CKeyID & pAddr );
 };
 
 /** A key allocated from the key pool. */

@@ -59,6 +59,10 @@ public:
 		}
    
 		READWRITE(senderPK_);
+		if( ser_action.ForRead())
+		{
+			senderAddr_ = senderPK_.GetID();
+		}
     	READWRITE(nonce_);
 		READWRITE(data_);
 		READWRITE(signature_);
@@ -207,7 +211,7 @@ class CPoll: public CMulticast
 {
 public:
 	CPoll( ) {}
-	CPoll( const CKeyID & issuer, const std::vector<unsigned char> & data );
+	CPoll( const CKeyID & issuer, const std::string & data );
 
 	virtual std::string vtag() const { return tag; }
 	virtual std::string desc() const;

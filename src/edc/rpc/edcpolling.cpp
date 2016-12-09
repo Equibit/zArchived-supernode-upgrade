@@ -155,29 +155,23 @@ UniValue edcpoll(const UniValue& params, bool fHelp)
 
 	Poll poll( issuerID, question, ansVec, startDate, endDate );
 
+	auto * msg = new CPoll(issuerID, poll.toJSON());
+	auto hash = msg->GetHash();
+
 	bool rc;
 	std::string errStr;
 	{
 		LOCK2(EDC_cs_main, theApp.walletMain()->cs_wallet);
 
 		edcEnsureWalletIsUnlocked();
-		rc = theApp.walletMain()->AddPoll( poll, errStr );
+		rc = theApp.walletMain()->AddPoll( poll, hash, errStr );
 	}
 	if(!rc)
        	throw JSONRPCError(RPC_TYPE_ERROR, errStr );
 
-	// Broadcast poll to the network
-	CDataStream ssPoll(SER_NETWORK, PROTOCOL_VERSION);
-	ssPoll << poll;
-
-	std::vector<unsigned char> data;
-	ssPoll >> data;
-
-	auto * msg = new CPoll(issuerID, data);
-
 	theApp.connman()->RelayUserMessage( msg, true );
 
-	UniValue result(poll.id().ToString());
+	UniValue result(hash.ToString());
 	return result;
 }
 
@@ -301,7 +295,7 @@ UniValue edcpollresults(const UniValue& params, bool fHelp)
 
 	std::string pollidStr = params[0].get_str();
 
-	uint160 pollid;
+	uint256 pollid;
 	pollid.SetHex(pollidStr);
 
 	EDCapp & theApp = EDCapp::singleton();
@@ -404,17 +398,11 @@ bool Poll::validDate( time_t d ) const
 	return d >= start_ && d <= end_;
 }
 
-uint160	Poll::id() const
-{
-	CDataStream	ss(SER_NETWORK, PROTOCOL_VERSION);
-	ss << *this;
-	return Hash160( ss.begin(), ss.end() );
-}
-
 std::string Poll::toJSON() const
 {
-	std::string ans = "{\"issuer\":";
-    CKeyID issuerID_;
+	std::string ans = "{\"issuer\":\"";
+    ans += CEDCBitcoinAddress(issuerID_).ToString();
+	ans += "\"";
 
 	ans += ",\"question\":\"";
     ans += question_;
