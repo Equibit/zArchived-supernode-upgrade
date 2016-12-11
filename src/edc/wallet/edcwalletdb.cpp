@@ -782,7 +782,7 @@ ReadKeyValue(
 				strErr = "Error reading wallet database: Invalid message loaded";
 				return false;
 			}
-			pwallet->LoadMessage( tag, hash, msg );
+			pwallet->LoadMessage( msg );
 		}
 #ifdef USE_HSM
 		else if( strType == HSM_POOL )

@@ -952,8 +952,8 @@ public:
     bool AbandonTransaction(const uint256& hashTx);
 
 	/** Load Message into the wallet **/
-	void LoadMessage( const std::string & tag, const uint256 & hash, CUserMessage * msg );
-	bool AddMessage( const std::string & tag, const uint256 & hash, CUserMessage * msg );
+	void LoadMessage( CUserMessage * msg );
+	bool AddMessage( CUserMessage * msg );
 
 	void GetMessage( const uint256 &, CUserMessage * & msg );
 	void DeleteMessage( const uint256 & );
@@ -1032,7 +1032,7 @@ public:
 	
 	bool pollResult( const uint256 &, const PollResult * & ) const;
 
-	bool AddVote( time_t, const CKeyID & addr, const CKeyID & iaddr, const std::string & pollid,
+	bool AddVote( struct timespec &, const CKeyID & addr, const CKeyID & iaddr, const std::string & pollid,
 			const std::string & response, const CKeyID & pAddr, std::string & errStr );
 };
 

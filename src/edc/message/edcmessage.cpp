@@ -19,6 +19,7 @@
 #include <secp256k1.h>
 #include "edc/edcparams.h"
 #include "edc/edcbase58.h"
+#include "edc/json.h"
 
 
 namespace
@@ -1180,10 +1181,9 @@ void CRevokeWoTcertificate::extract(
 	}
 }
 
-
 void CUserMessage::process( CEDCWallet & wallet )
 {
-	wallet.AddMessage( vtag(), GetHash(), this );
+	// no-op
 }
 
 void CCreateWoTcertificate::process( CEDCWallet & wallet )
@@ -1336,54 +1336,62 @@ void CVote::process( CEDCWallet & wallet )
 
 	edcEnsureWalletIsUnlocked();
 
-	time_t		timestamp;
 	std::string	pollid;
 	std::string	response;
 	CKeyID pAddr;
 
-	extract( timestamp, pollid, response, pAddr );
+	extract( pollid, response, pAddr );
 
 	std::string errStr;
-    bool rc = wallet.AddVote( timestamp, senderAddr_, receiverAddr_, pollid, response,pAddr,errStr);
+    bool rc = wallet.AddVote( timestamp_, senderAddr_, receiverAddr_, pollid, response,pAddr,errStr);
 	if(!rc)
 		error( errStr.c_str() );
 }
 
 void CVote::extract(
-		 time_t & timestamp,
 	std::string & pollid, 
 	std::string & response, 
 		 CKeyID & pAddr ) const
 {
-	const unsigned char * p = data_.data();
-	const unsigned char * end = data_.data() + data_.size();
+	std::unique_ptr<JSONnode> node(JSONnode::parse( data_ ));
 
-	timestamp = *reinterpret_cast<const time_t *>(p);
-	p += sizeof(time_t);
+	assert( node->type() == JSONnode::JOBJECT );
+	JSONobject * obj = static_cast<JSONobject *>(node.get());
+	
+	const auto & elements = obj->value();
 
-	auto len = *reinterpret_cast<const uint16_t *>(p);
-	p += sizeof(uint16_t);
-
-	pollid.resize(len);
-	auto i = pollid.begin();
-	auto e = pollid.end();
+	auto i = elements.begin();
+	auto e = elements.begin();
 	while( i != e )
-		*i++ = *p++;
-
-	len = *reinterpret_cast<const uint16_t *>(p);
-	p += sizeof(uint16_t);
-
-	response.resize(len);
-	i = response.begin();
-	e = response.end();
-
-	while( i != e )
-		*i++ = *p++;
-
-	if( p < end )
 	{
-		auto i = pAddr.begin();
-		std::copy( p, p + pAddr.size(), i );
+		if( i->first == "pollid" )
+		{
+			auto node = i->second.get();
+			assert( node->type() == JSONnode::JSTRING );
+
+			pollid = static_cast<JSONstring *>(node)->value();
+		}
+		else if( i->first == "response" )
+		{
+			auto node = i->second.get();
+			assert( node->type() == JSONnode::JSTRING );
+
+			response = static_cast<JSONstring *>(node)->value();
+		}
+		else if( i->first == "proxiedaddr" )
+		{
+			auto node = i->second.get();
+			assert( node->type() == JSONnode::JSTRING );
+
+			CKeyID id;
+			id.SetHex(static_cast<JSONstring *>(node)->value());
+
+			pAddr = id;
+		}
+		else
+			assert(false);
+
+		++i;
 	}
 }
 

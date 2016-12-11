@@ -7136,7 +7136,7 @@ bool ProcessMessage(
 
 		if( isGood )
 		{
-			msg->process( *theApp.walletMain() );
+			theApp.walletMain()->AddMessage( msg );
 		}
 		else
 		{

@@ -30,6 +30,8 @@
 #include "edc/edcparams.h"
 #include "edc/edcchainparams.h"
 #include "edc/rpc/edcwot.h"
+#include "edc/rpc/edcpolling.h"
+#include "edc/message/edcmessage.h"
 #ifdef USE_HSM
 #include "Thales/interface.h"
 #include <secp256k1.h>
@@ -4684,6 +4686,9 @@ bool CEDCWallet::InitLoadWallet()
     int64_t nStart = GetTimeMillis();
     bool fFirstRun = true;
     CEDCWallet *walletInstance = new CEDCWallet(walletFile);
+
+    theApp.walletMain( walletInstance );
+
     DBErrors nLoadWalletRet = walletInstance->LoadWallet(fFirstRun);
     if (nLoadWalletRet != DB_LOAD_OK)
     {
@@ -4840,7 +4845,6 @@ bool CEDCWallet::InitLoadWallet()
     // Add wallet transactions that aren't already in a block to mapTransactions
     walletInstance->ReacceptWalletTransactions();
 
-    theApp.walletMain( walletInstance );
     return true;
 }
 
@@ -5822,23 +5826,20 @@ bool CEDCWallet::CreateBlankingTransaction(
     return true;
 }
 
-void CEDCWallet::LoadMessage( 
-	const std::string & tag, 
-		const uint256 & hash, 
-		 CUserMessage * msg )
+void CEDCWallet::LoadMessage( CUserMessage * msg )
 {
-	messageMap.insert( make_pair( make_pair( tag, hash), msg ) );
+	messageMap.insert( make_pair( make_pair( msg->vtag(), msg->GetHash()), msg ) );
+	// TODO: Messages must be cached. ie. the size of messageMap must be limited
+
+	msg->process( *this );
 }
 
-bool CEDCWallet::AddMessage( 
-	const std::string & tag, 
-		const uint256 & hash, 
-		 CUserMessage * msg )
+bool CEDCWallet::AddMessage( CUserMessage * msg )
 {
 	if(!CEDCWalletDB(strWalletFile).WriteUserMsg( msg ))
 		return false;
-	messageMap.insert( make_pair( make_pair( tag, hash), msg ) );
-	// TODO: Messages must be cached. ie. the size of messageMap must be limited
+
+	LoadMessage( msg );
 	return true;
 }
 
@@ -6569,11 +6570,13 @@ bool CEDCWallet::AddPoll(
 	LOCK(cs_wallet);
 
 	polls.insert( std::make_pair( hash, poll ));
+	pollResults.insert( std::make_pair( hash, PollResult() ) );
+
 	return true;
 }
 
 bool CEDCWallet::AddVote( 
-				 time_t timestamp,
+	 struct  timespec & timestamp,
 		 const CKeyID & addr, 
 		 const CKeyID & iaddr, 
 	const std::string & pollid,
@@ -6623,7 +6626,8 @@ bool CEDCWallet::AddVote(
 	// Vote did not occur during poll check
 	// Add a days worth of seconds minus 1 to the end date to allow timestamp to fall on
 	// the last day. ie. 2016:10:10 10:10:10 <= 2016:10:10 23:59:59
-	else if( timestamp < pi->second.start() || timestamp > (pi->second.end()+oneDay_1) )
+	else if(timestamp.tv_sec < pi->second.start() || 
+			timestamp.tv_sec > (pi->second.end()+oneDay_1) )
 	{
 		struct tm ptm;
 		localtime_r( &pi->second.start(), &ptm );

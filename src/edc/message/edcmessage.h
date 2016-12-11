@@ -161,9 +161,7 @@ public:
 	virtual std::string desc() const;
 	virtual void process( CEDCWallet & );
 
-	void extract( 
-		time_t &, std::string & pollid, 
-		std::string & response, CKeyID & pAddr ) const;
+	void extract( std::string & pollid, std::string & response, CKeyID & pAddr ) const;
 
 	static const std::string tag;
 };
