@@ -1320,9 +1320,7 @@ void CPoll::process( CEDCWallet & wallet )
 
 	edcEnsureWalletIsUnlocked();
 
-	Poll poll;
-	CDataStream	ss( data_, SER_NETWORK, PROTOCOL_VERSION );
-	ss >> poll;
+	Poll poll( data_ );
 
 	std::string errStr;
 	bool rc = wallet.AddPoll( poll, GetHash(), errStr );
@@ -1361,7 +1359,7 @@ void CVote::extract(
 	const auto & elements = obj->value();
 
 	auto i = elements.begin();
-	auto e = elements.begin();
+	auto e = elements.end();
 	while( i != e )
 	{
 		if( i->first == "pollid" )

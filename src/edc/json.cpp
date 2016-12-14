@@ -22,12 +22,12 @@ JSONnode * parse( const char * & cp, const char * end );
 
 JSONnode * parseArray( const char * & cp, const char * end )
 {
-	assert( *cp == '{' );
+	assert( *cp == '[' );
 	std::unique_ptr<JSONarray> arr(new JSONarray());
 
 	++cp;
 	// ws* value ws* [,|]]
-	while( *cp != '}' )
+	while( *cp != ']' )
 	{
 		cp = eatSpace(cp, end);
 
@@ -37,15 +37,19 @@ JSONnode * parseArray( const char * & cp, const char * end )
 		cp = eatSpace(cp, end);
 
 		if( *cp == ',' )
-			; // no-op
-		else if( *cp == '}' )
+		{
+			++cp; // no-op
+		}
+		else if( *cp == ']' )
+		{
+			++cp;
 			break;
+		}
 		else
 		{
 			throw std::runtime_error( "Invalid JSON:Elements of object not separated by comma" );
 		}
 
-		++cp;
 	}
 
 	return arr.release();
@@ -72,10 +76,12 @@ JSONnode * parseObject( const char * & cp, const char * end )
 		if( *cp != '"' )
 			throw std::runtime_error( "Invalid JSON:Elements of object not separated by comma" );
 		std::string name(n,cp-n);
+		++cp;
 		
 		cp = eatSpace(cp, end);
-		if( *cp != '"' )
-			throw std::runtime_error( "Invalid JSON:Name/value pair is not separated by collon" );
+		if( *cp != ':' )
+			throw std::runtime_error( "Invalid JSON:Name/value pair is not separated by colon" );
+		++cp;
 		cp = eatSpace(cp, end);
 
 		JSONnode * value = parse( cp, end );
@@ -84,14 +90,18 @@ JSONnode * parseObject( const char * & cp, const char * end )
 		obj->add( name, value );
 
 		if( *cp == ',' )
-			; // no-op
+		{
+			++cp; // move past it
+		}
 		else if( *cp == '}' )
+		{
+			++cp; // move past it
 			break;
+		}
 		else
 		{
 			throw std::runtime_error( "Invalid JSON:Elements of object not separated by comma" );
 		}
-		++cp;
 	}
 
 	return obj.release();

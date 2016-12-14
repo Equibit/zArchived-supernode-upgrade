@@ -6654,7 +6654,7 @@ bool CEDCWallet::AddVote(
 	// It has higher precendence then any proxy, so just assign the answer to the
 	// poll result.
 	//
-	if( pAddr.size() == 0 )
+	if( pAddr.IsNull() )
 	{
 		it->second.addVote( response, addr, PollResult::OWNER );
 	}
@@ -6662,33 +6662,37 @@ bool CEDCWallet::AddVote(
 	else
 	{
 		auto pt = proxyMap.find( pAddr );
-		const auto & proxy = pt->second;
 
-		auto pp = proxy.pollProxies.find( pollid );
-		if( pp != proxy.pollProxies.end() )
+		if( pt != proxyMap.end() )
 		{
-			// If proxy addresses match and the mapping is active
-			if( get<0>(pp->second) == pAddr && get<2>(pp->second) )
+			const auto & proxy = pt->second;
+
+			auto pp = proxy.pollProxies.find( pollid );
+			if( pp != proxy.pollProxies.end() )
 			{
-				it->second.addVote( response, pAddr, PollResult::POLL );
+				// If proxy addresses match and the mapping is active
+				if( get<0>(pp->second) == pAddr && get<2>(pp->second) )
+				{
+					it->second.addVote( response, pAddr, PollResult::POLL );
+				}
 			}
-		}
 
-		auto ip = proxy.issuerProxies.find( iaddr );
-		if( ip != proxy.issuerProxies.end() )
-		{
-			// If proxy addresses match and the mapping is active
-			if( get<0>(pp->second) == pAddr && get<2>(pp->second) )
+			auto ip = proxy.issuerProxies.find( iaddr );
+			if( ip != proxy.issuerProxies.end() )
 			{
-				it->second.addVote( response, pAddr, PollResult::ISSUER );
+				// If proxy addresses match and the mapping is active
+				if( get<0>(pp->second) == pAddr && get<2>(pp->second) )
+				{
+					it->second.addVote( response, pAddr, PollResult::ISSUER );
+				}
 			}
-		}
 
-		// If proxy addresses match and the mapping is active
-		if( get<0>(proxy.generalProxy) == pAddr && get<2>(pp->second) )
-		{
-			it->second.addVote( response, pAddr, PollResult::GENERAL );
-			return true;
+			// If proxy addresses match and the mapping is active
+			if( get<0>(proxy.generalProxy) == pAddr && get<2>(pp->second) )
+			{
+				it->second.addVote( response, pAddr, PollResult::GENERAL );
+				return true;
+			}
 		}
 
 		// Proxy is not authorized to vote for principal

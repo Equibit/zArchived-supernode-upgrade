@@ -12,6 +12,7 @@
 #include "edc/edcmain.h"
 #include "edc/message/edcmessage.h"
 #include "edc/rpc/edcpolling.h"
+#include "edc/json.h"
 
 
 namespace
@@ -355,6 +356,89 @@ Poll::Poll(
 	start_(toTime( start )),
 	end_(toTime( end ))
 {
+}
+
+namespace
+{
+
+time_t strToTime( const std::string & s )
+{
+	struct tm t;
+	memset(&t, 0, sizeof(t));
+
+	int y = (s[0]-'0')*1000 + (s[1]-'0')*100 + (s[2]-'0')*10 + s[3]-'0';
+	int m = (s[5]-'0')*10 + s[6]-'0';
+	int d = (s[8]-'0')*10 + s[9]-'0';
+
+	t.tm_year = y-1900;
+	t.tm_mon  = m-1;
+	t.tm_mday = d;
+
+	return mktime(&t);
+}
+
+};
+
+Poll::Poll( const std::vector<unsigned char> & data )
+{
+	JSONnode * node = JSONnode::parse( data );
+	assert( node->type() == JSONnode::JOBJECT );
+	
+	JSONobject * obj = static_cast<JSONobject *>(node);
+
+	const auto & elements = obj->value();
+
+    auto i = elements.begin();
+    auto e = elements.end();
+    while( i != e )
+    {
+		auto node = i->second.get();
+		if( i->first == "issuer" )
+		{
+			assert( node->type() == JSONnode::JSTRING );
+			const std::string & issuer = static_cast<JSONstring *>(node)->value();
+
+			issuerID_.SetHex( issuer );
+		}
+		else if( i->first == "question" )
+		{
+			assert( node->type() == JSONnode::JSTRING );
+			question_ = static_cast<JSONstring *>(node)->value();
+		}
+		else if( i->first == "answers" )
+		{
+			assert( node->type() == JSONnode::JARRAY );
+			auto j = static_cast<JSONarray *>(node)->value().begin();
+			auto f = static_cast<JSONarray *>(node)->value().end();
+
+			while( j != f )
+			{
+				assert( (*j)->type() == JSONnode::JSTRING );
+				JSONstring * ans = static_cast<JSONstring *>(j->get());
+
+				answers_.push_back(ans->value());
+				++j;
+			}
+		}
+		else if( i->first == "start" )
+		{
+			assert( node->type() == JSONnode::JSTRING );
+			const std::string & start = static_cast<JSONstring *>(node)->value();
+
+			start_ = strToTime( start );
+		}
+		else if( i->first == "end" )
+		{
+			assert( node->type() == JSONnode::JSTRING );
+			const std::string & end = static_cast<JSONstring *>(node)->value();
+
+			end_ = strToTime( end );
+		}
+		else
+			assert(false);
+
+		++i;
+	}
 }
 
 bool Poll::validAnswer( const std::string & ans ) const

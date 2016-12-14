@@ -11,22 +11,12 @@ class Poll
 {
 public:
 	Poll() {}
-	Poll( const CKeyID & issuerID,
-	const std::string & question, 
-	const std::vector<std::string> & answers,
-	const std::string & start,
-	const std::string & end);
-
-	ADD_SERIALIZE_METHODS;
-
-	template <typename Stream, typename Operation>
-	inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
-	{
-		READWRITE(question_);
-		READWRITE(answers_);
-		READWRITE(start_);
-		READWRITE(end_);
-	}
+	Poll(const CKeyID & issuerID,
+		 const std::string & question, 
+		 const std::vector<std::string> & answers,
+		 const std::string & start,
+		 const std::string & end);
+	Poll( const std::vector<unsigned char> & );
 
 	bool validAnswer( const std::string & ans ) const;
 	bool validDate( time_t d ) const;
